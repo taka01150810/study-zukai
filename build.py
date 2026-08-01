@@ -91,6 +91,15 @@ def collect():
             books.append({"slug": slug, "title": title, "subtitle": subtitle, "chapters": chapters})
             print(f"  {title}: {len(chapters)} 章")
 
+    # Vault 側で図解を消した書籍は、公開サイトからも取り下げる。
+    # KNOWN_SLUGS に載っているディレクトリだけを対象にして、無関係なものを消さないようにする。
+    live = {b["slug"] for b in books}
+    for slug in sorted(KNOWN_SLUGS - live):
+        stale = DIST / slug
+        if stale.is_dir():
+            shutil.rmtree(stale)
+            print(f"  削除 (元データなし): {slug}/")
+
     # トップページの並び順を BOOKS の記述順にそろえる（探索順に左右されないようにする）
     order = [slug for slug, _, _ in BOOKS.values()]
     books.sort(key=lambda b: order.index(b["slug"]))

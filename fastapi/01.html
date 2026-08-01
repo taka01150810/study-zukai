@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第1章 現代のウェブ ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+
+  .stack{display:flex; flex-direction:column; gap:0; margin:12px 0}
+  .stack .layer{border:1px solid var(--line); border-radius:12px; padding:13px 16px; background:var(--panel2)}
+  .stack .layer b{font-size:15px; color:#fff}
+  .stack .layer p{margin:3px 0 0; font-size:13px; color:var(--sub)}
+  .stack .conn{text-align:center; color:var(--accent2); font-size:12.5px; padding:7px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第1章</div>
+  <h1>第1章　現代のウェブ</h1>
+  <p>「ウェブはもう完成した技術」ではありません。この10年で、サービスと API、並行処理、層（レイヤー）、データという4つの軸で景色が変わりました。この章はその見取り図です。FastAPI がなぜ今の形をしているのか、その理由の土台になります。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">用語集つき</span>
+    <span class="badge">全9節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① サービスとAPI</a>
+  <a class="sub" href="#s1-sum">└ この項のまとめ</a>
+  <a href="#s2">② APIの種類</a>
+  <a class="sub" href="#s2-pat">└ 通信の3パターン</a>
+  <a class="sub" href="#s2-sum">└ この項のまとめ</a>
+  <a href="#s3">③ HTTP</a>
+  <a class="sub" href="#s3-sum">└ この項のまとめ</a>
+  <a href="#s4">④ REST（フル）</a>
+  <a class="sub" href="#s4-crud">└ CRUDとHTTP動詞</a>
+  <a class="sub" href="#s4-req">└ リクエストとレスポンス</a>
+  <a class="sub" href="#s4-status">└ ステータスコード</a>
+  <a class="sub" href="#s4-sum">└ この項のまとめ</a>
+  <a href="#s5">⑤ JSONとAPIのデータ形式</a>
+  <a class="sub" href="#s5-sum">└ この項のまとめ</a>
+  <a href="#s6">⑥ JSON:API</a>
+  <a class="sub" href="#s6-sum">└ この項のまとめ</a>
+  <a href="#s7">⑦ GraphQL</a>
+  <a class="sub" href="#s7-sum">└ この項のまとめ</a>
+  <a href="#s8">⑧ コンカレンシー（並行処理）</a>
+  <a class="sub" href="#s8-sync">└ 同期と非同期</a>
+  <a class="sub" href="#s8-sum">└ この項のまとめ</a>
+  <a href="#s9">⑨ レイヤー</a>
+  <a class="sub" href="#s9-vert">└ 垂直レイヤーの構成</a>
+  <a class="sub" href="#s9-role">└ 各層の責務</a>
+  <a class="sub" href="#s9-why">└ なぜ層に分けるのか</a>
+  <a class="sub" href="#s9-arrow">└ 各矢印で何が流れるか</a>
+  <a class="sub" href="#s9-sum">└ この項のまとめ</a>
+  <a href="#s10">⑩ データ</a>
+  <a class="sub" href="#s10-sum">└ この項のまとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。プログラムを書いたことがなくてもそのまま読めます。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">API <span>Application Programming Interface</span></div><p>プログラムが別のプログラムに用件を伝え、答えを受け取るための窓口。「この形で聞けば、この形で返す」という取り決めのことです。</p></div>
+    <div class="item"><div class="w">バックエンド</div><p>画面の裏側で動く部分。データを保存したり、計算したり、権限を確認したりします。利用者からは直接見えません。</p></div>
+    <div class="item"><div class="w">フロントエンド</div><p>利用者が直接見て触る部分。ブラウザの画面やスマホアプリの画面です。</p></div>
+    <div class="item"><div class="w">スキーマ <span>schema</span></div><p>データの形の決めごと。「この表には id と name と age という項目があり、age は整数」といった設計図です。</p></div>
+    <div class="item"><div class="w">プロトコル <span>protocol</span></div><p>通信のときの手順の取り決め。どんな順番で、どんな形式で送り合うかを決めたものです。</p></div>
+    <div class="item"><div class="w">RPC <span>Remote Procedure Call</span></div><p>別のコンピュータにある処理を、自分のプログラムの中の処理と同じ書き方で呼び出す仕組み。裏では通信が起きています。</p></div>
+    <div class="item"><div class="w">メッセージング</div><p>プログラム同士が小さなデータの塊を送り合う方式。送る側は相手の応答を待たずに次へ進めます。</p></div>
+    <div class="item"><div class="w">pub-sub <span>パブリッシュ・サブスクライブ</span></div><p>1つの発信を、それを受け取りたいと登録している複数のプログラムが<b>それぞれ</b>受け取る方式。全員が同じ内容を受け取ります。</p></div>
+    <div class="item"><div class="w">キュー <span>queue</span></div><p>送られたデータを順番に並べておき、待機しているプログラムのうち<b>1つだけ</b>が取り出して処理する方式。仕事を分担させたいときに使います。</p></div>
+    <div class="item"><div class="w">HTTP</div><p>ブラウザとサーバーが会話するときの手順の決まり。「このページをください」「はいどうぞ、状態は200番です」といったやり取りをします。</p></div>
+    <div class="item"><div class="w">URL</div><p>ウェブ上のどの情報を指しているかを表す住所。https://example.com/users/1 のような文字列です。</p></div>
+    <div class="item"><div class="w">REST／RESTful</div><p>HTTP をどう使うかの作法。その作法に沿っている状態を RESTful と呼びます。</p></div>
+    <div class="item"><div class="w">ステートレス</div><p>1回の問い合わせが独立していて、サーバーが前回のやり取りを覚えていない状態。必要な情報は毎回まとめて送ります。</p></div>
+    <div class="item"><div class="w">キャッシュ可能</div><p>一度取ってきた答えを手元にとっておいて、次に同じものが必要になったときはそれを使える、ということ。</p></div>
+    <div class="item"><div class="w">リソース <span>resource</span></div><p>区別して操作できるひとかたまりのデータ。ユーザー、商品、注文などが1つずつリソースです。</p></div>
+    <div class="item"><div class="w">エンドポイント／ルート</div><p>「どの URL に、どの動詞で送るか」の組み合わせ。URL とプログラムの処理を結びつけるので、ルート（経路）とも呼ばれます。</p></div>
+    <div class="item"><div class="w">CRUD</div><p>データに対する4つの基本操作、作成（Create）・読み取り（Read）・更新（Update）・削除（Delete）の頭文字です。</p></div>
+    <div class="item"><div class="w">クエリパラメータ</div><p>URL の後ろに ?key=value の形で付ける追加の指定。並び順や絞り込み条件を伝えるのに使います。</p></div>
+    <div class="item"><div class="w">ステータスコード</div><p>サーバーが返す3桁の数字。処理がうまくいったか、失敗したか、失敗の原因はどちら側かを表します。</p></div>
+    <div class="item"><div class="w">JSON</div><p>データを文字列で書き表す形式。{"name": "ハル"} のように、項目名と値を並べて書きます。</p></div>
+    <div class="item"><div class="w">JSON:API</div><p>「RESTful な API を JSON で書くなら、この構造にそろえよう」という、より細かく決めた仕様のこと。</p></div>
+    <div class="item"><div class="w">GraphQL</div><p>受け取り側が「この項目だけ欲しい」と指定してデータをもらう方式の API。Meta（旧 Facebook）が作りました。</p></div>
+    <div class="item"><div class="w">並行性 <span>concurrency</span></div><p>1つの処理が待たされている間に別の処理を進めて、全体が止まらないようにすること。同時刻に本当に複数動くこととは別です。</p></div>
+    <div class="item"><div class="w">並列性 <span>parallelism</span></div><p>複数の処理装置で、本当に同じ瞬間に複数の処理が動いていること。</p></div>
+    <div class="item"><div class="w">ビジーウェイト</div><p>返事が来るのを待つあいだ、処理装置が何の仕事もせずに待っている状態。この時間が長いほど無駄が大きくなります。</p></div>
+    <div class="item"><div class="w">I/Oバウンド</div><p>処理時間の大半が、通信やファイル読み書きの返事待ちで占められている処理のこと。</p></div>
+    <div class="item"><div class="w">CPUバウンド</div><p>処理時間の大半が計算そのものに使われている処理のこと。待ち時間がないので、他の処理に切り替える余地がありません。</p></div>
+    <div class="item"><div class="w">イベントループ</div><p>「返事が届いたものはないか」を繰り返し確認し、届いたものから処理を進める仕組み。非同期処理の中心にあります。</p></div>
+    <div class="item"><div class="w">レイヤー <span>層</span></div><p>プログラムを役割ごとに分けたまとまり。この本では Web層・サービス層・データ層の3つに分けます。</p></div>
+    <div class="item"><div class="w">モデル <span>model</span></div><p>層をまたいでやり取りするデータの形の定義。名前は文字列、年齢は整数、といった決めごとを1か所に書いておきます。</p></div>
+    <div class="item"><div class="w">NoSQL／NewSQL</div><p>表形式のデータベース以外の保存方式（NoSQL）と、複数台に分散しても表形式のまま扱える新しい方式（NewSQL）です。</p></div>
+    <div class="item"><div class="w">ETL</div><p>データを取り出し（Extract）、形を整え（Transform）、保存先に入れる（Load）という一連の流れのこと。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">ナプキンに描かれた見取り図</span></h2></div>
+  <div class="card">
+    <p class="lead">テックカフェ・コードの窓際で、ハルが「ウェブってもう完成された技術じゃないんですか？」とこぼします。タカ師匠は「ここ10年で景色がガラッと変わったんだよ」と返し、ナプキンにいくつもの言葉を書きながら、<b>サービスと API</b>・<b>並行処理</b>・<b>レイヤー</b>・<b>データ</b>という4つの軸で「いまのウェブ」の見取り図を描いていきます。</p>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔌</div><h4>軸1：サービスと API</h4><p>画面側と裏側が分かれ、その間を API がつなぐ。API の種類、HTTP、REST、JSON まで。</p></div>
+      <div class="mini"><div class="ic">⚡</div><h4>軸2：並行処理</h4><p>同時につながる人数が数百万になり、待ち時間を無駄にしない書き方が必須になった。</p></div>
+      <div class="mini"><div class="ic">🗂️</div><h4>軸3：レイヤー</h4><p>コードを Web層・サービス層・データ層に分け、責務を混ぜない。</p></div>
+      <div class="mini"><div class="ic">📊</div><h4>軸4：データ</h4><p>表形式のデータベースの先へ。NoSQL、NewSQL、機械学習、ETL まで広がる。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">昔の Web サイトは1つのファイルに全部詰め込めば動きました。現代は「<b>サービス（バックエンド）</b>」と「<b>フロントエンド</b>」に分かれ、<span class="term" data-tip="プログラムが別のプログラムに用件を伝え、答えを受け取るための窓口。">API</span> で会話する設計が主流です。同時につながる数は何百万にまで膨れ上がり、ただ順番に書くだけでは追いつかないので<b>並行処理（非同期）</b>が必須になりました。コードは<b>層（レイヤー）</b>に分けて整理し、データの世界では機械学習・AI まで含めて <span class="term" data-tip="取り出し（Extract）、形を整え（Transform）、保存先に入れる（Load）の流れ。">ETL</span> と呼ばれる流れが大規模化しています。</p>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>「API ってなんで重要なの？」と聞かれて答えられるようになる</li>
+        <li>同期と非同期、並行処理という考え方が「なんとなくの呪文」ではなくなる</li>
+        <li>自分のコードがごちゃごちゃしてきたとき、「ここが Web層、ここがサービス層、ここがデータ層」と分けて整理できるようになる</li>
+        <li>データベース・機械学習・AI といった「Web 以外」の世界と、自分の Web サービスがどうつながるかをイメージできるようになる</li>
+        <li>今後の章で出てくる言葉（REST、JSON、ASGI、Pydantic など）の位置づけが分かるので、混乱せず読み進められる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ① サービスとAPI ============ -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>サービスとAPI<span class="tag">1ファイル時代から、分離とAPIの時代へ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>現代のウェブはバックエンドとフロントエンドに分かれ、その間を API がつなぎます。API の設計はサイトそのものの設計と同じくらい重要です。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>昔の Web サイトって、HTML を書けばできあがり、みたいなイメージなんですけど…今もそうなんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いい質問だ。昔は PHP と HTML と MySQL の呼び出しを全部1つのファイルに突っ込んで、それで世界に公開できたんだよ。「自分のサイトを友達に自慢する」って遊びだった時代だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、楽しそう。今はもうそういうのは廃れたんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>廃れてはいないけど、サイトが「数百ページ」「数億ページ」と巨大化していくにつれ、1ファイルじゃ管理できなくなった。それで今は、<b>コンテンツ（HTML/JS/画像）</b>と <b>API（プログラム同士をつなぐ仕組み）</b>が別の役割を持つようになったんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>API って、よく聞きますけど、結局なんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>API は <b>Application Programming Interface</b>、日本語で言うと「アプリケーション同士が話すための窓口」。たとえば天気アプリが裏で気象庁のサーバーに「東京の今日の天気を教えて」と問い合わせるとき、その問い合わせ口が API だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、プログラム同士の「話し方の取り決め」みたいな感じですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。そしてもう一つ重要なのが、いまや<b>バックエンド</b>（データベース寄りのサーバー側の処理）と<b>フロントエンド</b>（ブラウザやスマホアプリの画面側）が完全に分かれていることだ。両者の間を埋めるのが API。だから API の設計は、Web サイト本体の設計と同じくらい重要になっている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「両方できる人＝フルスタック開発者」って言葉、最近よく聞きます。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、けれど両方の世界が複雑になりすぎて、フルスタックを名乗るのが昔より大変になっているのも事実。ふつうはどちらかに専門化する。だから両者をつなぐ API の「契約」がものすごく大事なんだ。データベースの<span class="term" data-tip="データの形の決めごと。表の項目名と型の設計図。">スキーマ</span>と同じく、API も一度決めると変えるのに苦労する。</div></div>
+    </div>
+
+    <h3 class="blk">昔と今の違い</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📄</div><h4>昔：1ファイルに全部</h4><p>画面の見た目（HTML）、処理（PHP）、データの取り出し（MySQL の呼び出し）を、1つのファイルにまとめて書いていました。ページが数枚なら、これで十分動きます。</p><span class="pill">数ページ規模</span></div>
+      <div class="mini"><div class="ic">🔗</div><h4>今：分離してAPIでつなぐ</h4><p>画面側と裏側を別々に作り、決まった形式のやり取りだけでつなぎます。数億ページ規模でも、担当を分けて開発を進められます。</p><span class="pill">数億ページ規模</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：天気アプリの中で起きていること</h4>
+      <p>スマホの天気アプリで「東京」を選ぶと、アプリは裏側のサーバーに <code>GET /weather?city=tokyo</code> という問い合わせを送ります。サーバーは <code>{"city":"tokyo","temp":28,"rain":10}</code> のような答えを返します。アプリはこの数字を受け取って、画面に「28℃／降水確率10%」と描きます。<b>画面を描く仕事</b>と<b>気温を調べる仕事</b>が完全に分かれていて、その間の取り決めが <code>city を渡すと temp と rain が返る</code> という API です。</p>
+      <p>もしサーバー側が勝手に <code>temp</code> を <code>temperature</code> に変えると、アプリ側は気温を見つけられず画面が壊れます。「一度決めると変えるのに苦労する」とはこのことです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「サーバー」と「クライアント」がなぜ分離しているのか、その必然性を説明できる</li>
+        <li>自分で Web サービスを設計するとき、最初に API（窓口）の形を決める習慣がつく</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s1-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>昔: 1ファイルに HTML/PHP/SQL を全部詰めていた</li>
+        <li>今: フロントエンド（画面）とバックエンド（裏方）に分離</li>
+        <li>両者をつなぐ「窓口」が API</li>
+        <li>API 設計はデータベース設計と同じくらい重要な契約</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ② APIの種類 ============ -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>APIの種類<span class="tag">ライブラリ呼び出し → RPC → メッセージング</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>API は「ライブラリ呼び出し」「RPC」「メッセージング」と歴史的に進化してきました。メッセージングには リクエスト/レスポンス、pub-sub、キューの3パターンがあります。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>API っていろんな種類があるって聞きました。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そうだね。どの API も、次の4つを定義していると思っていい。①<b>プロトコル</b>（通信のルール）、②<b>制御構造</b>（呼び出し方）、③<b>形式</b>（データの並べ方）、④<b>コンテンツの構造</b>（中身のスキーマ）、この4つ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>種類はどれくらいあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>歴史的にいくつかの世代があるんだ。まず昔々、ネットワークが普及する前の API は、ほとんどが<b>ライブラリの関数呼び出し</b>だった。「math ライブラリの sqrt 関数を呼んで平方根を求める」みたいな、同じプログラムの中で完結する話。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ネットワークを通らない呼び出しも「API」って呼ぶんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>呼ぶよ。広い意味の API はそういうものも含む。次に、<b>RPC（Remote Procedure Call、リモート手続き呼び出し）</b>が登場した。「別のマシンの関数を、自分のプログラムの中の関数のように呼ぶ」仕組み。今でも gRPC（Google が作った RPC の枠組み）はよく使われる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「離れた場所の関数を呼ぶ」って、書き方は同じなのに通信が起きているんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。その仕組みが今のマイクロサービスの土台でもある。さらに<b>メッセージング</b>という方式もあって、これはプロセス間で小さなデータの塊を送り合うやり方だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>メッセージには「動詞のような命令（コマンド）」と「名詞のような事実通知（イベント）」がある。よく使われる道具には Apache Kafka、RabbitMQ、NATS、ZeroMQ などがある。</div></div>
+    </div>
+
+    <h3 class="blk">どの API も定義している4要素</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📡</div><h4>① プロトコル</h4><p>通信のルール。どんな手順でやり取りするか。</p></div>
+      <div class="mini"><div class="ic">🎛️</div><h4>② 制御構造</h4><p>呼び出し方。1回きりか、繰り返しか、待つのか待たないのか。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>③ 形式</h4><p>データの並べ方。JSON なのか、別の形式なのか。</p></div>
+      <div class="mini"><div class="ic">🧬</div><h4>④ コンテンツの構造</h4><p>中身の決めごと。どんな項目があり、それぞれ何型か。</p></div>
+    </div>
+
+    <h3 class="blk">API の3世代</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>ライブラリの関数呼び出し</h4><p>同じプログラムの中で完結する呼び出し。ネットワークを通らない。例：平方根を求める sqrt を呼ぶ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>RPC（リモート手続き呼び出し）</h4><p>別のマシンにある処理を、自分の中の関数と同じ書き方で呼ぶ。代表例は gRPC。今のマイクロサービスの土台。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div></div><div class="body"><h4>メッセージング</h4><p>プロセス同士で小さなデータの塊を送り合う。命令を表すコマンドと、起きた事実を伝えるイベントがある。代表的な道具：Apache Kafka、RabbitMQ、NATS、ZeroMQ。</p></div></div>
+    </div>
+
+    <h3 class="blk" id="s2-pat">通信の3パターン</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>通信のパターンにも種類があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>あるよ。3つ覚えるといい。①<b>リクエスト/レスポンス</b>：ブラウザがサーバに「ページください」「はいどうぞ」と1対1で会話するスタイル。②<b>パブリッシュ・サブスクライブ（pub-sub）</b>：1つの発信を、受け取りたいと登録している複数のプログラムがそれぞれ受け取って処理する仕組み。③<b>キュー</b>：pub-sub に似ているけど、メッセージを受け取って処理するのは待機している中の<b>1つだけ</b>。仕事を分散して、空いている担当が拾う形だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>キューは、届いた仕事が1列に並んでいて、手が空いた人が先頭から取っていく形ですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その理解でいい。実務でよくあるのは、メールの送信や画像の縮小版づくりみたいな「少し時間のかかる裏方処理」をキューに入れておいて、処理担当のプログラムが空いたら取り出す、という使い方だね。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">↔️</div><h4>リクエスト/レスポンス</h4><p>送った側が答えを待ちます。1つの問いに1つの答え。ブラウザとサーバーの普通のやり取りがこれです。</p><span class="pill">1対1</span></div>
+      <div class="mini"><div class="ic">📢</div><h4>pub-sub</h4><p>1つの発信を、登録している全員がそれぞれ受け取ります。同じ内容が複数の受け手に届きます。</p><span class="pill">1対多・全員が受け取る</span></div>
+      <div class="mini"><div class="ic">🧾</div><h4>キュー</h4><p>並んだ仕事を、待機中のプログラムのうち1つだけが取り出して処理します。同じ仕事が二重に処理されません。</p><span class="pill">1対多・1つだけが受け取る</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：pub-sub とキューの使い分け</h4>
+      <p><b>pub-sub が向く場面：</b>「注文が完了した」という事実を、在庫管理・メール送信・売上集計の3つのプログラムに同時に知らせたいとき。3つとも同じ知らせを受け取って、それぞれ別の仕事をします。</p>
+      <p><b>キューが向く場面：</b>「この画像の縮小版を作る」という仕事が1日に10万件発生し、処理担当のプログラムを5台動かしているとき。1件の仕事は5台のうち1台だけが取り出します。もし全台が同じ仕事を受け取ってしまうと、同じ画像を5回作ることになり無駄です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「すべての API が Web API なわけではない」と知り、設計の幅が広がる</li>
+        <li>自分のシステムで非同期処理を入れたいとき、キューや pub-sub を選択肢に持てる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s2-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>API は4要素（プロトコル／制御／形式／コンテンツ）で定義される</li>
+        <li>歴史: ライブラリ呼び出し → RPC → メッセージング</li>
+        <li>メッセージングの3パターン: リクエスト/レスポンス、pub-sub、キュー</li>
+        <li>代表的なメッセージング基盤: Kafka, RabbitMQ, NATS, ZeroMQ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ③ HTTP ============ -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>HTTP<span class="tag">ウェブの3本柱のひとつ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>HTTP はティム・バーナーズ＝リーが提案したウェブの3本柱（HTML, HTTP, URL）の一つで、クライアントとサーバーの通信を担います。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それで、Web で使われる API といえば、結局は HTTP ですよね？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。ワールド・ワイド・ウェブを作ったティム・バーナーズ＝リーが提案した3つの構成要素のうちの一つだ。①<b>HTML</b>：データを表示するための言語、②<b>HTTP</b>：クライアント／サーバー間の通信のルール、③<b>URL</b>：ウェブ上の情報を指し示す住所の書き方。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>HTML・HTTP・URL って、たしかにブラウザでよく見る単語ですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>この3点セットが、後から見れば当たり前に見えるけど、当時は革命だった。ウェブはここから進化を始めて、いろんな実験を経て、今のような姿になった。<code>IMG</code> タグのように、生き残ったものが標準として残っているわけ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、生き残ったやつが標準になったんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そういうこと。そして、その HTTP の上にどうやって「きれいに API を乗せるか」を考えたのが、次に話す REST だ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">📄</div><h4>HTML</h4><p>データを画面に表示するための書き方。見出し・段落・画像などを表します。</p><span class="pill">表示</span></div>
+      <div class="mini"><div class="ic">📡</div><h4>HTTP</h4><p>ブラウザとサーバーが会話するときの手順。「これをください」「はいどうぞ」を決まった形で行います。</p><span class="pill">通信</span></div>
+      <div class="mini"><div class="ic">📍</div><h4>URL</h4><p>ウェブ上のどの情報かを指し示す住所の書き方。</p><span class="pill">住所</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：ブラウザでページを開いたときの1往復</h4>
+      <p>アドレス欄に <code>https://example.com/users/1</code> と入れると、ブラウザは「GET /users/1 をください」という内容をサーバーに送ります（HTTP）。<code>example.com</code> のどの情報かを示しているのが URL の部分です。サーバーは「状態は 200、中身はこの HTML です」と返し、ブラウザがその HTML を解釈して画面に描きます。3つの柱がこの1往復にすべて登場しています。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>普段使うブラウザの裏で何が動いているか、3要素のレベルで説明できる</li>
+        <li>URL と HTTP の動詞の区別が、設計の話で混乱しなくなる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s3-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>バーナーズ＝リーが提案した3つの柱: HTML, HTTP, URL</li>
+        <li>HTTP はクライアントとサーバーの会話のためのルール</li>
+        <li>進化の中で「生き残った」設計が標準となった</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ④ REST ============ -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>REST（フル）<span class="tag">HTTP を「どう使うか」の作法</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>REST は HTTP の使い方のスタイルで、ステートレス・キャッシュ可能・リソースベースが特徴です。HTTP の動詞は CRUD に対応します。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「REST API」って言葉、聞いたことあります。これって HTTP とどう違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>REST は HTTP を<b>どう使うか</b>の「スタイル」なんだ。Roy Fielding という人が博士論文で提案した、HTTP の使い方の作法集と思えばいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで「REpresentational State Transfer」って呼ぶんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>直訳すると「表現状態転送」。データの状態をある表現形式（たとえば JSON）でやり取りする、という意味合い。よく参照されるけど、誤解されている部分も多い概念だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RESTful っていう言葉も聞きました。それは？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>「REST のお作法に従っている」状態を RESTful と呼ぶ。次の特徴を持つ。①HTTP 上のクライアント／サーバーのやり取りを使う、②<b>ステートレス</b>（各リクエストは独立していて、サーバが過去のやり取りを覚えていない）、③<b>キャッシュ可能</b>（応答を保存して再利用できる）、④<b>リソースベース</b>（操作の対象をリソースとして見る）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リソースって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>リソースとは「区別して操作できるデータ」のこと。たとえばユーザー、商品、注文。Web サービスは、各リソースに対して<b>エンドポイント</b>を提供する。エンドポイントは「URL と HTTP 動詞の組み合わせ」で、URL が「どのリソースか」を、動詞が「何をしたいか」を表す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>エンドポイントとルートは同じですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>同じものだよ。URL を関数に対応づける（ルーティングする）から<b>ルート</b>とも呼ばれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>HTTP の動詞って…GET と POST しか知らないです。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>CRUD という言葉を聞いたことはあるかな？ データベースの基本動作 Create/Read/Update/Delete だ。HTTP の動詞はこれにかなり対応している。</div></div>
+    </div>
+
+    <h3 class="blk">RESTful の4つの特徴</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🌐</div><h4>① HTTP を使う</h4><p>クライアント（呼ぶ側）とサーバー（答える側）が HTTP でやり取りします。</p></div>
+      <div class="mini"><div class="ic">🧊</div><h4>② ステートレス</h4><p>1回ごとのやり取りが独立していて、サーバーは前回の続きを覚えていません。必要な情報は毎回まとめて送ります。</p></div>
+      <div class="mini"><div class="ic">💾</div><h4>③ キャッシュ可能</h4><p>返ってきた答えを手元にとっておいて、次に同じものが必要になったら再利用できます。</p></div>
+      <div class="mini"><div class="ic">🧱</div><h4>④ リソースベース</h4><p>操作の対象（ユーザー、商品、注文）をリソースとして扱い、URL で指し示します。</p></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：ステートレスだと何が起きるか</h4>
+      <p>ログイン後に「自分の注文一覧」を取りにいくとき、サーバーは「さっきログインしたのは誰か」を覚えていません。そこでクライアントは毎回、身分を示す文字列（トークン）をリクエストに付けて送ります。<code>GET /orders</code> に <code>Authorization: Bearer eyJhbGci...</code> を添える、という形です。おかげでサーバーを10台に増やしても、どの台にリクエストが届いても同じように処理できます。</p>
+    </div>
+
+    <h3 class="blk" id="s4-crud">CRUD と HTTP 動詞の対応</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>HTTP動詞</th><th>CRUD</th><th>意味</th></tr>
+      <tr><td>POST</td><td>Create</td><td>作成（書く）</td></tr>
+      <tr><td>PUT</td><td>Update</td><td>完全に置き換える</td></tr>
+      <tr><td>PATCH</td><td>Update</td><td>部分的に更新</td></tr>
+      <tr><td>GET</td><td>Read</td><td>読み取り／取得</td></tr>
+      <tr><td>DELETE</td><td>Delete</td><td>削除</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>PUT と PATCH の違いは？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>PUT は「リソース全部を置き換える」、PATCH は「一部だけ更新」。たとえばユーザー情報の「名前だけ変えたい」なら PATCH、「全項目を新しい値に差し替えたい」なら PUT。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：PUT と PATCH で結果が変わる場面</h4>
+      <p>今のユーザー情報が <code>{"name":"ハル","age":22,"city":"東京"}</code> だとします。ここに <code>PATCH /users/1</code> で <code>{"name":"ハル改"}</code> を送ると、結果は <code>{"name":"ハル改","age":22,"city":"東京"}</code> になります。age と city はそのままです。</p>
+      <p>同じ中身を <code>PUT /users/1</code> で送ると、全部を置き換える指示なので、結果は <code>{"name":"ハル改"}</code> になり、age と city が消えます。動詞を間違えるとデータが消えるので、ここは区別が重要です。</p>
+    </div>
+
+    <h3 class="blk" id="s4-req">リクエストとレスポンスの中身</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>クライアントが RESTful なエンドポイントに送る<b>リクエスト</b>には、データを置く場所が4つある。①ヘッダ（付随情報）、②URL 文字列、③クエリパラメータ（URL の <code>?key=value</code> の部分）、④ボディ（本体）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>サーバーが返す<b>レスポンス</b>はどうですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>レスポンスは①<b>ステータスコード</b>（整数）、②ヘッダ、③ボディ（空・単一・分割送信）、の組み合わせ。ステータスコードは100番台ずつで分類されている。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📤</div><h4>リクエストの4か所</h4><p>①ヘッダ（付随情報。身分証明や希望する形式など）<br>②URL 文字列（どのリソースか）<br>③クエリパラメータ（?で始まる絞り込み条件）<br>④ボディ（送りたいデータ本体）</p></div>
+      <div class="mini"><div class="ic">📥</div><h4>レスポンスの3要素</h4><p>①ステータスコード（3桁の整数）<br>②ヘッダ（付随情報）<br>③ボディ（空・1つのまとまり・分割して少しずつ送る、のいずれか）</p></div>
+    </div>
+
+    <h3 class="blk" id="s4-status">ステータスコードの分類</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>番号帯</th><th>意味</th><th>代表例</th></tr>
+      <tr><td><b>100番台</b></td><td>情報、続けて（あまり見ない）</td><td>―</td></tr>
+      <tr><td><b>200番台</b></td><td><span class="up">成功</span></td><td>200 OK, 201 Created</td></tr>
+      <tr><td><b>300番台</b></td><td>リダイレクション（別の場所へ）</td><td>301 移動済み, 302 一時移動</td></tr>
+      <tr><td><b>400番台</b></td><td><span class="down">クライアント側の誤り</span></td><td>404 Not Found, 401 Unauthorized</td></tr>
+      <tr><td><b>500番台</b></td><td><span class="down">サーバー側の誤り</span></td><td>500 Internal Server Error</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>418 ってどこかで見ました…？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ふふ。418 は「I'm a teapot（私はティーポットです）」という遊び心で入れられた番号。ネットにつながったティーポットがコーヒーを淹れるよう頼まれたときに返す、という冗談の規格だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>規格に冗談を入れちゃっていいんですね…</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>エンジニアのユーモアだね。RESTful API 設計について書かれた本はたくさんあって、それぞれ役立つ経験則を載せている。本書では、ゆるめの RESTful なやり方を採用する。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：番号帯を見れば原因の切り分けができる</h4>
+      <p>画面にエラーが出たとき、ステータスコードが <b>404</b> なら「送った URL に対応するデータが無い」＝送り先やIDの指定が間違っている可能性が高く、直すのは呼び出し側です。<b>401</b> なら身分を示す情報が足りていません。一方 <b>500</b> はサーバー側のプログラムが途中で失敗したという意味なので、呼び出し方を直しても解決しません。番号の百の位を見るだけで、どちらを調べるべきかが決まります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>API 設計時に「これは GET か POST か？」と迷ったとき、CRUD の観点で選べる</li>
+        <li>ステータスコードを見て、エラーの原因がクライアント側かサーバー側か即座に判別できる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s4-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>REST = HTTP をきれいに使うための設計スタイル</li>
+        <li>特徴: ステートレス、キャッシュ可能、リソースベース</li>
+        <li>エンドポイント = URL + HTTP動詞</li>
+        <li>HTTP の主要動詞: POST/PUT/PATCH/GET/DELETE は CRUD に対応</li>
+        <li>リクエストはヘッダ、URL、クエリ、ボディの4か所にデータを持てる</li>
+        <li>レスポンスはステータスコード、ヘッダ、ボディから成る</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ⑤ JSON ============ -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>JSONとAPIのデータ形式<span class="tag">いまの標準形式</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>JSON は JavaScript Object Notation の略で、Web API の標準的なデータ形式です。以前主流だった XML や SOAP に取って代わりました。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>フロントエンドとバックエンドの間でデータをやり取りするって話でしたよね。具体的にはどんな形式で送るんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いまの標準は <b>JSON（JavaScript Object Notation）</b>。たとえばユーザーのリストはこんなふうに表現する。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">下は「ユーザーが2人いる一覧」を JSON で書いたものです。行ごとに何を表しているかを説明しています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">// 角かっこは「複数のものを順番に並べた一覧」を表す。ここから一覧が始まる。</span>
+[
+  <span class="cmt">// 波かっこは「1つのまとまり」を表す。ここは1人目のユーザー。</span>
+  <span class="cmt">// id は区別用の番号、name は名前、role は役割。項目名と値をコロンでつなぐ。</span>
+  {<span class="str">"id"</span>: <span class="num">1</span>, <span class="str">"name"</span>: <span class="str">"ハル"</span>, <span class="str">"role"</span>: <span class="str">"新人"</span>},
+  <span class="cmt">// カンマで区切って2人目を並べる。項目の並びは1人目とそろえる。</span>
+  {<span class="str">"id"</span>: <span class="num">2</span>, <span class="str">"name"</span>: <span class="str">"タカ"</span>, <span class="str">"role"</span>: <span class="str">"師匠"</span>}
+<span class="cmt">// 閉じ角かっこで一覧が終わる。この全体で「2人分のデータ」を表している。</span>
+]
+<span class="cmt">// --- このデータの読み方 ---</span>
+<span class="cmt">// 1人目: id=1, name=ハル, role=新人</span>
+<span class="cmt">// 2人目: id=2, name=タカ, role=師匠</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、Python の辞書とリストにそっくりですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。JavaScript から生まれた書き方だけど、Python の文法にも似ている。ちょうど「データ構造をやり取りする共通の形式」が必要とされていた時期に登場して、単純さで一気に広まった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>昔は別の形式だったんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔は XML や SOAP という、もっと記述量が多く重い形式が主流だった。JSON はその後継として標準になっていった。本書でも、これ以降はウェブサービスの入出力形式は JSON を前提に話を進めるよ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：同じ内容を XML で書くとどれだけ増えるか</h4>
+      <p>上の2人分のデータを XML で書くと、<code>&lt;user&gt;&lt;id&gt;1&lt;/id&gt;&lt;name&gt;ハル&lt;/name&gt;&lt;role&gt;新人&lt;/role&gt;&lt;/user&gt;</code> のように、項目ごとに開始と終了の2つのタグが必要です。項目名が2回ずつ書かれるので、同じ情報でも文字数が2倍近くになります。通信量が増えるうえ、読み書きの手間も増えます。JSON が広まった理由の1つがこの単純さです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>普段ブラウザの開発者ツールで「Response」タブを見たときの中身が読める</li>
+        <li>Python の辞書／リストと JSON の対応関係がイメージでき、相互の変換が楽になる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s5-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>JSON = データ構造をテキストで表現する標準形式</li>
+        <li>書き方は Python の辞書／リストに近い</li>
+        <li>旧来の XML/SOAP に取って代わった</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ⑥ JSON:API ============ -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>JSON:API<span class="tag">書き方をきっちり決める仕様</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>JSON:API は「RESTful + JSON」をさらに厳密にした仕様の提案です。書き方で揉めやすい大規模チームで役立ちます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「JSON:API」って書いてあるのが目に入ったんですけど、これは JSON とは別物？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いい目のつけどころ。JSON はあくまでデータ形式の話。<b>JSON:API</b> は「RESTful な API の中身を JSON で書くなら、こういう構造にそろえよう」という、より厳しい仕様の提案だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで厳しい仕様が必要なんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ゆるめの REST だと、開発者ごとに「ユーザー一覧の JSON をこう書く／いやこう書く」と揉めることがあるんだ。チームの中でこだわりのぶつかり合いが始まるとき、JSON:API のような厳密な仕様が決着をつけてくれる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書ではゆるめの RESTful なやり方を採用するけど、揉め事が起きやすい現場なら JSON:API のような厳密な仕様を採用するのも手だね。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：どんな「表記の揺れ」が起きるか</h4>
+      <p>同じ「ユーザー2人の一覧」を返すのに、Aさんは <code>{"users":[...]}</code>、Bさんは <code>{"data":[...]}</code>、Cさんは配列をそのまま <code>[...]</code> と返す、ということが起きます。エラーの返し方も <code>{"error":"not found"}</code>、<code>{"message":"not found"}</code>、<code>{"errors":[{"detail":"not found"}]}</code> と分かれます。受け取る画面側は API ごとに読み取り方を変える必要があり、間違いのもとになります。JSON:API はこの入れ物の形をあらかじめ1つに決めます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「API の書き方で揉めている」現場で、厳密な仕様という解決策を提案できる</li>
+        <li>チーム間で標準化が必要になったときの選択肢を持てる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s6-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>JSON:API = RESTful API を JSON で書く際の厳密な仕様</li>
+        <li>ゆるめの REST だと表記の揺れが発生する、という問題への解決策</li>
+        <li>本書はゆるめの RESTful を採用</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ⑦ GraphQL ============ -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>GraphQL<span class="tag">必要な項目だけを指定して取る方式</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>GraphQL は「受け取る側が必要な項目を指定して取得する」柔軟な API 方式です。本書では扱いませんが、REST の代わりとして知っておく価値があります。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>GraphQL っていうのも聞いたことが…</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それは Facebook（現 Meta）が作った別のやり方。「もっと柔軟にサービスへの問い合わせを書きたい」というニーズから生まれた <b>Graph Query Language</b> だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>REST と何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ざっくり言うと、REST が「サーバーが決めた形のデータをそのままもらう」のに対し、GraphQL は「受け取る側が必要なデータだけを指定してもらう」スタイル。柔軟だけど、設計や運用の複雑さは増す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書では GraphQL は扱わない。けれど、もし RESTful がアプリに合わないと感じたら、GraphQL を調べてみる価値はある。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📦</div><h4>REST</h4><p>サーバーがあらかじめ決めた形のデータが、まとめて返ってきます。必要ない項目も含まれることがあります。</p><span class="pill">サーバーが形を決める</span></div>
+      <div class="mini"><div class="ic">🎯</div><h4>GraphQL</h4><p>受け取る側が「この項目だけ」と指定して問い合わせます。返ってくるのは指定した項目だけです。</p><span class="pill">呼ぶ側が形を決める</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：一覧画面で必要なのは名前だけのとき</h4>
+      <p>ユーザー一覧の画面で名前しか表示しないのに、REST の <code>GET /users</code> が id・name・role・住所・電話番号・登録日を全部返すとします。100人分だと通信量が無駄になります。GraphQL なら「name だけください」と書いて問い合わせるので、返ってくるのは名前100件分だけです。そのかわり、サーバー側は「どんな指定でも組み立てられる」仕組みを用意する必要があり、作りは複雑になります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>REST が万能ではないと理解できる</li>
+        <li>API 設計の選択肢を REST 一択にしないで済む</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s7-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>GraphQL = Facebook が作った問い合わせ言語型の API</li>
+        <li>「必要なデータだけを指定して取る」柔軟なスタイル</li>
+        <li>本書の範囲外だが、選択肢として認識しておく</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ⑧ 並行処理 ============ -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>コンカレンシー（並行処理）<span class="tag">待ち時間を無駄にしない</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>並行性は「処理装置を空回りさせない」工夫です。通信やファイルの返事を待っている時間に、他の処理を進めます。FastAPI はこれに対応しており、Python の <code>async</code>／<code>await</code> で書けます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>タカさん、「同時並行性（concurrency）」って言葉、なんかカッコいいけど、いまいち実感がわかなくて…。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いい疑問。昔の Web サーバーは「同時に何百件の接続をさばけるか」が目標だった。それが<b>10K問題</b>（同時1万接続をどうさばくか）に発展して、今では「同時に何百万接続」が当たり前になっている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えええ、何百万…</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そうなると、ただプログラムを書くだけじゃ追いつかない。ここで重要な3つの指標を覚えよう。①<b>遅延（Latency）</b>：1つの応答が返ってくるまでの時間、②<b>待ち時間（Wait time）</b>：何かを待っている時間、③<b>スループット（Throughput）</b>：1秒あたりに処理できるバイト数や件数。遅延と待ち時間は減らしたい、スループットは増やしたい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「同時並行性」と「完全な並列性」って、違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>違う。これは大事なポイント。<b>並行性 ≠ 並列性</b>。1個の CPU コアで、本当に同時刻に複数の処理が走るわけではない。並行性が目指しているのは、「<b>ビジーウェイト</b>（応答を待って CPU を空回りさせる時間）を減らす」こと。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ビジーウェイト…CPU が何もしないで「まだかな〜」って待ってる状態ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。CPU は高速だけど、ネットワークやディスクは何千倍〜何百万倍も遅い。だから、ネットワークやディスクに話しかけるたびに、応答が来るまで CPU を何もさせずに置いておくのはもったいない。</div></div>
+    </div>
+
+    <h3 class="blk">3つの指標</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">⏱️</div><h4>遅延（Latency）</h4><p>1つの応答が返ってくるまでの時間。<span class="down">減らしたい</span></p></div>
+      <div class="mini"><div class="ic">⌛</div><h4>待ち時間（Wait time）</h4><p>何かの返事を待っている時間。<span class="down">減らしたい</span></p></div>
+      <div class="mini"><div class="ic">📈</div><h4>スループット（Throughput）</h4><p>1秒あたりに処理できる量や件数。<span class="up">増やしたい</span></p></div>
+    </div>
+
+    <h3 class="blk">同時接続数の歴史</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>数百接続の時代</h4><p>「同時に何百件さばけるか」が目標だった。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>10K問題</h4><p>同時1万接続をどうさばくかが課題になった。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div></div><div class="body"><h4>数百万接続が当たり前</h4><p>順番に書くだけのやり方では追いつかなくなった。</p></div></div>
+    </div>
+
+    <h3 class="blk" id="s8-sync">同期と非同期</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここで<b>同期</b>と<b>非同期</b>の対比を入れよう。通常の Python の実行は<b>同期</b>。コードに書いた順に、一度に1つずつ処理する。一方<b>非同期</b>は、「あることを少しやって、次のことを少しやって、また最初に戻って…」と細切れに進める。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部を非同期にすればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いや、それは違う。<b>CPUバウンド</b>（計算がメインで、ずっと CPU を使う処理）には非同期の余地がない。<b>I/Oバウンド</b>（ネットワークやディスクの応答を待つ処理）のときに、非同期が活きる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>内部の仕組みはどうなってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>非同期の仕組みは<b>イベントループ</b>を回している。遅い処理の依頼は「送ったよ、応答が来たら教えてね」と登録するだけで、CPU は別の仕事を進める。ループが一周するたびに応答が来ているか確認して、来ているものから処理する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>返事待ちの間ずっと止まるんじゃなくて、その間に別の依頼を進めておくんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そういうこと。10件の問い合わせがそれぞれ1秒の返事待ちをするとき、順番にやれば10秒。返事待ちの間に次を送っておけば、全体は1秒ちょっとで終わる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI は後で見るけど、この非同期処理に対応している。だから一般的な Python の Web フレームワークより、ずっと高速になり得る。ただし、非同期は万能ではない。イベントループの中に重い計算を入れてしまうと、全体が遅くなる。Python の <code>async</code> と <code>await</code> というキーワードや、同期と非同期を混ぜる方法は、後の章で詳しく見るよ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">➡️</div><h4>同期</h4><p>書いた順に1つずつ処理します。前の処理が終わるまで次に進みません。返事待ちの間、処理装置は何もしません。</p><span class="pill">Python の通常の動き</span></div>
+      <div class="mini"><div class="ic">🔄</div><h4>非同期</h4><p>返事待ちが発生したら、その間に別の処理を進めます。返事が届いたものから順に続きを処理します。</p><span class="pill">async / await</span></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🧮</div><h4>CPUバウンド</h4><p>処理時間のほとんどが計算そのもの。待ち時間がないので、非同期にしても速くなりません。</p><span class="pill">非同期は効かない</span></div>
+      <div class="mini"><div class="ic">🌐</div><h4>I/Oバウンド</h4><p>処理時間のほとんどが通信やファイルの返事待ち。ここに非同期が効きます。</p><span class="pill">非同期が活きる</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：10件の外部問い合わせにかかる時間</h4>
+      <p>外部のサービスに10回問い合わせ、それぞれ返事に1秒かかるとします。同期のやり方だと、1件目の返事を1秒待ち、終わってから2件目を送る…を繰り返すので、合計およそ10秒かかります。</p>
+      <p>非同期のやり方だと、1件目を送った直後に2件目、3件目…と送ってしまい、返事が届いたものから処理します。10件分の待ち時間が重なるので、全体はおよそ1秒強で終わります。ただし、この10件が「外部への問い合わせ」ではなく「10億回の足し算」だった場合、待ち時間が存在しないため、非同期にしても時間は変わりません。</p>
+    </div>
+
+    <h3 class="blk">イベントループの動き</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>遅い処理を依頼して、すぐ次へ</h4><p>「この問い合わせを送った。返事が来たら教えて」と登録するだけで、返事は待たない。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>別の仕事を進める</h4><p>登録済みの依頼を放置したまま、次の処理に取りかかる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>一周ごとに届いたものを確認</h4><p>ループが回るたびに「返事が届いた依頼はないか」を確認する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>届いたものから続きを処理</h4><p>届いた順に処理を再開する。<div class="branch ng">注意：ここに重い計算を入れると、その間ループが止まり、他の依頼の処理も遅れる。</div></p></div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「FastAPI はなぜ速いのか」を、ループと返事待ちの観点で説明できる</li>
+        <li><code>async</code>／<code>await</code> を見たとき、「これは何のためのキーワードか」が分かる</li>
+        <li>同期のコードと非同期のコードを意識的に切り分けられる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s8-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>同時接続数は「数百 → 1万（10K問題）→ 数百万」と進化してきた</li>
+        <li>並行性 ≠ 並列性。並行性は「ビジーウェイトを減らす」考え方</li>
+        <li>同期 = 順番に処理、非同期 = イベントループで細切れに処理</li>
+        <li>非同期が活きるのは I/Oバウンド、CPUバウンドには効かない</li>
+        <li>FastAPI は async/await で非同期処理を扱える</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ⑨ レイヤー ============ -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>レイヤー<span class="tag">Web層・サービス層・データ層</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>大きなアプリは Web／サービス／データ の3層に分け、各層は API で通信します。層の責務を混ぜないことが重要です。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>次は「レイヤー」ですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。アプリが大きくなると、コードを<b>層（レイヤー）</b>に分けて整理することが必須になる。ソフトウェアは、役割ごとの階層を重ねた構造にできるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>何層に分けるのが普通ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いわゆる<b>3層モデル</b>。それほど新しい考えではないけど、本書では次の用語で統一する。①<b>Web層</b>：HTTP の入出力を担当。クライアントのリクエストを受け取り、サービス層を呼び、レスポンスを返す。②<b>サービス層</b>：業務上の判断や処理。必要に応じてデータ層を呼ぶ。③<b>データ層</b>：データの保存先や他サービスへのアクセス。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それと、これは層ではないけど大事な箱として、④<b>モデル</b>（全層で共有されるデータ定義）、⑤<b>Webクライアント</b>（ブラウザなど）、⑥<b>データベース</b>（SQL や NoSQL）が登場する。</div></div>
+    </div>
+
+    <h3 class="blk" id="s9-vert">垂直レイヤーの構成</h3>
+    <div class="stack">
+      <div class="layer"><b>🖥️ Webクライアント</b><p>ブラウザ／モバイルアプリ／コマンドライン</p></div>
+      <div class="conn">↓ HTTP / HTTPS（JSON）</div>
+      <div class="layer"><b>🌐 Web層</b><p>リクエストの受付とレスポンスの返却</p></div>
+      <div class="conn">↓ 関数呼び出し（やり取りする値はモデル）</div>
+      <div class="layer"><b>⚙️ サービス層</b><p>このサイトが提供する機能の本体</p></div>
+      <div class="conn">↓ 関数呼び出し（やり取りする値はモデル）</div>
+      <div class="layer"><b>🗄️ データ層</b><p>データベースや外部サービスへのアクセス</p></div>
+      <div class="conn">↓ SQL / NoSQL のプロトコル</div>
+      <div class="layer"><b>💾 データベース</b><p>データの保存先</p></div>
+    </div>
+    <div class="loopback">↕ モデル（共有データ定義）が全層を貫きます。どの層でも同じ形のデータを扱えるようにするための定義です。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これって絶対守らなきゃダメな法則ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>物理法則じゃないから、本書の説明用の指針だと思って。けれど守ると本当に楽になる。各層は API を通じて互いに通信する。これらは単純な関数呼び出しのこともあれば、RPC やメッセージのように外部を経由することもある。本書では「1つの Web サーバー内の Python コードが、別の Python モジュールを読み込む」というシンプルな構成を想定する。</div></div>
+    </div>
+
+    <h3 class="blk" id="s9-role">各層の責務（何をして、何をしてはいけないか）</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>各層が「何をして、何をしてはいけないか」を、もう少し詳しく教えてください。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>Web層</b>は、利用者や外部のプログラムから見える「窓口」。URL、JSON 形式のリクエスト／レスポンス、つまり RESTful な HTTP のやり取りを扱う。テキストやコマンドラインからの呼び出しもここで受ける。Web のコードは<b>サービス層を読み込んでよい</b>が、<b>データ層を直接読み込んではいけない</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>サービス層</b>は、この Web サイトが提供する機能の「本質」を含む。部品の集まりのように見えると思っていい。サービス層は<b>データ層を読み込む</b>が、データの詳細（SQL の中身など）は知らない方が良い。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>データ層</b>は、ファイルや外部サービスとのやり取りを担う。サービス層に対してデータへの入口を提供する。1つのサービス層に対して複数のデータ層が存在することもある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>モデル</b>は実際の層ではなく、層の間で共有されるデータ定義の置き場所。Python の組み込みのデータ構造（dict や list）だけで層の間をやりとりするならモデルは不要だけど、FastAPI は Pydantic を使ってモデルを定義することで、強力な機能を得ているんだ。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>層</th><th>やること</th><th>読み込んでよい相手</th><th>やってはいけないこと</th></tr>
+      <tr><td><b>Web層</b></td><td>URL の受付、JSON の受け取りと返却</td><td>サービス層</td><td>データ層を直接読み込む</td></tr>
+      <tr><td><b>サービス層</b></td><td>このサイトが提供する機能の本体</td><td>データ層</td><td>SQL などデータの詳細に踏み込む</td></tr>
+      <tr><td><b>データ層</b></td><td>ファイル・データベース・外部サービスとのやり取り</td><td>データベース／外部サービス</td><td>HTTP や画面表示の都合を持ち込む</td></tr>
+      <tr><td><b>モデル</b>（層ではない）</td><td>層の間で共有するデータ定義</td><td>―</td><td>―</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk" id="s9-why">なぜ層に分けるのか</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでわざわざ層に分けるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きく3つ理由がある。①<b>専門家ごとに書ける</b>：Web 担当は Web 層だけ、データベース担当はデータ層だけに集中できる。②<b>単独でテストできる</b>：各層が独立していると、代用品に差し替えたテストが楽。③<b>置き換えや追加が利く</b>：gRPC 用の Web 層を追加で並べて、既存の Web 層と共存させる、なんてことができる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「ゴーストバスターズの規則」って書いてありましたけど…</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>「流れを渡るな（Don't cross the streams）」というセリフのことだ。要するに「Web 層の事情をデータ層に漏らすな、データ層の事情を Web 層に漏らすな」ということ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>層は縦に積み重ねて見てもいいし、横並びの箱と見てもいい。上から下に流れる形にこだわる必要はないよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>横向きのほうがピンとくるかも。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">👥</div><h4>① 専門家ごとに書ける</h4><p>Web 担当は Web 層、データベース担当はデータ層に集中できます。</p></div>
+      <div class="mini"><div class="ic">🧪</div><h4>② 単独でテストできる</h4><p>層が独立していれば、隣の層を代用品に差し替えて、その層だけを確かめられます。</p></div>
+      <div class="mini"><div class="ic">🔁</div><h4>③ 置き換え・追加が利く</h4><p>たとえば gRPC 用の Web 層を追加し、既存の Web 層と並べて動かせます。</p></div>
+    </div>
+
+    <h3 class="blk">横向きレイヤー</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>Webクライアント</th><th>⇔</th><th>Web層</th><th>⇔</th><th>サービス層</th><th>⇔</th><th>データ層</th><th>⇔</th><th>DB/外部サービス</th></tr>
+      <tr><td>ブラウザなど</td><td>API</td><td>受付と返却</td><td>API</td><td>機能の本体</td><td>API</td><td>データへの入口</td><td>API</td><td>保存先</td></tr>
+    </table>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:6px 0 0">⇔ の矢印がすべて API（関数呼び出し、あるいは RPC など）です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>箱と箱の間の通信経路は、図に書かれた<b>矢印 = API</b> だけ。これがテストや不具合調査でとても重要だ。図に描かれていない通り道が存在すると、誰も把握できない経路でデータが流れてしまう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>たしかに…抜け道があると、どこを直せばいいか分からなくなりますね。</div></div>
+    </div>
+
+    <h3 class="blk" id="s9-arrow">各矢印で何が流れるか</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>区間</th><th>流れるもの</th></tr>
+      <tr><td>クライアント ⇔ Web</td><td>HTTP（JSON）での RESTful なやり取り</td></tr>
+      <tr><td>Web ⇔ サービス</td><td>関数呼び出し。引数と戻り値はモデル</td></tr>
+      <tr><td>サービス ⇔ データ</td><td>関数呼び出し。引数と戻り値はモデル</td></tr>
+      <tr><td>データ ⇔ DBや外部サービス</td><td>そのデータベース固有の手順（SQL など）</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>もっと良い設計があるかもしれないけど、本書の話を進めるのに十分な構造だ。重要なポイントを3つ。①<b>その分野固有の詳細を分離せよ</b>、②<b>層の間の標準的な API を定義せよ</b>、③<b>ズルをするな、漏らすな</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>たとえば<b>第11章</b>では、認証認可の要件と、その実装方法を見る。「Web 層とサービス層の間に追加の層を入れるか、それともどちらかの層の中に組み込むか」という設計判断が登場する。ソフトウェア開発は、ときに科学というより芸術だ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">✂️</div><h4>① 詳細を分離せよ</h4><p>その層でしか関係ない事情を、他の層に持ち込まない。</p></div>
+      <div class="mini"><div class="ic">📐</div><h4>② 標準 API を定義せよ</h4><p>層の間のやり取りの形をあらかじめ決めておく。</p></div>
+      <div class="mini"><div class="ic">🚫</div><h4>③ ズルをするな</h4><p>図に描かれていない近道を作らない。</p></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：層を混ぜるとどうなるか</h4>
+      <p>Web 層のコードの中に <code>SELECT * FROM users WHERE id = 1</code> という SQL を直接書いたとします。動きはします。しかし後日データベースを別の種類に替えることになると、SQL を書いた場所を Web 層のあちこちから探し出す必要があります。100 か所あれば 100 か所すべてです。</p>
+      <p>データ層にだけ SQL を置いていれば、直す場所はデータ層の中だけで済みます。さらに、Web 層のテストを書くときも、データ層を「決まった値を返すだけの代用品」に差し替えれば、データベースを起動せずにテストできます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>コードがごちゃごちゃしてきたとき、層に分ければ整理できる</li>
+        <li>チーム開発で「誰がどこを担当するか」を切り分けやすくなる</li>
+        <li>テストのとき、層の単位で代用品に差し替えられる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s9-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>3層 = Web層／サービス層／データ層</li>
+        <li>補助の箱 = モデル（共有データ定義）、Webクライアント、データベース</li>
+        <li>層の間は API（関数呼び出しなど）でのみ通信する</li>
+        <li>「流れを渡るな」: 層の責務を漏らさない</li>
+        <li>設計の3原則: ①詳細を分離 ②標準 API を定義 ③ズルをしない</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ⑩ データ ============ -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>データ<span class="tag">表形式の先へ、そして機械学習・AIへ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>現代のウェブは表形式のデータベースの先へ進み、NoSQL や機械学習、AI まで含めた「データの世界」と密接につながっています。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最後にデータの話ですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。ウェブはこれまで、表形式のデータベース（SQL のデータベース）の入口として使われることが多かった。けど、いまは <b>NoSQL</b> や <b>NewSQL</b>（複数台に分散する新しい SQL 系）など、データを保存して読み書きする方法がたくさん発展している。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>AI や機械学習との関係は？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そこが現代の大きなテーマ。<b>機械学習（ML）</b>、<b>ディープラーニング</b>、または単に <b>AI</b> と呼ばれる分野は、技術の景色を根本から作り変えつつある。大規模なモデルを作るためには、データを <b>ETL（Extract, Transform, Load = 抽出、変換、ロード）</b>と呼ばれる流れで大量に扱う必要がある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ETL…データを別の場所から取ってきて、加工して、保存する、みたいな？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。ウェブは「用途を選ばないサービスの作り方」だから、機械学習の面倒な部分（データの取得、前処理、推論の API 化）をかなり助けることができる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ということは、FastAPI で機械学習モデルを使った API も作れるんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>もちろん。後の章で実際にやるよ。</div></div>
+    </div>
+
+    <h3 class="blk">ETL の3ステップ</h3>
+    <div class="cycle">
+      <div class="node"><h4>E：Extract（抽出）</h4><p>元の置き場所からデータを取り出す。</p><span class="when">例：注文履歴を取り出す</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>T：Transform（変換）</h4><p>形をそろえる、不要なものを取り除く、単位を統一する。</p><span class="when">例：日付の形式を統一する</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>L：Load（ロード）</h4><p>使う場所に入れる。</p><span class="when">例：分析用の保存先に入れる</span></div>
+    </div>
+
+    <h3 class="blk">データの保存先の選択肢</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧮</div><h4>リレーショナルDB（SQL）</h4><p>行と列の表でデータを持つ方式。項目の関係をきっちり保てます。</p></div>
+      <div class="mini"><div class="ic">🗃️</div><h4>NoSQL</h4><p>表の形にしばられない保存方式。項目がまちまちなデータや、大量の書き込みに向きます。</p></div>
+      <div class="mini"><div class="ic">🌍</div><h4>NewSQL</h4><p>複数台に分散させながら、表形式の扱いやすさも保つ新しい方式。</p></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：機械学習と Web サービスのつながり</h4>
+      <p>「画像を送ると、それが何の生き物かを答える」サービスを考えます。まず ETL で、大量の画像とその正解ラベルを集め（抽出）、サイズや色の形式をそろえ（変換）、学習用の保存先に入れます（ロード）。学習が終わったモデルを使い、<code>POST /predict</code> に画像を送ると <code>{"label":"cat","score":0.97}</code> を返す窓口を FastAPI で作ります。ここでウェブの仕組みが、機械学習の結果を外から使える形にしています。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「FastAPI で AI を扱う」というのが特殊な話ではなく、当然の流れだと理解できる</li>
+        <li>NoSQL、NewSQL、ETL といった言葉が出てきたときに、雰囲気がつかめる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="s10-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>データ層の選択肢: リレーショナルDB / NoSQL / NewSQL</li>
+        <li>機械学習・AI は Web サービスと切り離せなくなっている</li>
+        <li>ETL = Extract（抽出）→ Transform（変換）→ Load（ロード）の流れ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ まとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">ハルが5つのキーフレーズで言い直す</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズを言ってみますね。1つ目、「現代のウェブはサービスと API に分かれ、API が両者の契約になる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その契約がデータベースのスキーマと同じくらい重要、というのもポイントだね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「API には HTTP/REST 以外にも、RPC やメッセージング（pub-sub、キュー）がある」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>用途に応じて選び分ける、という感覚が持てれば十分だよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「REST は HTTP の使い方のスタイルで、ステートレス・キャッシュ可能・リソースベース」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>HTTP の動詞が CRUD に対応するのも、自然と思い出せるといい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「並行性はビジーウェイトを減らすこと。I/Oバウンドな処理で活きる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。FastAPI が高速な理由の根本でもある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「アプリは Web/サービス/データ の3層に分け、層の間は API でしか通信しない」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>「流れを渡るな」って合言葉も忘れずに。これからの本全体で、この層構造を何度も使うからね。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問／自分の言葉で答えてみてください</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>APIの役割</div>
+      <p style="font-size:14px;margin:0">現代の Web において「API」がなぜ重要なのか、初めて聞く人に説明するつもりで答えてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">現代の Web サービスは「画面を描くフロントエンド」と「データを扱うバックエンド」が分かれていて、両者が会話するための窓口が API だから。API は契約のようなもので、データベースのスキーマと同じくらい大事。設計が悪いと、フロントもバックも両方苦しむ。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ フロントエンドとバックエンドの分離に触れている<br>□ API が「契約／窓口」として機能していることを説明している<br>□ API 設計の重要性（変更しづらい、影響が大きい）に言及している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>REST の特徴</div>
+      <p style="font-size:14px;margin:0">「RESTful」と呼ばれる API にはどんな特徴がありますか？ 4つの性質を自分の言葉で挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①HTTP のクライアント／サーバーのやり取りを使う、②ステートレス（各リクエストは独立していて、サーバが過去のやり取りを覚えていない）、③キャッシュ可能（応答を保存して使い回せる）、④リソースベース（操作対象をリソースとして見て、URL で指し示す）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 4つの特徴をすべて挙げている（HTTP 使用／ステートレス／キャッシュ可能／リソースベース）<br>□ ステートレスの意味（独立したやり取り）を正しく説明している<br>□ リソースベース＝URL で操作対象を表す、という発想に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>並行処理と非同期</div>
+      <p style="font-size:14px;margin:0">「同時並行性（concurrency）」と「完全な並列性（parallelism）」の違いを、自分の言葉で説明してください。また、非同期処理が活きるのはどんな場面ですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">並列性は本当に複数の処理が同時刻に走ること。並行性は1つの CPU で処理を細切れに切り替えて、結果として「同時に進んでいるように見える」状態を作ること。非同期は CPU が何かを待つ時間（ビジーウェイト）を減らすための仕組みで、ネットワークやディスクなど遅い処理を待つ I/Oバウンドな場面で効果が大きい。計算ばかりの CPUバウンドな処理には効かない。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 並列性と並行性の違いに触れている<br>□ ビジーウェイトを減らす、という目的を説明している<br>□ I/Oバウンド と CPUバウンドの区別を意識している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>3層アーキテクチャ</div>
+      <p style="font-size:14px;margin:0">Web/サービス/データの3層に分けるのはなぜですか？ 理由を3つ以上、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①各層を専門家ごとに分担して書ける、②各層を単独でテストできる、③層を置き換えたり追加したりしやすい（例: gRPC 対応の Web 層を追加できる）、④一度層が混ざると後で分離するのが非常に困難になるから先に分けておく、⑤コードの処理が混ざると、テストを書く人が複数の専門知識を求められてしまうから、などが理由。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つ以上の理由を挙げている<br>□ 「テスト」「置き換え／追加」「専門化」のいずれかに触れている<br>□ 「一度混ざると分離できない」という保守性の観点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>現代のデータ事情</div>
+      <p style="font-size:14px;margin:0">現代の Web サービスにおいて、データの世界はどう広がっていますか？ 昔のリレーショナルDB一辺倒の時代と比べて、何が変わりましたか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">リレーショナルDB だけでなく、NoSQL や NewSQL といった新しいデータの保存先が登場した。さらに機械学習・ディープラーニング・AI が台頭し、Web サービスはモデルへの入出力の窓口としても機能するようになった。データを大規模に扱うための ETL（抽出・変換・ロード）が重要な工程になっている。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ NoSQL/NewSQL に触れている<br>□ 機械学習／AI と Web の関係に触れている<br>□ ETL という概念に言及している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かして確かめる5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>開発者ツールの Network タブを見る</h4><p>普段使っている Web サービスでブラウザの開発者ツールを開き、実際にどんな HTTP のリクエストとレスポンスが飛んでいるかを観察する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>実際に API を叩いてみる</h4><p>ターミナルで下のコマンドを実行し、JSON の応答がどんな形か体験する。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># curl は「指定した住所に問い合わせて、返ってきた中身をそのまま表示する」コマンド。</span>
+<span class="cmt"># 下の住所は GitHub が公開している、利用者情報を返す窓口。</span>
+<span class="fn">curl</span> https://api.github.com/users/octocat
+<span class="cmt"># --- 実行結果（一部） ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#   "login": "octocat",</span>
+<span class="cmt">#   "id": 583231,</span>
+<span class="cmt">#   "name": "The Octocat",</span>
+<span class="cmt">#   "public_repos": 8</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 波かっこで囲まれた項目名と値の並びが JSON。画面を持たない窓口の生の答えがこれ。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>「ステートレス」をもう一段学ぶ</h4><p>Wikipedia の「HTTP」「REST」のページを軽く読む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>自分のサービスを設計してみる</h4><p>作りたい Web サービスを思い浮かべて、「リソースは何か」「動詞は GET/POST のどれが対応するか」を紙に書き出してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「モダンPython」へ</h4><p>Python がこれらの課題（API、並行処理、型ヒント）にどう答えているかをつかむ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第1章「現代のウェブ」の図解 ― 原文の全節（サービスとAPI／APIの種類／HTTP／REST／JSON／JSON:API／GraphQL／並行処理／レイヤー／データ）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

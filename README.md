@@ -2,7 +2,7 @@
 
 読んだ技術書の内容を、専門用語を極力使わずに図で読める形にまとめた学習ノートです。
 
-**公開ページ: https://taka01150810.github.io/study-zukai/**
+**公開ページ: <https://taka01150810.github.io/study-zukai/>**
 
 ## 中身
 
@@ -11,10 +11,11 @@
 
 | ディレクトリ | 書籍 |
 | --- | --- |
-| `terraform/` | 詳解 Terraform 第3版 |
-| `langchain/` | 初めての LangChain |
 | `ddia/` | データ指向アプリケーションデザイン |
 | `fastapi/` | FastAPI |
+
+`build.py` の `BOOKS` には他の書籍（Terraform / LangChain）も登録されていますが、
+Vault 側に図解が無い間は出力されません。図解を置けば次のビルドで自動的に復活します。
 
 ## 更新のしかた
 
