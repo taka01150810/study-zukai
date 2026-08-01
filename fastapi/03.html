@@ -1,0 +1,1597 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第3章 FastAPIツアー ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第3章</div>
+  <h1>第3章　FastAPIツアー</h1>
+  <p>いよいよ FastAPI を実際に動かします。10行未満の <code>hello.py</code> から始めて、リクエストの4か所（パス・クエリ・ボディ・ヘッダ）、レスポンスの操作、そして自動生成されるドキュメントページまで。細かい理屈より「まず全体を一巡する」ことが目的の章です。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全16節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① FastAPIとは何か？</a>
+  <a href="#s2">② FastAPI アプリケーション</a>
+  <a class="sub" href="#s2-pkg">└ 5つのパッケージを入れる</a>
+  <a class="sub" href="#s2-hello">└ 最初のエンドポイント hello.py</a>
+  <a class="sub" href="#s2-run">└ Uvicorn で起動する2つの方法</a>
+  <a class="sub" href="#s2-client">└ 4種類のクライアントで叩く</a>
+  <a href="#s3">③ HTTPリクエスト（4つの場所）</a>
+  <a href="#s4">④ URLパス</a>
+  <a href="#s5">⑤ クエリパラメータ</a>
+  <a href="#s6">⑥ ボディ</a>
+  <a href="#s7">⑦ HTTPヘッダ</a>
+  <a href="#s8">⑧ 複数のリクエストデータ</a>
+  <a href="#s9">⑨ どのメソッドがベストか？</a>
+  <a href="#s10">⑩ HTTPレスポンス</a>
+  <a href="#s11">⑪ ステータスコード</a>
+  <a href="#s12">⑫ ヘッダ（レスポンス側）</a>
+  <a href="#s13">⑬ レスポンスの種類</a>
+  <a href="#s14">⑭ タイプ変換</a>
+  <a href="#s15">⑮ モデル・タイプと response_model</a>
+  <a href="#s16">⑯ 自動ドキュメンテーション</a>
+  <a href="#s17">⑰ 複雑なデータ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">エンドポイント <span>endpoint</span></div><p>「この住所に、この動詞で送ったら、この処理をする」という1つの窓口のこと。</p></div>
+    <div class="item"><div class="w">パスデコレータ</div><p>処理の直前に書く <code>@app.get("/hi")</code> のような1行。「この住所への問い合わせは、下の処理に回して」と指示します。</p></div>
+    <div class="item"><div class="w">パス関数</div><p>パスデコレータのすぐ下に書く処理。問い合わせを受けて、返す内容を決める部分です。</p></div>
+    <div class="item"><div class="w">Uvicorn</div><p>作ったプログラムを実際に動かし、外からの問い合わせを待ち受けるサーバー。</p></div>
+    <div class="item"><div class="w">localhost / ポート8000</div><p>localhost は「今使っているこのパソコン自身」を指す住所。8000 はその中の入口番号です。</p></div>
+    <div class="item"><div class="w">--reload</div><p>ファイルを保存するたび、サーバーを自動で再起動する指定。開発中に手で止めて起動し直す手間が省けます。</p></div>
+    <div class="item"><div class="w">HTTPie</div><p>コマンドから窓口に問い合わせて、返ってきた内容を見るための道具。JSON を扱いやすく表示します。</p></div>
+    <div class="item"><div class="w">Requests / HTTPX</div><p>どちらも Python のプログラムから窓口に問い合わせるためのパッケージ。HTTPX は非同期にも対応しています。</p></div>
+    <div class="item"><div class="w">パス <span>path</span></div><p>住所の中の <code>/users/1</code> のような部分。どのデータを指しているかを表します。</p></div>
+    <div class="item"><div class="w">クエリパラメータ</div><p>住所のうしろに <code>?who=Mom</code> の形で付ける追加の指定。省略できる条件を渡すのに使います。</p></div>
+    <div class="item"><div class="w">ボディ <span>body</span></div><p>送るデータの本体。作成や更新のときに、まとまったデータをここに入れます。</p></div>
+    <div class="item"><div class="w">ヘッダ <span>header</span></div><p>本体とは別に添える情報。身分を示す文字列や、送り手の種類などを入れます。</p></div>
+    <div class="item"><div class="w">依存性注入 <span>DI</span></div><p>必要なものを自分で用意せず、外から渡してもらう作り方。FastAPI では引数に書くだけで必要な値が渡ってきます。</p></div>
+    <div class="item"><div class="w">冪等（べきとう） <span>idempotent</span></div><p>何度同じことをしても結果が変わらない性質。GET はこの性質を持つべきとされています。</p></div>
+    <div class="item"><div class="w">ステータスコード</div><p>返事に付く3桁の数字。200 は成功、4xx は送り手側の誤り、5xx はサーバー側の誤りです。</p></div>
+    <div class="item"><div class="w">JSON</div><p>データを文字列で書き表す形式。FastAPI は返した値を自動でこの形式に変換します。</p></div>
+    <div class="item"><div class="w">jsonable_encoder</div><p>そのままでは JSON にできないデータ（日時など）を、変換できる形に直す FastAPI の内部処理です。</p></div>
+    <div class="item"><div class="w">Pydantic モデル</div><p>データの形（項目名と種類）をまとめて宣言したもの。届いた値が合っているかを自動で確かめられます。</p></div>
+    <div class="item"><div class="w">response_model</div><p>「外に返すときはこの形に絞る」という指定。指定した形にない項目は自動で取り除かれます。</p></div>
+    <div class="item"><div class="w">非識別化</div><p>データから個人を特定できる項目を取り除くこと。医療情報などを外に出すときに必要になります。</p></div>
+    <div class="item"><div class="w">OpenAPI</div><p>API の仕様を決まった形式で書き表す取り決め。FastAPI はコードからこれを自動で作ります。</p></div>
+    <div class="item"><div class="w">Swagger UI</div><p>OpenAPI の内容を、ブラウザで読めて実際に試せるページとして表示する仕組みです。</p></div>
+    <div class="item"><div class="w">MIMEタイプ</div><p>返すデータが何の種類か（文章か、HTML か、画像か）を表す表記です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">最初の "Hello? World?"</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠の机の上に、開発機が一台。「いよいよ FastAPI を動かすよ」と、5つのパッケージを入れて見せます。ハルは初めての <code>hello.py</code> を書き、ブラウザで <code>http://localhost:8000/hi</code> を開いてみます。最初の "Hello? World?" が返ってきた瞬間、二人は乾杯。そこからリクエストとレスポンスを4つの場所（パス、クエリ、ボディ、ヘッダ）に分けてじっくり試し、最後には自動生成されるドキュメントページに驚く一日となります。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">⚡</div><h4>前半：動かす</h4><p>パッケージを入れて、10行未満のプログラムでサーバーを立ち上げる。</p></div>
+      <div class="mini"><div class="ic">📥</div><h4>中盤：受け取る／返す</h4><p>リクエストの4か所と、レスポンスのステータス・ヘッダ・型変換。</p></div>
+      <div class="mini"><div class="ic">📘</div><h4>後半：自動ドキュメント</h4><p><code>/docs</code> を開くと、仕様書と試験画面が自動で出てくる。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">FastAPI は「アプリケーション本体（<code>FastAPI()</code>）」「<span class="term" data-tip="処理の直前に書く @app.get(&quot;/hi&quot;) のような1行。この住所への問い合わせを下の処理に回す指示。">パスデコレータ</span>（<code>@app.get("/...")</code>）」「<span class="term" data-tip="パスデコレータのすぐ下に書く処理。返す内容を決める部分。">パス関数</span>」の3点セットで窓口を定義します。リクエストは URL パス、クエリパラメータ、ボディ、ヘッダの4か所からデータを取れて、Python の引数として受け取れます。レスポンスは初期設定で JSON に変換され、ステータスコードやヘッダ、<code>response_model</code> による絞り込みも自在。さらに <code>/docs</code> で試せる API 説明ページが自動生成されます。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>「FastAPI で最小の Web サーバを書いて動かす」一連の手順を、迷わず実行できるようになる</li>
+        <li>リクエストの4つの伝達場所（パス／クエリ／ボディ／ヘッダ）を使い分けられる</li>
+        <li>レスポンスのステータスコード・ヘッダ・型の変換を自分で制御できる</li>
+        <li>入力用・出力用・内部用のモデルを分けて、外に出してはいけない情報の漏れを防げる</li>
+        <li><code>/docs</code> の自動ドキュメントで、API の仕様書を別途書く手間を省ける</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① FastAPIとは ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>FastAPIとは何か？<span class="tag">4つの売りと4つの部品</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI は型ヒント + Starlette + Pydantic を組み合わせた、速くて、品質が上がり、説明ページが自動でできる Web フレームワークです。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>タカさん、FastAPI ってどんな Web フレームワークなんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>公式サイトの主張をそのまま紹介すると、こういう特徴がある。①<b>性能</b>：場合によっては Node.js や Go と同じくらい速い、これは Python のフレームワークとしては異例。②<b>より迅速な開発</b>：ひっかかる部分や変なところが少ない。③<b>コード品質の向上</b>：型ヒントとモデルが間違いを減らす。④<b>自動生成のドキュメントと試験ページ</b>：仕様を手で書くより圧倒的に楽。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>内部的にはどんな部品で出来ているんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>①Python の型ヒント、②非同期に対応した Web の仕組みとして <b>Starlette</b>、③データの定義と検証のための <b>Pydantic</b>、④それらをまとめる独自の工夫、の4点。Web アプリ、特に RESTful なサービスを書くのにかなり快適な環境だ。</div></div>
+    </div>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">🚀</div><h4>① 性能</h4><p>Node.js や Go に並ぶ速さ。Python のフレームワークとしては珍しい。</p></div>
+      <div class="mini"><div class="ic">⏩</div><h4>② 開発が速い</h4><p>ひっかかる部分が少なく、書いた通りに動く。</p></div>
+      <div class="mini"><div class="ic">✅</div><h4>③ 品質が上がる</h4><p>型ヒントとモデルが、間違ったデータを入口で止める。</p></div>
+      <div class="mini"><div class="ic">📘</div><h4>④ 自動ドキュメント</h4><p>コードから説明ページと試験画面が自動でできる。</p></div>
+    </div>
+
+    <h3 class="blk">内部の4つの部品</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏷️</div><h4>Python の型ヒント</h4><p>「ここは文字列」「ここは整数」という書き添え。FastAPI はこれを情報源として使います。</p></div>
+      <div class="mini"><div class="ic">🏗️</div><h4>Starlette</h4><p>非同期に対応した Web の土台。受け付けと振り分けを担当します。</p></div>
+      <div class="mini"><div class="ic">🛡️</div><h4>Pydantic</h4><p>データの形を定義し、届いた値が合っているかを確かめます。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>統合の工夫</h4><p>上の3つを組み合わせ、引数を書くだけで動くようにしている部分です。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「FastAPI の速さの源は ASGI（Starlette）+ 型ヒント」と説明できる</li>
+        <li>自動ドキュメントが「内部で OpenAPI を使っているから可能」だと理解できる</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>4つの売り: 速さ／開発速度／コード品質／自動ドキュメント</li>
+        <li>内部の部品: 型ヒント／Starlette／Pydantic／統合の工夫</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② アプリケーション ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>FastAPI アプリケーション<span class="tag">10行未満で Web サーバが動く</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI のアプリは「<code>FastAPI()</code> を作る → デコレータで住所を決める → パス関数を書く」の3ステップで完成します。動かすのは Uvicorn です。</p>
+
+    <h3 class="blk" id="s2-pkg">5つのパッケージを入れる</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>では実際に書こう。まず必要なパッケージを入れる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>curl じゃなくて HTTPie なんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>curl でも全然 OK。ただ HTTPie のほうが書き方がやさしくて、初期設定で JSON を扱ってくれるので FastAPI との相性がいい。本書では基本 HTTPie を使うけど、curl で何ができるかも要所で触れる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">この章で使う5つのパッケージを入れるコマンドです。1つずつ役割が違います。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ① 窓口を作るための枠組み本体。</span>
+$ pip install fastapi
+<span class="cmt"># ② 作った窓口を実際に動かして、外からの問い合わせを待ち受けるサーバ。</span>
+$ pip install uvicorn
+<span class="cmt"># ③ コマンドから窓口に問い合わせて、返ってきた内容を見るための道具。</span>
+$ pip install httpie
+<span class="cmt"># ④ Python のプログラムから、順番に問い合わせるためのパッケージ。</span>
+$ pip install requests
+<span class="cmt"># ⑤ 同じく問い合わせ用だが、返事待ちの間に別の問い合わせも進められるパッケージ。</span>
+$ pip install httpx
+<span class="cmt"># --- 実行結果（各行で表示される内容の形） ---</span>
+<span class="cmt"># Successfully installed fastapi-0.104.1</span>
+<span class="cmt"># Successfully installed uvicorn-0.24.0 ...</span>
+</pre></details>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>パッケージ</th><th>役割</th></tr>
+      <tr><td><b>FastAPI</b></td><td>Web フレームワーク本体</td></tr>
+      <tr><td><b>Uvicorn</b></td><td>ASGI サーバ（プログラムを動かして待ち受ける）</td></tr>
+      <tr><td><b>HTTPie</b></td><td>コマンドから使うクライアント</td></tr>
+      <tr><td><b>Requests</b></td><td>同期のクライアント（Python から使う）</td></tr>
+      <tr><td><b>HTTPX</b></td><td>同期／非同期 両対応のクライアント</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk" id="s2-hello">最初のエンドポイント <code>hello.py</code></h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">「<code>/hi</code> という住所に問い合わせが来たら、Hello? World? という文字を返す」だけのプログラムです。これで Web サーバが1つ完成します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># fastapi というパッケージから、FastAPI という部品を取り出して使えるようにする。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を表すものを1つ作り、app という名前で呼べるようにする。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># この1行が「/hi という住所に GET で来た問い合わせは、下の処理に回して」という指示。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># 実際にその問い合わせを受けたときに動く処理。名前は自由に付けられる。</span>
+<span class="kw">def</span> <span class="fn">greet</span>():
+    <span class="cmt"># この文字を返す。返した値は自動で JSON の形式に変換されて相手に届く。</span>
+    <span class="kw">return</span> <span class="str">"Hello? World?"</span>
+<span class="cmt"># --- ブラウザで http://localhost:8000/hi を開いた結果 ---</span>
+<span class="cmt"># "Hello? World?"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>注目ポイントは3つ。①<code>app</code> は Web アプリケーション全体を表す一番上のもの。②<code>@app.get("/hi")</code> は<b>パスデコレータ</b>で、「<code>/hi</code> への GET の問い合わせをこの処理に流せ」と FastAPI に指示する。③<code>def greet()</code> が<b>パス関数</b>で、問い合わせと返事の主な接点だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>デコレータって <code>@</code> で始まるあれですよね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、Python の書き方の一つ。処理に飾りを付ける。FastAPI ではこの飾りを通じて「どの住所にどの処理を結びつけるか」を宣言する。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">📦</div><h4>① アプリ本体</h4><p><code>app = FastAPI()</code>。すべての窓口をぶら下げる、いちばん上のもの。</p></div>
+      <div class="mini"><div class="ic">🏷️</div><h4>② パスデコレータ</h4><p><code>@app.get("/hi")</code>。住所と動詞を、下の処理に結びつける。</p></div>
+      <div class="mini"><div class="ic">⚙️</div><h4>③ パス関数</h4><p><code>def greet():</code>。実際に受け取り、返す内容を決める処理。</p></div>
+    </div>
+
+    <h3 class="blk" id="s2-run">Uvicorn で起動する2つの方法</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">方法1：コマンドから起動します。<code>hello</code> がファイル名、<code>app</code> がその中の変数名です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># uvicorn に「hello.py の中の app を動かして」と伝える。コロンの前がファイル名、後ろが変数名。</span>
+<span class="cmt"># --reload を付けると、ファイルを保存するたびに自動で再起動される。</span>
+$ uvicorn hello:app --reload
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</span>
+<span class="cmt"># INFO:     Started reloader process</span>
+<span class="cmt"># この状態のまま待ち受けている。止めるときは Ctrl+C。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">方法2：プログラムの中から起動します。ファイルを直接動かすだけでサーバーが立ち上がります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># サーバを動かすための道具も、プログラムの中から使えるように取り込む。</span>
+<span class="kw">import</span> uvicorn
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /hi への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="kw">def</span> <span class="fn">greet</span>():
+    <span class="cmt"># 返す文字。</span>
+    <span class="kw">return</span> <span class="str">"Hello? World?"</span>
+
+<span class="cmt"># このファイルが直接動かされたときだけ、下を実行する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="cmt"># hello.py の中の app を、自動再起動を有効にして動かす。</span>
+    uvicorn.<span class="fn">run</span>(<span class="str">"hello:app"</span>, reload=<span class="kw">True</span>)
+<span class="cmt"># --- 実行結果（python hello.py で動かした場合） ---</span>
+<span class="cmt"># INFO:     Uvicorn running on http://127.0.0.1:8000</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>どちらも初期設定では、このパソコン自身（<code>localhost</code>）の入口番号8000 を使う。<code>host</code> や <code>port</code> の指定で変えられる。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-client">4種類のクライアントで叩いてみる</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まずブラウザ。アドレス欄に次を入れるだけです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># localhost は「このパソコン自身」、8000 は入口番号、/hi が窓口の住所。</span>
+http://localhost:8000/hi
+<span class="cmt"># --- 画面に表示される内容 ---</span>
+<span class="cmt"># "Hello? World?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">次に Requests。Python のプログラムから問い合わせます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># 指定した住所に GET で問い合わせ、返ってきたもの全体を r という名前で受け取る。</span>
+r = requests.<span class="fn">get</span>(<span class="str">"http://localhost:8000/hi"</span>)
+<span class="cmt"># r.json() は、返ってきた JSON 形式の中身を Python の値に直す。</span>
+<span class="fn">print</span>(r.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Hello? World?</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPX でも書き方はほぼ同じです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 同期にも非同期にも使えるほうの問い合わせ用パッケージを取り込む。</span>
+<span class="kw">import</span> httpx
+
+<span class="cmt"># 使い方は requests とほとんど同じ。指定した住所に GET で問い合わせる。</span>
+r = httpx.<span class="fn">get</span>(<span class="str">"http://localhost:8000/hi"</span>)
+<span class="cmt"># 返ってきた中身を Python の値に直して表示する。</span>
+<span class="fn">print</span>(r.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Hello? World?</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>補足。FastAPI の窓口を試す際、Requests か HTTPX かは大差ない。ただ第13章で他の非同期の呼び出しと組み合わせるとき HTTPX が便利、というケースがあるから覚えておこう。この章の残りでは Requests を使う。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie はコマンドから使います。返事の内容だけでなく、付随情報まで見られます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># http のあとに住所を書くだけで問い合わせられる。</span>
+$ http localhost:8000/hi
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK          ← 200 は「成功した」という意味の番号</span>
+<span class="cmt"># content-length: 15       ← 返ってきた中身の長さ</span>
+<span class="cmt"># content-type: application/json   ← 中身が JSON 形式であること</span>
+<span class="cmt"># date: Thu, 30 Jun 2022 07:38:27 GMT</span>
+<span class="cmt"># server: uvicorn          ← 応答したサーバの種類</span>
+<span class="cmt">#</span>
+<span class="cmt"># "Hello? World?"          ← ここが本体</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0"><code>-b</code> を付けると本体だけを表示します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># -b は「本体（body）だけを見せて」という指定。付随情報は省かれる。</span>
+$ http -b localhost:8000/hi
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "Hello? World?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0"><code>-v</code> を付けると、こちらが送った内容も含めて全部表示します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># -v は「送った内容も返ってきた内容も、全部見せて」という指定。</span>
+$ http -v localhost:8000/hi
+<span class="cmt"># --- 実行結果（前半は自分が送った内容） ---</span>
+<span class="cmt"># GET /hi HTTP/1.1                 ← どの住所に、どの動詞で送ったか</span>
+<span class="cmt"># Accept: */*                      ← どんな形式でも受け取れる、という申告</span>
+<span class="cmt"># Accept-Encoding: gzip, deflate   ← 圧縮された形でも受け取れる</span>
+<span class="cmt"># Connection: keep-alive           ← 接続を続けて使いたい</span>
+<span class="cmt"># Host: localhost:8000             ← 送り先</span>
+<span class="cmt"># User-Agent: HTTPie/3.2.1         ← 送り手が何のプログラムか</span>
+<span class="cmt">#</span>
+<span class="cmt"># --- 後半は返ってきた内容 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 15</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Thu, 30 Jun 2022 08:05:06 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># "Hello? World?"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>動いた！ すごい、これだけで Web サーバが完成…！</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。最小の FastAPI アプリは10行未満で書ける。これだけで、ちゃんとした ASGI の Web サーバが動いてくれる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：<code>--reload</code> があるとどう違うか</h4>
+      <p><code>--reload</code> なしで起動していると、返す文字を "Hello? World?" から "こんにちは" に書き換えても、ブラウザを更新しても表示は変わりません。サーバーは起動したときの内容を持ち続けているからです。毎回 Ctrl+C で止めて、もう一度起動する必要があります。</p>
+      <p><code>--reload</code> を付けておくと、ファイルを保存した瞬間にサーバーが自動で再起動し、ブラウザを更新すれば新しい内容が出ます。1文字直すたびに手で再起動する時間がなくなります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>手元で最小の Web API を立ち上げられるようになる</li>
+        <li>各種クライアント（HTTPie, Requests, HTTPX）の使い分けが分かる</li>
+        <li><code>--reload</code> の便利さで開発の一周が速くなる</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>app = FastAPI()</code> でアプリ作成</li>
+        <li><code>@app.get("/path")</code> で住所と処理を結びつける</li>
+        <li>パス関数で処理を書き、戻り値が自動で JSON になる</li>
+        <li><code>uvicorn hello:app --reload</code> でサーバ起動</li>
+        <li>確認は ブラウザ／HTTPie／Requests／HTTPX のいずれでも可能</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ HTTPリクエスト ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>HTTPリクエスト<span class="tag">データを置ける4つの場所</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>リクエストはパス／クエリ／ボディ／ヘッダの4か所にデータを持てて、FastAPI はそれぞれに専用の書き方を用意しています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第1章でみたように、リクエストにはデータを置く場所が複数ある。FastAPI はそれぞれに対して、便利な書き方を用意している。①<code>Header</code>：付随情報、②<code>Path</code>：URL の中、③<code>Query</code>：URL の <code>?</code> のあと、④<code>Body</code>：本体。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI がリクエストのいろいろな部分からデータを渡してくれる仕組みは、最良の特徴の一つで、他の Python の Web フレームワークより洗練されている。引数をパス関数の中で直接宣言できる。これは<b>依存性注入</b>という手法を使っている。第6章で詳しくやるよ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>例として、<code>who</code> というパラメータを追加して、「Hello? ○○?」と返すようにしてみよう。<code>who</code> を渡す方法を、URL パス／クエリ／ボディ／ヘッダの4通りで試す。</div></div>
+    </div>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">📍</div><h4>Path（パス）</h4><p>住所そのものの中。<code>/hi/Mom</code> の <code>Mom</code>。どのデータかを指すのに使います。</p></div>
+      <div class="mini"><div class="ic">❓</div><h4>Query（クエリ）</h4><p>住所のうしろ。<code>?who=Mom</code>。省略できる条件に使います。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>Body（ボディ）</h4><p>送るデータの本体。まとまった内容を送るときに使います。</p></div>
+      <div class="mini"><div class="ic">🏷️</div><h4>Header（ヘッダ）</h4><p>本体とは別に添える情報。身分証明などに使います。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「どこにデータを置くか」という設計判断を、4つの選択肢から選べる</li><li>依存性注入という言葉の意味がぼんやりつかめる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>リクエストデータの4か所: Header / Path / Query / Body</li>
+        <li>FastAPI はそれぞれを Python の引数に直接対応づける</li>
+        <li>仕組みは依存性注入（DI）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ URLパス ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>URLパス<span class="tag">住所の一部を引数として受け取る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>住所に <code>{name}</code> という書き方を入れると、その位置の値がパス関数の引数として受け取れます。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">住所の一部を <code>{who}</code> という置き場所にして、その値を使ってあいさつを返す例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 住所の後半を {who} という置き場所にする。ここに来た文字が who という名前で渡される。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi/{who}"</span>)
+<span class="cmt"># 置き場所と同じ名前の引数を書くと、その値が自動で入ってくる。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who):
+    <span class="cmt"># 先頭の f を付けた文字列は、波かっこの中の名前を実際の値に置き換える。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- localhost:8000/hi/Mom を開いた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>注意点。住所の文字列 <code>"/hi/{who}"</code> の波かっこは <b>Python の f文字列ではない</b>。これは FastAPI が「住所のこの位置を <code>who</code> という名前の値とみなす」ためのもの。引数 <code>who</code> をパス関数に自動で渡してくれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、デコレータの住所とパス関数の引数が<b>名前で結びつく</b>んですね。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie で試すと、返事の中身と付随情報の両方が見られます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 住所の最後に Mom を付けて問い合わせる。この Mom が who に入る。</span>
+$ http localhost:8000/hi/Mom
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 13</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Thu, 30 Jun 2022 08:09:02 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Requests でも同じことができます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># 住所の一部として Mom を含めて問い合わせる。</span>
+r = requests.<span class="fn">get</span>(<span class="str">"http://localhost:8000/hi/Mom"</span>)
+<span class="cmt"># 返ってきた中身を Python の値に直して表示する。</span>
+<span class="fn">print</span>(r.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Hello? Mom?</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いずれも <code>"Mom"</code> が住所の一部として渡されて、<code>greet()</code> の <code>who</code> 引数に入り、返事の文字列の一部になる。返事は JSON の文字列だ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：現実の API での使いどころ</h4>
+      <p>ユーザー情報を返す窓口を作るとき、<code>@app.get("/users/{user_id}")</code> と書けば、<code>/users/42</code> への問い合わせで <code>user_id</code> に <code>42</code> が入ります。<code>/users/7</code> なら <code>7</code> です。どのユーザーかを指し示す情報なので、省略できません。省略できない指定はパスに置く、というのが基本の使い分けです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>RESTful の「対象を指し示す」書き方で API が書けるようになる</li><li><code>/users/{user_id}</code> のような典型的な住所設計が実装できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>@app.get("/hi/{who}")</code> の <code>{who}</code> は FastAPI 用の置き場所</li>
+        <li>同じ名前の引数 <code>who</code> がパス関数で受け取れる</li>
+        <li>波かっこは f文字列ではない</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ クエリパラメータ ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>クエリパラメータ<span class="tag">住所のうしろに付ける条件</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>クエリパラメータは <code>?key=value&amp;key2=value2</code> の形式です。デコレータの住所に置き場所が無い場合、引数はクエリとして解釈されます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>クエリパラメータは、住所の <code>?</code> 以降に <code>name=value</code> の形式で並ぶ部分のことだ。<code>&amp;</code> で複数並べられる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">先ほどとの違いは、住所に <code>{who}</code> が無いことだけです。それだけで受け取り方が変わります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 住所は /hi だけ。波かっこの置き場所を書いていないのがポイント。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># 住所に who という置き場所が無いので、FastAPI は「who は ? のあとで渡される」と判断する。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who):
+    <span class="cmt"># 受け取った値を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- localhost:8000/hi?who=Mom を開いた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ポイントは、デコレータの住所 <code>"/hi"</code> に <code>{who}</code> が無い、ということ。すると FastAPI は「<code>who</code> はクエリパラメータだろう」と判断する。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie では、住所にそのまま付ける書き方と、<code>==</code> で指定する書き方の2通りがあります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 住所のうしろに ?who=Mom を直接書く書き方。-b は本体だけ表示する指定。</span>
+$ http -b localhost:8000/hi?who=Mom
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+
+<span class="cmt"># イコールを2つ重ねると、HTTPie がクエリとして組み立ててくれる。空白で区切れて読みやすい。</span>
+$ http -b localhost:8000/hi who==Mom
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Requests でも2通りの書き方があります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># 住所の文字列にそのまま ?who=Mom を書く方法。</span>
+r = requests.<span class="fn">get</span>(<span class="str">"http://localhost:8000/hi?who=Mom"</span>)
+<span class="cmt"># 返ってきた中身を表示する。</span>
+<span class="fn">print</span>(r.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Hello? Mom?</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># 渡したい条件を、項目名と値の組み合わせとして用意する。</span>
+params = {<span class="str">"who"</span>: <span class="str">"Mom"</span>}
+<span class="cmt"># params= で渡すと、住所のうしろに ?who=Mom を自動で組み立ててくれる。</span>
+<span class="cmt"># 値に空白や記号が入っていても、正しい形に変換してくれるのでこちらが安全。</span>
+r = requests.<span class="fn">get</span>(<span class="str">"http://localhost:8000/hi"</span>, params=params)
+<span class="cmt"># 返ってきた中身を表示する。</span>
+<span class="fn">print</span>(r.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Hello? Mom?</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：一覧の絞り込みと分割表示</h4>
+      <p>商品一覧を返す窓口で、<code>/items?page=3&amp;per_page=20&amp;category=book</code> のように書けば、「3ページ目を、1ページ20件ずつ、本の分類だけ」という指定になります。どれも省略可能で、省略すれば全件・初期値が使われます。このように「あってもなくてもよい条件」はクエリに置きます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>ページ分割や絞り込み条件を住所に表現できる</li><li>クエリパラメータをパス関数の引数として自然に書ける</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>クエリは <code>?key=value&amp;key=value</code> の形式</li>
+        <li>住所に置き場所が無い場合、引数は自動でクエリ扱い</li>
+        <li>HTTPie は <code>==</code>、Requests は <code>params=</code> で指定</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ ボディ ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>ボディ<span class="tag">送るデータの本体／GET では使わない</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>ボディは POST や PUT などでデータを送るときの本体です。<code>Body(embed=True)</code> で受け取り、<code>{"who": "Mom"}</code> の形式で渡します。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ボディってのは、リクエストの本体ですよね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。ただし大事な制約がある。<b><code>GET</code> にはボディは（基本的に）使わない</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>HTTP の <code>GET</code> は<b>冪等（べきとう）</b>であるべきとされている。同じ問い合わせをすれば同じ答えが返ってくる、というルールだ。<code>GET</code> はあくまで「取得」だから、サーバへデータを送るのはボディじゃなくてクエリやパス。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ボディは作成（<code>POST</code>）、更新（<code>PUT</code>, <code>PATCH</code>）のように、サーバにデータを送るときに使う。第9章では <code>GET</code> でも事実上ボディを使いたい場合の回避策にも触れる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">送られてきた本体の中から <code>who</code> の値を取り出す例です。動詞が <code>get</code> ではなく <code>post</code> になっている点に注目してください。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体に加えて、本体からデータを取り出すための部品も取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Body
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># get ではなく post。データを送る用の動詞に結びつける。</span>
+<span class="fn">@app.post</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># who は文字列で、送られてきた本体の中から取り出す、という指定。</span>
+<span class="cmt"># embed=True は「本体が "Mom" ではなく {"who": "Mom"} の形で来る」という意味。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who: <span class="kw">str</span> = <span class="fn">Body</span>(embed=<span class="kw">True</span>)):
+    <span class="cmt"># 取り出した値を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- {"who": "Mom"} を送った結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>Body(embed=True)</code> は重要。JSON の本体から <code>who</code> の値を取る、ということを FastAPI に伝える。さらに <code>embed=True</code> の意味は、「本体は <code>"Mom"</code> だけじゃなくて、<code>{"who": "Mom"}</code> の形になる」ということ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie では、イコール1つで JSON の本体を組み立てます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># イコール1つで書くと、HTTPie は {"who": "Mom"} という本体を作って送る。</span>
+<span class="cmt"># 本体を伴うので、動詞は自動的に POST になる。-v は送受信の全部を表示する指定。</span>
+$ http -v localhost:8000/hi who=Mom
+<span class="cmt"># --- 実行結果（前半は自分が送った内容） ---</span>
+<span class="cmt"># POST /hi HTTP/1.1</span>
+<span class="cmt"># Accept: application/json, */*;q=0.5</span>
+<span class="cmt"># Accept-Encoding: gzip, deflate</span>
+<span class="cmt"># Connection: keep-alive</span>
+<span class="cmt"># Content-Length: 14              ← 送った本体の長さ</span>
+<span class="cmt"># Content-Type: application/json  ← 本体が JSON 形式であること</span>
+<span class="cmt"># Host: localhost:8000</span>
+<span class="cmt"># User-Agent: HTTPie/3.2.1</span>
+<span class="cmt">#</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "who": "Mom"                ← これが送った本体</span>
+<span class="cmt"># }</span>
+<span class="cmt">#</span>
+<span class="cmt"># --- 後半は返ってきた内容 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 13</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Thu, 30 Jun 2022 08:37:00 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Requests では <code>json=</code> を使って本体を渡します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># post は「データを送る」ための問い合わせ。json= に渡した内容が本体になる。</span>
+<span class="cmt"># このとき「中身は JSON 形式です」という付随情報も自動で付けてくれる。</span>
+r = requests.<span class="fn">post</span>(<span class="str">"http://localhost:8000/hi"</span>, json={<span class="str">"who"</span>: <span class="str">"Mom"</span>})
+<span class="cmt"># 返ってきた中身を表示する。</span>
+<span class="fn">print</span>(r.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Hello? Mom?</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：冪等であるとはどういうことか</h4>
+      <p><code>GET /users/42</code> は、1回叩いても100回叩いても、ユーザー42の情報が返るだけで、サーバー側の状態は変わりません。だから途中で通信が切れたときに何度でも再試行できますし、返事を保存しておいて再利用することもできます。</p>
+      <p>一方 <code>POST /users</code> でユーザーを新規作成すると、3回送れば3人できてしまいます。この違いがあるため、状態を変える操作は POST / PUT / PATCH に置き、GET には置かない、という約束になっています。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「GET でデータ送信」という良くない書き方を避け、適切に POST/PUT を選べる</li><li>JSON 形式でリクエストの本体を扱う基本が身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>GET</code> は冪等であるべき。サーバへの送信はクエリ／パスを使う</li>
+        <li>ボディは <code>POST</code> / <code>PUT</code> / <code>PATCH</code> で使う</li>
+        <li><code>Body(embed=True)</code> で JSON の本体から引数を取り出す</li>
+        <li>HTTPie は <code>=</code>、Requests は <code>json=</code> で JSON を指定</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ HTTPヘッダ ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>HTTPヘッダ<span class="tag">本体とは別に添える情報</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>ヘッダは <code>Header()</code> で受け取れます。FastAPI はヘッダ名を小文字に変換し、ハイフンをアンダースコアに変換します。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最後の引数の渡し場所、ヘッダだ。ヘッダは付随情報を持つ、項目名と値の組み合わせだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">添えられた情報の中から <code>who</code> を取り出す例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体に加えて、付随情報を取り出すための部品も取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Header
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /hi への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># who は文字列で、付随情報の中から取り出す、という指定。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who: <span class="kw">str</span> = <span class="fn">Header</span>()):
+    <span class="cmt"># 取り出した値を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- who: Mom という付随情報を添えて送った結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie では、コロンで区切ると付随情報として送られます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># コロンで区切ると、付随情報（ヘッダ）として送られる。イコールとは区別される。</span>
+$ http -v localhost:8000/hi who:Mom
+<span class="cmt"># --- 実行結果（前半は自分が送った内容） ---</span>
+<span class="cmt"># GET /hi HTTP/1.1</span>
+<span class="cmt"># Accept: */*</span>
+<span class="cmt"># Accept-Encoding: gzip, deflate</span>
+<span class="cmt"># Connection: keep-alive</span>
+<span class="cmt"># Host: localhost:8000</span>
+<span class="cmt"># User-Agent: HTTPie/3.2.1</span>
+<span class="cmt"># who: Mom                        ← ここが今回送った付随情報</span>
+<span class="cmt">#</span>
+<span class="cmt"># --- 後半は返ってきた内容 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 13</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Mon, 16 Jan 2023 05:14:46 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI はヘッダの名前を小文字に変換し、ハイフン <code>-</code> をアンダースコア <code>_</code> に変換する。これによって Python の引数名として自然に使える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>例えば、<code>User-Agent</code> という付随情報は…</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>user_agent</code> という引数で受け取れる、ということ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">送り手が何のプログラムかを示す情報を、そのまま返す例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、付随情報を取り出す部品を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Header
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /agent への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/agent"</span>)
+<span class="cmt"># 送られてくる名前は User-Agent だが、小文字化とハイフンの変換により user_agent で受け取れる。</span>
+<span class="kw">def</span> <span class="fn">get_agent</span>(user_agent: <span class="kw">str</span> = <span class="fn">Header</span>()):
+    <span class="cmt"># 受け取った値をそのまま返す。</span>
+    <span class="kw">return</span> user_agent
+<span class="cmt"># --- HTTPie から問い合わせた結果 ---</span>
+<span class="cmt"># "HTTPie/3.2.1"    ← 送り手のプログラム名がそのまま返ってくる</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 何も指定せずに問い合わせても、送り手の名前は自動で添えられている。</span>
+$ http -v localhost:8000/agent
+<span class="cmt"># --- 実行結果（前半は自分が送った内容） ---</span>
+<span class="cmt"># GET /agent HTTP/1.1</span>
+<span class="cmt"># Accept: */*</span>
+<span class="cmt"># Accept-Encoding: gzip, deflate</span>
+<span class="cmt"># Connection: keep-alive</span>
+<span class="cmt"># Host: localhost:8000</span>
+<span class="cmt"># User-Agent: HTTPie/3.2.1        ← 自分で書かなくても自動で付いている</span>
+<span class="cmt">#</span>
+<span class="cmt"># --- 後半は返ってきた内容 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 14</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Mon, 16 Jan 2023 05:21:35 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># "HTTPie/3.2.1"</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：身分を示す情報を受け取る</h4>
+      <p>ログイン済みかどうかを確かめる窓口では、<code>Authorization: Bearer eyJhbGci...</code> という付随情報を受け取ります。FastAPI では引数に <code>authorization: str = Header()</code> と書くだけで、この文字列が渡ってきます。本体（ボディ）とは分けて扱うので、GET のようにボディを持たない問い合わせでも身分の確認ができます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>身分を示す文字列、<code>User-Agent</code>、<code>Accept-Language</code> などをパス関数で扱える</li><li>付随情報を本体と分けて受け取る設計ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>Header()</code> でヘッダを引数として受け取る</li>
+        <li>ヘッダ名: 小文字化、<code>-</code> → <code>_</code> への自動変換</li>
+        <li>身分確認や付随情報の取得によく使う</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ 複数のリクエストデータ ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>複数のリクエストデータ<span class="tag">組み合わせと依存関数</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>複数の場所のデータをまとめて受け取ったり、依存関数で前処理を共通化することもできます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これで、住所、クエリ、ボディ、ヘッダ、クッキー…と、いろんな場所からデータを取れることがわかった。さらに「ページ分割」「身分確認」みたいな組み合わせの処理のために、自分で<b>依存関数</b>を書くこともできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>依存関数？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>詳しくは第6章とパートIII で見るけど、「リクエストから何かを取り出す処理を、引数として渡してもらえる」仕組みのことだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：3か所を同時に使う窓口</h4>
+      <p>「特定のユーザーの注文一覧を、20件ずつ、ログイン済みの人だけに返す」窓口を考えます。<code>/users/42/orders?page=2&amp;per_page=20</code> に、身分を示す情報を添えて送ります。パス関数の引数には <code>user_id</code>（パス）、<code>page</code> と <code>per_page</code>（クエリ）、<code>authorization</code>（ヘッダ）の4つを並べて書くだけで、それぞれ正しい場所から値が渡ってきます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「身分の情報はヘッダ、絞り込みはクエリ、本体はボディ」という現実的な API 設計ができる</li><li>第6章「依存関係」への伏線がつかめる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>1つの窓口で複数の場所のデータを受け取れる</li>
+        <li>共通の処理は依存関数として渡してもらえる</li>
+        <li>詳細は第6章、パートIII</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ どのメソッドがベストか ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>どのメソッドがベストか？<span class="tag">置き場所の使い分けの指針</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>パスは対象の指定、クエリは省略できる条件、ボディは大きな入力。型ヒントがあれば Pydantic が自動で確認します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>設計の指針として、こう覚えるといい。①<b>住所に対象の指定</b>を入れる（RESTful の標準）、②<b>クエリ</b>はページ分割のような省略できる指定、③<b>ボディ</b>は全体または一部のまとまったデータのような大きな入力。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そしてどの場所であれ、データに型ヒントを付ければ、<b>Pydantic が自動で確認</b>してくれる。引数が存在することと、型が正しいことを保証してくれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「必要な引数が無いときに 422 が返る」みたいな確認も自動なんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。手で書く確認のコードが激減する。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>置き場所</th><th>用途</th><th>例</th></tr>
+      <tr><td><b>URL パス</b></td><td>対象の指定（省略できない）</td><td><code>/users/42</code></td></tr>
+      <tr><td><b>クエリ</b></td><td>省略できる条件</td><td><code>?page=2&amp;sort=new</code></td></tr>
+      <tr><td><b>ボディ</b></td><td>大きなまとまったデータ</td><td>登録するユーザー情報一式</td></tr>
+      <tr><td><b>ヘッダ</b></td><td>本体とは別の付随情報</td><td>身分を示す文字列</td></tr>
+    </table>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：自動で確認されるとはどういうことか</h4>
+      <p><code>def get_item(item_id: int)</code> と書いた窓口に、<code>/items/abc</code> という問い合わせが来たとします。<code>abc</code> は整数ではないので、パス関数の中身は<b>一度も実行されずに</b> 422 のエラーが返ります。返事には「item_id は整数である必要がある」という内容も含まれます。</p>
+      <p>型ヒントを書かなければ、この確認は自分で <code>if</code> を書いて実装することになります。書く量が減るだけでなく、書き忘れによる不具合も防げます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>API 設計でどこにデータを置くか、迷ったときに指針がある</li><li>入力を確認するコードをほぼ書かずに済む</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>URL: 対象の指定</li>
+        <li>クエリ: 省略できる条件</li>
+        <li>ボディ: 大きな入力</li>
+        <li>型ヒントで自動的に確認される</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ HTTPレスポンス ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>HTTPレスポンス<span class="tag">戻り値は自動で JSON になる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>パス関数の戻り値は、初期設定で自動的に JSON に変換されて返ります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI の<b>初期の動作</b>は、パス関数の戻り値を <b>JSON に変換</b>して返す、というもの。返事の付随情報に <code>Content-type: application/json</code> が付く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「Hello? World?」みたいな文字列も JSON になるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の文字列 <code>"Hello? World?"</code> は、JSON の文字列としても <code>"Hello? World?"</code>、つまり同じ。けれど Python の組み込みの型でも、Pydantic のモデルでも、何を返しても JSON に変換される。これは FastAPI が API 開発を効率化するために選んだ初期設定の一つだ。</div></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li><code>return obj</code> だけで JSON の返事ができる</li><li>変換の命令を手で呼ばなくていい</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>初期の返事の形式: JSON</li><li>戻り値はあらゆる型が変換の対象（Pydantic のモデルを含む）</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑪ ステータスコード ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">11</div><h2>ステータスコード<span class="tag">成功時の番号を決める</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>パスデコレータでステータスコードを指定できます。初期値は 200、エラー時は 4xx です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>初期設定では FastAPI は <code>200</code> を返す。エラー時は <code>4xx</code> を返す。パスデコレータで「成功時のステータスコード」を指定することもできる（例外が起きた場合は、そちらの番号が優先される）。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">成功時に返す番号を指定する例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># /happy への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/happy"</span>)
+<span class="cmt"># 成功したときに返す番号を 200 に指定している。200 は「うまくいった」という意味。</span>
+<span class="kw">def</span> <span class="fn">happy</span>(status_code=<span class="num">200</span>):
+    <span class="cmt"># 顔文字の文字列を返す。これが JSON の文字列として届く。</span>
+    <span class="kw">return</span> <span class="str">":)"</span>
+<span class="cmt"># --- 問い合わせた結果 ---</span>
+<span class="cmt"># ":)"</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># /happy に問い合わせる。</span>
+$ http localhost:8000/happy
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK           ← 指定した通り 200 が返っている</span>
+<span class="cmt"># content-length: 4</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Sun, 05 Feb 2023 04:37:32 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># ":)"</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：作成したときは 201 を返す</h4>
+      <p>新しいユーザーを作る窓口では、成功時に <code>201</code>（作成された）を返すのが一般的です。呼び出す側は番号を見るだけで「新しく作られた」と判断でき、返事の中身を細かく調べる必要がありません。<code>200</code>（成功）だけを返していると、「作られたのか、すでにあったのか」が番号からは分かりません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「作成時は 201 を返す」など、REST 的に正しい番号を返せる</li><li>例外が起きたときの動作も予測できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>初期の成功時: 200</li><li>パスデコレータの引数で指定できる</li><li>例外が起きたときは例外側の番号が優先</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑫ ヘッダ（レスポンス） ===== -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">12</div><h2>ヘッダ（レスポンス側）<span class="tag">返事に情報を添える</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>パス関数に <code>Response</code> の引数を入れて、<code>response.headers</code> に書き込めば、返事に情報を添えられます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>返事に情報を添えたいときもある。<code>Response</code> というものを引数として受け取って、その <code>headers</code> に書き込めばいい。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">住所で指定した名前と値を、そのまま返事の付随情報として添える例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、返事を組み立てるための部品を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Response
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 住所に2つの置き場所を作る。前が名前、後ろが値になる。</span>
+<span class="fn">@app.get</span>(<span class="str">"/header/{name}/{value}"</span>)
+<span class="cmt"># name と value は住所から、response は FastAPI が自動で用意して渡してくれる。</span>
+<span class="kw">def</span> <span class="fn">header</span>(name: <span class="kw">str</span>, value: <span class="kw">str</span>, response: Response):
+    <span class="cmt"># 返事の付随情報に、指定された名前と値の組み合わせを追加する。</span>
+    response.headers[name] = value
+    <span class="cmt"># 本体はふつうの文字列を返す。response 自体を返す必要はない。</span>
+    <span class="kw">return</span> <span class="str">"normal body"</span>
+<span class="cmt"># --- /header/marco/polo に問い合わせた結果 ---</span>
+<span class="cmt"># 付随情報に marco: polo が追加され、本体は "normal body" が返る</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 住所の marco が名前に、polo が値になる。</span>
+$ http localhost:8000/header/marco/polo
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 13</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Wed, 31 May 2023 17:47:38 GMT</span>
+<span class="cmt"># marco: polo              ← 自分で追加した付随情報がここに出ている</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># "normal body"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>marco: polo</code> が返事の付随情報に入ってる！</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。FastAPI が <code>Response</code> を依存性注入で渡してくれるので、好きに情報を足せる。<code>response</code> を <code>return</code> する必要はない。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>独自の付随情報（<code>X-Custom-Token</code> など）を返せる</li><li>異なる場所からの呼び出し許可や、身分に関する情報を返す実装ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>引数に <code>response: Response</code> を入れる</li>
+        <li><code>response.headers[name] = value</code> で追加</li>
+        <li><code>response</code> 自体を return する必要はない</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑬ レスポンスの種類 ===== -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-num">13</div><h2>レスポンスの種類<span class="tag">JSON 以外も返せる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>返事は JSON 以外にも HTML、そのままの文章、別の住所への案内、ファイル、少しずつ送る形式などを選べます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>返事の種類には何通りかある。<code>fastapi.responses</code> から取り出す。①<code>JSONResponse</code>（初期設定）、②<code>HTMLResponse</code>、③<code>PlainTextResponse</code>、④<code>RedirectResponse</code>、⑤<code>FileResponse</code>、⑥<code>StreamingResponse</code>。最後の2つは第15章で詳しくやる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その他の出力形式を扱いたいときは、汎用の <code>Response</code> を使う。指定できるのは <code>content</code>（文字列またはバイト）、<code>media_type</code>（形式の表記）、<code>status_code</code>（3桁の番号）、<code>headers</code>（付随情報の組み合わせ）。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>種類</th><th>返すもの</th><th>使う場面</th></tr>
+      <tr><td><b>JSONResponse</b></td><td>JSON 形式のデータ</td><td>初期設定。API の返事の基本</td></tr>
+      <tr><td><b>HTMLResponse</b></td><td>HTML</td><td>ブラウザで表示するページを返す</td></tr>
+      <tr><td><b>PlainTextResponse</b></td><td>加工しない文章</td><td>ログや単純な文字を返す</td></tr>
+      <tr><td><b>RedirectResponse</b></td><td>別の住所への案内</td><td>移動先に転送したいとき</td></tr>
+      <tr><td><b>FileResponse</b></td><td>ファイル</td><td>画像や書類をダウンロードさせる（第15章）</td></tr>
+      <tr><td><b>StreamingResponse</b></td><td>少しずつ送るデータ</td><td>大きなファイルや動画（第15章）</td></tr>
+    </table>
+    </div>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">📄</div><h4>content</h4><p>返す中身そのもの（文字列またはバイト）。</p></div>
+      <div class="mini"><div class="ic">🏷️</div><h4>media_type</h4><p>中身が何の種類かを表す表記。</p></div>
+      <div class="mini"><div class="ic">🔢</div><h4>status_code</h4><p>返す3桁の番号。</p></div>
+      <div class="mini"><div class="ic">📋</div><h4>headers</h4><p>添える付随情報の組み合わせ。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>HTML を返して、画面そのものを配ることもできる</li><li>大きなファイルを少しずつ送って配信できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>主な返事の種類: JSON/HTML/PlainText/Redirect/File/Streaming</li>
+        <li>汎用の <code>Response</code> で形式を自由に指定</li>
+        <li>FileResponse / StreamingResponse は第15章で詳しくやる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑭ タイプ変換 ===== -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-num">14</div><h2>タイプ変換<span class="tag">日時も返せる理由</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI は戻り値を <code>jsonable_encoder()</code> で変換できる形に直してから JSON に変換します。だから日時などもそのまま返せます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>パス関数は何を返してもいい。初期設定では <code>JSONResponse</code> が使われて、FastAPI が JSON の文字列に変換し、長さと種類の付随情報も自動で付ける。Pydantic のモデルも対象だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Python の <code>json.dumps</code> だと、日時を渡すとエラーになりますよね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、それを避けるために FastAPI は内部で <code>jsonable_encoder()</code> という処理を使っている。どんなデータ構造でも「JSON にできる」Python のデータに変換してから、通常の <code>json.dumps()</code> を呼ぶ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">「そのままでは変換できない」「間に1つ挟めば変換できる」の2つを確かめるテストです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># データを JSON の文字列に変換する標準の機能を取り込む。</span>
+<span class="kw">import</span> json
+<span class="cmt"># 日付や時刻を扱う標準の機能を取り込む。</span>
+<span class="kw">import</span> datetime
+<span class="cmt"># テストを書くための道具を取り込む。</span>
+<span class="kw">import</span> pytest
+<span class="cmt"># FastAPI が内部で使っている、変換できる形に直す処理を取り込む。</span>
+<span class="kw">from</span> fastapi.encoders <span class="kw">import</span> jsonable_encoder
+
+<span class="cmt"># 1つめのテスト：そのまま変換しようとすると失敗することを確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_json_raw</span>():
+    <span class="cmt"># 今の日時を取得する。</span>
+    now = datetime.datetime.<span class="fn">utcnow</span>()
+    <span class="cmt"># この中で TypeError（種類が違うという失敗）が起きることを期待する、という書き方。</span>
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(<span class="kw">TypeError</span>):
+        <span class="cmt"># 日時をそのまま JSON にしようとすると、扱い方が決まっていないので失敗する。</span>
+        json.<span class="fn">dumps</span>(now)
+
+<span class="cmt"># 2つめのテスト：間に変換を挟めば成功することを確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_json_via_encoder</span>():
+    <span class="cmt"># 今の日時を取得する。</span>
+    now = datetime.datetime.<span class="fn">utcnow</span>()
+    <span class="cmt"># 先に「JSON にできる形」に直す。日時は文字列の形に変換される。</span>
+    encoded = <span class="fn">jsonable_encoder</span>(now)
+    <span class="cmt"># 直したあとなら、通常の変換が問題なく通る。</span>
+    result = json.<span class="fn">dumps</span>(encoded)
+    <span class="cmt"># 結果が文字列になっていることを確かめる。</span>
+    <span class="kw">assert</span> <span class="fn">isinstance</span>(result, <span class="kw">str</span>)
+<span class="cmt"># --- pytest で実行した結果 ---</span>
+<span class="cmt"># 2 passed in 0.03s</span>
+<span class="cmt"># どちらも期待どおりの動きだった、という意味。</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：日時を含むデータを返す</h4>
+      <p>「登録日時つきのユーザー情報」を返す窓口で <code>return {"name": "ハル", "created": datetime.datetime.utcnow()}</code> と書いたとします。標準の変換だけなら、日時の扱い方が決まっていないため失敗します。FastAPI は間に変換を挟むので、実際には <code>{"name":"ハル","created":"2026-08-01T09:15:30.123456"}</code> のような形で返ります。自分で日時を文字列に直すコードを書く必要がありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>日時や Pydantic のモデルを返しても問題なく JSON になる理由が分かる</li><li>独自の変換処理に踏み込む準備ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>標準の変換だけだと日時で失敗する</li>
+        <li>FastAPI は <code>jsonable_encoder()</code> で前処理する</li>
+        <li>Pydantic のモデルを含むあらゆる戻り値を JSON にできる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑮ response_model ===== -->
+<section id="s15">
+  <div class="sec-head"><div class="sec-num">15</div><h2>モデル・タイプと response_model<span class="tag">入力用・内部用・出力用を分ける</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>入力用・内部用・出力用のモデルを分けて、<code>response_model</code> で出力用を指定すれば、外に出してはいけない情報の漏れを防げます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きなアプリでは、同じデータでも「入力用」「出力用」「内部用」と複数のモデルを用意したくなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>例えば①<b>HIPAA</b>（米国の医療情報保護の法律）に従って、出力から個人情報を取り除く必要がある場合（<b>非識別化</b>という）、②<b>利用者の入力に項目を追加して内部で保存する</b>場合（例：作成日時を自動で付ける）。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じ「タグ」を、入力用・内部用・出力用の3つの形で定義した例です。項目の数がそれぞれ違います。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 日時を扱うための機能を取り込む。</span>
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+<span class="cmt"># データの形を宣言するための土台を取り込む。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="cmt"># 利用者が送ってくる形。文字列のタグ1項目だけを受け取る。</span>
+<span class="kw">class</span> <span class="fn">TagIn</span>(BaseModel):
+    tag: <span class="kw">str</span>
+
+<span class="cmt"># 内部で保存しておく形。タグに加えて、作成日時と外に出せない値を持つ。</span>
+<span class="kw">class</span> <span class="fn">Tag</span>(BaseModel):
+    tag: <span class="kw">str</span>
+    created: datetime
+    <span class="cmt"># この項目は内部だけで使い、外部には返してはいけない。</span>
+    secret: <span class="kw">str</span>
+
+<span class="cmt"># 外に返す形。secret を持たないので、この形で返せば漏れることがない。</span>
+<span class="kw">class</span> <span class="fn">TagOut</span>(BaseModel):
+    tag: <span class="kw">str</span>
+    created: datetime
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>TagIn</code> が利用者の入力用、<code>Tag</code> が内部用（<code>secret</code> 入り）、<code>TagOut</code> が出力用（<code>secret</code> を含まない）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうやって「内部の <code>Tag</code> を <code>TagOut</code> に変換して返す」っていうのを書くんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>パスデコレータの <code>response_model</code> という指定を使う。FastAPI が自動で絞り込んでくれる。返したもののうち、<code>response_model</code> で指定した形に無い項目はすべて取り除かれる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">作成と取得の2つの窓口です。取得のほうで <code>response_model</code> を指定しています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 日時を扱う機能を取り込む。</span>
+<span class="kw">import</span> datetime
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># さきほど定義した3つの形を取り込む。</span>
+<span class="kw">from</span> model.tag <span class="kw">import</span> TagIn, Tag, TagOut
+<span class="cmt"># データの保存や取得を担当する部分を取り込む。</span>
+<span class="kw">import</span> service.tag <span class="kw">as</span> service
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 作成用の窓口。POST でデータを送ってもらう。</span>
+<span class="fn">@app.post</span>(<span class="str">'/'</span>)
+<span class="cmt"># 送られてきた内容を TagIn の形として受け取る。合わない場合は自動でエラーになる。</span>
+<span class="kw">def</span> <span class="fn">create</span>(tag_in: TagIn) -&gt; TagIn:
+    <span class="cmt"># 内部で保存する形を組み立てる。受け取ったタグに、作成日時と内部用の値を足す。</span>
+    tag: Tag = <span class="fn">Tag</span>(
+        tag=tag_in.tag,
+        created=datetime.datetime.<span class="fn">utcnow</span>(),
+        secret=<span class="str">"shhhh"</span>,
+    )
+    <span class="cmt"># 組み立てた内部用の形を保存する。</span>
+    service.<span class="fn">create</span>(tag)
+    <span class="cmt"># 返すのは受け取った入力そのもの。内部用の値は返さない。</span>
+    <span class="kw">return</span> tag_in
+
+<span class="cmt"># 取得用の窓口。response_model で「返すときは TagOut の形に絞る」と指定している。</span>
+<span class="fn">@app.get</span>(<span class="str">'/{tag_str}'</span>, response_model=TagOut)
+<span class="cmt"># 住所から受け取った文字を使って、1件を取り出す処理。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(tag_str: <span class="kw">str</span>) -&gt; TagOut:
+    <span class="cmt"># 保存してある内部用の形を取り出す。この中には secret も入っている。</span>
+    tag: Tag = service.<span class="fn">get</span>(tag_str)
+    <span class="cmt"># secret 入りのまま返しているが、response_model の指定により自動で取り除かれる。</span>
+    <span class="kw">return</span> tag
+<span class="cmt"># --- 取得の窓口に問い合わせた結果 ---</span>
+<span class="cmt"># {"tag": "python", "created": "2026-08-01T09:15:30.123456"}</span>
+<span class="cmt"># secret は含まれていない。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>get_one</code> の中では <code>Tag</code>（<code>secret</code> 入り）を返しているけど、<code>response_model=TagOut</code> が指定されているので、FastAPI は自動で <code>TagOut</code> の形に絞り込む。結果として <code>secret</code> は相手に届かない。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>TagIn（入力用）</h4><p>tag だけ。利用者から受け取る形。</p><span class="when">外 → 中</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>Tag（内部用）</h4><p>tag + created + secret。保存しておく形。</p><span class="when">中だけ</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>TagOut（出力用）</h4><p>tag + created。secret は含まない。</p><span class="when">中 → 外</span></div>
+    </div>
+    <div class="loopback">↺ 内部用の形をそのまま返しても、<code>response_model</code> が出口で自動的に絞り込みます。返し忘れではなく、仕組みで防ぐのがポイントです。</div>
+
+    <div class="example">
+      <h4>🔎 具体例：手で消す方式との違い</h4>
+      <p><code>response_model</code> を使わず、返す直前に <code>del tag.secret</code> のように手で消す方法もあります。しかしこの方法だと、窓口が10か所あれば10か所すべてに書く必要があり、1か所でも書き忘れれば漏れます。新しい内部用の項目が増えたときも、全部の窓口を見直すことになります。</p>
+      <p><code>response_model=TagOut</code> なら、「返す形は TagOut」と1か所で宣言するだけです。内部用の項目が増えても、<code>TagOut</code> に書かない限り外には出ません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「うっかり内部用の項目を返した」という事故を防げる</li><li>HIPAA や GDPR のような法令の要件に対応しやすい</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>入力用（<code>TagIn</code>）／内部用（<code>Tag</code>）／出力用（<code>TagOut</code>）の分離</li>
+        <li><code>response_model=TagOut</code> で出力を絞り込む</li>
+        <li>外に出してはいけない情報の漏れを防ぐ実用的なやり方</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑯ 自動ドキュメント ===== -->
+<section id="s16">
+  <div class="sec-head"><div class="sec-num">16</div><h2>自動ドキュメンテーション<span class="tag">/docs を開くだけ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>/docs</code> を開くと、その場で試せる API の説明ページが自動生成されます。コードがそのまま仕様書になります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そしてここからが、FastAPI の目玉のひとつ。アプリを起動した状態で、ブラウザを <b><code>http://localhost:8000/docs</code></b> に向けてみよう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>…えっ、説明ページが自動で出てきました！ 全窓口の一覧も、送るデータの形式も、返事の例も…！</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。FastAPI は君が書いたコードから <b>OpenAPI の仕様</b>を自動生成し、それを元に <b>Swagger UI</b>（その場で試せる説明ページ）を提供する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「Try it out」って書いてあるボタンがあるんですけど…？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>クリックして、入力欄に値を入れて、青い「Execute」ボタンを押してごらん。例えば <code>"string"</code> を <code>"Cousin Eddie"</code> に書き換えて実行する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>わ、すぐに返事が返ってきた！ HTTPie や Requests を使わなくても、ブラウザだけで API を試せるんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。ちなみに返事の表示には curl のコマンド例も出る。HTTPie より curl のほうが打つ量が多いことが実感できると思う。HTTPie の自動の JSON 変換が、ここで効いてくる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>コツとしては、Web サービスが何百もの窓口に成長したとき、<b>常に最新の説明ページと試験ページが自動で手に入る</b>、というのが本当に大きい。手で更新する説明書は必ずずれる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>コードを書く</h4><p>パスデコレータ、パス関数、型ヒント、モデルを書く。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>FastAPI が仕様を組み立てる</h4><p>書かれた内容から OpenAPI の仕様を自動で作る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4><code>/docs</code> にページが出る</h4><p>窓口の一覧、送るデータの形式、返事の例が並ぶ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>その場で試せる</h4><p>「Try it out」→ 値を入れて「Execute」で実際に問い合わせが飛ぶ。<div class="branch ok">コードを直せば、次に開いたときには内容も自動で更新されている。</div></p></div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：手で書く説明書がずれるとき</h4>
+      <p>ある窓口の項目名を <code>user_name</code> から <code>name</code> に変えたとします。手で書いた説明書は、誰かが気づいて直すまで <code>user_name</code> のままです。それを読んだ画面側の担当者は <code>user_name</code> を送り、422 のエラーで初めて食い違いに気づきます。</p>
+      <p><code>/docs</code> はコードから作られるので、名前を変えた瞬間に表示も <code>name</code> に変わります。「説明書とコードが違う」という状態が構造上起きません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>API の仕様書を別途書く手間がゼロになる</li><li>ブラウザだけで API を試せるので、開発・試験・画面側の連携が楽になる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>/docs</code> で Swagger UI が出る</li>
+        <li>OpenAPI の仕様がコードから自動生成される</li>
+        <li>「Try it out」でその場で試せる</li>
+        <li>説明が常に最新に保たれる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑰ 複雑なデータ ===== -->
+<section id="s17">
+  <div class="sec-head"><div class="sec-num">17</div><h2>複雑なデータ<span class="tag">第5章への橋渡し</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>複雑なデータ構造を扱うときは Pydantic のモデルが必要になります。詳細は第5章です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここまでの例では、窓口に渡すのは1つの文字列だけだった。<code>GET</code> や <code>DELETE</code> のように引数がほとんど要らない、あるいは単純な文字や数値で済むことは多い。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>でも <code>POST</code> で作成、<code>PUT</code>/<code>PATCH</code> で更新するときには、もっと複雑なデータ構造が必要になる。第5章で、FastAPI が Pydantic とデータモデルを使って、これらを整った形で実装する方法を見るよ。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔤</div><h4>GET / DELETE</h4><p>単純な引数で済むことが多い。対象を指す ID くらいです。</p></div>
+      <div class="mini"><div class="ic">🧱</div><h4>POST / PUT / PATCH</h4><p>まとまったデータを送るので、形を宣言する仕組みが要ります。</p></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>単純な引数の限界を意識し、モデルの定義に進む準備ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>GET/DELETE: 単純な引数で済むことが多い</li>
+        <li>POST/PUT/PATCH: 複雑なデータ構造 → Pydantic のモデル</li>
+        <li>詳細は第5章</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズを振り返ります。1つ目、「FastAPI アプリは <code>FastAPI()</code>、パスデコレータ、パス関数の3点セット」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それで Uvicorn で起動すれば最小サーバ完成。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「リクエストデータの渡し場所は4つ: パス、クエリ、ボディ、ヘッダ」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それぞれ FastAPI の <code>Path</code>, <code>Query</code>, <code>Body</code>, <code>Header</code> で受け取れる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「<code>GET</code> はボディを使わない。データを送るなら POST/PUT/PATCH」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>冪等性の話、思い出してね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「レスポンスは初期設定で JSON に変換。ステータスコードやヘッダも操作できる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>Response</code> の引数を入れれば自由自在。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「<code>response_model</code> で出力用の形を指定すれば、外に出してはいけない情報の漏れを防げる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。あとは <code>/docs</code> の自動ドキュメントが、君の API 仕様書代わりになる。これが FastAPI 最大の魅力の一つだ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>FastAPI アプリの3点セット</div>
+      <p style="font-size:14px;margin:0">FastAPI で最小の Web アプリを書くために必要な3つの要素を、自分の言葉で説明してください。Uvicorn での起動方法も含めてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<code>app = FastAPI()</code> でアプリ本体を作る、②<code>@app.get("/...")</code> のようなパスデコレータで住所と HTTP の動詞を宣言する、③パス関数を書いて処理と戻り値を定義する。これらを <code>hello.py</code> などに保存して、<code>uvicorn hello:app --reload</code> で Uvicorn 経由で起動する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>FastAPI()</code> の作成に触れている<br>□ デコレータで住所と動詞を結びつけることに触れている<br>□ <code>uvicorn ファイル名:変数名 --reload</code> の形式を説明している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>リクエストデータの4つの場所</div>
+      <p style="font-size:14px;margin:0">FastAPI ではリクエストのデータを、4つの場所のどこから受け取れますか？ それぞれに対応する FastAPI のクラス名と、典型的な使い分けを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<b>Path</b>（住所の中の置き場所、<code>/users/{id}</code> の <code>{id}</code> など）、②<b>Query</b>（住所の <code>?</code> 以降、ページ分割のような省略できる絞り込み）、③<b>Body</b>（本体、<code>POST</code>/<code>PUT</code>/<code>PATCH</code> で大きな入力に使う）、④<b>Header</b>（付随情報、身分を示す文字列など）。それぞれ FastAPI の <code>Path</code>, <code>Query</code>, <code>Body</code>, <code>Header</code> で受け取る。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 4つの場所をすべて挙げている<br>□ それぞれに対応する FastAPI のクラスを書いている<br>□ 典型的な使い分け（対象／省略可／本体／付随情報）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>GET にボディを使わない理由</div>
+      <p style="font-size:14px;margin:0">なぜ HTTP の <code>GET</code> にはボディを使わないことになっているのですか？「冪等性」というキーワードを使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>GET</code> は「同じ問い合わせをすれば同じ答えが返る」という<b>冪等性</b>を持つべきとされている。データを取得するための動詞だから、サーバの状態を変えるデータを本体で送るのは目的にそぐわない。代わりにクエリパラメータやパスで条件を指定する。データを送りたい場合は <code>POST</code>（作成）や <code>PUT</code>/<code>PATCH</code>（更新）を使う。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 「冪等性」という言葉を使っている<br>□ GET はデータ取得用、という役割に触れている<br>□ データを送るなら POST/PUT/PATCH を使う、という代わりの手段を挙げている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>response_model の役割</div>
+      <p style="font-size:14px;margin:0"><code>response_model</code> というパスデコレータの指定は何のためにありますか？ なぜ「内部用モデル」と「出力用モデル」を分けることが重要なのですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>response_model</code> は「外部に返す返事の形」を指定するもの。パス関数が内部用の形（<code>secret</code> などの外に出せない項目入り）を返しても、<code>response_model</code> で出力用を指定しておけば、FastAPI がその項目を自動的に取り除いてくれる。これにより、HIPAA などの要件で個人情報を漏らさない、という実装を仕組みで担保できる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>response_model</code> が返事側の形を指定する役割であることを説明<br>□ 内部用と出力用を分ける意義（機密情報、法令対応）に触れている<br>□ FastAPI が自動で絞り込むという動きを述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>自動ドキュメントの価値</div>
+      <p style="font-size:14px;margin:0">FastAPI の <code>/docs</code> で出てくる自動生成のドキュメントは何ですか？ なぜこの機能が大きな問題を解決すると言えるのですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>/docs</code> には、FastAPI がコードから自動生成した OpenAPI の仕様を基にした、その場で試せる Swagger UI の説明ページが表示される。窓口の一覧、送るデータと返事の形式、試験用の入力欄（Try it out）まで揃う。手で更新する API の説明書は必ずコードとずれて古くなるが、コードから自動生成されるので常に最新の状態が保たれる。窓口が数百に膨れ上がっても、説明が古びない。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ OpenAPI / Swagger UI の存在に触れている<br>□ 「コードから自動生成される」点を強調している<br>□ 「常に最新であること」「その場で試せること」の価値に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>実際に <code>hello.py</code> を動かす</h4><p>自分のパソコンで書いて <code>uvicorn hello:app --reload</code> で起動。ブラウザで <code>/hi</code>、<code>/docs</code> を開いてみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>4つのデータ位置を全部試す</h4><p>パス、クエリ、ボディ、ヘッダを1つずつ試し、HTTPie で問い合わせを送る練習をする。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ① パス：住所の一部として渡す。</span>
+$ http -b localhost:8000/hi/Mom
+<span class="cmt"># ② クエリ：イコール2つで、住所のうしろに条件として渡す。</span>
+$ http -b localhost:8000/hi who==Mom
+<span class="cmt"># ③ ボディ：イコール1つで、本体として渡す（動詞は POST になる）。</span>
+$ http -b localhost:8000/hi who=Mom
+<span class="cmt"># ④ ヘッダ：コロンで、付随情報として渡す。</span>
+$ http -b localhost:8000/hi who:Mom
+<span class="cmt"># --- いずれの実行結果も ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+<span class="cmt"># 記号1つの違いで渡し方が変わる点に注目する。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>公式の手引きを読む</h4><p>FastAPI 公式ドキュメント（fastapi.tiangolo.com）の Tutorial - First Steps を読む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>第5章へ</h4><p>「パイダンティック、タイプヒント、モデルツアー」で、複雑なデータの扱い方を学ぶ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>第6章へ</h4><p>「依存関係」で、<code>Header()</code>, <code>Body()</code> などの裏側にある依存性注入の仕組みを理解する。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第3章「FastAPIツアー」の図解 ― 原文の全節（FastAPIとは／アプリケーション／HTTPリクエスト／URLパス／クエリ／ボディ／ヘッダ／複数のデータ／どのメソッドが最適か／HTTPレスポンス／ステータスコード／ヘッダ／レスポンスの種類／タイプ変換／response_model／自動ドキュメント／複雑なデータ）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

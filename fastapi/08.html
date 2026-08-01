@@ -1,0 +1,1472 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第8章 ウェブ・レイヤー ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+
+  .tree{background:#0c0f1e; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:12px 0;
+    font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; line-height:1.75; color:#cdd6f4; overflow-x:auto}
+  .tree .d{color:#7fd4ff} .tree .c{color:#6b7394}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第8章</div>
+  <h1>第8章　ウェブ・レイヤー</h1>
+  <p>1ファイルのサンプルから、本格的な層構造へ。<code>src/web/</code>, <code>src/service/</code>, <code>src/data/</code>, <code>src/model/</code>, <code>src/fake/</code> を立ち上げ、<code>APIRouter</code> で窓口を分け、仮のデータから始めて段階的に下の層を埋めていきます。作成・取得・更新・削除の窓口を一通り実装します。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全14節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① 間奏曲：どこから作り始めるか</a>
+  <a href="#s2">② RESTful API設計</a>
+  <a class="sub" href="#s2-verb">└ HTTP動詞のおさらい</a>
+  <a class="sub" href="#s2-name">└ 単数形か複数形か</a>
+  <a href="#s3">③ ファイルとディレクトリの構成</a>
+  <a class="sub" href="#s3-path">└ PYTHONPATH の設定</a>
+  <a href="#s4">④ 最初のWebサイトコード</a>
+  <a href="#s5">⑤ リクエスト</a>
+  <a href="#s6">⑥ 複数のルーター</a>
+  <a href="#s7">⑦ ウェブ・レイヤーを構築する</a>
+  <a href="#s8">⑧ データモデルを定義する</a>
+  <a href="#s9">⑨ スタブと偽データ</a>
+  <a href="#s10">⑩ 共通関数を作成する</a>
+  <a href="#s11">⑪ 偽のデータを作成する</a>
+  <a class="sub" href="#s11-web">└ Web層から呼ぶ</a>
+  <a href="#s12">⑫ テストだ！</a>
+  <a href="#s13">⑬ 自動テストフォーム</a>
+  <a href="#s14">⑭ サービス層とデータ層と話す</a>
+  <a href="#s15">⑮ ページネーションとソート</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">Web層</div><p>外からの問い合わせを受け付け、返事を返す部分。住所と動詞を扱います。</p></div>
+    <div class="item"><div class="w">サービス層</div><p>このサイトが提供する機能の本体。判断や組み合わせの処理を書きます。</p></div>
+    <div class="item"><div class="w">データ層</div><p>データの保存先や外部のサービスとやり取りする部分です。</p></div>
+    <div class="item"><div class="w">モデル <span>model</span></div><p>層をまたいでやり取りするデータの形の定義。項目名と種類を書いておきます。</p></div>
+    <div class="item"><div class="w">フェイク <span>fake</span></div><p>本物の代わりに、ある程度実際に動く簡易版のこと。データベースの代わりに使います。</p></div>
+    <div class="item"><div class="w">スタブ <span>stub</span></div><p>中身の処理をせず、あらかじめ決めた値だけを返すもの。動作の確認に使います。</p></div>
+    <div class="item"><div class="w">トップダウン／ボトムアップ／ミドルアウト</div><p>それぞれ、上の層から作る／下の層から作る／真ん中から両方向に作る、という進め方です。</p></div>
+    <div class="item"><div class="w">ドメイン駆動設計</div><p>その業務で扱う対象と決まりごとを中心に据えて設計する考え方です。</p></div>
+    <div class="item"><div class="w">リソース <span>resource</span></div><p>アプリが扱うデータのひとかたまり。生き物、探検家などが1つずつのリソースです。</p></div>
+    <div class="item"><div class="w">ID</div><p>そのリソースを1つに特定するための値。この章では名前を使っています。</p></div>
+    <div class="item"><div class="w">CRUD</div><p>作成（Create）・読み取り（Read）・更新（Update）・削除（Delete）の4つの基本操作です。</p></div>
+    <div class="item"><div class="w">APIRouter</div><p>関連する窓口をまとめて扱うための入れ物。ファイルを分けて書けるようになります。</p></div>
+    <div class="item"><div class="w">prefix <span>接頭辞</span></div><p>そのまとまりの中のすべての住所の先頭に付く共通の部分です。</p></div>
+    <div class="item"><div class="w">include_router</div><p>作ったまとまりを、アプリ本体に組み込む命令です。</p></div>
+    <div class="item"><div class="w">パッケージ／モジュール</div><p>フォルダ単位・ファイル単位に分けたコードのまとまり。取り込んで使います。</p></div>
+    <div class="item"><div class="w"><code>__init__.py</code></div><p>そのフォルダを「取り込めるまとまり」として扱わせるための空のファイルです。</p></div>
+    <div class="item"><div class="w">sys.path</div><p>Python が「取り込むファイルをどこから探すか」を並べた一覧です。</p></div>
+    <div class="item"><div class="w">PYTHONPATH</div><p>その探し先の一覧に、自分のフォルダを追加するための設定です。</p></div>
+    <div class="item"><div class="w">エントリーポイント</div><p>アプリを動かすときの入口になるファイルのことです。</p></div>
+    <div class="item"><div class="w">reload</div><p>ファイルを保存するたびにサーバを自動で再起動する指定です。</p></div>
+    <div class="item"><div class="w">バックグラウンド起動</div><p>コマンドの最後に <code>&amp;</code> を付けて、その処理を裏で動かしたまま次の入力ができるようにすることです。</p></div>
+    <div class="item"><div class="w">ページネーション</div><p>件数の多い一覧を、何ページかに分けて少しずつ返すことです。</p></div>
+    <div class="item"><div class="w">ソート <span>sort</span></div><p>一覧を、決めた項目の順に並べ替えることです。</p></div>
+    <div class="item"><div class="w">ISO 2文字国コード</div><p>国を2文字で表す決まり。日本は JP、フランスは FR、ドイツは DE です。</p></div>
+    <div class="item"><div class="w">%20</div><p>住所の中で空白を表すための書き方です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">本格的な層構造を組み立てる</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠は、想像上の生き物（<b>クリプトイド</b>）と探検家を題材に、本格的な層構造の Web サイトをハルと組み立てていきます。第3章の最小の例から一歩進み、<code>src/web/</code>, <code>src/service/</code>, <code>src/data/</code>, <code>src/model/</code>, <code>src/fake/</code> といったフォルダを立ち上げ、<code>APIRouter</code> でまとまりを分け、仮のデータから始めて段階的に下の層を埋めていきます。作成・取得・更新・削除の窓口を一通り実装し、HTTPie で動作を確認し、最後に自動で作られる説明ページで試すところまでやります。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">本格的な FastAPI のアプリは「Web層 / サービス層 / データ層 / モデル / 仮データ」のフォルダに分けます。Web層は <code>APIRouter</code> を使って機能ごとに分割し、<code>main.py</code> でまとめて <code>app.include_router()</code> します。データは最初「仮のもの」で埋めておき、章を進めるごとに下の層へ移していきます。作成・一覧取得・単体取得・全置換・部分更新・削除の窓口を一通り実装します。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>「1ファイルに全部書く」段階を卒業し、本格的なフォルダ構成を組めるようになる</li>
+        <li><code>APIRouter</code> で機能ごとにファイルを分け、<code>main.py</code> でまとめる書き方ができる</li>
+        <li>仮データ → サービス層 → データ層と、段階的に層を埋めていく進め方を学べる</li>
+        <li>作成・取得・更新・削除の窓口を一式実装できる</li>
+        <li>ページ分割や並べ替えを、どの層で行うかの設計判断ができる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① 間奏曲 ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>間奏曲：トップダウン、ボトムアップ、ミドルアウト？<span class="tag">どこから作り始めるか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>設計の入り口は「上から／下から／中央から」の3通りです。本書は Web ファースト、ただし全部を Web 層に詰め込みません。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web サイトを設計するとき、どこから始めるかは3通りある。①<b>Web 層から下へ</b>（トップダウン）、②<b>データ層から上へ</b>（ボトムアップ）、③<b>真ん中のサービス層から両方向へ</b>（ミドルアウト）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どれを選ぶといいんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>状況による。すでにデータベースがあって、それを外に公開したいなら、データ層 → サービス層 → Web層 が自然だ。<b>ドメイン駆動設計</b>に従うなら、真ん中のサービス層から始めて中心となる対象とデータの形を決める。あるいは「下の層に何を求めるか分かるまで、下の層は仮のものにしておく」というやり方もある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書は <b>Web を先に作る</b>やり方だ。Web から始めて、必要に応じて下の層を追加していく。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>注意。FastAPI を試したいだけで、扱うデータの形がまだ決まっていない読者には、これが現実的だ。ただし「すべてをこの Web 層に詰め込もう」という気持ちは抑えるべき。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>身分の確認と権限の確認は第11章で扱う。本章では省略して、素の Web の処理の扱い方だけを見る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>補足：この Web 層は1つのやり方に過ぎない。コマンドから使う形や、他のプログラムから呼ぶ形もあり得る。他の枠組みでは<b>ビュー層</b>や<b>プレゼンテーション層</b>と呼ばれることもある。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">⬇️</div><h4>トップダウン</h4><p>Web層から始めて下へ。窓口の形を先に決めたいときに向きます。</p><span class="pill">本書のやり方</span></div>
+      <div class="mini"><div class="ic">⬆️</div><h4>ボトムアップ</h4><p>データ層から始めて上へ。すでにデータベースがある場合に自然です。</p></div>
+      <div class="mini"><div class="ic">↕️</div><h4>ミドルアウト</h4><p>真ん中のサービス層から両方向へ。扱う対象と決まりごとを中心に据える場合。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>作り始めの方向を、意識して選べる</li><li>「Web層に何でも書く」という良くない書き方を避けられる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>始め方: トップダウン／ボトムアップ／ミドルアウト</li>
+        <li>本書は Web を先に作るやり方</li>
+        <li>すべての役目を Web層に集めない</li>
+        <li>関連書: 『Pythonで学ぶクリーンアーキテクチャ』『Pythonによるアーキテクチャパターン』『マイクロサービスAPI』</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② RESTful ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>RESTful API設計<span class="tag">リソース・ID・URL・動詞</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>RESTful はリソース + ID + URL + 動詞の組み合わせです。本書はリソース名を単数形にする方針です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>HTTP は単なる通信の取り決めだ。けれど、同じ材料でも作り方によって出来上がりが変わるように、HTTP の使い方にもうまい型がある。それが <b>RESTful</b> だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>RESTful な設計の中心になる部品は、①<b>リソース</b>（アプリが扱うデータのかたまり）、②<b>ID</b>（1つに特定するための値）、③<b>URL</b>（リソースと ID を組み立てた文字列）、④<b>動詞</b>（URL に対する動作：GET/POST/PUT/PATCH/DELETE）。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-verb">HTTP 動詞のおさらい</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>動詞</th><th>役割</th></tr>
+      <tr><td>GET</td><td>データを取得する</td></tr>
+      <tr><td>POST</td><td>新しく作る</td></tr>
+      <tr><td>PUT</td><td>全体を置き換える</td></tr>
+      <tr><td>PATCH</td><td>一部を更新する</td></tr>
+      <tr><td>DELETE</td><td>削除する</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>PUT と PATCH の使い分けは意見が分かれる。一部の更新と全体の置き換えを区別しないなら、片方で足りるかもしれない。</div></div>
+    </div>
+
+    <h3 class="blk">URL の型</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>型</th><th>意味</th><th>例</th></tr>
+      <tr><td><code>動詞 /resource/</code></td><td>すべてのリソースに対する動作</td><td><code>GET /thing</code> → すべての生き物のデータを返す</td></tr>
+      <tr><td><code>動詞 /resource/id</code></td><td>ID で指定した1件に対する動作</td><td><code>GET /thing/abc</code> → ID が abc のものだけ返す</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>問い合わせは「並べ替え」「ページ分割」「別の処理の実行」のような追加の情報を持つことが多い。これらは住所の一部として <code>/</code> でつなぐか、住所のうしろに <code>?</code> を付けて <code>var=val</code> の形で表す。住所には長さの制限があるので、大きな内容は本体で送ることが多い。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-name">単数形か複数形か</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>名前の付け方の補足。多くの書き手は、リソース名・API の区分名・データベースの表の名前を<b>複数形</b>にすることを勧めている。私は長年それに従ったけど、今は<b>単数形</b>のほうが単純だと考えている。理由は3つ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>①一部の単語は単数形と複数形が同じ（<code>series</code>, <code>fish</code>）、②不規則な複数形を持つ単語がある（<code>children</code>, <code>people</code>）、③単数と複数を変換するコードが必要な場所が多い。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書は単数形を採用する。これは一般的な RESTful の助言とは違うので、同意できなければ気にしなくていい。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：複数形にすると起きる手間</h4>
+      <p>リソース名を複数形にすると、住所は <code>/explorers</code>、モデルの名前は <code>Explorer</code>、データベースの表は <code>explorers</code>、と場所ごとに形が変わります。コードの中で「モデル名から住所を組み立てる」ような処理を書くとき、<code>Explorer</code> → <code>explorers</code> の変換が必要になります。</p>
+      <p><code>fish</code> のように単数形と複数形が同じ語や、<code>person</code> → <code>people</code> のように形が変わる語があると、この変換は単に <code>s</code> を付けるだけでは済みません。単数形でそろえれば、この変換自体が不要になります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>API 設計の標準の型が手に入る</li><li>単数形か複数形か、というチーム内の議論に対応できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>RESTful の4要素: リソース／ID／URL／動詞</li>
+        <li>主な動詞: GET/POST/PUT/PATCH/DELETE</li>
+        <li>URL の型: <code>/resource</code> と <code>/resource/id</code></li>
+        <li>本書はリソース名を単数形にする</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ ディレクトリ ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>ファイルとディレクトリのサイトレイアウト<span class="tag">src の下に5つのフォルダ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>src</code> の下に web/service/data/model/fake を分け、各層ごとに <code>creature.py</code> と <code>explorer.py</code> を置きます。<code>PYTHONPATH=$PWD/src</code> で取り込み先を整えます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データは「想像上の生き物（Creature）」と「探検家（Explorer）」に関するものだ。最初は1つの Python ファイルに詰めたくなるけど、その気持ちを抑えよう。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>作業用のフォルダを作る。たとえば <code>fastapi/</code>。その中に以下のフォルダを作る。</div></div>
+    </div>
+
+    <div class="tree">
+<span class="d">fastapi/</span>
+├── <span class="d">src/</span>                     <span class="c"># サイトのコード全体を入れる場所</span>
+│   ├── <span class="d">web/</span>                 <span class="c"># 外からの問い合わせを受ける層</span>
+│   │   ├── __init__.py      <span class="c"># このフォルダを取り込める形にするための空ファイル</span>
+│   │   ├── creature.py      <span class="c"># 生き物に関する窓口</span>
+│   │   └── explorer.py      <span class="c"># 探検家に関する窓口</span>
+│   ├── <span class="d">service/</span>             <span class="c"># このサイトが提供する機能の本体</span>
+│   │   ├── __init__.py
+│   │   ├── creature.py
+│   │   └── explorer.py
+│   ├── <span class="d">data/</span>                <span class="c"># データの保存先とやり取りする層</span>
+│   │   ├── __init__.py
+│   │   ├── creature.py
+│   │   └── explorer.py
+│   ├── <span class="d">model/</span>               <span class="c"># データの形の定義</span>
+│   │   ├── __init__.py
+│   │   ├── creature.py
+│   │   └── explorer.py
+│   ├── <span class="d">fake/</span>                <span class="c"># 最初のうちに使う、仮のデータ</span>
+│   │   ├── __init__.py
+│   │   ├── creature.py
+│   │   └── explorer.py
+│   └── main.py              <span class="c"># アプリの入口</span>
+└── ...
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>各フォルダに <code>__init__.py</code>（中身は空でよい）を置く。これで Python はそのフォルダを<b>取り込めるまとまり</b>として扱う。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>各 <code>*.py</code> のファイルが1つのまとまりだ。<code>creature.py</code> と <code>explorer.py</code> は、それぞれの層で同じ名前のコードを持つ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>fake/</code> は、下の層ができる前の、仮のデータを提供する場所だ。</div></div>
+    </div>
+
+    <h3 class="blk" id="s3-path">PYTHONPATH の設定</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python がファイルを取り込む仕組みは、フォルダの階層どおりには動かない。<b>まとまりの名前</b>に基づいて動く。<code>sys.path</code> という Python の内部の一覧が、探す場所を持っている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>設定 <code>PYTHONPATH</code> で、その一覧より先に確認するフォルダを指定できる。新しい <code>fastapi/</code> で作業するなら、Linux や macOS ではこう書く。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># export は「この設定を、これから動かすプログラムにも渡す」という指示。</span>
+<span class="cmt"># $PWD は「今いるフォルダのすべての階層を含んだ場所」を表す。</span>
+<span class="cmt"># つまり「今いる場所の src フォルダを、取り込み先の探し場所に加えて」という意味になる。</span>
+$ export PYTHONPATH=$PWD/src
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 画面には何も出ない。以降 from model.explorer import Explorer のように書ける。</span>
+<span class="cmt"># この設定をしないと「そんなまとまりは無い」というエラーになる。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>$PWD</code> は「今いるフォルダの場所」を表す設定だ。これで毎回長い場所を入力せずに済む。Windows の場合は Python Software Foundation のサイトの「Excursus: Setting Environment Variables」を参照してくれ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「ふぅー」って感じですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最初の関門だけど、ここを越えると以降は楽になる。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>本格的なフォルダ構成を作れる</li><li>まとまりの扱いと <code>PYTHONPATH</code> の役割が分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>フォルダ: src/web, src/service, src/data, src/model, src/fake</li>
+        <li>各フォルダに <code>__init__.py</code> を置いて取り込める形にする</li>
+        <li><code>PYTHONPATH=$PWD/src</code> で取り込み先を解決</li>
+        <li>リソースごと（creature.py, explorer.py）にファイルを分ける</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ 最初のコード ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>最初のWebサイトコード<span class="tag">main.py と自動再起動</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>main.py</code> を作って <code>app = FastAPI()</code> を定義し、<code>uvicorn.run(..., reload=True)</code> で起動します。自動再起動があると開発が楽になります。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">アプリの入口になるファイルです。一番上の住所に問い合わせると文字を返します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># サーバを動かす道具を、このファイルの中から使えるように取り込む。</span>
+<span class="kw">import</span> uvicorn
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 一番上の住所への GET を、この下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">top</span>():
+    <span class="cmt"># 動作の確認用に、短い文字を返す。</span>
+    <span class="kw">return</span> <span class="str">"top here"</span>
+
+<span class="cmt"># このファイルが直接動かされたときだけ、下を実行する決まり文句。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="cmt"># コロンの前がファイル名、後ろが変数名。reload=True で保存のたびに自動再起動する。</span>
+    uvicorn.<span class="fn">run</span>(<span class="str">"main:app"</span>, reload=<span class="kw">True</span>)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Uvicorn の1つ目の指定は <code>"main:app"</code>（ファイル名:変数名）、<code>reload=True</code> でコードを変えたときに自動で再起動する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>以降、新しい例ごとに <code>main2.py</code> <code>main3.py</code>…と作らず、同じ <code>main.py</code> を書き換えていくよ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">起動します。最後の <code>&amp;</code> がポイントです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># main.py を動かす。最後の &amp; を付けると、裏で動かしたまま次の入力ができる。</span>
+$ python main.py &amp;
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Will watch for changes in these directories: [.../fastapi']</span>
+<span class="cmt"># INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</span>
+<span class="cmt"># INFO:     Started reloader process [92543] using StatReload</span>
+<span class="cmt"># INFO:     Started server process [92551]</span>
+<span class="cmt"># INFO:     Waiting for application startup.</span>
+<span class="cmt"># INFO:     Application startup complete.</span>
+<span class="cmt"># 「変更を見張ります」「起動しました」という意味の記録が出る。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じ画面から動作を確認できます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 一番上の住所に問い合わせる。</span>
+$ http localhost:8000
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 8</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt"># date: Sun, 05 Feb 2023 03:54:29 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># "top here"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">窓口を1つ追加します。住所の一部を受け取って、それをそのまま返します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを動かす道具を取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 一番上の住所への GET。</span>
+<span class="fn">@app.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">top</span>():
+    <span class="kw">return</span> <span class="str">"top here"</span>
+
+<span class="cmt"># 追加した窓口。{thing} が住所の中の置き場所になる。</span>
+<span class="fn">@app.get</span>(<span class="str">"/echo/{thing}"</span>)
+<span class="cmt"># 置き場所と同じ名前の引数に、その値が入る。</span>
+<span class="kw">def</span> <span class="fn">echo</span>(thing):
+    <span class="cmt"># 受け取った値を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"echoing {thing}"</span>
+
+<span class="cmt"># 直接動かされたときだけサーバを起動する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(<span class="str">"main:app"</span>, reload=<span class="kw">True</span>)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">ファイルを保存すると、サーバの画面に自動再起動の記録が出ます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># --- ファイルを保存した直後に自動で出る記録 ---</span>
+<span class="cmt"># WARNING:  StatReload detected changes in 'main.py'. Reloading...</span>
+<span class="cmt">#   → main.py の変更を見つけたので、再起動します</span>
+<span class="cmt"># INFO:     Shutting down</span>
+<span class="cmt"># INFO:     Waiting for application shutdown.</span>
+<span class="cmt"># INFO:     Application shutdown complete.</span>
+<span class="cmt"># INFO:     Finished server process [92862]</span>
+<span class="cmt">#   → いったん止めた</span>
+<span class="cmt"># INFO:     Started server process [92872]</span>
+<span class="cmt"># INFO:     Waiting for application startup.</span>
+<span class="cmt"># INFO:     Application startup complete.</span>
+<span class="cmt">#   → 新しい内容で立ち上げ直した</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 追加した窓口に問い合わせる。-b は本体だけを表示する指定。</span>
+$ http -b localhost:8000/echo/argh
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "echoing argh"</span>
+<span class="cmt"># 住所の最後の argh が、そのまま返事に入っている。</span>
+</pre></details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>アプリの入口のファイルを書ける</li><li>自動再起動を使った開発の流れが身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>main.py</code> がアプリの入口</li>
+        <li><code>uvicorn.run("main:app", reload=True)</code></li>
+        <li>裏で動かす: <code>python main.py &amp;</code></li>
+        <li>ファイルを保存すると自動で再起動</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ リクエスト ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>リクエスト<span class="tag">4か所を依存性注入で扱う</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>問い合わせの4か所（パス／クエリ／ヘッダ／ボディ）を、FastAPI の依存性注入で扱います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>問い合わせは、文字の付随情報と1つ以上の本体でできている。それを Python のデータに変換する処理を自分で書くこともできるけど、Web アプリでは枠組みに任せるほうが早い。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI の依存性注入は、ここで特に役立つ。データは問い合わせのいろいろな場所から来る。①<b>Header</b>：添えられた情報、②<b>Path</b>：住所、③<b>Query</b>：住所の <code>?</code> 以降、④<b>Body</b>：本体。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ほかにも間接的な出どころとして、環境の設定や設定ファイルがある。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">送受信の付随情報だけを見る例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># -h は「付随情報（ヘッダ）だけを表示して」という指定。本体は表示されない。</span>
+$ http -h https://example.com
+<span class="cmt"># --- 実行結果（前半は自分が送った付随情報） ---</span>
+<span class="cmt"># GET / HTTP/1.1</span>
+<span class="cmt"># Accept: */*                      ← どんな形式でも受け取れる</span>
+<span class="cmt"># Accept-Encoding: gzip, deflate   ← 圧縮された形でも受け取れる</span>
+<span class="cmt"># Connection: keep-alive           ← 接続を続けて使いたい</span>
+<span class="cmt"># Host: example.com                ← 送り先</span>
+<span class="cmt"># User-Agent: HTTPie/3.2.1         ← 送り手のプログラム名</span>
+<span class="cmt">#</span>
+<span class="cmt"># --- 後半は返ってきた付随情報 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># Accept-Ranges: bytes             ← 途中から取得することもできる</span>
+<span class="cmt"># Age: 123456                      ← 保存されてからの経過秒数</span>
+<span class="cmt"># Cache-Control: max-age=604800    ← 7日間は手元に置いて使ってよい</span>
+<span class="cmt"># Content-Type: text/html; charset=UTF-8   ← 中身は HTML</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>以降の確認の例では付随情報はあまり見せないので、<code>http -b</code> の使い方が中心になる。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>第3章で見た4か所が、本格的な組み立ての中でどう活きるかが見える</li><li>HTTPie の <code>-b</code>（本体だけ）と <code>-h</code>（付随情報だけ）の使い分けが分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>問い合わせの4か所: Header / Path / Query / Body</li>
+        <li>FastAPI が依存性注入でまとめて扱う</li>
+        <li>確認には <code>http -h</code>（付随情報）、<code>http -b</code>（本体）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ 複数のルーター ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>複数のルーター<span class="tag">APIRouter でファイルを分ける</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>大きなアプリではリソースごとに <code>APIRouter</code> で分け、<code>main.py</code> の <code>include_router()</code> でまとめます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きな Web サービスは複数の種類のリソースを扱う。すべてを1ファイルに詰めるんじゃなく、リソースごとに<b>まとまり</b>を作る。<code>APIRouter</code> を使う。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">探検家に関する窓口をまとめたファイルです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 窓口をまとめる入れ物を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter
+
+<span class="cmt"># まとまりを作る。prefix を指定すると、この中の住所すべての先頭に /explorer が付く。</span>
+router = <span class="fn">APIRouter</span>(prefix=<span class="str">"/explorer"</span>)
+
+<span class="cmt"># app ではなく router に対して結びつける点に注目。</span>
+<span class="cmt"># 住所は "/" と書いているが、prefix と合わさって実際には /explorer/ になる。</span>
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">top</span>():
+    <span class="cmt"># 動作の確認用の文字を返す。</span>
+    <span class="kw">return</span> <span class="str">"top explorer endpoint"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">作ったまとまりを、アプリ本体に組み込みます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを動かす道具を取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># さきほど作った、探検家のまとまりを取り込む。</span>
+<span class="kw">from</span> web <span class="kw">import</span> explorer
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># 探検家のまとまりを、アプリ本体に組み込む。この1行で /explorer/ が使えるようになる。</span>
+app.<span class="fn">include_router</span>(explorer.router)
+
+<span class="cmt"># 一番上の住所は、これまでどおり main.py に書く。</span>
+<span class="fn">@app.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">top</span>():
+    <span class="kw">return</span> <span class="str">"top here"</span>
+
+<span class="cmt"># 直接動かされたときだけサーバを起動する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(<span class="str">"main:app"</span>, reload=<span class="kw">True</span>)
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 組み込んだ窓口に問い合わせる。prefix と "/" が合わさった住所になる。</span>
+$ http -b localhost:8000/explorer/
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "top explorer endpoint"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>APIRouter(prefix="/explorer")</code> で「このまとまりの中の住所は全部 <code>/explorer</code> から始まる」と宣言する。<code>app.include_router(explorer.router)</code> でアプリ本体に組み込む。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：まとまりに分けないとどうなるか</h4>
+      <p>リソースが5種類、それぞれ6つの窓口があるとします。1ファイルに書けば30個の処理が並び、1000行を超えます。生き物の窓口を直したいとき、探検家の処理の間から目当ての場所を探すことになります。</p>
+      <p>まとまりに分けておけば、生き物の話は <code>web/creature.py</code> の中だけで完結します。あとで住所の先頭を <code>/creature</code> から <code>/api/creature</code> に変えたくなっても、<code>prefix</code> の1か所を直すだけで済みます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>ファイルを分けることでコードが見やすくなる</li><li>リソースが増えても破綻しない構造が組める</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>APIRouter(prefix="...")</code> でまとまりを作る</li>
+        <li>各リソースのファイルでまとまりを定義する</li>
+        <li><code>main.py</code> で <code>app.include_router(router)</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ 構築の進め方 ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>ウェブ・レイヤーを構築する<span class="tag">段階的に下の層へ移す</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Web層に直接書く → サービス層へ移動 → データ層へ移動 → 実際のデータベースに接続、と段階的に進めます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここから Web 層に実際の処理を追加していく。最初は、Web の処理そのものに仮のデータを全部置く。第9章で仮のデータをサービス層に移し、第10章でデータ層に移す。最後にデータ層が実際のデータベースにアクセスする。各段階で、窓口の呼び出しは動き続ける。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>第8章</h4><p>Web層に仮のデータを直接置く。</p><span class="when">今ここ</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>第9章</h4><p>仮のデータをサービス層へ移す。</p><span class="when">次章</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>第10章</h4><p>データ層へ移し、実際のデータベースにつなぐ。</p><span class="when">その次</span></div>
+    </div>
+    <div class="loopback">↺ 各段階で、外から見える窓口の動きは変わりません。だから「今どこまで進んだか」に関わらず、いつでも動作を確認できます。</div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「いきなり全部を完璧に作ろうとしない」進め方が学べる</li><li>各段階で常に動く状態を保つやり方が身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>第8章: Web層に仮のデータを直接書く</li>
+        <li>第9章: サービス層に移動</li>
+        <li>第10章: データ層に移動 + 実際のデータベース</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ モデル ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>データモデルを定義する<span class="tag">まずはシンプルに</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>モデルは <code>model/</code> の下に Pydantic で定義します。最初はシンプルに、あとで広げます。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">探検家のデータの形です。3項目だけです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Pydantic から、モデルの元になるものを取り出す。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="cmt"># BaseModel を受け継いで Explorer という形を作る。</span>
+<span class="kw">class</span> <span class="fn">Explorer</span>(BaseModel):
+    <span class="cmt"># 名前。この章ではこれを1件を特定するための値としても使う。</span>
+    name: <span class="kw">str</span>
+    <span class="cmt"># 国コード。2文字の決まった表記を使う（FR はフランス、DE はドイツ）。</span>
+    country: <span class="kw">str</span>
+    <span class="cmt"># 自由に書ける説明文。</span>
+    description: <span class="kw">str</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">生き物のデータの形です。こちらは5項目あります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Pydantic から、モデルの元になるものを取り出す。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="cmt"># BaseModel を受け継いで Creature という形を作る。</span>
+<span class="kw">class</span> <span class="fn">Creature</span>(BaseModel):
+    <span class="cmt"># 名前。1件を特定するための値としても使う。</span>
+    name: <span class="kw">str</span>
+    <span class="cmt"># 国コード。</span>
+    country: <span class="kw">str</span>
+    <span class="cmt"># 地域。どこにでもいる場合は "*" を使う。</span>
+    area: <span class="kw">str</span>
+    <span class="cmt"># 自由に書ける説明文。</span>
+    description: <span class="kw">str</span>
+    <span class="cmt"># 別の呼び名。</span>
+    aka: <span class="kw">str</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>単純な最初の形だ。Pydantic の必須・任意・条件付きの値などはまだ使わない。あとで広げられる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>country</code> には2文字の国コードを使う。見慣れないコードを調べる手間と引き換えに、入力の手間を減らせる。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>層の間でやりとりするデータの取り決めを定義できる</li><li><code>BaseModel</code> を受け継ぐ書き方が手に馴染む</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>model/explorer.py: Explorer の形</li>
+        <li>model/creature.py: Creature の形</li>
+        <li>全項目が必須（省略できる指定は書いていない）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ スタブとフェイク ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>スタブと偽データ<span class="tag">2種類の代用データ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>決まった値を返すだけの「スタブ」と、ある程度実際に動く「フェイク」を使い分けます。本書では <code>fake/</code> にフェイクを置きます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>確認用のデータには2種類ある。①<b>スタブ</b>：普通の処理を通さずに返される、決まった結果。住所と返事の早い段階での確認に使う。②<b>フェイク</b>：本物のデータの置き場の、少なくとも一部の働きをする代用品（メモリ上でデータベースの真似をするなど）。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📌</div><h4>スタブ</h4><p>いつも同じ決まった値を返します。呼ばれたかどうかを確かめるのに使います。</p></div>
+      <div class="mini"><div class="ic">🧪</div><h4>フェイク</h4><p>簡易的ながら実際に動きます。データを覚えたり、条件で絞ったりもできます。</p><span class="pill">本書はこちら</span></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>確認用データの言葉が増える</li><li>実際のデータベースにつながない段階でも、確認する手段が持てる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>スタブ: 決まった結果を返すだけ</li>
+        <li>フェイク: 簡易的に実際に動く</li>
+        <li>本書は <code>fake/</code> にフェイクを置く</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ 共通関数 ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>スタックを通して共通関数を作成する<span class="tag">各層が持つ6つの処理</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>各層が作成・取得・更新・削除の処理を持ちます。本書では更新を「全置換」と「部分更新」に分けています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>各層に必要な処理は、だいたい次の通りだ。①<b>1件／複数／すべてを取得</b>、②<b>作成</b>、③<b>全体を置き換え</b>、④<b>一部を更新</b>、⑤<b>削除</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>基本は作成・読み取り・更新・削除だ。更新を一部と全体に分けたけど、分けなくてよい場合もある。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>処理の名前</th><th>やること</th><th>対応する動詞</th></tr>
+      <tr><td><code>get_all</code></td><td>すべてを取得する</td><td>GET <code>/resource/</code></td></tr>
+      <tr><td><code>get_one</code></td><td>指定した1件を取得する</td><td>GET <code>/resource/{name}</code></td></tr>
+      <tr><td><code>create</code></td><td>新しく作る</td><td>POST <code>/resource/</code></td></tr>
+      <tr><td><code>replace</code></td><td>全体を置き換える</td><td>PUT <code>/resource/{name}</code></td></tr>
+      <tr><td><code>modify</code></td><td>一部を更新する</td><td>PATCH <code>/resource/{name}</code></td></tr>
+      <tr><td><code>delete</code></td><td>削除する</td><td>DELETE <code>/resource/{name}</code></td></tr>
+    </table>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>各層の受け口の設計の出発点が決まる</li><li>作成・取得・更新・削除の対応が頭に入る</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>共通の処理: get_all / get_one / create / replace / modify / delete</li>
+        <li>動詞との対応: GET一覧 / GET単体 / POST / PUT / PATCH / DELETE</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑪ 偽データ ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">11</div><h2>偽のデータを作成する<span class="tag">fake/ に置いて service という名前で呼ぶ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>仮のデータを <code>fake/</code> に作り、Web層は <code>import fake.X as service</code> で呼びます。各リソースで6つの窓口を並べます。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">探検家の仮データと、6つの処理です。データはメモリ上の一覧として持ちます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 探検家のデータの形を取り込む。</span>
+<span class="kw">from</span> model.explorer <span class="kw">import</span> Explorer
+
+<span class="cmt"># 先頭のアンダースコアは「外から直接触らないでほしい」という書き手の意思表示。</span>
+_explorers = [
+    <span class="cmt"># 1件目。FR はフランス。</span>
+    <span class="fn">Explorer</span>(name=<span class="str">"Claude Hande"</span>,
+        country=<span class="str">"FR"</span>,
+        description=<span class="str">"Scarce during full moons"</span>),
+    <span class="cmt"># 2件目。DE はドイツ。</span>
+    <span class="fn">Explorer</span>(name=<span class="str">"Noah Weiser"</span>,
+        country=<span class="str">"DE"</span>,
+        description=<span class="str">"Myopic machete man"</span>),
+]
+
+<span class="cmt"># すべてを返す処理。用意した一覧をそのまま返す。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Explorer]:
+    <span class="kw">return</span> _explorers
+
+<span class="cmt"># 名前を指定して1件を返す処理。見つからない場合は None を返す、という書き添え。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer | <span class="kw">None</span>:
+    <span class="cmt"># 一覧を先頭から1件ずつ取り出して e という名前で扱う。</span>
+    <span class="kw">for</span> e <span class="kw">in</span> _explorers:
+        <span class="cmt"># その件の名前が、探している名前と同じかを確かめる。</span>
+        <span class="kw">if</span> e.name == name:
+            <span class="cmt"># 同じならその件を返して、ここで処理を終える。</span>
+            <span class="kw">return</span> e
+    <span class="cmt"># 最後まで見つからなければ「無い」という意味の None を返す。</span>
+    <span class="kw">return</span> <span class="kw">None</span>
+
+<span class="cmt"># 作成の処理。今の段階では保存せず、受け取ったものをそのまま返すだけ。</span>
+<span class="kw">def</span> <span class="fn">create</span>(explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> explorer
+
+<span class="cmt"># 一部を更新する処理。今の段階では、受け取ったものをそのまま返すだけ。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> explorer
+
+<span class="cmt"># 全体を置き換える処理。こちらも今は、受け取ったものをそのまま返すだけ。</span>
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> explorer
+
+<span class="cmt"># 削除の処理。実際には消さず、その名前が一覧にあるかどうかだけを返す。</span>
+<span class="cmt"># 角かっこの中は「一覧の各件から名前だけを取り出した新しい一覧」を作る書き方。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="kw">return</span> name <span class="kw">in</span> [e.name <span class="kw">for</span> e <span class="kw">in</span> _explorers]
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">生き物のほうも、ほぼ同じ形です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 生き物のデータの形を取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+
+<span class="cmt"># 仮の一覧。2件を用意する。</span>
+_creatures = [
+    <span class="cmt"># 1件目。CN は中国。ヒマラヤに生息するという設定。</span>
+    <span class="fn">Creature</span>(name=<span class="str">"Yeti"</span>,
+        aka=<span class="str">"Abominable Snowman"</span>,
+        country=<span class="str">"CN"</span>,
+        area=<span class="str">"Himalayas"</span>,
+        description=<span class="str">"Hirsute Himalayan"</span>),
+    <span class="cmt"># 2件目。US は米国。area の "*" は「どこにでもいる」という意味で使っている。</span>
+    <span class="fn">Creature</span>(name=<span class="str">"Sasquatch"</span>,
+        aka=<span class="str">"Bigfoot"</span>,
+        country=<span class="str">"US"</span>,
+        area=<span class="str">"*"</span>,
+        description=<span class="str">"Yeti's Cousin Eddie"</span>),
+]
+
+<span class="cmt"># すべてを返す。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="kw">return</span> _creatures
+
+<span class="cmt"># 名前を指定して1件を返す。見つからなければ None。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Creature | <span class="kw">None</span>:
+    <span class="cmt"># 一覧を先頭から1件ずつ確認する。</span>
+    <span class="kw">for</span> c <span class="kw">in</span> _creatures:
+        <span class="cmt"># 名前が一致したらその件を返す。</span>
+        <span class="kw">if</span> c.name == name:
+            <span class="kw">return</span> c
+    <span class="cmt"># 見つからなければ None を返す。</span>
+    <span class="kw">return</span> <span class="kw">None</span>
+
+<span class="cmt"># 作成。今は受け取ったものをそのまま返す。</span>
+<span class="kw">def</span> <span class="fn">create</span>(creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> creature
+
+<span class="cmt"># 一部の更新。今は受け取ったものをそのまま返す。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> creature
+
+<span class="cmt"># 全体の置き換え。今は受け取ったものをそのまま返す。</span>
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> creature
+
+<span class="cmt"># 削除。その名前が一覧にあるかどうかだけを返す。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="kw">return</span> name <span class="kw">in</span> [c.name <span class="kw">for</span> c <span class="kw">in</span> _creatures]
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>2つの仮データのファイルはほぼ同じだ。実際のデータベースが登場して、それぞれの項目に違う扱いが必要になったときに変わってくる。設計図（クラス）ではなく処理（関数）を並べているのは、ファイル自体が名前のまとまりを持つので、データと処理をまとめる方法として同じことができるからだ。</div></div>
+    </div>
+
+    <h3 class="blk" id="s11-web">Web層から呼ぶ</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">探検家の6つの窓口です。取り込みの1行に注目してください。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 窓口をまとめる入れ物を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.explorer <span class="kw">import</span> Explorer
+<span class="cmt"># ここが重要。仮データのファイルを、service という名前で呼べるようにしている。</span>
+<span class="cmt"># 第9章で本物のサービス層に差し替えるとき、この1行を変えるだけで済む。</span>
+<span class="kw">import</span> fake.explorer <span class="kw">as</span> service
+
+<span class="cmt"># まとまりを作る。この中の住所はすべて /explorer から始まる。</span>
+router = <span class="fn">APIRouter</span>(prefix=<span class="str">"/explorer"</span>)
+
+<span class="cmt"># 一覧を返す窓口。実際の住所は /explorer/ になる。</span>
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Explorer]:
+    <span class="cmt"># 自分では何も処理せず、下の層に任せて結果を返す。</span>
+    <span class="kw">return</span> service.<span class="fn">get_all</span>()
+
+<span class="cmt"># 1件を返す窓口。住所の最後の部分が name に入る。</span>
+<span class="fn">@router.get</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer | <span class="kw">None</span>:
+    <span class="cmt"># 受け取った名前を、そのまま下の層に渡す。</span>
+    <span class="kw">return</span> service.<span class="fn">get_one</span>(name)
+
+<span class="cmt"># 新しく作る窓口。送られた本体が Explorer の形として受け取られる。</span>
+<span class="fn">@router.post</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">create</span>(explorer: Explorer) -&gt; Explorer:
+    <span class="cmt"># 受け取った内容を、そのまま下の層に渡す。</span>
+    <span class="kw">return</span> service.<span class="fn">create</span>(explorer)
+
+<span class="cmt"># 一部を更新する窓口。patch は「一部だけ変える」ための動詞。</span>
+<span class="fn">@router.patch</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="cmt"># どれを、どう変えるかを、まとめて下の層に渡す。</span>
+    <span class="kw">return</span> service.<span class="fn">modify</span>(name, explorer)
+
+<span class="cmt"># 全体を置き換える窓口。put は「まるごと差し替える」ための動詞。</span>
+<span class="fn">@router.put</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> service.<span class="fn">replace</span>(name, explorer)
+
+<span class="cmt"># 削除する窓口。うまくいったかどうかを真偽の値で返す。</span>
+<span class="fn">@router.delete</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="kw">return</span> service.<span class="fn">delete</span>(name)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ポイントは <code>import fake.explorer as service</code> と書いていることだ。これで Web 層は「service」という名前で呼ぶが、実体は仮データのファイル。第9章で「<code>fake</code> を本物の <code>service</code> に差し替える」と、Web 層のコードはそのまま動く。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">生き物のほうも同じ形です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 窓口をまとめる入れ物を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="cmt"># 仮データのファイルを service という名前で呼べるようにする。</span>
+<span class="kw">import</span> fake.creature <span class="kw">as</span> service
+
+<span class="cmt"># この中の住所はすべて /creature から始まる。</span>
+router = <span class="fn">APIRouter</span>(prefix=<span class="str">"/creature"</span>)
+
+<span class="cmt"># 一覧を返す。</span>
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="kw">return</span> service.<span class="fn">get_all</span>()
+
+<span class="cmt"># 1件を返す。</span>
+<span class="fn">@router.get</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Creature | <span class="kw">None</span>:
+    <span class="kw">return</span> service.<span class="fn">get_one</span>(name)
+
+<span class="cmt"># 新しく作る。</span>
+<span class="fn">@router.post</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">create</span>(creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> service.<span class="fn">create</span>(creature)
+
+<span class="cmt"># 一部を更新する。</span>
+<span class="fn">@router.patch</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> service.<span class="fn">modify</span>(name, creature)
+
+<span class="cmt"># 全体を置き換える。</span>
+<span class="fn">@router.put</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> service.<span class="fn">replace</span>(name, creature)
+
+<span class="cmt"># 削除する。</span>
+<span class="fn">@router.delete</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="kw">return</span> service.<span class="fn">delete</span>(name)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">2つのまとまりを、アプリ本体に組み込みます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを動かす道具を取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># 2つのまとまりを、まとめて取り込む。</span>
+<span class="kw">from</span> web <span class="kw">import</span> explorer, creature
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># 探検家のまとまりを組み込む。</span>
+app.<span class="fn">include_router</span>(explorer.router)
+<span class="cmt"># 生き物のまとまりを組み込む。</span>
+app.<span class="fn">include_router</span>(creature.router)
+
+<span class="cmt"># 一番上の住所。</span>
+<span class="fn">@app.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">top</span>():
+    <span class="kw">return</span> <span class="str">"top here"</span>
+
+<span class="cmt"># 直接動かされたときだけサーバを起動する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(<span class="str">"main:app"</span>, reload=<span class="kw">True</span>)
+<span class="cmt"># --- この時点で使える住所 ---</span>
+<span class="cmt"># /            /explorer/   /explorer/{name}   /creature/   /creature/{name}</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：<code>as service</code> と書いておく意味</h4>
+      <p>Web層の6つの処理は、すべて <code>service.get_all()</code> のように「service」という名前を通して呼んでいます。第9章で本物のサービス層ができたら、変えるのは <code>import fake.explorer as service</code> を <code>import service.explorer as service</code> にする<b>1行だけ</b>です。</p>
+      <p>もし <code>import fake.explorer</code> と書き、本文で <code>fake.explorer.get_all()</code> と呼んでいたら、6か所すべてを書き換えることになります。窓口が増えるほど差が広がります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「層の差し替え」を見越したコードが書ける</li><li>作成・取得・更新・削除を一通り実装する形が身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>fake/</code> に仮のデータを置く</li>
+        <li>Web層は <code>import fake.X as service</code> で参照する</li>
+        <li>各リソースに6つの窓口</li>
+        <li><code>main.py</code> ですべてのまとまりを組み込む</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑫ テスト ===== -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">12</div><h2>テストだ！<span class="tag">HTTPie で6つ全部を確認</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>各窓口を HTTPie で手動確認します。取得・置換・更新・削除をすべて試します（自動化は第12章）。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">一覧の取得です。2件が返ります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 探検家の一覧を取得する。-b は本体だけを表示する指定。</span>
+$ http -b localhost:8000/explorer/
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [</span>
+<span class="cmt">#     {</span>
+<span class="cmt">#         "country": "FR",</span>
+<span class="cmt">#         "name": "Claude Hande",</span>
+<span class="cmt">#         "description": "Scarce during full moons"</span>
+<span class="cmt">#     },</span>
+<span class="cmt">#     {</span>
+<span class="cmt">#         "country": "DE",</span>
+<span class="cmt">#         "name": "Noah Weiser",</span>
+<span class="cmt">#         "description": "Myopic machete man"</span>
+<span class="cmt">#     }</span>
+<span class="cmt"># ]</span>
+<span class="cmt"># 仮データに用意した2件がそのまま返っている。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">1件だけの取得です。名前に空白があるので、引用符で囲みます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 名前を住所の最後に付けて、その1件だけを取得する。</span>
+<span class="cmt"># 名前に空白があるので、引用符で囲んでひとかたまりとして扱わせる。</span>
+$ http -b localhost:8000/explorer/<span class="str">"Noah Weiser"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "country": "DE",</span>
+<span class="cmt">#     "name": "Noah Weiser",</span>
+<span class="cmt">#     "description": "Myopic machete man"</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 一覧ではなく、1件分だけが返っている。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">全体の置き換えです。今の段階では仮データなので、実際には保存されません。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># PUT と書くと、全体を置き換える動詞で送られる。</span>
+$ http -b PUT localhost:8000/explorer/<span class="str">"Noah Weiser"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "country": "DE",</span>
+<span class="cmt">#     "name": "Noah Weiser",</span>
+<span class="cmt">#     "description": "Myopic machete man"</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 今の段階では仮の処理なので、実際には保存されず、そのまま返るだけ。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">一部の更新です。こちらも同様に仮の処理です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># PATCH と書くと、一部を更新する動詞で送られる。</span>
+$ http -b PATCH localhost:8000/explorer/<span class="str">"Noah Weiser"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "country": "DE",</span>
+<span class="cmt">#     "name": "Noah Weiser",</span>
+<span class="cmt">#     "description": "Myopic machete man"</span>
+<span class="cmt"># }</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">削除です。対象があるかないかで返り値が変わります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 住所の中の空白は %20 という書き方に置き換える。</span>
+<span class="cmt"># 一覧にある名前なので、見つかったという意味の true が返る。</span>
+$ http -b DELETE localhost:8000/explorer/Noah%20Weiser
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># true</span>
+
+<span class="cmt"># 一覧に無い名前を指定してみる。</span>
+$ http -b DELETE localhost:8000/explorer/Edmund%20Hillary
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># false</span>
+<span class="cmt"># 対象が無かったので false が返る。呼ぶ側はこの値で結果を判断できる。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>削除は「うまくいった（true）／対象が無い（false）」を返す。住所の中の空白は <code>%20</code> という書き方に置き換える（HTTPie が自動でやってくれることもある）。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>各動詞の呼び出し方が手に馴染む</li><li>動作確認の手順を決められる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>HTTPie ですべての窓口を確認</li>
+        <li>住所の中の空白は <code>%20</code></li>
+        <li>削除は真偽の値を返す</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑬ 自動テストフォーム ===== -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-num">13</div><h2>FastAPI 自動テストフォームを使用する<span class="tag">/docs と /redocs</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>/docs</code> でその場で試せる説明ページ、<code>/redocs</code> で別の見た目の説明ページが表示されます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>手で確認するのに加え、FastAPI は <code>/docs</code> と <code>/redocs</code> で優れた確認用のページを提供する。同じ情報を、2つの違う見た目で見られる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>試し方：①上の <code>GET /explorer/</code> の部分の下向き矢印を押す → 水色の入力欄が開く。②左の青い「Execute」ボタンを押す → 結果が上部に表示される。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>下部の返事の欄に、これまで定義した仮の探検家のデータが JSON で返る。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># --- /docs で Execute を押したときに表示される返事 ---</span>
+<span class="cmt"># 角かっこは一覧を表す。中に2件分が並んでいる。</span>
+[
+  {
+    <span class="cmt">// 1件目。名前。</span>
+    <span class="str">"name"</span>: <span class="str">"Claude Hande"</span>,
+    <span class="cmt">// 国コード。FR はフランス。</span>
+    <span class="str">"country"</span>: <span class="str">"FR"</span>,
+    <span class="cmt">// 説明文。</span>
+    <span class="str">"description"</span>: <span class="str">"Scarce during full moons"</span>
+  },
+  {
+    <span class="cmt">// 2件目。</span>
+    <span class="str">"name"</span>: <span class="str">"Noah Weiser"</span>,
+    <span class="str">"country"</span>: <span class="str">"DE"</span>,
+    <span class="str">"description"</span>: <span class="str">"Myopic machete man"</span>
+  }
+]
+<span class="cmt"># HTTPie で確認したときとまったく同じ内容が、ブラウザ上で見られる。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>他の操作も試せる。<code>GET /explorer/{name}</code> のように入力が必要なものや、データベースに追加するまでは何もしないものもあるが、それぞれ返事は返る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第9章・第10章で同じ確認を繰り返すことで、コードを変えてもデータの流れが壊れていないか確かめられる。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🧪</div><h4>/docs</h4><p>入力欄と実行ボタンが付いた、その場で試せるページです。</p></div>
+      <div class="mini"><div class="ic">📖</div><h4>/redocs</h4><p>同じ内容を、読み物として見やすい別の形で表示します。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>ブラウザだけですべての窓口を試せる</li><li>画面側の担当者や確認の担当者に渡す資料が自動でできる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>/docs</code>: その場で試せるページ</li>
+        <li><code>/redocs</code>: 別の見た目の説明ページ</li>
+        <li>入力欄付きで確認できる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑭ 層と話す ===== -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-num">14</div><h2>サービスレイヤーとデータレイヤーと話す<span class="tag">一方向の流れを守る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Web → サービス → データ の順を守ります。サービス層がこのサイトの機能の中心を担います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web 層の処理が、データ層の管理するデータを必要としたら、必ずサービス層に仲介を頼むべきだ。コードは増えるけど、これがいい。①Web層は Web を、データ層は外部の置き場やサービスを扱う。細かい事情を完全に分けておくほうが安全。②層の仕組みを分けることで、層ごとに独立して確認できる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第9章で、Web層とデータ層の間で受け渡しをするだけのサービス層の処理を定義する。少なくとも Web層とデータ層は分けて考える。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>サービス層は何をするか？ 次章で詳しくやる。ヒント：サービス層はデータ層と話すが、その内容は Web層には見えない。リソース同士の関わり方のような<b>業務上の決まりごと</b>もここで定義する。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>Web層</h4><p>住所と動詞、そして返事の形だけを扱う。</p><span class="when">サービス層のみを呼ぶ</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>サービス層</h4><p>このサイトの機能の本体と、決まりごと。</p><span class="when">データ層のみを呼ぶ</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>データ層</h4><p>データベースや外部のサービスとやり取りする。</p><span class="when">外の世界と話す</span></div>
+    </div>
+    <div class="loopback">↺ この順を守れば、データベースを別の種類に替えても、直すのはデータ層だけで済みます。Web層は何も知らないままでいられます。</div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>なぜ「Web から直接データベースを触る」のを避けるかが分かる</li><li>サービス層の存在意義が見える</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Web → サービス → データ の一方向</li>
+        <li>サービス層が機能と決まりごとの中心</li>
+        <li>詳細は第9章</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑮ ページネーションとソート ===== -->
+<section id="s15">
+  <div class="sec-head"><div class="sec-num">15</div><h2>ページネーションとソート<span class="tag">どの層で行うか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>並べ替えとページ分割は、通常データ層で行います（データベースが得意なため）。指定はモデルにまとめて <code>Depends</code> で受け取るのが整った書き方です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>GET /resource</code> で多くの、あるいはすべてのデータを返す場合、「①1件だけ」「②いくつか」「③すべて」のどれかを求めたい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1件は住所に ID を含める。複数の場合は、①<b>並べ替え</b>：結果全体を順に並べる、②<b>ページ分割</b>：並べ替えとは別に、一度にいくつかだけ返す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>利用者が指定する条件のまとまりで、欲しいものを示す。通常は住所のうしろの条件として渡す。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>やりたいこと</th><th>住所の書き方</th><th>意味</th></tr>
+      <tr><td>並べ替え</td><td><code>GET /explorer?sort=country</code></td><td>国コードの順に並べる</td></tr>
+      <tr><td>ページ分割</td><td><code>GET /explorer?offset=10&amp;size=10</code></td><td>先頭から10件飛ばして、そこから10件</td></tr>
+      <tr><td>両方</td><td><code>GET /explorer?sort=country&amp;offset=10&amp;size=10</code></td><td>国コード順に並べたうえで、11〜20件目</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1つずつ条件として書くこともできるけど、FastAPI の依存性注入が役立つ。①並べ替えとページ分割の指定を Pydantic のモデルで定義する、②パス関数の引数で <code>Depends</code> を使ってそのモデルを受け取る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>どこで実行するか？ 最初は「データベースが Web層に全部の結果を渡して、Python で切り分ける」が単純に見えるかもしれない。でも効率が悪い。<b>通常はデータ層が一番適している</b>。データベースはそういう処理が得意だ。第10章と、データベースの話題を扱う第17章で詳しくやる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：どこで切るかで転送量が変わる</h4>
+      <p>探検家が10万件あり、そのうち11〜20件目だけを表示したいとします。Web層で切ると、データベースから10万件すべてを受け取り、メモリに載せ、そこから10件を取り出して残りを捨てることになります。1件1KBなら100MBを無駄に運びます。</p>
+      <p>データ層で <code>ORDER BY country LIMIT 10 OFFSET 10</code> のように指定すれば、データベースは10件だけを返します。運ぶのは10KBです。並べ替えもデータベース側の仕組みで高速に行われます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「全件取得してから Python で切る」という良くない書き方を避けられる</li><li>並べ替えとページ分割の指定の書き方をそろえられる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>並べ替え／ページ分割は住所のうしろの条件で指定</li>
+        <li>Pydantic のモデル + <code>Depends()</code> でまとめる</li>
+        <li>実装はデータ層（データベースが得意）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「本格的なアプリは src/{web,service,data,model,fake} に分割し、<code>PYTHONPATH</code> を設定する」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>構造を最初に決めると後で楽になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「リソースごとに <code>APIRouter</code> でまとまりを作り、main.py で <code>include_router()</code> する」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>横に増やしやすい設計の基本だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「最初は Web層に仮のデータを呼ばせる。第9章でサービス層、第10章でデータ層に下ろす」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>段階的に層を埋めていくやり方だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「Web → サービス → データ の流れを必ず守る。Web から直接データ層を呼ばない」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>層の事情を漏らさない、というルールだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「並べ替えとページ分割はデータ層で実装、指定は Pydantic のモデル + <code>Depends</code> でまとめる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データベースが得意な処理は、データベースに任せる。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>ディレクトリ構造</div>
+      <p style="font-size:14px;margin:0">本書で推奨される FastAPI アプリのフォルダ構成を、5つの主要なフォルダを挙げて説明してください。それぞれの役割も併せてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>src/</code> の下に、①<code>web/</code>（外からの問い合わせを受ける層、窓口の定義）、②<code>service/</code>（このサイトの機能の本体）、③<code>data/</code>（データの保存先とやり取りする層）、④<code>model/</code>（データの形の定義）、⑤<code>fake/</code>（最初のうちに使う仮のデータ）の5つを置く。それぞれに <code>__init__.py</code> を置いて、取り込めるまとまりとして扱う。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 5つのフォルダすべてを挙げている<br>□ それぞれの役割を述べている<br>□ <code>__init__.py</code> の必要性に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>APIRouter の使い方</div>
+      <p style="font-size:14px;margin:0"><code>APIRouter</code> とは何ですか？ なぜ全部の窓口を <code>app</code> に直接書かず、まとまりに分割するのですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>APIRouter</code> は FastAPI のまとまりの機能で、リソース単位で窓口をまとめられる。<code>APIRouter(prefix="/explorer")</code> で「このまとまりの中の住所は全部 <code>/explorer</code> から始まる」と宣言し、<code>@router.get("/")</code> のように窓口を書く。最後に <code>main.py</code> で <code>app.include_router(router)</code> で本体に組み込む。これによりリソースごとにファイルを分けられ、大きなアプリでもコードが破綻しない。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>APIRouter</code> の役割（まとまり）を述べている<br>□ <code>prefix</code> で住所の先頭を共有する、と説明している<br>□ <code>app.include_router()</code> で組み込むことに触れている<br>□ ファイルを分ける利点を説明している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>段階的開発</div>
+      <p style="font-size:14px;margin:0">本書では「最初は Web層に仮のデータを直接書き、徐々に下の層に移動する」という進め方を取ります。この理由を自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">最初から実際のデータベースにつなぐと、窓口の設計とデータベースの設計を同時に決めないといけなくなり、複雑になりすぎる。Web層に仮のデータを置けば、まず受け口と返事の形を確定でき、HTTPie やブラウザで実際の動きを確認できる。その後、仮のデータをサービス層に移し、さらにデータ層に移して実際のデータベースにつなぐ、と段階的に進めると、各段階で常に動く状態を保てる。問題が起きたときの切り分けも簡単になる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 初期段階での複雑さを下げる、という意図に触れている<br>□ 段階的に下の層に移動する流れを述べている<br>□ 各段階で動く状態を保てる利点に言及している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>層の間の通信ルール</div>
+      <p style="font-size:14px;margin:0">Web層・サービス層・データ層の間で守るべき通信のルールは何ですか？ このルールを破ると何が起きますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ルール：Web層はサービス層だけを呼び、データ層は呼ばない。サービス層はデータ層を呼ぶ。データ層は実際のデータベースや外部のサービスとだけ会話する。各層は隣の層とだけ会話する一方向の流れを守る。これを破ると、Web層の中に SQL などのデータの細部が入り込んだり、データ層が HTTP の事情を知ってしまったりして、変更のときに複数の層が連鎖的に影響を受ける。確認するコードも書きにくくなる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 「Web→サービス→データ」の一方向に触れている<br>□ ルール違反による影響（細部の漏れ、確認の難しさ）を説明している<br>□ 層の事情を漏らさない、という原則に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>並べ替えとページ分割をどこで行うか</div>
+      <p style="font-size:14px;margin:0">並べ替えとページ分割は、Web層・サービス層・データ層のどこで行うべきですか？ 理由も含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">通常はデータ層（データベース側）で行うのが最適。理由は、データベースは大量の件数の並べ替えやページ分割が得意で、効率よく処理できるから。Web層でやろうとすると、全件をデータベースから取ってきて Python で並べ替えて切り出すことになり、メモリも通信量も無駄になる。FastAPI では条件を Pydantic のモデルにまとめ、<code>Depends()</code> で受け取り、サービス層を通してデータ層に渡す、というのが推奨される形。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ データ層で行うのが基本、と述べている<br>□ データベースが得意な処理である理由を説明している<br>□ Pydantic + <code>Depends()</code> で条件をまとめる手法に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>フォルダ構成を実際に作る</h4><p>本章の構成を作り、<code>PYTHONPATH=$PWD/src</code> を設定してアプリを起動してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4><code>/docs</code> で全部試す</h4><p>すべての窓口をブラウザ上で実行してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>自分でリソースを1つ追加する</h4><p>興味のあるテーマ（書籍、映画、楽曲など）でリソースを1つ増やし、6つの窓口を書いてみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>公式の応用を学ぶ</h4><p>FastAPI 公式の「Bigger Applications」の項で <code>APIRouter</code> の応用を学ぶ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「サービス層」へ</h4><p>本格的に、このサイトの機能の中身を書く準備をする。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第8章「ウェブ・レイヤー」の図解 ― 原文の全節（間奏曲／RESTful API設計／ファイルとディレクトリ／最初のWebサイトコード／リクエスト／複数のルーター／ウェブ・レイヤーを構築する／データモデル／スタブと偽データ／共通関数／偽のデータを作成する／テスト／自動テストフォーム／サービス層とデータ層と話す／ページネーションとソート）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

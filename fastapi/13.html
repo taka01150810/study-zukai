@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第13章 生産（本番運用） ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+  .stack{display:flex; flex-direction:column; gap:0; margin:12px 0}
+  .stack .layer{border:1px solid var(--line); border-radius:12px; padding:13px 16px; background:var(--panel2)}
+  .stack .layer b{font-size:15px; color:#fff}
+  .stack .layer p{margin:3px 0 0; font-size:13px; color:var(--sub)}
+  .stack .conn{text-align:center; color:var(--accent2); font-size:12.5px; padding:7px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第13章</div>
+  <h1>第13章　生産（本番で動かし続ける）</h1>
+  <p>手元で動いた <code>uvicorn</code> を、実際の運用に乗せます。複数の処理単位、通信の暗号化、コンテナ、クラウド、自動運用の基盤。続いて速さの改善（非同期・記憶・索引・仕事の列）と、問題が起きたときの調べ方まで。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全13節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① デプロイ（4つの役割）</a>
+  <a href="#s2">② 複数のワーカー</a>
+  <a href="#s3">③ HTTPS</a>
+  <a href="#s4">④ Docker</a>
+  <a href="#s5">⑤ クラウドサービス</a>
+  <a href="#s6">⑥ Kubernetes</a>
+  <a href="#s7">⑦ パフォーマンス</a>
+  <a class="sub" href="#s7-async">└ 非同期</a>
+  <a class="sub" href="#s7-cache">└ キャッシュ</a>
+  <a class="sub" href="#s7-db">└ データベース・ファイル・メモリ</a>
+  <a class="sub" href="#s7-queue">└ キュー</a>
+  <a class="sub" href="#s7-python">└ Python そのもの</a>
+  <a href="#s8">⑧ トラブルシューティング</a>
+  <a class="sub" href="#s8-code">└ 問題の種類（番号で切り分け）</a>
+  <a class="sub" href="#s8-log">└ ロギング</a>
+  <a class="sub" href="#s8-metric">└ メトリック</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">デプロイ <span>deploy</span></div><p>作ったプログラムを、実際に使える場所に置いて動かし始めることです。</p></div>
+    <div class="item"><div class="w">本番 <span>production</span></div><p>実際の利用者が使っている、本物の環境のことです。</p></div>
+    <div class="item"><div class="w">ワーカー <span>worker</span></div><p>実際に処理を行う担当のプログラム。複数動かすと、同時にさばける数が増えます。</p></div>
+    <div class="item"><div class="w">スーパーバイザ</div><p>担当のプログラムを見張り、落ちたら起動し直す役目のことです。</p></div>
+    <div class="item"><div class="w">リバースプロキシ</div><p>外からの問い合わせをまとめて受け取り、後ろの担当に振り分ける役目です。</p></div>
+    <div class="item"><div class="w">ロードバランサ</div><p>問い合わせを複数の担当に均等に配って、偏らないようにする役目です。</p></div>
+    <div class="item"><div class="w">HTTPS終端</div><p>暗号化された通信を、この場所で元に戻して、後ろには普通の形で渡すことです。</p></div>
+    <div class="item"><div class="w">Gunicorn</div><p>複数の担当を立ち上げて見張る、Python のサーバです。</p></div>
+    <div class="item"><div class="w">WSGI／ASGI</div><p>前者は1件ずつ順に処理する方式、後者は返事待ちの間に別の処理を進められる方式の取り決めです。</p></div>
+    <div class="item"><div class="w">Traefik / nginx</div><p>どちらも、外からの問い合わせを受け取って後ろに振り分ける道具です。</p></div>
+    <div class="item"><div class="w">証明書</div><p>「このサイトは本物です」と示すための電子的な証明。通信の暗号化にも使われます。</p></div>
+    <div class="item"><div class="w">Let's Encrypt</div><p>証明書を無料で発行してくれるサービスです。</p></div>
+    <div class="item"><div class="w">Docker</div><p>プログラムと必要なものをひとまとめにして、どこでも同じように動かせるようにする仕組みです。</p></div>
+    <div class="item"><div class="w">コンテナ</div><p>その、ひとまとめにされた実行の単位です。</p></div>
+    <div class="item"><div class="w">イメージ</div><p>コンテナを作るための、内容が固定された型のことです。</p></div>
+    <div class="item"><div class="w">仮想マシン</div><p>1台の機械の中に、もう1台分の機械をまるごと作る仕組み。コンテナより重くなります。</p></div>
+    <div class="item"><div class="w">カーネル</div><p>OS の中心にあたる部分。コンテナはこれを共有するので軽くなります。</p></div>
+    <div class="item"><div class="w">ネームスペース</div><p>それぞれのコンテナから見える範囲を区切る仕組みです。</p></div>
+    <div class="item"><div class="w">Kubernetes</div><p>多数のコンテナの起動・見張り・増減を自動で行う基盤です。</p></div>
+    <div class="item"><div class="w">キャッシュ</div><p>一度取ってきた結果を手元に置いておき、次はそれを使うことです。</p></div>
+    <div class="item"><div class="w">索引 <span>インデックス</span></div><p>データベースが目的の行を早く見つけるための、あらかじめ作っておく手がかりです。</p></div>
+    <div class="item"><div class="w">テーブルスキャン</div><p>表の全部の行を1行ずつ見ていくこと。件数が多いと遅くなります。</p></div>
+    <div class="item"><div class="w">クエリオプティマイザ</div><p>問い合わせを、どう実行するのがいちばん速いかを判断する、データベースの仕組みです。</p></div>
+    <div class="item"><div class="w">ジョブキュー</div><p>時間のかかる仕事を並べておき、別の担当が順に処理する仕組みです。</p></div>
+    <div class="item"><div class="w">Celery</div><p>Python で仕事の列を扱うための、よく使われる道具です。</p></div>
+    <div class="item"><div class="w">レイテンシ</div><p>1件の返事が返るまでにかかる時間のことです。</p></div>
+    <div class="item"><div class="w">スループット</div><p>一定の時間に処理できる件数のことです。</p></div>
+    <div class="item"><div class="w">PyPy / Cython / Mojo</div><p>いずれも Python の処理を速くするための取り組みや道具です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">動いただけでは終わらない</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠：「コードが動いただけでは終わりじゃない。本番で動かし続けるのが本当の仕事だ」。ハルは手元で動く <code>uvicorn</code> を、実際の環境にどう乗せるかを相談します。Gunicorn と Uvicorn の担当、通信の暗号化、コンテナ、クラウド、自動運用の基盤…と、必要な装備が一気に増えます。続いて速さの改善（非同期・記憶・索引・仕事の列）、問題の調べ方（返事の番号・記録・数値）まで、運用に必要な知識をまとめて見わたします。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を3行で</span></h2></div>
+  <div class="card">
+    <p class="lead">本番に置くには「Gunicorn + Uvicorn の担当」＋ <span class="term" data-tip="外からの問い合わせをまとめて受け取り、後ろの担当に振り分ける役目。">振り分け役</span>（Traefik／nginx）＋ 通信の暗号化（Let's Encrypt）＋ Docker ＋ クラウド または 自動運用の基盤、という積み上げになります。速さの改善は 非同期／記憶／索引／仕事の列（Celery）が主な手段です。問題の調べ方は 返事の番号 → 記録 → 数値（Prometheus + Grafana）→ 追跡（OpenTelemetry）の順です。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>手元での開発から、実際の運用に移すときに必要な装備が分かる</li>
+        <li>Gunicorn と Uvicorn の担当で、複数の処理を並行して動かせる</li>
+        <li>通信の暗号化（Let's Encrypt）の存在と、無料になった今の状況を知る</li>
+        <li>Docker / 自動運用の基盤 / クラウドでの配信を、手順として理解できる</li>
+        <li>速さが出ないときに、どこが原因かを切り分ける視点が持てる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① デプロイ ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>デプロイ<span class="tag">上に乗せる4つの役割</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>本番には「複数の担当 + 見張り + 振り分け + 通信の暗号化」が必要です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書の例は <code>localhost:8000</code> で <code>uvicorn</code> が1つだけだ。本番では大量の通信をさばくため、複数の処理装置で複数のサーバを動かす必要がある。そしてそれらの上に「<b>もう1つ何か</b>」が必要になる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その上の層の役割は4つ。①<b>動かし続ける</b>：処理が落ちたら起動し直す、②<b>振り分ける</b>：外からの問い合わせをまとめて受け取り、担当に配る、③<b>返事を返す</b>、④<b>暗号化を解く</b>：暗号化された通信を、ここで元に戻す。</div></div>
+    </div>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">👁️</div><h4>① 動かし続ける</h4><p>担当が落ちたら、自動で起動し直します。</p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>② 振り分ける</h4><p>問い合わせを、空いている担当に配ります。</p></div>
+      <div class="mini"><div class="ic">📤</div><h4>③ 返事を返す</h4><p>担当が作った返事を、外に返します。</p></div>
+      <div class="mini"><div class="ic">🔐</div><h4>④ 暗号化を解く</h4><p>暗号化された通信を、ここで元に戻します。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>1つの uvicorn では本番には足りない</li><li>上に4つの役割（見張り／振り分け／返事／暗号化）</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② 複数のワーカー ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>複数のワーカー<span class="tag">Gunicorn + Uvicorn の担当</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>gunicorn ... --worker-class uvicorn.workers.UvicornWorker</code> が本番での基本の形です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>Gunicorn</b> という別の Python のサーバを見たことがあるかもしれない。複数の担当を見張れるけど、これは1件ずつ順に処理する方式のサーバで、FastAPI は非同期の方式が土台だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>幸い、Gunicorn から管理できる<b>Uvicorn 専用の担当の種類</b>が用意されている。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">入れて、4つの担当で起動します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 2つのサーバを入れる。角かっこの中は、追加の部品も一緒に入れる指定。</span>
+$ pip install <span class="str">"uvicorn[standard]"</span> gunicorn
+
+<span class="cmt"># main.py の中の app を動かす。</span>
+<span class="cmt"># --workers 4 は、処理の担当を4つ立ち上げる指定。</span>
+<span class="cmt"># --worker-class は、担当の種類を指定する。ここでは非同期に対応した Uvicorn の担当。</span>
+<span class="cmt"># --bind 0.0.0.0:8000 は、外からの接続も受け付ける、という意味。</span>
+<span class="cmt">#   localhost だと同じ機械からしかつながらないが、0.0.0.0 なら外からも届く。</span>
+$ gunicorn main:app --workers 4 --worker-class \
+    uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [INFO] Starting gunicorn 21.2.0</span>
+<span class="cmt"># [INFO] Listening at: http://0.0.0.0:8000</span>
+<span class="cmt"># [INFO] Booting worker with pid: 12345</span>
+<span class="cmt"># [INFO] Booting worker with pid: 12346</span>
+<span class="cmt"># [INFO] Booting worker with pid: 12347</span>
+<span class="cmt"># [INFO] Booting worker with pid: 12348</span>
+<span class="cmt"># 親が1つ、その下に担当が4つ立ち上がった。担当が落ちても親が起動し直す。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Gunicorn を動かすと、親の処理が立ち上がり、4つの Uvicorn の担当を管理する。すべてが同じ入口を共有する。<code>main:app</code> は <code>main.py</code> の中の <code>app</code> を指している。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Gunicorn の説明には「1秒あたり数百〜数千件をさばくには、担当が4〜12あれば十分」とある。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Uvicorn だけでも複数の担当を立てられます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># --workers 4 で、Uvicorn 自身が担当を4つ立ち上げる。</span>
+<span class="cmt"># ただし、落ちた担当を起動し直す仕組みは持っていない。</span>
+$ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Uvicorn running on http://0.0.0.0:8000</span>
+<span class="cmt"># INFO:     Started parent process [12340]</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Uvicorn 自身も複数の担当を立てられるけど、処理の管理ができないので、ふつうは Gunicorn を通す。他にも Uvicorn 用の管理の道具はある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これで4つの役割のうち3つ（見張り・振り分け・返事）はまかなえる。通信の暗号化はまだだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：担当を4つにすると何が変わるか</h4>
+      <p>1つの処理単位が同時に扱えるのは、その中の非同期の仕組みが許す範囲までです。計算の重い処理が入ると、その1つが詰まっている間、その担当に届いた問い合わせはすべて待たされます。</p>
+      <p>担当を4つにすると、1つが詰まっても残り3つが動き続けます。処理装置が4つある機械なら、計算そのものも4か所で同時に進みます。ただし担当ごとにメモリを使うので、増やせば増やすほど良いわけではありません。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Gunicorn + Uvicorn の担当 が本番での基本</li>
+        <li>推奨の担当数: 4〜12</li>
+        <li>通信の暗号化は別に用意する</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ HTTPS ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>HTTPS<span class="tag">証明書は今や無料</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>通信の暗号化は Traefik や nginx で受け止め、証明書は Let's Encrypt で無料で発行できます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI 公式の通信の暗号化に関する説明は非常に有益だ。続いて、作者による <b>Traefik</b> で FastAPI に暗号化を追加する説明を読むのを勧める。Traefik は nginx と同様の<b>振り分け役</b>で、Web サーバの「上」に位置するが、暗号化の扱いも内蔵している。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>暗号化の手順は段階が多いけど、昔よりだいぶ簡単になった。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔は、サイトを暗号化するための証明書を得るために、発行する機関に定期的に大きな費用を払っていた。今はほぼ全部、無料のサービス <b>Let's Encrypt</b> に置き換わった。</div></div>
+    </div>
+
+    <div class="stack">
+      <div class="layer"><b>🌐 外からの問い合わせ</b><p>暗号化された通信で届く</p></div>
+      <div class="conn">↓</div>
+      <div class="layer"><b>🔐 Traefik / nginx</b><p>暗号化を元に戻して、後ろに渡す。振り分けも担当する</p></div>
+      <div class="conn">↓ 暗号化されていない形で</div>
+      <div class="layer"><b>👷 Gunicorn + Uvicorn の担当</b><p>実際の処理を行う</p></div>
+      <div class="conn">↓</div>
+      <div class="layer"><b>⚙️ FastAPI のアプリ</b><p>これまで書いてきたコード</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>振り分け役: Traefik / nginx</li><li>証明書: Let's Encrypt（無料）</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ Docker ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>Docker<span class="tag">ひとまとめにして持ち運ぶ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>本番に置くときは、コンテナの形にまとめるのが標準です。短い設定ファイルで済みます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Docker は2013年の PyCon で、Solomon Hykes が5分の短い発表で紹介した。それまで Linux のコンテナはほとんど知られていなかった。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Docker は仮想の機械より<b>速くて軽い</b>。OS 全体を作り直す代わりに、各コンテナはサーバの中心部分を共有し、処理や通信をそれぞれ区切られた範囲に分ける。1台の機械で複数の独立したサービスを動かせて、互いに干渉しない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>10年経って、Docker は広く知られるようになった。FastAPI のアプリをクラウドに置きたい場合、まず<b>コンテナの型</b>を作る必要があることが多い。FastAPI 公式に詳しい説明がある。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🖥️</div><h4>仮想の機械</h4><p>OS をまるごと作り直します。起動に時間がかかり、使うメモリも大きくなります。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>コンテナ</h4><p>OS の中心部分を共有します。起動が速く、使うメモリも小さくて済みます。</p><span class="pill">今の標準</span></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">コンテナの型を作る設定ファイルです。上から順に実行されます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 出発点にする型を指定する。Python 3.9 が入った状態から始める。</span>
+FROM python:3.9
+<span class="cmt"># この中での作業場所を /code に決める。以降の命令はここを基準にする。</span>
+WORKDIR /code
+<span class="cmt"># 必要なパッケージの一覧だけを先にコピーする。</span>
+<span class="cmt"># 先にコピーするのは、コードだけを変えたときに、次の行をやり直さずに済むため。</span>
+COPY ./requirements.txt /code/requirements.txt
+<span class="cmt"># 一覧に書かれたパッケージをまとめて入れる。</span>
+<span class="cmt"># --no-cache-dir は、後で使わない一時ファイルを残さない指定。型が小さくなる。</span>
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+<span class="cmt"># アプリのコードをコピーする。ここが変わっても、上の pip install はやり直されない。</span>
+COPY ./app /code/app
+<span class="cmt"># コンテナが起動したときに実行する命令。</span>
+<span class="cmt"># 0.0.0.0 は外からの接続も受け付ける指定、80 は入口の番号。</span>
+CMD [<span class="str">"uvicorn"</span>, <span class="str">"app.main:app"</span>, <span class="str">"--host"</span>, <span class="str">"0.0.0.0"</span>, <span class="str">"--port"</span>, <span class="str">"80"</span>]
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>説明すると、①出発点の型、②作業する場所、③必要なものの一覧をコピー、④それらを入れる、⑤アプリのコードをコピー、⑥起動の命令を指定、という順だ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：ひとまとめにすると何が解決するか</h4>
+      <p>「自分の機械では動くのに、サーバでは動かない」という状況がよくあります。原因は、Python のバージョンが違う、あるパッケージが入っていない、設定ファイルの場所が違う、などです。</p>
+      <p>コンテナの型には、Python のバージョンもパッケージも配置も、すべて書かれています。同じ型から作れば、手元でもサーバでも中身は同じです。「動く状態」ごと持ち運べる、というのがこの仕組みの目的です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Docker = 軽いコンテナ。OS の中心部分を共有する</li>
+        <li>FastAPI のアプリは、短い設定ファイルで型にできる</li>
+        <li>公式に詳しい手順がある</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ クラウド ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>クラウドサービス<span class="tag">置き場所の候補</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>置き場所の候補は Linode、Heroku などです。それぞれに手順の解説があります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>有料・無料の置き場所がたくさんある。FastAPI を置く手順の解説の例としては、①Tutorials Point の「FastAPI-Deployment」、②Christopher Samiullah の「The Ultimate FastAPI Tutorial Part 6b: Basic Deployment on Linode」、③岡田慎一氏「Heroku で FastAPI アプリを無料デプロイする方法」がある。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>主な候補: Linode / Heroku / その他</li><li>サービスごとに、手順の解説が豊富にある</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ Kubernetes ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>Kubernetes<span class="tag">大規模な運用の自動化</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Kubernetes は、大きな規模の運用を自動化する基盤です。FastAPI を置く方法の解説も多数あります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>Kubernetes</b> は、社内のシステムを管理するための Google の内部のコードから発展した。昔は担当者が、振り分けの設定などを手作業で行っていた。Kubernetes はそうした知識を取り込んで、自動化を目指した。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>主な機能は、サービスを止めずに動かし続けること、通信が急増したときにサーバを自動で増やすこと、などだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI を Kubernetes に置く方法は、Sumanta Mukhopadhyay の「Deploying a FastAPI Application on Kubernetes」など、多くの解説がある。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">♻️</div><h4>止めずに動かし続ける</h4><p>落ちたものを検知して、自動で立て直します。</p></div>
+      <div class="mini"><div class="ic">📈</div><h4>自動で増やす</h4><p>通信が増えたとき、処理する場所を自動で追加します。</p></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Kubernetes = 大きな規模の運用の自動化</li>
+        <li>自動での増減、自動での立て直し</li>
+        <li>FastAPI 向けの解説も多数ある</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ パフォーマンス ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>パフォーマンス<span class="tag">速さの改善の5つの手段</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI の速さは Python の枠組みの中で最高水準です。さらに改善する手段が5つあります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI の速さは、Python の Web 枠組みの中で最高の水準にある。Go のような速い言語の枠組みと比べても遜色ない。大きな理由は<b>非同期に対応した方式</b>で、返事待ちの時間を無駄にしないことだ。Python 自体は比較的遅い言語なんだけどね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>全体の速さを上げるための手がかりを順に見ていく。</div></div>
+    </div>
+
+    <h3 class="blk" id="s7-async">非同期</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>多くの場合、Web サーバはそれほど速くなくていい。問い合わせを受けて結果を返すまでの間に、機能の本体（サービス層）と、データの取得（データ層）が動く。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>コードが返事を待つ必要があるなら、必ず<b>非同期の処理</b>（<code>def</code> ではなく <code>async def</code>）を使う。FastAPI と Starlette が非同期の処理を割り振り、返事待ちの間に他のことを進めてくれる。FastAPI の測定結果が、1件ずつ順に処理する方式の枠組みより優れている理由の1つだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>速さには2つの面がある。①1件にかかる時間、②同時に処理できる件数。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">⏱️</div><h4>1件にかかる時間</h4><p>1つの返事が返るまでの速さ。非同期にしても、これ自体は速くなりません。</p></div>
+      <div class="mini"><div class="ic">📊</div><h4>同時に処理できる件数</h4><p>1秒あたり何件さばけるか。非同期はここに効きます。</p><span class="pill">非同期が効く</span></div>
+    </div>
+
+    <h3 class="blk" id="s7-cache">キャッシュ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>あまり変わらない元（データベースのめったに変わらない行など）からデータを取る窓口なら、処理の中で<b>結果を手元に置いておく</b>ことができる。どの層でもできる。Python 標準の <b>functools</b> に、そのための機能がある。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">一度計算した結果を覚えておく書き方です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 結果を覚えておくための標準の機能を取り込む。</span>
+<span class="kw">from</span> functools <span class="kw">import</span> cache, lru_cache
+
+<span class="cmt"># この印を付けると、同じ引数で呼ばれたときに、前の結果をそのまま返す。</span>
+<span class="cmt"># 2回目以降は、中身が実行されない。</span>
+<span class="fn">@cache</span>
+<span class="kw">def</span> <span class="fn">get_country_name</span>(code: <span class="kw">str</span>) -&gt; <span class="kw">str</span>:
+    <span class="cmt"># 本来はここでデータベースを調べる。時間がかかる処理だとする。</span>
+    <span class="kw">return</span> <span class="fn">lookup_in_db</span>(code)
+
+<span class="cmt"># 覚えておく数に上限を付けたい場合は、こちらを使う。</span>
+<span class="cmt"># maxsize=128 なら、直近の128種類まで覚えて、古いものから捨てる。</span>
+<span class="cmt"># 上限がないとメモリを使い続けるので、種類が多い場合はこちらが安全。</span>
+<span class="fn">@lru_cache</span>(maxsize=<span class="num">128</span>)
+<span class="kw">def</span> <span class="fn">get_area_name</span>(code: <span class="kw">str</span>) -&gt; <span class="kw">str</span>:
+    <span class="kw">return</span> <span class="fn">lookup_in_db</span>(code)
+<span class="cmt"># --- 動きの例 ---</span>
+<span class="cmt"># get_country_name("JP")  → データベースを調べる（例：50ミリ秒）</span>
+<span class="cmt"># get_country_name("JP")  → 覚えていた結果を返す（例：0.001ミリ秒）</span>
+<span class="cmt"># 注意：元のデータが変わっても、覚えた結果は古いまま。</span>
+<span class="cmt">#       頻繁に変わるデータには使わない。</span>
+</pre></details>
+
+    <h3 class="blk" id="s7-db">データベース、ファイル、メモリ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>サイトが遅くなるいちばんよくある原因の1つは、<b>索引の無い表</b>だ。表がある大きさになるまで気づかず、突然問い合わせが遅くなる。絞り込みの条件に使う項目には、索引を付けるべきだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書の表では、1件を特定する項目は文字の <code>name</code> だ。表を作るときに指定した。小さな表（本書の規模）では、SQLite は索引を使わず全部の行を見たほうが速いと判断する。けれど100万行の規模になると、索引が無いことは大きな差になる。解決には、どう実行されるかを調べる仕組みを使う。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>小さな表でも、Python のコードや公開されている道具で、データベースに負荷をかけて確かめられる。1件ずつの問い合わせを何度も出しているなら、まとめて出せないか検討する。大きなファイルのやり取りは、一度に全部ではなく、少しずつ送る形を使う。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：索引の有無で何が変わるか</h4>
+      <p>100万行の表から、条件に合う1行を探すとします。索引が無ければ、先頭から1行ずつ、最大100万回の確認が必要です。1回あたり1マイクロ秒でも、合計1秒かかります。</p>
+      <p>索引があれば、あらかじめ整理された手がかりをたどって、およそ20回の確認で目的の行に到達できます。100万行でも0.02ミリ秒程度です。表が1000行のうちは差が見えませんが、増えたときに突然現れます。</p>
+    </div>
+
+    <h3 class="blk" id="s7-queue">キュー</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>数秒以上かかる仕事（確認のメールを送る、画像を小さくする など）は、<b>Celery</b> のような仕事の列に渡す価値がある。</div></div>
+    </div>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>問い合わせが届く</h4><p>「この画像を登録して」という依頼が来る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>重い仕事は列に入れる</h4><p>「縮小版を作る」という仕事を列に置くだけにする。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>すぐ返事を返す</h4><p>「受け付けました」とすぐ返す。利用者は待たされない。<div class="branch ok">返事は数十ミリ秒で返る。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>別の担当が処理する</h4><p>裏で動いている担当が、列から取り出して処理する。</p></div></div>
+    </div>
+
+    <h3 class="blk" id="s7-python">Python そのもの</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python で大きな計算をしていて遅いなら、「もっと速い Python」が必要かもしれない。①標準のものの代わりに <b>PyPy</b> を使う、②C/C++/Rust で拡張を書く、③遅い部分を <b>Cython</b> に変換する（Pydantic と Uvicorn 自身が使っている）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最近発表された <b>Mojo</b> という言語も注目だ。Python を完全に含むことを目指し、同じ書き方のまま、大幅に速くする新しい機能を備えている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>中心となる作者の Chris Lattner は、以前 LLVM, Clang, MLIR、さらに Apple で Swift という言語に携わっていた。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>今の機械学習の道具では、Python と C/C++ を組み合わせた作りが必要で、開発も管理も調査も難しい。Mojo は機械学習以外の一般的な用途でも有効そうだ。D, Go, Julia, Zig, Rust にも可能性はあったけど、Mojo が目標どおり動けば、私は広く使いたい。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🐇</div><h4>PyPy</h4><p>標準とは別の実行の仕組み。同じコードのまま速くなる場合があります。</p></div>
+      <div class="mini"><div class="ic">🔧</div><h4>C/C++/Rust の拡張</h4><p>重い部分だけを別の言語で書きます。</p></div>
+      <div class="mini"><div class="ic">⚙️</div><h4>Cython</h4><p>Python のコードを、より速い形に変換します。Pydantic と Uvicorn も使っています。</p></div>
+    </div>
+
+    <h3 class="blk">速さの改善の手段まとめ</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>手段</th><th>効く場所</th><th>具体的な道具</th></tr>
+      <tr><td>非同期</td><td>返事待ちが多い処理</td><td><code>async def</code></td></tr>
+      <tr><td>結果を覚えておく</td><td>あまり変わらないデータへの繰り返しのアクセス</td><td><code>functools.cache</code></td></tr>
+      <tr><td>索引</td><td>大きな表への絞り込み</td><td>データベースの索引</td></tr>
+      <tr><td>仕事の列</td><td>数秒以上かかる処理</td><td>Celery</td></tr>
+      <tr><td>速い実行の仕組み</td><td>計算そのものが重い処理</td><td>PyPy / Cython / Mojo</td></tr>
+    </table>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>返事待ちがあるなら <code>async def</code></li>
+        <li>速さの見方: 1件の時間 と 同時にさばける件数</li>
+        <li>あまり変わらないデータは覚えておく</li>
+        <li>大きな表には索引が必須</li>
+        <li>数秒を超える仕事は列に逃がす</li>
+        <li>計算が重いなら PyPy / Cython / 注目の Mojo</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ トラブルシューティング ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>トラブルシューティング<span class="tag">番号 → 記録 → 数値</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>問題が起きたら、返事の番号で切り分け、記録を見て、数値と追跡で原因の場所を絞ります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>問題に出会ったら、下から順に、時間と場所を調べる。速さの問題だけでなく、処理の判断の誤りや、非同期の落とし穴も含む。</div></div>
+    </div>
+
+    <h3 class="blk" id="s8-code">問題の種類（番号で切り分け）</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>番号</th><th>典型的な原因</th><th>最初にすること</th></tr>
+      <tr><td><b>404</b></td><td>身分や権限の確認の失敗、または対象が見つからない</td><td>身分の確認の流れ、または住所と指定を確かめる</td></tr>
+      <tr><td><b>422</b></td><td>ふつうは形が合っていない（Pydantic の確認に引っかかった）</td><td>返事の中の <code>detail.loc</code> で、どの項目かを見る</td></tr>
+      <tr><td><b>500</b></td><td>FastAPI の後ろのサービスで失敗が起きている</td><td>記録を見て、どこで失敗したかの経路を確かめる</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk" id="s8-log">ロギング</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Uvicorn などの Web サーバは、ふつう画面に記録を書き出す。動詞と住所など、実際の呼び出しは確認できるが、本体のデータ・添え情報・保存された小さなデータは分からない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>特定の窓口が 400番台を返したときは、同じ入力を送り直して再び起きるか確かめられる。再び起きるなら、関連する Web／サービス／データの処理に表示の行を入れるのが、素朴だが確実な調べ方だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>失敗の知らせを出すときは、詳しい内容を含める。データベースの検索が失敗したなら、渡した値と、具体的に何が起きたか（重複しない決まりに反した、など）を含める。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：知らせの内容が薄いと何が困るか</h4>
+      <p><code>raise Missing(msg="not found")</code> と書いてあると、記録には「not found」としか残りません。何が見つからなかったのか、どの値で探したのかが分からず、再現の手がかりがありません。</p>
+      <p><code>raise Missing(msg=f"Explorer {name} not found")</code> と書いておけば、記録に「Explorer Beau Buffalo not found」と残ります。どの値で失敗したかが1行で分かり、同じ値で試し直せます。</p>
+    </div>
+
+    <h3 class="blk" id="s8-metric">メトリック</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>数値・見張り・可観測性・遠隔測定 という言葉は、重なって見えるかもしれない。Python の世界での一般的な使い分けはこうだ。①数値の収集：<b>Prometheus</b>、②表示：<b>Grafana</b>、③時間の測定：<b>OpenTelemetry</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web／サービス／データ の3つの層すべてに適用できる。サービス層は業務に関する内容、それ以外は技術に関する内容で、開発者と運用の担当者の両方に役立つ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI 向けの導入の手がかりとしては、Prometheus FastAPI Instrumentator、Grafana と Prometheus による見張りの手引き、Grafana Labs の「FastAPI Observability」、OpenTelemetry の FastAPI 向けの導入、その他の解説がある。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① 返事の番号</h4><p>404 / 422 / 500 で、大まかにどこの問題かを絞る。</p><span class="when">まず見る</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 記録</h4><p>いつ、どの住所で、何が起きたかを確かめる。</p><span class="when">次に見る</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 数値と追跡</h4><p>全体の傾向と、1件ごとの内訳の時間を見る。</p><span class="when">さらに掘る</span></div>
+    </div>
+    <div class="loopback">↺ 番号で当たりを付け、記録で具体を確かめ、数値と追跡で「いつから」「どこで」を突き止める、という順で進みます。</div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>404 = 身分・権限・見つからない</li>
+        <li>422 = 形が合っていない</li>
+        <li>500 = サーバ側の失敗</li>
+        <li>記録: 動詞と住所は残るが、本体は残らない</li>
+        <li>失敗の知らせには、具体的な内容を含める</li>
+        <li>Prometheus（集める）+ Grafana（表示）+ OpenTelemetry（追跡）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「本番に置くには Gunicorn + Uvicorn の担当 + 振り分け役 + 通信の暗号化 + コンテナ」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>手元とは段違いの装備になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「FastAPI が速い理由は非同期に対応した方式。返事待ちがあるなら <code>async def</code> を使う」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python 自体は遅いから、工夫が要る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「結果を覚えておく・索引・仕事の列・速い実行の仕組み が速さの手段」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>どこが詰まっているかを見極めて、合う手段を選ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「問題の調べ方は 番号（404/422/500）→ 記録 → 数値 の順」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>切り分けの基本の順番だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「数値は Prometheus + Grafana + OpenTelemetry が定番」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第9章で予告した話の、本番編だ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>本番での構成</div>
+      <p style="font-size:14px;margin:0">本番で FastAPI を動かすために、手元の環境（uvicorn 1つ）と比べて追加で必要になる装備を3つ以上挙げて、それぞれの役割を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<b>Gunicorn + Uvicorn の担当</b>：複数の担当を動かして並行して処理し、落ちたら自動で起動し直す。②<b>振り分け役（Traefik か nginx）</b>：外からの問い合わせを担当に配り、偏らないようにする。③<b>通信の暗号化（Let's Encrypt の証明書 + Traefik）</b>：暗号化された通信をここで元に戻して、後ろに渡す。④<b>Docker</b>：アプリと必要なものをひとまとめにし、どの環境でも同じ動きにする。⑤<b>クラウド または 自動運用の基盤</b>：実際に動かす場所。増減や立て直しを担当する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つ以上の装備を挙げている<br>□ それぞれの役割を簡潔に説明している<br>□ Gunicorn と Uvicorn の組み合わせに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>非同期と速さの関係</div>
+      <p style="font-size:14px;margin:0">FastAPI で返事待ちのある処理を <code>async def</code> で書くことが勧められる理由を、速さの観点から説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>async def</code> で書くと、FastAPI と Starlette がその処理を非同期に割り振る。返事待ちの間（データベースへのアクセスや外部への問い合わせ）は処理装置を手放し、別の問い合わせを処理できる。これにより、同時に処理できる件数が大きく増える。<code>def</code> のままだと、待っている間ずっと手が空かず、サーバの力を使い切れない。FastAPI が1件ずつ順に処理する方式の枠組みより速い理由の1つがこれ。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 返事待ちの間に他の処理を進められることに触れている<br>□ 同時にさばける件数が増えることに言及している<br>□ 1件ずつ順に処理する方式との比較に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>問題の調べ方の最初の一手</div>
+      <p style="font-size:14px;margin:0">API で問題が起きたとき、返事の番号から原因をどう切り分けますか？ 404、422、500 それぞれが示す典型的な原因と、最初にすることを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>404</b>：身分の確認の失敗（まだ確認できていない）、権限の不足、または対象が見つからない。身分に関することなら確認の流れを、対象が無いなら住所と指定を確かめる。<b>422</b>：ふつうは形が合っていないという判定。入力の種類、必要な項目、条件への違反が原因。返事の中の <code>detail.loc</code> でどの項目かが分かる。<b>500</b>：サーバ側で失敗が起きている。記録を見て、どこで失敗したかの経路を確かめる。データ層の失敗が受け止められずに上に漏れている場合が多い。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つの番号すべてに触れている<br>□ それぞれの典型的な原因を述べている<br>□ 最初にすること（記録の確認、<code>detail</code> の確認など）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>速さの手段</div>
+      <p style="font-size:14px;margin:0">FastAPI のアプリを速くするための主な手段を4つ以上挙げて、それぞれどんな詰まりに効くか説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<b>非同期</b>：返事待ち（データベース、外部への問い合わせ）があるとき、同時にさばける件数が増える。②<b>結果を覚えておく</b>：あまり変わらないデータへの繰り返しのアクセスで、1件の時間が減る。③<b>索引</b>：大きな表への絞り込みの問い合わせが速くなる。④<b>仕事の列</b>：数秒以上かかる処理を後回しにして、返事をすぐ返せる。⑤<b>PyPy / Cython / 別の言語での拡張</b>：計算そのものが重い処理を速くする。⑥<b>Mojo（将来）</b>：Python と同じ書き方のまま、計算の重い処理を大幅に速くする。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 4つ以上の手段を挙げている<br>□ それぞれが効く詰まりの種類を述べている<br>□ 非同期／覚えておく／索引／仕事の列 を含んでいる</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>状況を見る道具</div>
+      <p style="font-size:14px;margin:0">本番の運用で「数値」「見張り」「追跡」を実現する代表的な道具を挙げて、それぞれの役割を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>Prometheus</b>：数値を集める道具。件数、応答時間の分布、失敗の割合などを定期的に取得し、時間の流れとともに保存する。<b>Grafana</b>：集めた数値を、グラフや一覧として表示する道具。異常を知らせる機能もある。<b>OpenTelemetry</b>：1件ごとの内訳の時間を測るための、共通の取り決め。Jaeger などの既存の道具をまとめている。FastAPI 向けの導入の仕組みもある。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Prometheus, Grafana, OpenTelemetry の3つを挙げている<br>□ それぞれの役割を区別して説明している<br>□ 数値と追跡の違いに触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>複数の担当で起動してみる</h4><p>自分のアプリで、Gunicorn と Uvicorn の担当の組み合わせを実際に試す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>コンテナにしてみる</h4><p>公式の設定ファイルを使って、実際に型を作り、動かしてみる。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 設定ファイルから型を作る。-t は名前を付ける指定、末尾のドットは今いる場所を指す。</span>
+$ docker build -t myapi .
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Successfully built 3f2a1b4c5d6e</span>
+<span class="cmt"># Successfully tagged myapi:latest</span>
+
+<span class="cmt"># 作った型からコンテナを起動する。</span>
+<span class="cmt"># -p 8000:80 は、手元の8000番を、コンテナの中の80番につなぐ指定。</span>
+$ docker run -p 8000:80 myapi
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Uvicorn running on http://0.0.0.0:80</span>
+<span class="cmt"># ブラウザで localhost:8000 を開くと、コンテナの中のアプリにつながる。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>証明書の取得の流れを読む</h4><p>Let's Encrypt の公式で、どういう手順で発行されるかを読む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>数値を取ってみる</h4><p>Prometheus FastAPI Instrumentator を入れて、実際に数値を取得してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章へ</h4><p>「データベース、データサイエンス、AI」で、データの層をより深く見る。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第13章「生産」の図解 ― 原文の全節（デプロイ／複数のワーカー／HTTPS／Docker／クラウドサービス／Kubernetes／パフォーマンス（非同期・キャッシュ・データベース／ファイル／メモリ・キュー・Python そのもの）／トラブルシューティング（問題の種類・ロギング・メトリック））＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

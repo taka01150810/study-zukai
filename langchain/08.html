@@ -1,0 +1,711 @@
+<meta charset="utf-8">
+<title>8. LLMを最大限に活用するパターン ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:520px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第8章</span>
+  <h1>8. LLMを最大限に活用するパターン</h1>
+  <p>「自律性を上げると信頼性が下がる」——このつり合いの<b>境界線そのものを外側へ押し広げる</b>4つの技を学びます。決まった形で答えさせる、途中経過を見せる、人が割り込めるようにする、そして同時に来た入力をどうさばくか。</p>
+  <p>コードはすべてPythonです。1行ずつ日本語の説明と、実行結果のコメントを付けました。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">🐍 コードはPythonのみ</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#intro">📖 導入 ― 境界線を押し広げる</a>
+  <a href="#s81">8.1 構造化された出力</a>
+  <a class="sub" href="#s811">8.1.1 中間出力</a>
+  <a class="sub" href="#s812">8.1.2 トークンごとのストリーミング</a>
+  <a class="sub" href="#s813">8.1.3 ヒューマンインザループ</a>
+  <a class="sub" href="#s814">8.1.4 マルチタスクLLM（ダブルテキスト）</a>
+  <a href="#s82">8.2 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のPythonコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。コードを飛ばしても流れがつかめます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどう見え方が変わるか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。</p>
+  <div class="gl">
+    <div class="item"><div class="w">自律性</div><p>人の手を借りずに、どこまで自分で進められるかの度合い。</p></div>
+    <div class="item"><div class="w">信頼性</div><p>出てきた結果をどれだけ信用してよいかの度合い。</p></div>
+    <div class="item"><div class="w">フロンティア<span>境界線</span></div><p>「これ以上は両立できない」という限界を表す線。今の技術で到達できる範囲の外側の縁。</p></div>
+    <div class="item"><div class="w">レイテンシー</div><p>質問してから答えが返るまでの待ち時間。</p></div>
+    <div class="item"><div class="w">ばらつき</div><p>同じ入力でも、呼ぶたびに答えが変わってしまう度合い。</p></div>
+    <div class="item"><div class="w">構造化出力</div><p>文章ではなく、決められた項目の形で答えてもらうこと。</p></div>
+    <div class="item"><div class="w">スキーマ</div><p>どんな名前の項目に、どんな種類の値が入るかを先に決めた形。</p></div>
+    <div class="item"><div class="w">Pydantic</div><p>Pythonでスキーマを書き、値が形どおりか確かめるためのライブラリ。</p></div>
+    <div class="item"><div class="w">バリデーション<span>検証</span></div><p>返ってきた値が、決めた形どおりかどうかを確かめること。合わなければエラーになります。</p></div>
+    <div class="item"><div class="w">JSONモード</div><p>モデルに、必ずJSONの形で答えさせる設定。</p></div>
+    <div class="item"><div class="w">ストリーミング</div><p>全部できあがるのを待たず、できた部分から順に受け取ること。</p></div>
+    <div class="item"><div class="w">中間出力</div><p>最終の答えではなく、途中の処理の結果。進み具合を見せるのに使います。</p></div>
+    <div class="item"><div class="w">stream_mode</div><p>途中経過を、どういう単位・形で受け取るかの指定。</p></div>
+    <div class="item"><div class="w">updates</div><p>処理が1つ終わるたびに、その差分だけを受け取る受け取り方。</p></div>
+    <div class="item"><div class="w">values</div><p>処理が1つ終わるたびに、途中経過のデータ全体を受け取る受け取り方。</p></div>
+    <div class="item"><div class="w">astream_events</div><p>もっと細かい単位（文字のかたまりごと）で途中経過を受け取る呼び方。</p></div>
+    <div class="item"><div class="w">ヒューマンインザループ</div><p>処理の途中に人が入って、確認したり止めたり直したりできる作り。</p></div>
+    <div class="item"><div class="w">割り込み<span>interrupt</span></div><p>動いている処理を、人が好きなタイミングで止めること。</p></div>
+    <div class="item"><div class="w">承認<span>authorize</span></div><p>危険な処理の直前で自動的に止めて、人に「進めてよいか」を確認すること。</p></div>
+    <div class="item"><div class="w">interrupt_before</div><p>「この処理に入る直前で止めて」と指定する設定。</p></div>
+    <div class="item"><div class="w">再開</div><p>止めたところから、そのまま続きを実行すること。</p></div>
+    <div class="item"><div class="w">再起動</div><p>今の途中経過を残したまま、新しい入力を足して最初からやり直すこと。</p></div>
+    <div class="item"><div class="w">フォーク</div><p>過去の時点の状態に戻って、そこから別の道筋を試すこと。</p></div>
+    <div class="item"><div class="w">ダブルテキスト</div><p>前の返事がまだ返っていないのに、利用者が次の入力を送ってくること。</p></div>
+    <div class="item"><div class="w">キュー</div><p>順番待ちの列。届いた順に溜めておき、前の処理が終わってから順に処理します。</p></div>
+    <div class="item"><div class="w">CRDT</div><p>別々に進めた変更を、あとから衝突なくまとめられるようにしたデータの作り方。</p></div>
+    <div class="item"><div class="w">チェックポインタ</div><p>各段階の終わりに途中経過を保存する部品（4章）。人が割り込むにはこれが必要です。</p></div>
+    <div class="item"><div class="w">thread_id</div><p>会話のまとまりを見分けるための名札。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">両立できないものを、両立に近づける</span></div></div>
+  <div class="card">
+    <p class="lead">「エージェントは自律的で便利だけど、信頼できないんですよね……」とソラ。リク先輩は「そう、自律性と信頼性はつり合いの関係だ。でも、その<b>境界線</b>を外側に押し広げる技がある」と答えます。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">この章では、5章で触れた「自律性と信頼性」のつり合いを掘り下げ、両立させるための実践的なやり方を学びます。<b>構造化された出力</b>（結果が読めるようにする）、<b>ストリーミング・中間出力</b>（待ち時間を受け入れてもらう）、<b>ヒューマンインザループ</b>（人が入って信頼性を高める）、そして<b>ダブルテキスト</b>（同時に来た入力の扱い方）です。</p>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">LLMアプリは「自律性」と「信頼性」のつり合い（<span class="term" data-tip="これ以上は両立できないという限界を表す線。">境界線</span>）に直面します。開発者の目標は、<b>この境界線を外側に押し広げること</b>——同じ信頼性でより自律的に、同じ自律性でより信頼できるように。そのための技が4つあります。</p>
+    <div class="grid4">
+      <div class="mini"><div class="ic">📦</div><h4>構造化出力</h4><p>決められた形で答えさせ、結果が読めるようにします。</p><span class="pill">8.1</span></div>
+      <div class="mini"><div class="ic">💧</div><h4>ストリーミング</h4><p>途中経過を見せて、待ち時間を受け入れてもらいます。</p><span class="pill">8.1.1・8.1.2</span></div>
+      <div class="mini"><div class="ic">🙋</div><h4>ヒューマンインザループ</h4><p>人が止めたり承認したりできるようにします。</p><span class="pill">8.1.3</span></div>
+      <div class="mini"><div class="ic">📨</div><h4>ダブルテキスト</h4><p>同時に来た入力のさばき方を決めます。</p><span class="pill">8.1.4</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>自律性を上げると信頼性が下がる、というつり合いを理解しないと、便利さを追って事故を起こすから。</li>
+        <li>複雑な作りは待ち時間が長く、何も見せないと利用者が離れてしまうから。</li>
+        <li>自律的なエージェントこそ、人が止めたり承認したりできる仕組みがないと危険だから。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li><code>with_structured_output</code> で出力を読める形にできる。</li>
+        <li><code>stream</code> の各受け取り方や、文字のかたまり単位のストリーミングで、進み具合を見せられる。</li>
+        <li>ヒューマンインザループ（割り込み・承認・再開・再起動・編集・フォーク）で人の介入を組み込める。</li>
+        <li>同時に来た入力の5つの扱い方を、用途に応じて選べる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 導入 ============ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― 境界線を押し広げる</h2><span class="tag">対立する4つの目標</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>先生、エージェントは便利だけど、勝手なことをするのが怖いです。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その感覚が大事だ。5章で触れた<b>自律性と信頼性のつり合い</b>だね。直感的には、自律性が高まるほど人の手を借りずに多くをこなせて便利だけど、行き過ぎると意図しない動きを引き起こす。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>両立できないんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこがこの章のテーマだ。このつり合いは「<b>境界線</b>」として図に描ける。線の上の各点が、自律性と信頼性のつり合いが違う最適な作り方を表す。チェーンは自律性が低いが信頼性が高い、エージェントはその逆だ。</div></div>
+    </div>
+
+    <h3 class="blk">互いに対立する4つの目標</h3>
+    <div class="grid4">
+      <div class="mini"><div class="ic">🛡️</div><h4>信頼性</h4><p>出力をどこまで信用できるか。</p></div>
+      <div class="mini"><div class="ic">🕊️</div><h4>自律性</h4><p>人に確認を求めて止まる回数を、どこまで減らせるか。</p></div>
+      <div class="mini"><div class="ic">⏱️</div><h4>レイテンシー</h4><p>最終の答えが出るまでの時間を、どこまで短くできるか。</p></div>
+      <div class="mini"><div class="ic">🎲</div><h4>ばらつき</h4><p>呼ぶたびに答えが変わる幅を、どこまで小さくできるか。</p></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">これらは互いに対立します。1つだけを極端に重視すると、他が意味をなさなくなります——<b>待ち時間が0のアプリは、何もしないアプリです</b>。</p>
+
+    <div class="cycle">
+      <div class="node"><h4>今の境界線</h4><p>この線の上では、自律性を上げれば信頼性が下がり、信頼性を上げれば自律性が下がります。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>この章の4つの技</h4><p>構造化出力・ストリーミング・ヒューマンインザループ・同時入力の扱い。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>押し広げた境界線</h4><p>同じ信頼性のままより自律的に、または同じ自律性のままより信頼できるようになります。</p></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：境界線が外側に動くとはどういうことか</h4>
+      <p>メールの自動返信エージェントを考えます。<b>技を使う前</b>：完全自動にすると誤送信が怖いので、すべての返信を人が読んでから送る運用にしていました。自律性は低いままです。</p>
+      <p><b>技を使った後</b>：送信という危険な操作の直前だけ自動で止めて確認を求める（承認）ようにしました。人が確認するのは1通あたり2秒。それ以外の下書き・分類・整理はすべて自動で進みます。誤送信の危険は前と同じくらい低いのに、人の作業は大幅に減りました——これが「同じ信頼性のまま、自律性を上げた」状態です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8.1 ============ -->
+<section id="s81">
+  <div class="sec-head"><div class="sec-num">8.1</div><div><h2>構造化された出力</h2><span class="tag">結果が読める形にする</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：後ろの処理が特定の形を期待しているとき、自由な文章のままだと使えません。決められた形で返させると、結果が読めるようになります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LLMが決まった形で答えるのはとても重要だ。後ろの処理が特定の形（項目の名前と種類）を期待していたり、自由な文章を避けて結果を読めるようにしたいからね。やり方は3つある。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">📝</div><h4>① 指示文で頼む</h4><p>「この形で返して」と文章でお願いします。単純ですが、守られる保証はありません。</p></div>
+      <div class="mini"><div class="ic">🔧</div><h4>② ツール呼び出しを使う</h4><p>出せる形をあらかじめ用意しておき、その中から選ばせます。</p></div>
+      <div class="mini"><div class="ic">🔒</div><h4>③ JSONモード</h4><p>必ずJSONの形で答えるよう、モデル側の設定で強制します。</p></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">LangChainは <code>with_structured_output</code> という共通の呼び方で、これらをまとめて簡単にしてくれます。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># スキーマを書くための部品を読み込む。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="cmt"># 返してほしいデータの形を決める。ここでは2つの項目を持つ形。</span>
+<span class="kw">class</span> <span class="fn">Joke</span>(BaseModel):
+    <span class="cmt"># 前振りの部分。description はLLMも読むので、何を入れるかを具体的に書く。</span>
+    setup: <span class="kw">str</span> = <span class="fn">Field</span>(description=<span class="str">"ジョークのセットアップ"</span>)
+    <span class="cmt"># 落ちの部分。この説明があるから、LLMはどちらにどの文を入れるか判断できる。</span>
+    punchline: <span class="kw">str</span> = <span class="fn">Field</span>(description=<span class="str">"ジョークのオチ"</span>)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>各項目に説明を加えるのが大事だ。項目名と合わせて、LLMが「出力のどの部分をどの項目に入れるか」を判断する材料になる。このスキーマに従わせてみよう。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># チャットモデルの部品を読み込む。</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+<span class="cmt"># モデルの呼び出し口を作る。ばらつきを0にすると、形から外れた答えが減る。</span>
+model = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+<span class="cmt"># さきほど決めた形を必ず守らせる設定に変える。</span>
+<span class="cmt"># 形の指示をモデルに伝えるのと、返ってきた値の確認の両方をここが担当する。</span>
+model = model.<span class="fn">with_structured_output</span>(Joke)
+
+<span class="cmt"># 質問する。答えは1本の文章ではなく、2つの項目に分かれて返る。</span>
+<span class="cmt"># もし形に合わない答えが返ったら、ここでエラーになるので気づける。</span>
+<span class="fn">print</span>(model.<span class="fn">invoke</span>(<span class="str">"猫についてのジョークを教えてください"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     setup: "なぜ野生の猫はポーカーをしないのですか？",</span>
+<span class="cmt">#     punchline: "イカサマ師（チーター）が多すぎるから。"</span>
+<span class="cmt"># }</span>
+</pre></details>
+
+    <div class="why">
+      <h4>🟣 ポイント3つ</h4>
+      <ul>
+        <li>ばらつきを小さく（<code>temperature</code> を低く）すると、形から外れた出力が減ります。</li>
+        <li>Pydanticで書いた形は、そのまま確認にも使われます。合わない出力が返れば、その場でエラーになります。</li>
+        <li>この作り方は、単独の機能としても、大きなアプリの一部（5章の振り分け）としても役に立ちます。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 8.1.1 -->
+  <div class="card" id="s811">
+    <h3 class="blk" style="margin-top:4px">8.1.1 中間出力</h3>
+    <p class="lead"><b>要するに</b>：処理が複雑になるほど時間がかかります。<b>途中の結果を順に見せる</b>ことで、待ち時間があっても利用者は待てるようになります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>作りが複雑になるほど、実行に時間がかかる。処理がいくつも順番に、あるいは繰り返しでつながるからね。でも利用者は数秒以内の結果を期待している。対処が<b>途中経過を順に返すこと</b>だ。LangGraphでは <code>stream()</code> で、処理が1つ終わるたびに結果を受け取れる。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">#「これは利用者の発言」という札を付ける入れ物を読み込む。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+
+<span class="cmt"># 何段階か必要な質問を用意する。</span>
+user_input = {
+    <span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">"アメリカ合衆国の第30代大統領は、亡くなったとき何歳でしたか？"</span>)]
+}
+
+<span class="cmt"># updates を指定すると、処理が1つ終わるたびに「その処理が更新した分」だけが届く。</span>
+<span class="cmt"># 全部終わるのを待たないので、進み具合をそのまま画面に出せる。</span>
+<span class="kw">for</span> c <span class="kw">in</span> graph.<span class="fn">stream</span>(user_input, stream_mode=<span class="str">'updates'</span>):
+    <span class="fn">print</span>(c)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {'model': {'messages': AIMessage(content='', tool_calls=[...])}}</span>
+<span class="cmt"># {'tools': {'messages': [ToolMessage(content='Calvin Coolidge …')]}}</span>
+<span class="cmt"># {'model': {'messages': AIMessage(content='60歳でした。')}}</span>
+<span class="cmt"># ↑ 処理の名前がそのままキーになっているので、どこまで進んだかが分かる</span>
+</pre></details>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>受け取り方</th><th>いつ届くか</th><th>何が届くか</th></tr>
+      <tr><td><code>updates</code>（既定）</td><td>処理が1つ終わるたび</td><td>その処理が更新した分だけ</td></tr>
+      <tr><td><code>values</code></td><td>途中経過が変わるたび</td><td>その時点のデータ全体</td></tr>
+      <tr><td><code>debug</code></td><td>細かい出来事ごと</td><td>詳しい内部の記録</td></tr>
+      <tr><td><code>checkpoint</code></td><td>途中経過が保存されたとき</td><td>保存された内容</td></tr>
+      <tr><td><code>task</code> / <code>task_result</code></td><td>処理の開始時／終了時</td><td>開始や終了の知らせ</td></tr>
+    </table>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6">これらは組み合わせて指定することもできます。</p>
+  </div>
+
+  <!-- 8.1.2 -->
+  <div class="card" id="s812">
+    <h3 class="blk" style="margin-top:4px">8.1.2 LLM出力をトークンごとにストリーミングする</h3>
+    <p class="lead"><b>要するに</b>：処理単位ではなく、<b>文字のかたまりが作られた瞬間</b>に受け取ります。文字が流れて出てくる、あの見え方です。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 何段階か必要な質問を用意する。</span>
+user_input = {
+    <span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">"アメリカ合衆国第30代大統領が亡くなったとき、何歳でしたか。"</span>)]
+}
+
+<span class="cmt"># 細かい出来事を1つずつ受け取る形で実行する。処理単位より細かい単位で届く。</span>
+output = app.<span class="fn">astream_events</span>(user_input, version=<span class="str">"v2"</span>)
+
+<span class="cmt"># 届いた出来事を1つずつ順に取り出す。</span>
+<span class="kw">async</span> <span class="kw">for</span> event <span class="kw">in</span> output:
+    <span class="cmt"># 出来事にはいろいろな種類があるので、文字が作られたときのものだけを選ぶ。</span>
+    <span class="kw">if</span> event[<span class="str">"event"</span>] == <span class="str">"on_chat_model_stream"</span>:
+        <span class="cmt"># その出来事に含まれている、今できたばかりの文字のかたまりを取り出す。</span>
+        content = event[<span class="str">"data"</span>][<span class="str">"chunk"</span>].content
+        <span class="cmt"># 中身が空のこともあるので、何か入っているときだけ画面に出す。</span>
+        <span class="kw">if</span> content:
+            <span class="fn">print</span>(content)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 第</span>
+<span class="cmt"># 30</span>
+<span class="cmt"># 代</span>
+<span class="cmt"># 大統領</span>
+<span class="cmt"># は</span>
+<span class="cmt"># …（できた順に少しずつ届く）</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：見え方がどれだけ変わるか</h4>
+      <p>答えを書き終わるまでに合計12秒かかる質問があるとします。</p>
+      <p><b>ストリーミングなし</b>：12秒間まっさらな画面。利用者は「壊れたのでは」と思い、多くは途中で離れます。</p>
+      <p><b>処理単位（updates）</b>：3秒後に「検索しています」、7秒後に「結果を読んでいます」と表示。進んでいることが分かります。</p>
+      <p><b>文字単位</b>：1.5秒後には最初の文字が出始め、そのまま流れるように続きます。合計時間は12秒のままですが、体感の待ち時間は大きく縮みます。</p>
+    </div>
+  </div>
+
+  <!-- 8.1.3 -->
+  <div class="card" id="s813">
+    <h3 class="blk" style="margin-top:4px">8.1.3 ヒューマンインザループ ― 人が介入する</h3>
+    <p class="lead"><b>要するに</b>：自律性を上げるほど、人は制御を手放します。だからこそ「途中で人が入れる」仕組みが要ります。まず4章の<b>チェックポインタ</b>を付けておくのが前提です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>自律性を高めるほど、人は制御を手放してエージェントに任せることになる。LangGraphの「途中経過を共有する」作りは、動きを観察・中断・修正しやすくする。これで<b>人が途中に入るやり方</b>が使える。まずチェックポインタを付ける（4章でやったね）。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>どんなやり方があるんですか？</div></div>
+    </div>
+
+    <h4 class="blk">① 割り込み ― 人が好きなときに止める</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>まず<b>割り込み</b>。最も単純で、利用者が出力を見ながら、適切だと思ったときに手で止める。止めた時点（最後に完了した段階）の状態が保存される。そこから——その時点から続ける、新しい入力を送ってやり直す、何もしない、が選べる。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># メッセージの入れ物と、待ち合わせに使う道具を読み込む。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+<span class="kw">import</span> asyncio
+
+<span class="cmt"># 「止めてほしい」という合図を入れておくための旗を1つ用意する。最初は下りている。</span>
+event = asyncio.<span class="fn">Event</span>()
+
+<span class="cmt"># 実行する質問を用意する。</span>
+user_input = {
+    <span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">"アメリカ合衆国第30代大統領が亡くなったとき、何歳でしたか。"</span>)]
+}
+
+<span class="cmt"># この実行を見分けるための名札を付ける。止めた状態はこの名札に紐づいて保存される。</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"1"</span>}}
+
+<span class="cmt"># 途中経過を受け取りながら実行する。aclosing は、途中で抜けても後始末を確実に行うためのもの。</span>
+<span class="kw">async</span> <span class="kw">with</span> <span class="fn">aclosing</span>(graph.<span class="fn">astream</span>(user_input, config)) <span class="kw">as</span> stream:
+    <span class="cmt"># 届いた途中経過を1つずつ受け取る。</span>
+    <span class="kw">async</span> <span class="kw">for</span> chunk <span class="kw">in</span> stream:
+        <span class="cmt"># 旗が上がっていたら、そこで受け取るのをやめる（＝止める）。</span>
+        <span class="kw">if</span> event.<span class="fn">is_set</span>():
+            <span class="kw">break</span>
+        <span class="kw">else</span>:
+            <span class="cmt"># 旗が下りている間は、届いた内容を使って画面表示などを行う。</span>
+            ...
+
+<span class="cmt"># アプリの別の場所（例：利用者が「停止」ボタンを押したとき）でこの旗を上げる。</span>
+<span class="cmt"># 上の繰り返しが次に一巡したときに、それを見て止まる。</span>
+event.<span class="fn">set</span>()
+</pre></details>
+
+    <h4 class="blk">② 承認 ― 危ない処理の直前で自動的に止める</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>2つ目は<b>承認</b>。特定の処理が呼ばれたら人に制御を渡す。多くはツールを実行する前の確認に使う。<code>interrupt_before=['tools']</code> で、ツールの処理に入る直前まで実行して止まる。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 実行する質問を用意する。</span>
+user_input = {
+    <span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">"アメリカ合衆国第30代大統領が亡くなったとき、何歳でしたか？"</span>)]
+}
+
+<span class="cmt"># この実行を見分けるための名札。止まった状態はここに保存される。</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"1"</span>}}
+
+<span class="cmt"># tools の処理に入る「直前」で自動的に止まるよう指定して実行する。</span>
+<span class="cmt"># 人が止めるのを待つのではなく、危ない操作の前で必ず止まるのが割り込みとの違い。</span>
+output = graph.<span class="fn">astream</span>(user_input, config, interrupt_before=[<span class="str">'tools'</span>])
+
+<span class="cmt"># 止まるまでの途中経過を受け取り、画面に「この操作を実行してよいか」を表示するなどする。</span>
+<span class="kw">async</span> <span class="kw">for</span> c <span class="kw">in</span> output:
+    ...
+</pre></details>
+
+    <h4 class="blk">③〜⑥ 再開・再起動・編集・フォーク</h4>
+    <div class="grid2">
+      <div class="mini"><div class="ic">▶️</div><h4>再開</h4><p>入力を <code>None</code> にしてもう一度呼びます。「さっきの続きをやって」という合図になります。</p></div>
+      <div class="mini"><div class="ic">🔄</div><h4>再起動</h4><p>新しい入力と一緒に呼びます。今の状態を保ったまま新しい入力を足し、最初の処理からやり直します。状態を捨てたいときは名札（<code>thread_id</code>）を変えます。</p></div>
+      <div class="mini"><div class="ic">✏️</div><h4>状態の編集</h4><p><code>get_state</code> で中身を確認し、<code>update_state</code> で書き換えてから再開します。情報の追加や、誤りの修正に使います。</p></div>
+      <div class="mini"><div class="ic">🌿</div><h4>フォーク</h4><p><code>get_state_history</code> で過去の状態をたどり、どれかの時点に戻って別の答えを得ます。案を出し分けたいときに便利です。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>人がいろんな形で介入できるんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>人が介入できることの本当の強みは、これらを用途に合わせて組み合わせられることにある。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：割り込みと承認の使い分け</h4>
+      <p><b>割り込みが向く場面</b>：長い調査レポートを書かせている途中で、利用者が読んでいて「方向性が違う」と気づいたとき。人が判断して止めます。止めなければずっと続きます。</p>
+      <p><b>承認が向く場面</b>：メールの送信、ファイルの削除、決済など、<b>取り返しがつかない操作</b>。人が気づくかどうかに頼らず、必ずその直前で止まります。</p>
+    </div>
+  </div>
+
+  <!-- 8.1.4 -->
+  <div class="card" id="s814">
+    <h3 class="blk" style="margin-top:4px">8.1.4 マルチタスクLLM（ダブルテキスト）</h3>
+    <p class="lead"><b>要するに</b>：答えに時間がかかると、前の処理が終わる前に利用者が次の入力を送ってきます。これをどうさばくか、5つのやり方があります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最後に、複数の入力を同時に処理する問題だ。LLMが遅くて長い出力を作るときや、何段階も連なるときに特に重要になる。答えに時間がかかると、前の処理が終わる前に利用者が新しい入力を送ってくる——これが<b>ダブルテキスト</b>だ。扱い方は5つある。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>やり方</th><th>何をする</th><th>長所</th><th>短所</th></tr>
+      <tr><td>拒否する</td><td>処理中に来た入力をすべて断る</td><td>いちばん単純</td><td>同時に来たときの面倒を、呼ぶ側に押し付けることになる</td></tr>
+      <tr><td>単独で扱う</td><td>別の会話として新しい名札を作る</td><td>いくらでも増やせる（複数の相手と同時に会話など）</td><td>2つの別々のやり取りとして表示することになる</td></tr>
+      <tr><td>キューに入れる</td><td>順番待ちに溜め、今の処理が終わってから順に処理</td><td>何件でも受け付けられ、届いた順に関係なく結果が同じ</td><td>列が際限なく伸びうる。処理される頃には内容が古くなる（前の答えに依存する入力には不向き）</td></tr>
+      <tr><td>割り込む</td><td>今の処理をやめて、新しい入力でやり直す</td><td>すぐ処理でき、古い出力を防げる</td><td>一度に1件しか扱えない。どこまで残すかを前提にした設計が必要で壊れやすい</td></tr>
+      <tr><td>分けて、あとで合わせる</td><td>並行して処理し、終わったら状態をまとめる</td><td>すぐ処理でき、届いた時刻にも左右されず、何件でも並行できる</td><td>ぶつからずにまとめられる設計（CRDTなど）か、手作業での解決が必要</td></tr>
+    </table>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6"><b>割り込む</b>やり方には、どこまで残すかで選択肢があります——何も残さない／最後に完了した段階まで残す／進行中のものも残す／今の処理が終わるのを待つ。</p>
+
+    <div class="example">
+      <h4>🔎 具体例：同じ状況でも結果が変わる</h4>
+      <p>利用者が「東京の明日の天気は？」と送り、答えを待っている3秒の間に「あ、大阪で」と送ったとします。</p>
+      <p><b>拒否</b>：2件目は届かず、東京の天気だけが返ります。<b>キュー</b>：東京の天気が返ったあと、大阪の天気も返ります（2件とも返る）。<b>割り込み</b>：東京の処理は捨てられ、大阪の天気だけが返ります。この場合は割り込みが利用者の意図に最も近いですが、「東京の次に大阪も知りたかった」ならキューが正解です。<b>どれが正しいかは用途で決まります。</b></p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>これらの一部はLangGraph Platform（9章）で実装されている。待ち時間が短くなっても、同時に来た入力の扱いは課題であり続ける——どんなに手際のよい人でも時間は有限で、依頼に優先順位を付けなきゃいけないのと同じだ。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>自律性と信頼性の境界線を外側へ動かすのが目標。ほかに待ち時間・自律性・ばらつきの目標も互いに対立する。</li>
+        <li>構造化出力：<code>with_structured_output</code> に形（Pydantic）を渡し、確認つきで結果を読める形にする。項目の説明が重要。</li>
+        <li>ストリーミング：<code>stream</code>（updates／valuesなど）で処理ごとの途中経過を見せる。<code>astream_events</code> で文字のかたまり単位も。</li>
+        <li>人の介入：割り込み・承認（<code>interrupt_before</code>）・再開（<code>None</code> で続行）・再起動（新しい入力）・状態の編集・フォーク。組み合わせて使う。</li>
+        <li>ダブルテキスト：拒否・単独で扱う・キュー・割り込み・分けて合わせる。用途に応じて選ぶ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8.2 ============ -->
+<section id="s82">
+  <div class="sec-head"><div class="sec-num">8.2</div><div><h2>まとめ</h2><span class="tag">両立に近づける4つの技</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この章では、自律性と信頼性のつり合いを考え直して、両立させる方法を学んだ。構造化出力で結果を読める形にして、途中経過を見せて待ち時間を快適にして、人が介入できるようにして自律的な作りの信頼性を高めて、同時に来た入力の扱いを議論した。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>境界線を外側に押し広げる、ですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。次の9章は「AIアプリケーションのデプロイ」だ。いよいよ、作ったアプリを本番の環境に出していくよ。</div></div>
+    </div>
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>自律性を犠牲にせず信頼性を高める（またその逆）技を学んだ。</li>
+        <li>構造化出力（結果が読める）・ストリーミング（待ち時間）・人の介入（信頼性）・同時入力の扱い。</li>
+        <li>次章は本番環境への公開。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが5つのポイントを言葉にする</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>今日のポイントです。1つ目は「自律性と信頼性はつり合いの関係（境界線）。目標はそれを外側に押し広げること」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>待ち時間が0のアプリは何もしないアプリ、が象徴的だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「構造化出力（<code>with_structured_output</code>）で結果を読める形にする。項目の説明が大事」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>確認つきで安心だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「途中経過を見せることで、待ち時間が長くても進み具合が伝わる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>処理単位と、文字のかたまり単位があった。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「人の介入（割り込み・承認・再開・編集・フォーク）で信頼性を高める」。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>5つ目は「同時に来た入力の5つの扱い方を用途で選ぶ」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>完璧だ。次はデプロイへ進もう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>自律性と信頼性の境界線</div>
+      <p style="font-size:14px;margin:0">❓ 「自律性と信頼性の境界線」とは何ですか。開発者は何を目指しますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">自律性（人の手を借りずにどこまでできるか）と信頼性（出力をどこまで信用できるか）はつり合いの関係にあり、それを1本の線として表せる。線の上の各点が、両者のつり合いが違う最適な作り方（チェーンは信頼性が高め・自律性が低め、エージェントはその逆）。開発者が目指すのは、この線を外側に動かすこと——同じ信頼性のままより自律的に、または同じ自律性のままより信頼できるように。構造化出力・ストリーミング・人の介入などの技でそれを実現する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 自律性と信頼性のつり合いを線で表す、に触れている<br>□ チェーンとエージェントでつり合いが違う、に触れている<br>□ 線を外側に動かすのが目標、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>構造化出力</div>
+      <p style="font-size:14px;margin:0">❓ LLMに決まった形の出力をさせる方法を挙げ、<code>with_structured_output</code> が何をしてくれるか説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">方法は3つ。指示文で頼む（希望の形で返すよう依頼するが保証はない）、ツール呼び出しを使う（出せる形の中から選ばせる）、JSONモード（必ずJSONの形にさせる）。<code>with_structured_output</code> は、これらをまとめた共通の呼び方で、形（PythonではPydantic、またはJSON Schema）を渡すと、決まった形の出力を得るための設定や変換の部品を足してくれる。さらに、Pydanticを渡せばそれを確認にも使い、LLMが形に合わない出力を出した場合はエラーを返す。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 指示文・ツール呼び出し・JSONモードの3方法に触れている<br>□ with_structured_output に形を渡す、に触れている<br>□ 確認（形に合わないとエラー）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>ストリーミングの意義</div>
+      <p style="font-size:14px;margin:0">❓ 複雑なLLMアプリは待ち時間が長くなります。なぜ途中経過を見せることが使いやすさの維持に役立つのですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">複雑な作りは複数の処理や繰り返しを通るため、最終の答えまでに時間がかかる。ほとんどの利用者は数秒以内の結果を期待するので、何も見せずに待たせると離れる原因になる。途中経過を見せると、動作中に各処理の結果や、文字が作られていく様子がリアルタイムで届く。待ち時間そのものは減らなくても、進んでいることが分かるので利用者は安心して待てる。LangGraphでは <code>stream</code>（処理単位）や <code>astream_events</code>（文字のかたまり単位）で実現する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 複雑な作りは待ち時間が長い、に触れている<br>□ 進み具合／途中経過を見せると待てる、に触れている<br>□ 処理単位と文字のかたまり単位のストリーミングに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>人の介入</div>
+      <p style="font-size:14px;margin:0">❓ 人の介入の「割り込み」と「承認」の違いを説明してください。なぜ自律的な作りでこれが重要なのですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">割り込みは、利用者が出力を見ながら、適切だと判断したときに手で止める方法。承認は、特定の処理（多くはツールの実行）が呼ばれる前に、あらかじめ自動で止まって利用者に確認を求める方法（<code>interrupt_before</code>）。自律的な作りでは、エージェントが人の手を借りずに動くため、危険な操作の前に人が止めたり承認したり取り消したりできる仕組みがないと、意図しない動きを防げない。だから人の介入は、自律的な作りの信頼性を高めるのに重要。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 割り込み＝利用者が手で止める、に触れている<br>□ 承認＝特定の処理の前に自動で止まって確認、に触れている<br>□ 自律的な作りの信頼性を高める、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>同時入力の扱い</div>
+      <p style="font-size:14px;margin:0">❓ 「ダブルテキスト（同時入力）」の扱い方のうち「キューに入れる」と「割り込む」の違いを、それぞれの長所・短所を含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">キューに入れるは、処理中に来た入力を順番待ちに溜めて、今の処理が終わってから順に処理する。何件でも受け付けられ、届いた順に関係なく結果が同じだが、列が際限なく伸びうるし、処理される頃には内容が古くなっていることがある（前の答えに依存する入力には不向き）。割り込むは、新しい入力を受け取ると今の処理をやめて新しい入力でやり直す。すぐ処理できて待ち時間が改善し、古い出力を防げるが、一度に1件しか扱えず、どこまで残すかを前提にした設計が必要で、出力が届いたタイミングに左右される。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ キュー＝溜めて順に処理、届いた順によらず同じ結果だが古くなる／伸びる、に触れている<br>□ 割り込む＝今の処理をやめて新しい入力でやり直す、すぐ処理できるが1件に限られる、に触れている<br>□ それぞれの長所・短所を対比している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして確かめる</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">📦</div><h4>構造化出力で遊ぶ</h4><p>自分で形（例：レシピの name・ingredients・steps）を決め、<code>with_structured_output</code> で決まった形の出力を得てみましょう。項目の説明を変えて精度の違いも観察。</p></div>
+      <div class="mini"><div class="ic">💧</div><h4>受け取り方を試す</h4><p>6章のエージェントを <code>stream_mode='updates'</code> と <code>'values'</code> の両方で実行し、出力の違いを見比べましょう。</p></div>
+      <div class="mini"><div class="ic">✋</div><h4>承認の形を実装する</h4><p><code>interrupt_before=['tools']</code> でツールの実行前に止め、人が承認してから続ける（<code>None</code> で続行）流れを作りましょう。</p></div>
+      <div class="mini"><div class="ic">⌨️</div><h4>文字が流れるのを見る</h4><p><code>astream_events</code> で、答えが少しずつ表示される様子を体験しましょう。</p></div>
+      <div class="mini"><div class="ic">🧭</div><h4>同時入力の方針を決める</h4><p>自分が作りたいアプリで、5つのうちどれが適切かを、長所・短所をふまえて選んでみましょう。</p></div>
+      <div class="mini"><div class="ic">📗</div><h4>LangGraph公式の人の介入</h4><p>langchain-ai.github.io/langgraph/concepts/human_in_the_loop/ で、割り込みの仕組みを確認しましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第8章 LLMを最大限に活用するパターン ― 図解版<br>次章：<b>9. AIアプリケーションのデプロイ</b></p>
+
+</div>

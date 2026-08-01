@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第15章 ファイル ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第15章</div>
+  <h1>第15章　ファイル</h1>
+  <p>ファイルの受け取りと送り出しは、「小さいファイル」と「大きいファイル」で扱い方が全く違います。この章では、その2つの方法を受け取り・送り出しの両方について見て、最後にフォルダごと配信する方法まで扱います。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全7節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① マルチパートのサポート</a>
+  <a href="#s2">② ファイルをアップロード</a>
+  <a class="sub" href="#s2-file">└ File()（小さいファイル）</a>
+  <a class="sub" href="#s2-upload">└ UploadFile（大きいファイル）</a>
+  <a href="#s3">③ ファイルをダウンロード</a>
+  <a class="sub" href="#s3-fileresp">└ FileResponse（小さいファイル）</a>
+  <a class="sub" href="#s3-stream">└ StreamingResponse（大きいファイル）</a>
+  <a href="#s4">④ 静的ファイルを提供する</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">アップロード</div><p>自分の機械にあるファイルを、サーバに送ることです。</p></div>
+    <div class="item"><div class="w">ダウンロード</div><p>サーバにあるファイルを、自分の機械に受け取ることです。</p></div>
+    <div class="item"><div class="w">マルチパート</div><p>1回の送信の中に、ファイルと文字などの複数の部分を含める形式です。</p></div>
+    <div class="item"><div class="w">python-multipart</div><p>その形式で送られてきた内容を読み解くための Python のパッケージです。</p></div>
+    <div class="item"><div class="w">aiofiles</div><p>ファイルの読み書きを、待っている間に他の処理を進められる形で行うためのパッケージです。</p></div>
+    <div class="item"><div class="w">bytes <span>バイト列</span></div><p>文字ではなく、数値の並びとしてのデータ。画像や動画などはこの形で扱います。</p></div>
+    <div class="item"><div class="w">チャンク <span>chunk</span></div><p>大きなデータを分割したときの、ひとかたまり分のことです。</p></div>
+    <div class="item"><div class="w">ストリーミング</div><p>全部を用意し終える前に、できたところから少しずつ送ることです。</p></div>
+    <div class="item"><div class="w">File()</div><p>送られたファイルを、まるごとメモリ上に読み込んで受け取る書き方です。</p></div>
+    <div class="item"><div class="w">UploadFile</div><p>送られたファイルを、少しずつ読める形で受け取る書き方です。</p></div>
+    <div class="item"><div class="w">ファイルライクオブジェクト</div><p>ファイルと同じように、読む・書く・位置を移動する、といった操作ができるもののことです。</p></div>
+    <div class="item"><div class="w">SpooledTemporaryFile</div><p>小さいうちはメモリ上に、大きくなったら自動でディスク上に置き換わる一時的な入れ物です。</p></div>
+    <div class="item"><div class="w">FileResponse</div><p>ファイルをまとめて返すための FastAPI の返し方です。</p></div>
+    <div class="item"><div class="w">StreamingResponse</div><p>ファイルを少しずつ返すための FastAPI の返し方です。</p></div>
+    <div class="item"><div class="w">ジェネレータ</div><p><code>yield</code> を使い、必要になった分だけを1つずつ渡す処理のことです。</p></div>
+    <div class="item"><div class="w">media_type</div><p>返すデータが何の種類かを表す表記です。</p></div>
+    <div class="item"><div class="w">application/octet-stream</div><p>「種類を特定しない、ただのデータ」を表す表記です。</p></div>
+    <div class="item"><div class="w">StaticFiles</div><p>指定したフォルダの中身を、そのまま配信するための FastAPI の仕組みです。</p></div>
+    <div class="item"><div class="w">mount <span>マウント</span></div><p>ある住所に、別の仕組みをまるごと割り当てることです。</p></div>
+    <div class="item"><div class="w">index.html</div><p>フォルダの住所にアクセスされたときに、自動で返される決まりのファイルです。</p></div>
+    <div class="item"><div class="w">__file__</div><p>今実行しているファイル自身の場所を表す、Python の決まった名前です。</p></div>
+    <div class="item"><div class="w">セイウチ演算子 <span>:=</span></div><p>値を名前に入れると同時に、その値を条件としても使える書き方です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">小さいファイルと大きいファイル</span></h2></div>
+  <div class="card">
+    <p class="lead">ハル：「タカさん、ファイルの受け取りって、Web サービスでよくありますよね」。タカ師匠：「うん、しかも『小さいファイル』と『巨大なファイル』では扱いが全然違うんだ」。本章では小さなファイル（<code>File()</code>）と大きなファイル（<code>UploadFile</code>）の受け取り、<code>FileResponse</code>／<code>StreamingResponse</code> での送り出し、<code>StaticFiles</code> でのフォルダごとの配信を、順に体験します。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を3行で</span></h2></div>
+  <div class="card">
+    <p class="lead">小さなファイルは <code>File()</code> でメモリ上に取り込み、大きなファイルは <code>UploadFile</code>（中断できる処理 + 分割して読む）で少しずつ扱います。送り出しも同じで <code>FileResponse</code>（まとめて）と <code>StreamingResponse</code>（少しずつ）の2通り。<code>StaticFiles</code> でフォルダごと配信でき、<code>html=True</code> を付けると <code>index.html</code> が自動で返ります。必要なパッケージは <code>python-multipart</code> と <code>aiofiles</code> です。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>ファイルの受け取りと送り出しの窓口を FastAPI で作れる</li>
+        <li>「小さい」「大きい」で書き方を使い分け、メモリ不足を防げる</li>
+        <li>フォルダごとの配信を1行で実装できる</li>
+        <li>少しずつ送る書き方の基本が分かる</li>
+        <li><code>index.html</code> の自動配信など、昔からの Web サーバの機能を引き出せる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① マルチパート ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>マルチパートのサポート<span class="tag">必要な2つのパッケージ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>ファイルを扱うには <code>python-multipart</code> と <code>aiofiles</code> の2つが必要です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI でファイルを扱うには、追加のパッケージが必要だ。</div></div>
+    </div>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 1回の送信の中にファイルと文字を混ぜる形式を、読み解くためのパッケージ。</span>
+<span class="cmt"># これが無いと、ファイルを受け取る窓口を作ってもエラーになる。</span>
+$ pip install python-multipart
+<span class="cmt"># ファイルの読み書きを、待っている間に他の処理を進められる形で行うパッケージ。</span>
+$ pip install aiofiles
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Successfully installed python-multipart-0.0.6</span>
+<span class="cmt"># Successfully installed aiofiles-23.2.1</span>
+</pre></details>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📮</div><h4>python-multipart</h4><p>送られてきた内容から、ファイルの部分と文字の部分を切り分けます。</p></div>
+      <div class="mini"><div class="ic">⚡</div><h4>aiofiles</h4><p>ファイルの読み書きの待ち時間に、他の処理を進められるようにします。</p></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>python-multipart: ファイルの送信を読み解くのに必要</li><li>aiofiles: 待ち時間を無駄にしないファイルの操作</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② アップロード ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>ファイルをアップロード<span class="tag">2つの書き方</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>受け取り方は2通りあります。<code>File()</code> はまるごとメモリに読み込み、<code>UploadFile</code> は少しずつ読めます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI は API の開発が主な対象で、本書のほとんどは JSON でのやり取りを使ってきた。けど次章で入力欄を扱うように、ファイルは「入力欄の一種のように」扱う。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI でのファイルの受け取りには2つの書き方がある。<b><code>File()</code></b> と <b><code>UploadFile</code></b> だ。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-file">File()（小さいファイル）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>File()</code> を使う処理は、ふつうの形でも中断できる形でもよいけど、受け取っている間サーバに負担をかけない<b>中断できる形のほうが優れている</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI はファイルを分割して受け取り、<b>メモリ上で組み立て直す</b>。だから <code>File()</code> は<b>比較的小さなファイル</b>にだけ使うべきだ。入力を JSON と考える代わりに、ファイルを入力欄の要素として送る形になる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">送られたファイルの大きさを返すだけの窓口です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、ファイルを受け取るための部品を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, File
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /small への POST（データを送る動詞）を、この下の処理に結びつける。</span>
+<span class="fn">@app.post</span>(<span class="str">"/small"</span>)
+<span class="cmt"># async を付けて、受け取りの待ち時間に他の処理を進められるようにする。</span>
+<span class="cmt"># bytes は「数値の並びとしてのデータ」を表す種類。File() で受け取ると、この形になる。</span>
+<span class="kw">async def</span> <span class="fn">upload_small_file</span>(small_file: <span class="kw">bytes</span> = <span class="fn">File</span>()):
+    <span class="cmt"># len は中身の長さ（ここではバイト数）を数える。それを文章にして返す。</span>
+    <span class="cmt"># この時点で、ファイルの中身はすべてメモリ上にある。</span>
+    <span class="kw">return</span> <span class="str">f"file size: {len(small_file)}"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie から送ります。記号の意味に注目してください。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># -f は「JSON ではなく、入力欄の形式で送る」という指定。ファイルを送るには必須。</span>
+<span class="cmt"># -b は本体だけを表示する指定。</span>
+<span class="cmt"># small_file は処理の引数名と一致させる。@ のあとが、送りたいファイル。</span>
+$ http -f -b POST http://localhost:8000/small small_file@1KB.bin
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "file size: 1000"</span>
+<span class="cmt"># 1000バイトのファイルを送ったので、その大きさが返ってきた。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>確認のときの注意点。①<code>-f</code> が必要だ。JSON ではなく入力欄の形式で送るから。②<code>small_file@1KB.bin</code> の意味は、<code>small_file</code> が処理の引数名に対応し、<code>@</code> がファイルを送る記号、<code>1KB.bin</code> が送るファイルだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Python からでも同じことができます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># 送り先の住所を用意する。</span>
+url = <span class="str">"http://localhost:8000/small"</span>
+<span class="cmt"># 送るファイルを組み合わせとして用意する。項目名は処理の引数名と合わせる。</span>
+<span class="cmt"># open の "rb" は「数値の並びとして読む」という指定。画像などはこの形で開く。</span>
+files = {<span class="str">'small_file'</span>: <span class="fn">open</span>(<span class="str">'1KB.bin'</span>, <span class="str">'rb'</span>)}
+<span class="cmt"># files= に渡すと、入力欄の形式で送ってくれる。</span>
+resp = requests.<span class="fn">post</span>(url, files=files)
+<span class="cmt"># 返ってきた内容を表示する。</span>
+<span class="fn">print</span>(resp.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># file size: 1000</span>
+</pre></details>
+
+    <h3 class="blk" id="s2-upload">UploadFile（大きいファイル）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きなファイルには <code>UploadFile</code> を使う。これは、小さいうちはメモリ上に、大きくなったら自動でディスク上に置き換わる一時的な入れ物を包んだものだ。Python の<b>ファイルと同じように扱えるもの</b>で、読む・書く・位置を移動する、といった操作ができる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>受け取っている間にサーバが止まってしまわないよう、中断できる形の処理を使う。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">大きさとファイル名の両方を返す窓口です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、大きなファイルを受け取るための型を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, UploadFile
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /big への POST を結びつける。</span>
+<span class="fn">@app.post</span>(<span class="str">"/big"</span>)
+<span class="cmt"># UploadFile はそのまま種類の指定として書く。かっこは付けない。</span>
+<span class="kw">async def</span> <span class="fn">upload_big_file</span>(big_file: UploadFile):
+    <span class="cmt"># read() で中身を読む。await を付けるのは、読み終わるまで待つが、</span>
+    <span class="cmt"># その間に他の問い合わせを処理してよい、という意味。</span>
+    <span class="cmt"># filename には、送り手側でのファイル名が入っている。</span>
+    <span class="kw">return</span> <span class="str">f"file size: {len(await big_file.read())}, name: {big_file.filename}"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>注意。<code>File()</code> は数値の並びを作るのでかっこが必要だ。<code>UploadFile</code> は別の型そのものなので、種類の指定として直接書く。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 1ギガバイトのファイルを送ってみる。書き方は小さいファイルのときと同じ。</span>
+$ http -f -b POST http://localhost:8000/big big_file@1GB.bin
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "file size: 1000000000, name: 1GB.bin"</span>
+<span class="cmt"># 大きさに加えて、送り手側でのファイル名も取れている。</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># 送り先の住所を用意する。</span>
+url = <span class="str">"http://localhost:8000/big"</span>
+<span class="cmt"># 大きなファイルを開いて、送る組み合わせに入れる。</span>
+files = {<span class="str">'big_file'</span>: <span class="fn">open</span>(<span class="str">'1GB.bin'</span>, <span class="str">'rb'</span>)}
+<span class="cmt"># 送信する。大きいので時間がかかる。</span>
+resp = requests.<span class="fn">post</span>(url, files=files)
+<span class="fn">print</span>(resp.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># file size: 1000000000, name: 1GB.bin</span>
+</pre></details>
+
+    <h3 class="blk">2つの書き方の比較</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th></th><th><code>File()</code></th><th><code>UploadFile</code></th></tr>
+      <tr><td>受け取る形</td><td>数値の並び（<code>bytes</code>）</td><td>ファイルと同じように扱えるもの</td></tr>
+      <tr><td>メモリの使い方</td><td><span class="down">全部をメモリ上に置く</span></td><td><span class="up">大きければディスクに逃がす</span></td></tr>
+      <tr><td>できる操作</td><td>大きさを見る、中身を使う</td><td>読む・書く・位置の移動、分割して読む</td></tr>
+      <tr><td>ファイル名</td><td>取れない</td><td><code>filename</code> で取れる</td></tr>
+      <tr><td>向く大きさ</td><td>数メガバイトまで</td><td>数百メガバイト〜</td></tr>
+      <tr><td>書き方</td><td><code>x: bytes = File()</code></td><td><code>x: UploadFile</code></td></tr>
+    </table>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：大きなファイルを <code>File()</code> で受けるとどうなるか</h4>
+      <p>1ギガバイトの動画を <code>File()</code> で受け取ると、その1ギガバイト分がすべてメモリ上に置かれます。サーバのメモリが4ギガバイトで、同時に5人がアップロードすると、5ギガバイトが必要になり、サーバが動かなくなります。</p>
+      <p><code>UploadFile</code> なら、一定の大きさを超えた時点で自動的にディスク上の一時的な場所に移されます。メモリの使用量は一定に保たれ、同時に何人が送っても持ちこたえられます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>File()</code> = 小さいファイル向け。全部をメモリ上に置く</li>
+        <li><code>UploadFile</code> = 大きいファイル向け。ファイルと同じように扱える</li>
+        <li>読む・書く・位置の移動ができる</li>
+        <li>どちらも中断できる形の処理が推奨</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ ダウンロード ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>ファイルをダウンロード<span class="tag">送り出しも2通り</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>送り出しも、小さいファイルは <code>FileResponse</code>、大きいファイルは <code>StreamingResponse</code> の2通りです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>送り出しも、受け取りと対応する書き方を使う。</div></div>
+    </div>
+
+    <h3 class="blk" id="s3-fileresp">FileResponse（小さいファイル）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>まずは一度にまとめて送る版、<code>FileResponse</code> だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">住所で指定された名前のファイルを、そのまま返す窓口です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># ファイルをまとめて返すための部品を取り込む。</span>
+<span class="kw">from</span> fastapi.responses <span class="kw">import</span> FileResponse
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 住所の最後の部分を name として受け取る。</span>
+<span class="fn">@app.get</span>(<span class="str">"/small/{name}"</span>)
+<span class="kw">async def</span> <span class="fn">download_small</span>(name: <span class="kw">str</span>):
+    <span class="cmt"># 受け取った名前のファイルを、そのまま返す。</span>
+    <span class="cmt"># 注意：この書き方だと、送られた名前がそのままファイルの場所になる。</span>
+    <span class="cmt"># 実際のサービスでは、返してよいファイルかどうかの確認が必要。</span>
+    <span class="kw">return</span> <span class="fn">FileResponse</span>(path=name)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>まず <code>main.py</code> と同じ場所に、確認用のファイルを置く。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 置いたファイルを取りに行く。</span>
+$ http -b http://localhost:8000/small/1KB.bin
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># +-----------------------------------------+</span>
+<span class="cmt"># | NOTE: binary data not shown in terminal |</span>
+<span class="cmt"># +-----------------------------------------+</span>
+<span class="cmt">#   「文字ではないデータなので、画面には出しません」という知らせ。</span>
+<span class="cmt">#   中身は届いているが、そのまま表示すると画面が壊れるため抑えられている。</span>
+
+<span class="cmt"># 本当に届いているか、バイト数を数えて確かめる。</span>
+<span class="cmt"># | は「左の結果を、右の命令に渡す」という記号。wc -c は文字数（バイト数）を数える。</span>
+$ http -b http://localhost:8000/small/1KB.bin | wc -c
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt">#     1000</span>
+<span class="cmt">#   1000バイト、つまり元のファイルと同じ大きさが届いている。</span>
+</pre></details>
+
+    <h3 class="blk" id="s3-stream">StreamingResponse（大きいファイル）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きなファイル用は <code>StreamingResponse</code> だ。手が空いているときに他を止めないよう、中断できる形の処理を使う。誤りの確認は省いているけど、ファイルが無ければ開くところで失敗が出る。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">ファイルを1メガバイトずつに分けて送る窓口です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># 少しずつ返すための部品を取り込む。</span>
+<span class="kw">from</span> fastapi.responses <span class="kw">import</span> StreamingResponse
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 1回に読む大きさを決める。1024×1024 で、およそ1メガバイト。</span>
+CHUNK_SIZE = <span class="num">1024</span> * <span class="num">1024</span>
+
+<span class="cmt"># 住所の最後の部分を name として受け取る。</span>
+<span class="fn">@app.get</span>(<span class="str">"/big/{name}"</span>)
+<span class="kw">async def</span> <span class="fn">download_big</span>(name: <span class="kw">str</span>):
+    <span class="cmt"># ファイルを少しずつ渡す処理を、この中で定義する。</span>
+    <span class="kw">def</span> <span class="fn">gen_file</span>():
+        <span class="cmt"># ファイルを開く。with を使うと、抜けるときに自動で閉じられる。</span>
+        <span class="kw">with</span> <span class="fn">open</span>(name, mode=<span class="str">"rb"</span>) <span class="kw">as</span> file:
+            <span class="cmt"># := は「読んだ結果を chunk に入れ、同時にそれを条件としても使う」書き方。</span>
+            <span class="cmt"># 読むものが無くなると空になり、そこで繰り返しが終わる。</span>
+            <span class="kw">while</span> chunk := file.<span class="fn">read</span>(CHUNK_SIZE):
+                <span class="cmt"># yield は「1つ渡して、ここで止まる」という指示。</span>
+                <span class="cmt"># 次に求められたときに、この続きから動く。</span>
+                <span class="kw">yield</span> chunk
+    <span class="cmt"># 上で定義した処理を呼び、1つずつ渡してくれるものを受け取る。</span>
+    <span class="cmt"># この時点では、まだ1バイトも読まれていない。</span>
+    gen_expr = <span class="fn">gen_file</span>()
+    <span class="cmt"># それを渡すと、FastAPI が求めるたびに1かたまりずつ送ってくれる。</span>
+    <span class="cmt"># media_type は「種類を特定しない、ただのデータ」という指定。</span>
+    <span class="kw">return</span> <span class="fn">StreamingResponse</span>(content=gen_expr, media_type=<span class="str">"application/octet-stream"</span>)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>gen_expr</code> は、1つずつ渡してくれるもので、<code>gen_file()</code> が返したものだ。<code>StreamingResponse</code> は繰り返し取り出せるものを受け取るので、ファイルを分割して送れる。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 大きなファイルを取りに行き、届いたバイト数を数える。</span>
+$ http -b http://localhost:8000/big/1GB.bin | wc -c
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt">#  1000000000</span>
+<span class="cmt">#   10億バイト、つまり1ギガバイトが届いている。</span>
+<span class="cmt">#   サーバ側のメモリの使用量は、1回分の1メガバイト程度で済んでいる。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1ギガバイトのファイルが必要で、少し時間がかかる。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① 1かたまり読む</h4><p>ファイルから1メガバイト分だけを読む。</p><span class="when">メモリは1メガ分だけ</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 渡して止まる</h4><p>読んだ分を渡し、その場で止まる。</p><span class="when">続きの位置を覚えている</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 送られる</h4><p>受け取った側に送信される。</p><span class="when">また①へ戻る</span></div>
+    </div>
+    <div class="loopback">↺ ①〜③を1000回繰り返して、1ギガバイトを送りきります。どの瞬間もメモリ上にあるのは1メガバイト分だけです。</div>
+
+    <div class="example">
+      <h4>🔎 具体例：まとめて読むとどうなるか</h4>
+      <p>1ギガバイトのファイルを <code>file.read()</code> で一度に読むと、その1ギガバイトがメモリに載ります。同時に3人がダウンロードすれば3ギガバイトです。</p>
+      <p>1メガバイトずつ読んで渡す形なら、3人同時でもメモリ上にあるのは3メガバイト分だけです。さらに、受け取る側は最初の1メガバイトが届いた時点で処理を始められるので、待ち時間も短くなります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>FileResponse</code>: まとめて送る。小〜中くらいのファイル向け</li>
+        <li><code>StreamingResponse</code>: 分割して送る。大きなファイル向け</li>
+        <li>1つずつ渡す処理で、分割して読む</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ 静的ファイル ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>静的ファイルを提供する<span class="tag">フォルダごと配信する</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>app.mount("/path", StaticFiles(directory="...", html=True))</code> で、フォルダの中身をそのまま配信できます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔からの Web サーバは、サーバ上のファイルを、そのままの置き場所の形で扱える。FastAPI では <code>StaticFiles</code> でこれを実現する。</div></div>
+    </div>
+
+    <h3 class="blk">準備の手順</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>フォルダを作る</h4><p><code>main.py</code> と同じ場所に <code>static/</code> というフォルダを作る（名前は自由）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div></div><div class="body"><h4>確認用のファイルを置く</h4><p><code>static/abc.txt</code> に <code>abc :)</code> と書いておく。</p></div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">フォルダを住所に割り当てる設定です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 環境の情報を扱う機能を取り込む。</span>
+<span class="kw">import</span> os
+<span class="cmt"># ファイルの場所を組み立てる機能を取り込む。</span>
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="cmt"># 枠組み本体を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># フォルダをそのまま配信するための部品を取り込む。</span>
+<span class="kw">from</span> fastapi.staticfiles <span class="kw">import</span> StaticFiles
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># __file__ はこのファイル自身の場所。resolve() で完全な形にし、</span>
+<span class="cmt"># parents[0] でその1つ上、つまりこのファイルが入っているフォルダを得る。</span>
+<span class="cmt"># こう書くことで、どこから起動しても正しい場所を指せる。</span>
+top = <span class="fn">Path</span>(__file__).<span class="fn">resolve</span>().parents[<span class="num">0</span>]
+<span class="cmt"># /static という住所に、static フォルダの中身をまるごと割り当てる。</span>
+<span class="cmt"># html=True は、後で説明する index.html の自動応答を有効にする指定。</span>
+<span class="cmt"># name= は、この割り当てに付ける呼び名。コードの中から参照するときに使う。</span>
+app.<span class="fn">mount</span>(<span class="str">"/static"</span>,
+    <span class="fn">StaticFiles</span>(directory=<span class="str">f"{top}/static"</span>, html=<span class="kw">True</span>),
+    name=<span class="str">"static"</span>)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>場所の計算は、<code>static</code> が <code>main.py</code> と同じところにあることを保証するためだ。<code>__file__</code> は、このファイル（<code>main.py</code>）の完全な場所を表す。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 置いたファイルを取りに行く。窓口を1つも書いていないのに取得できる。</span>
+$ http -b localhost:8000/static/abc.txt
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># abc :)</span>
+<span class="cmt"># ファイルの中身がそのまま返ってきた。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>html=True</code> の意味はこうだ。そのフォルダに <code>index.html</code> がある場合、住所で明示しなくても自動で返してくれる。これは昔からの Web サーバに近い動きだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>static/index.html</code> に <code>Oh. Hi!</code> という内容を作って試してみよう。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ファイル名を書かず、フォルダの住所だけで取りに行く。</span>
+$ http -b localhost:8000/static/
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Oh. Hi!</span>
+<span class="cmt"># index.html の中身が自動で返ってきた。html=True を外すと、これは返らない。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>練習だ。<code>static/</code> の下に <code>xyz/</code> というフォルダを作り、2つのファイルを置く。①<code>xyz.txt</code> に <code>xyz :(</code>、②<code>index.html</code> に <code>How did you find me?</code>。ここでは答えを書かないので、自分で試してみて。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：この練習で確かめられること</h4>
+      <p><code>/static/xyz/xyz.txt</code> にアクセスすると <code>xyz :(</code> が返ります。下の階層のフォルダも、自動的に扱われることが分かります。</p>
+      <p><code>/static/xyz/</code> にアクセスすると <code>How did you find me?</code> が返ります。<code>index.html</code> の自動応答は、一番上のフォルダだけでなく、下の階層のフォルダでも同じように働くことが確かめられます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>StaticFiles</code> でフォルダごと配信</li>
+        <li><code>app.mount()</code> で住所に割り当てる</li>
+        <li><code>html=True</code> で <code>index.html</code> を自動で返す</li>
+        <li>下の階層のフォルダにも自動で対応する</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「受け取りは <code>File()</code>（小さい）と <code>UploadFile</code>（大きい）の2通り」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>File()</code> はメモリ上に広げる、<code>UploadFile</code> はファイルと同じように扱えて分割して読める。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「送り出しは <code>FileResponse</code>（小さい）と <code>StreamingResponse</code>（大きい）の2通り」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きなファイルは、1つずつ渡す処理で分割するのが鉄則だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「中断できる形の処理で、止まってしまうのを避ける」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ファイルの読み書きでは特に重要だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「<code>StaticFiles</code> でフォルダごと配信、<code>html=True</code> で <code>index.html</code> を自動応答」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔からの Web サーバの機能が1行で使える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「必要なパッケージは <code>python-multipart</code> と <code>aiofiles</code>」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>忘れずに入れておこう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>File() と UploadFile</div>
+      <p style="font-size:14px;margin:0">FastAPI の <code>File()</code> と <code>UploadFile</code>、どう使い分けますか？ それぞれの特徴と、向いている用途を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>File()</code> はファイル全体を数値の並びとしてメモリに広げる。小さなファイル（数メガバイトまで）向け。単純だが、巨大なファイルを渡すとメモリが足りなくなる。<code>UploadFile</code> は Python のファイルと同じように扱えるものを包んでいて、読む・書く・位置の移動などで分割して読める。大きなファイル（数百メガバイト〜）向け。ファイル名や種類も取れる。中断できる形の処理と組み合わせると、待ち時間に他の処理を進められる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>File()</code> がメモリに全部広げる、<code>UploadFile</code> がファイルと同じように扱える、と述べている<br>□ 大きさによる使い分けに触れている<br>□ 中断できる形の処理との組み合わせに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>FileResponse と StreamingResponse</div>
+      <p style="font-size:14px;margin:0">送り出し用の <code>FileResponse</code> と <code>StreamingResponse</code> の違いは何ですか？ 大きなファイルを送る場合の書き方を示してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>FileResponse</code> はファイルをまとめて読み込んで送る。小〜中くらいのファイル向け。<code>StreamingResponse</code> は分割して送れる。大きなファイル向け。書き方は、1つずつ渡す処理を作って <code>yield</code> でかたまりを返し、それを <code>StreamingResponse(content=...)</code> に渡す。<code>media_type</code> には「種類を特定しないデータ」を表す指定を使う。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 前者がまとめて、後者が分割して、と述べている<br>□ 1つずつ渡す処理と <code>yield</code> の形を示している<br>□ <code>media_type</code> の指定に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>StaticFiles の使い方</div>
+      <p style="font-size:14px;margin:0">FastAPI で <code>static/</code> フォルダの中身を <code>/static/</code> という住所で公開するコードを書いてください。<code>html=True</code> の役割も説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>from fastapi.staticfiles import StaticFiles</code> と書き、<code>app.mount("/static", StaticFiles(directory="static", html=True), name="static")</code> と書く。<code>html=True</code> を指定すると、そのフォルダ（または下の階層のフォルダ）に <code>index.html</code> がある場合、住所で明示しなくても自動で返してくれる。たとえば <code>/static/</code> にアクセスすると <code>/static/index.html</code> の内容が返る。昔からの Web サーバの動きに近づける指定。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>app.mount()</code> を使ったコードを書いている<br>□ <code>StaticFiles(directory=..., html=True)</code> の指定を正しく書いている<br>□ <code>html=True</code> の役割（<code>index.html</code> の自動応答）を説明している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>ファイル処理に必要なパッケージ</div>
+      <p style="font-size:14px;margin:0">FastAPI でファイルの受け取りと送り出しを実装するために必要な、追加のパッケージを2つ挙げて、それぞれの役割を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<b>python-multipart</b>：1回の送信の中にファイルと文字を混ぜた形式を読み解くためのパッケージ。ファイルを受け取るときに FastAPI が内部で使う。<code>pip install python-multipart</code>。②<b>aiofiles</b>：ファイルの読み書きを、待ち時間に他の処理を進められる形で行うためのパッケージ。大きなファイルを中断できる形の処理で扱う際に必要。<code>pip install aiofiles</code>。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ python-multipart と aiofiles の2つを挙げている<br>□ それぞれの役割を説明している<br>□ 導入のコマンドに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>HTTPie でのファイル送信</div>
+      <p style="font-size:14px;margin:0">HTTPie で FastAPI のファイル受け取りの窓口（引数名 <code>small_file</code>）に <code>data.bin</code> を送るコマンドを書いてください。各指定の意味も説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>http -f -b POST http://localhost:8000/small small_file@data.bin</code> と書く。<code>-f</code>：入力欄の形式で送る指定。FastAPI 側の <code>File()</code> や <code>UploadFile</code> で受けるには必須。<code>-b</code>：返事の本体だけを表示する（付随情報を省く）。<code>POST</code>：使う動詞。<code>small_file@data.bin</code>：<code>small_file</code> が処理の引数名、<code>@data.bin</code> は「ファイル <code>data.bin</code> を、<code>small_file</code> という項目として送る」という意味。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>-f</code> の意味（入力欄の形式で送る）を説明している<br>□ <code>small_file@data.bin</code> の書き方を正しく解釈している<br>□ <code>-b</code>（本体だけ）に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>確認用のファイルを作って試す</h4><p>小さいものと大きいものを用意して、受け取りと送り出しの両方を試す。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 1000バイトの確認用ファイルを作る。</span>
+<span class="cmt"># /dev/zero は「0が無限に出てくる元」、bs は1回の大きさ、count は回数。</span>
+$ dd if=/dev/zero of=1KB.bin bs=1000 count=1
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 1+0 records in</span>
+<span class="cmt"># 1+0 records out</span>
+<span class="cmt"># 1000 bytes transferred</span>
+
+<span class="cmt"># 1ギガバイトの確認用ファイルを作る。1メガを1000回で1ギガ。</span>
+<span class="cmt"># 空き容量に注意。作ったあとは消しておく。</span>
+$ dd if=/dev/zero of=1GB.bin bs=1000000 count=1000
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 1000000000 bytes transferred</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>1つずつ渡す処理を復習する</h4><p>簡単な数の並びを作る処理で、<code>yield</code> の動きを確かめる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>画像の受け取りを追加する</h4><p>自分のアプリに画像の受け取りを足す（縮小の処理は、仕事の列と組み合わせる）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>画面を丸ごと配信してみる</h4><p>フォルダごとの配信で、1ページで完結する画面の置き場所として使ってみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「フォームとテンプレート」へ</h4><p>ファイル以外の入力欄と、HTML の出力を学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第15章「ファイル」の図解 ― 原文の全節（マルチパートのサポート／ファイルをアップロード（File()・UploadFile）／ファイルをダウンロード（FileResponse・StreamingResponse）／静的ファイルを提供する）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

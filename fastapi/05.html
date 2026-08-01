@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第5章 Pydantic、タイプヒント、モデルツアー ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第5章</div>
+  <h1>第5章　Pydantic、タイプヒント、モデルツアー</h1>
+  <p>個別の文字列ではなく「データのまとまり」を扱う章です。タプル、リスト、辞書、namedtuple、dataclass…と歴代の手段をたどり、最後に Pydantic にたどり着きます。<code>BaseModel</code> を受け継ぐだけで、型の確認、値の確認、JSON 変換、項目ごとの制約まで一気に手に入ります。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全6節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① タイプ・ヒンティング</a>
+  <a class="sub" href="#s1-syntax">└ 型ヒントの書き方</a>
+  <a class="sub" href="#s1-typing">└ typing の便利な道具</a>
+  <a class="sub" href="#s1-mypy">└ mypy が見つけてくれる間違い</a>
+  <a class="sub" href="#s1-ret">└ 戻り値の型ヒント</a>
+  <a href="#s2">② データのグループ化</a>
+  <a class="sub" href="#s2-def">└ Creature と Explorer の定義</a>
+  <a class="sub" href="#s2-tuple">└ タプル／リスト</a>
+  <a class="sub" href="#s2-dict">└ 辞書</a>
+  <a class="sub" href="#s2-nt">└ namedtuple</a>
+  <a class="sub" href="#s2-class">└ 通常のクラス</a>
+  <a class="sub" href="#s2-dc">└ dataclass</a>
+  <a href="#s3">③ 代替案（Pydantic を選ぶ理由）</a>
+  <a href="#s4">④ 簡単な例（3ファイル構成）</a>
+  <a href="#s5">⑤ タイプを検証する</a>
+  <a href="#s6">⑥ 値を検証する</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">型ヒント <span>type hint</span></div><p>「ここは文字列」「ここは整数」とコードに書き添える表記。Python 本体は無視しますが、道具と読み手のための情報になります。</p></div>
+    <div class="item"><div class="w">typing</div><p>型ヒントを書くときに使う、Python の標準の機能をまとめた場所です。</p></div>
+    <div class="item"><div class="w">mypy</div><p>型ヒントと実際の使い方が食い違っていないかを、動かす前に調べてくれる道具です。</p></div>
+    <div class="item"><div class="w">Any</div><p>「どんな種類でもよい」という意味の型ヒントです。</p></div>
+    <div class="item"><div class="w">Union / <code>|</code></div><p>「このどれかの種類ならよい」という意味。Python 3.10 以降は縦棒1本で書けます。</p></div>
+    <div class="item"><div class="w">Optional</div><p>「その値でもよいし、無し（None）でもよい」という意味です。</p></div>
+    <div class="item"><div class="w">tuple <span>タプル</span></div><p>複数の値を順番に並べたもの。一度作ると中身を変えられません。</p></div>
+    <div class="item"><div class="w">list <span>リスト</span></div><p>複数の値を順番に並べたもの。後から追加や削除ができます。</p></div>
+    <div class="item"><div class="w">set <span>セット</span></div><p>重複しない値の集まり。順番は保証されません。</p></div>
+    <div class="item"><div class="w">dict <span>辞書</span></div><p>項目名と値を組にして持つもの。名前を指定して値を取り出せます。</p></div>
+    <div class="item"><div class="w">オフセット</div><p>「先頭から何番目か」を表す位置の番号。0 から数えます。</p></div>
+    <div class="item"><div class="w">namedtuple</div><p>並び順に加えて、項目名でも値を取り出せるようにしたタプルです。</p></div>
+    <div class="item"><div class="w">クラス <span>class</span></div><p>データと、それに対する操作をひとまとめにした設計図です。</p></div>
+    <div class="item"><div class="w">dataclass</div><p>データを持つことだけが目的のクラスを、短く書けるようにした Python の標準の仕組みです。</p></div>
+    <div class="item"><div class="w">Pydantic</div><p>型ヒントを使ってデータの形を宣言し、届いた値が合っているかを実行時に確かめてくれるパッケージです。</p></div>
+    <div class="item"><div class="w">BaseModel</div><p>Pydantic でモデルを作るときに受け継ぐ元になるもの。これを受け継ぐだけで確認の機能が付きます。</p></div>
+    <div class="item"><div class="w">継承 <span>inheritance</span></div><p>すでにある設計図の機能を引き継いで、新しい設計図を作ることです。</p></div>
+    <div class="item"><div class="w">検証 <span>validation</span></div><p>届いたデータが、決めておいた条件を満たしているかを確かめることです。</p></div>
+    <div class="item"><div class="w">ValidationError</div><p>Pydantic が「条件に合わない」と判断したときに出す失敗の知らせです。</p></div>
+    <div class="item"><div class="w">シリアライズ</div><p>プログラムの中のデータを、送ったり保存したりできる文字列の形に変換することです。</p></div>
+    <div class="item"><div class="w">constr / conint</div><p>文字列・整数に条件を付けた型を作る Pydantic の道具。長さや範囲を指定できます。</p></div>
+    <div class="item"><div class="w">Field</div><p>項目ごとに条件や初期値を指定するための Pydantic の道具です。</p></div>
+    <div class="item"><div class="w">正規表現 <span>regex</span></div><p>「英数字のみ」「数字4桁」のように、文字の並びの条件を書き表す記法です。</p></div>
+    <div class="item"><div class="w">クリプトイド</div><p>この本の例題に出てくる、実在が確かめられていない生き物のこと。データの中身の題材として使われます。</p></div>
+    <div class="item"><div class="w">ISO国コード</div><p>国を2文字で表す決まり。日本は JP、中国は CN、米国は US です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">データのまとめ方の歴史をたどる</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠の手帳には、<span class="term" data-tip="実在が確かめられていない生き物。この本の例題の題材。">クリプトイド</span>たちの落書きがびっしり。「これからは個別の文字列じゃなく、データのまとまりとして扱おう」と、タプル、リスト、辞書、namedtuple、dataclass…と歴代の「データのまとめ方」を振り返ります。最終的にたどり着くのが Pydantic です。<code>BaseModel</code> を受け継ぐだけで、型の確認、値の確認、JSON 変換、項目ごとの制約まで一気に手に入ります。ハルはこの章で「FastAPI のもう一方の土台」を体験します。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🏷️</div><h4>前半：型ヒント</h4><p>書き方の基本と、mypy が何をしてくれるか。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>中盤：まとめ方の選択肢</h4><p>tuple / list / dict / namedtuple / class / dataclass の順に見ていく。</p></div>
+      <div class="mini"><div class="ic">🛡️</div><h4>後半：Pydantic</h4><p>型の確認、値の確認、そして FastAPI との組み合わせ。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を3行で</span></h2></div>
+  <div class="card">
+    <p class="lead">Python の型ヒントは「<code>name: type</code> という書き添え」で、実行時には強制されませんが mypy などの道具が活用します。複数の値をまとめるには tuple / list / dict / namedtuple / dataclass などの手段がありますが、確認と JSON 化までやってくれるのが Pydantic の <b>BaseModel</b> です。FastAPI はこの BaseModel を入出力データの定義に使い、窓口への出入りを自動で確認し、自動で JSON にします。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>型ヒント・mypy・Pydantic の関係が整理できる</li>
+        <li>「API に入ってくるデータの型を確認する」コードを、1から書かずに作れる</li>
+        <li>FastAPI で受け取る形と、返す形を安全に定義できる</li>
+        <li>項目の長さ・範囲・文字の並びなど、値の条件を宣言して書ける</li>
+        <li>「とりあえず辞書で」と書きがちな段階から抜け出せる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① 型ヒント ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>タイプ・ヒンティング<span class="tag">書き添えは無視される。でも役に立つ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>型ヒントは <code>name: type</code>、戻り値は <code>-&gt; type</code> という書き方です。Python 本体は無視しますが、mypy や Pydantic が活用します。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>第2章で型ヒントの話、ちらっと聞きましたよね。もう少し詳しく知りたいです。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いいよ。復習から。多くの言語では、変数はメモリの値を直接指す。だからプログラマは型を宣言する必要があって、それで値の大きさや並びが決まる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>でも Python では、変数はデータに結びつけられた「名前」に過ぎず、型を持っているのはデータ側だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>その違いを踏まえて、型ヒントは何をするんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>通常、変数はずっと同じデータに結びつく。型ヒントを付けておくと、書き間違いを避けやすくなる。Python は標準の typing という機能に型ヒントを追加した。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ただし、<b>Python 本体は型ヒントの記述を無視して、それが無いかのように実行する</b>。じゃあ何が嬉しいの？って話だよね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>たしかに、無視されるなら書いてもムダな気が…</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そこで補助の道具だ。たとえばある行で変数を文字列として扱って、後で忘れて別の種類の値を入れてしまうことがある。他の言語では翻訳の段階で怒られるけど、Python は何も言わない。<b>mypy</b> のような道具は型ヒントを読んで、食い違いを警告してくれる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それから、書き添えは Python の開発者が利用できる情報になっていて、<b>型の確認以上の処理をする道具も書ける</b>。これが Pydantic が見つけた隙間で、FastAPI との組み合わせによって Web 開発の多くの問題がすっきり解ける。</div></div>
+    </div>
+
+    <h3 class="blk" id="s1-syntax">型ヒントの書き方</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">変数に書き添える基本の形です。値を一緒に入れることもできます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 名前のうしろにコロンを付け、その値がどんな種類かを書く形。</span>
+name: type
+<span class="cmt"># 種類を書いたうえで、イコールで実際の値も入れる形。</span>
+name: type = value
+
+<span class="cmt"># 実例：thing という名前に「文字列を入れる想定」と書き添え、"yeti" を入れる。</span>
+thing: <span class="kw">str</span> = <span class="str">"yeti"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まとまりを表す型の書き方は、Python 3.9 の前後で変わりました。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Python 3.9 より前：まとまりの種類は typing から大文字の名前で取り込む必要があった。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> List, Dict, Tuple
+<span class="cmt"># 「整数だけが入った一覧」という意味。</span>
+nums: List[<span class="kw">int</span>] = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+
+<span class="cmt"># Python 3.9 以降：取り込みなしで、小文字の組み込みの名前をそのまま使える。</span>
+<span class="cmt"># 意味は上とまったく同じ。こちらのほうが短く読みやすい。</span>
+nums: <span class="kw">list</span>[<span class="kw">int</span>] = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">小数の値を入れる例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># float は小数を表す種類。計算結果をそのまま入れることもできる。</span>
+<span class="cmt"># 1 を 137.03599913 で割った値が入る。</span>
+physics_magic_number: <span class="kw">float</span> = <span class="num">1.0</span> / <span class="num">137.03599913</span>
+</pre></details>
+
+    <h3 class="blk" id="s1-typing">typing の便利な道具</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🌀</div><h4>Any</h4><p>種類を問わない、という指定です。</p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>Union</h4><p><code>Union[str, int]</code> のように「このどれかならよい」という指定です。</p></div>
+      <div class="mini"><div class="ic">➖</div><h4><code>|</code>（3.10以降）</h4><p><code>str | int</code> と書けば Union と同じ意味になります。</p></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">項目名と値の組み合わせ（辞書）に、型を書き添える3通りの書き方です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 書き方1：中身の種類までは指定せず、「辞書である」ことだけを示す。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Dict
+responses: Dict = {<span class="num">200</span>: <span class="str">"ok"</span>}
+
+<span class="cmt"># 書き方2：角かっこの中に、項目名の種類と値の種類を順に書く。</span>
+<span class="cmt"># ここでは「項目名は整数、値は文字列」という意味になる。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Dict
+responses: Dict[<span class="kw">int</span>, <span class="kw">str</span>] = {<span class="num">200</span>: <span class="str">"ok"</span>}
+
+<span class="cmt"># 書き方3：Python 3.9 以降の書き方。取り込み不要で、意味は書き方2と同じ。</span>
+responses: <span class="kw">dict</span>[<span class="kw">int</span>, <span class="kw">str</span>] = {<span class="num">200</span>: <span class="str">"ok"</span>}
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">型だけを書いた行は書けますが、名前だけの行は書けません。その違いを確かめた例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># まだ何も入れていない名前をそのまま書くと、「そんな名前は無い」と失敗する。</span>
+thing0
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># NameError: name 'thing0' is not defined</span>
+
+<span class="cmt"># 一方、値は入れずに「文字列を入れる想定」とだけ書くのは許される。</span>
+<span class="cmt"># これは書き添えだけを登録している状態で、値はまだ無い。</span>
+thing0: <span class="kw">str</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 何も表示されず、失敗もしない。</span>
+</pre></details>
+
+    <h3 class="blk" id="s1-mypy">mypy が見つけてくれる間違い</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">書き添えに反する値を入れても、Python 本体は止めません。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># thing1 は文字列を入れる想定、と書き添えて "yeti" を入れる。</span>
+thing1: <span class="kw">str</span> = <span class="str">"yeti"</span>
+<span class="cmt"># 同じ名前に整数の 47 を入れる。書き添えに反しているが、Python は何も言わない。</span>
+thing1 = <span class="num">47</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># エラーも警告も出ず、そのまま動いてしまう。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">上の2行を <code>stuff.py</code> に保存して、mypy にかけてみます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># mypy のあとに調べたいファイル名を書く。実行はせず、中身だけを調べる。</span>
+$ mypy stuff.py
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># stuff.py:2: error: Incompatible types in assignment</span>
+<span class="cmt"># (expression has type "int", variable has type "str")</span>
+<span class="cmt"># Found 1 error in 1 file (checked 1 source file)</span>
+<span class="cmt"># 「2行目で、文字列の想定の名前に整数を入れている」と場所つきで指摘してくれる。</span>
+</pre></details>
+
+    <h3 class="blk" id="s1-ret">関数の戻り値の型ヒント</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">戻り値の種類は、コロンではなく矢印で書きます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># かっこの後ろに矢印を書き、そのあとに「返す値の種類」を書く形。</span>
+function(args) -&gt; type:
+
+<span class="cmt"># 実例：get_thing は文字列を返す想定、という書き添え。</span>
+<span class="kw">def</span> <span class="fn">get_thing</span>() -&gt; <span class="kw">str</span>:
+    <span class="cmt"># 実際に文字列を返している。書き添えと合っている。</span>
+    <span class="kw">return</span> <span class="str">"yeti"</span>
+<span class="cmt"># --- 呼び出した結果 ---</span>
+<span class="cmt"># yeti</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>自分で定義した設計図や、それらの組み合わせも何でも使える。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：型ヒントが無いと何が起きるか</h4>
+      <p><code>def calc(price, tax)</code> という処理があり、実際には <code>price</code> に整数、<code>tax</code> に小数を渡す想定だとします。半年後にこれを使う人は、<code>tax</code> に「10」（10%のつもり）を渡すかもしれません。すると 1000 円の商品が 11000 円になります。エラーは出ず、数字だけが間違います。</p>
+      <p><code>def calc(price: int, tax: float) -&gt; int</code> と書いておけば、編集画面が引数の種類を教えてくれますし、mypy が食い違いを指摘します。書き添えは、実行時には何もしませんが、書き手同士の取り決めとして働きます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>型ヒントの書き方を覚えれば、mypy で型の間違いを事前に見つけられる</li><li>Python 3.10 以降の <code>|</code> の書き方と、旧来の <code>Union</code> の対応が分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>変数: <code>name: type [= value]</code></li>
+        <li>関数の戻り値: <code>-&gt; type</code></li>
+        <li>まとまり: <code>list[int]</code>、<code>dict[str, int]</code>（3.9以降）</li>
+        <li>どれかを表す: <code>int | str</code>（3.10以降）</li>
+        <li>mypy で型の食い違いを見つけられる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② データのグループ化 ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>データのグループ化<span class="tag">歴代のまとめ方を順に見る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python には tuple / list / dict / namedtuple / class / dataclass などデータをまとめる選択肢があります。ただし、どれも確認や JSON 化まではしてくれません。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1つの変数を渡すだけじゃなく、関連する値をまとまりとして扱いたい場面が多い。複数の値を1つにまとめつつ、型ヒントも保つにはどうすればいいか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書の他の章と同様、<b>クリプトイド</b>（実在が確かめられていない生き物）とそれを追う<b>探検家</b>を例にしよう。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-def">Creature と Explorer の定義</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🐾</div><h4>Creature（生き物）</h4><p><b>name</b>：見分けるための名前<br><b>country</b>：2文字の国コード、または <code>*</code>（すべて）<br><b>area</b>：任意。米国の州や、他国の地域<br><b>description</b>：自由な説明文<br><b>aka</b>：別の呼び名</p></div>
+      <div class="mini"><div class="ic">🧭</div><h4>Explorer（探検家）</h4><p><b>name</b>：見分けるための名前<br><b>country</b>：2文字の国コード<br><b>description</b>：自由な説明文</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の昔からあるデータのまとめ方を並べると：①<code>tuple</code>（変えられない並び）、②<code>list</code>（変えられる並び）、③<code>set</code>（重複しない値の集まり）、④<code>dict</code>（項目名と値の組、項目名には変えられない種類を使う）。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-tuple">タプルとリスト</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">5つの値を、変えられない並びとしてまとめた例です。取り出すときは位置の番号を使います。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 丸かっこで囲むと、あとから変えられない並びになる。値は左から順に並ぶ。</span>
+tuple_thing = (<span class="str">"yeti"</span>, <span class="str">"CN"</span>, <span class="str">"Himalayas"</span>, <span class="str">"Hirsute Himalayan"</span>, <span class="str">"Abominable Snowman"</span>)
+<span class="cmt"># 角かっこの中の 0 は「先頭から0番目」という意味。先頭は1ではなく0から数える。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, tuple_thing[<span class="num">0</span>])
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Name is yeti</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じ内容を、あとから変えられる並びにした例です。取り出し方は同じです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 角かっこで囲むと、あとから追加や削除ができる並びになる。</span>
+list_thing = [<span class="str">"yeti"</span>, <span class="str">"CN"</span>, <span class="str">"Himalayas"</span>, <span class="str">"Hirsute Himalayan"</span>, <span class="str">"Abominable Snowman"</span>]
+<span class="cmt"># 取り出し方はタプルと同じで、位置の番号を使う。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, list_thing[<span class="num">0</span>])
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Name is yeti</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>タプルやリストは位置でしか取り出せない。「何番目に何があるか」を覚えないといけない。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">位置の番号に名前を付けて、少し読みやすくした書き方です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># range(5) は 0,1,2,3,4 という5つの数を作る。それを左の5つの名前に順に割り当てる。</span>
+<span class="cmt"># つまり NAME=0, COUNTRY=1, AREA=2, DESCRIPTION=3, AKA=4 となる。</span>
+NAME, COUNTRY, AREA, DESCRIPTION, AKA = <span class="fn">range</span>(<span class="num">5</span>)
+<span class="cmt"># 値の並びは先ほどと同じ。</span>
+tuple_thing = (<span class="str">"yeti"</span>, <span class="str">"CN"</span>, <span class="str">"Himalayas"</span>, <span class="str">"Hirsute Himalayan"</span>, <span class="str">"Abominable Snowman"</span>)
+<span class="cmt"># 0 と書く代わりに NAME と書ける。数字の意味が読み取りやすくなる。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, tuple_thing[NAME])
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Name is yeti</span>
+</pre></details>
+
+    <h3 class="blk" id="s2-dict">辞書</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">項目名と値を組にしてまとめた例です。名前を指定して取り出せます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 波かっこで囲み、「項目名: 値」をカンマで区切って並べる。</span>
+dict_thing = {
+    <span class="cmt"># 名前は yeti。</span>
+    <span class="str">"name"</span>: <span class="str">"yeti"</span>,
+    <span class="cmt"># 国コードは CN（中国）。</span>
+    <span class="str">"country"</span>: <span class="str">"CN"</span>,
+    <span class="cmt"># 生息地域はヒマラヤ。</span>
+    <span class="str">"area"</span>: <span class="str">"Himalayas"</span>,
+    <span class="cmt"># 説明文。</span>
+    <span class="str">"description"</span>: <span class="str">"Hirsute Himalayan"</span>,
+    <span class="cmt"># 別の呼び名。</span>
+    <span class="str">"aka"</span>: <span class="str">"Abominable Snowman"</span>,
+}
+<span class="cmt"># 位置の番号ではなく、項目名を指定して取り出せる。何番目かを覚える必要がない。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, dict_thing[<span class="str">"name"</span>])
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Name is yeti</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>辞書は項目名で取り出せる分、少し扱いやすい。<code>set</code> は重複しない値の集まりなので、こういう「複数の項目をまとめる」用途にはあまり向かない。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-nt">namedtuple</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">位置でも名前でも取り出せるようにした並びです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 名前付きの並びを作るための標準の機能を取り込む。</span>
+<span class="kw">from</span> collections <span class="kw">import</span> namedtuple
+
+<span class="cmt"># 5つの項目名を持つ、新しい形を作る。第1引数はこの形の名前。</span>
+CreatureNamedTuple = <span class="fn">namedtuple</span>(<span class="str">"CreatureNamedTuple"</span>,
+    <span class="str">"name, country, area, description, aka"</span>)
+<span class="cmt"># 作った形に、実際の値を左から順に渡してデータを1件作る。</span>
+namedtuple_thing = <span class="fn">CreatureNamedTuple</span>(<span class="str">"yeti"</span>,
+    <span class="str">"CN"</span>,
+    <span class="str">"Himalayas"</span>,
+    <span class="str">"Hirsute Himalayan"</span>,
+    <span class="str">"Abominable Snowman"</span>)
+<span class="cmt"># 位置の番号でも取り出せる。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, namedtuple_thing[<span class="num">0</span>])
+<span class="cmt"># ドットのあとに項目名を書いても取り出せる。こちらのほうが読みやすい。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, namedtuple_thing.name)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Name is yeti</span>
+<span class="cmt"># Name is yeti</span>
+<span class="cmt"># 注意：namedtuple_thing["name"] という書き方はできない。並びであって辞書ではないため。</span>
+</pre></details>
+
+    <h3 class="blk" id="s2-class">通常のクラス</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">自分で設計図を作る書き方です。受け取った値を1つずつ自分に覚えさせる記述が必要です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># CreatureClass という設計図を作る。</span>
+<span class="kw">class</span> <span class="fn">CreatureClass</span>:
+    <span class="cmt"># データを1件作るときに最初に動く処理。self は作られたそのデータ自身を指す。</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, name, country, area, description, aka):
+        <span class="cmt"># 受け取った name を、自分の name として覚えさせる。以下同様。</span>
+        self.name = name
+        self.country = country
+        self.area = area
+        self.description = description
+        self.aka = aka
+
+<span class="cmt"># 設計図に値を渡して、データを1件作る。</span>
+class_thing = <span class="fn">CreatureClass</span>(<span class="str">"yeti"</span>, <span class="str">"CN"</span>, <span class="str">"Himalayas"</span>,
+    <span class="str">"Hirsute Himalayan"</span>, <span class="str">"Abominable Snowman"</span>)
+<span class="cmt"># ドットのあとに項目名を書いて取り出す。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, class_thing.name)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Name is yeti</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>普通の設計図はデータだけじゃなく、そのデータに対する処理も持てる。でも「データだけを入れておく箱」が欲しいとき、<code>self.xxx = xxx</code> をたくさん書くのは面倒だ。</div></div>
+    </div>
+
+    <h3 class="blk" id="s2-dc">dataclass</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じことを、覚えさせる記述なしで書けるようにしたものです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># データ専用の設計図を作るための標準の機能を取り込む。</span>
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+<span class="cmt"># この1行を付けると、受け取った値を自分に覚えさせる処理が自動で作られる。</span>
+<span class="fn">@dataclass</span>
+<span class="kw">class</span> <span class="fn">CreatureDataClass</span>:
+    <span class="cmt"># 項目名と、その種類を並べて書くだけでよい。self.xxx = xxx は不要。</span>
+    name: <span class="kw">str</span>
+    country: <span class="kw">str</span>
+    area: <span class="kw">str</span>
+    description: <span class="kw">str</span>
+    aka: <span class="kw">str</span>
+
+<span class="cmt"># 使い方は通常の設計図と同じ。値を左から順に渡す。</span>
+dc_thing = <span class="fn">CreatureDataClass</span>(<span class="str">"yeti"</span>, <span class="str">"CN"</span>, <span class="str">"Himalayas"</span>,
+    <span class="str">"Hirsute Himalayan"</span>, <span class="str">"Abominable Snowman"</span>)
+<span class="cmt"># ドットのあとに項目名を書いて取り出す。</span>
+<span class="fn">print</span>(<span class="str">"Name is"</span>, dc_thing.name)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Name is yeti</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>self.xxx = xxx</code> が消えた！ dataclass は Python における、データを持つことに特化した設計図の機能だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここまでで「データをまとめる」点はかなり良くなった。でも、あと5つ欲しいものがある。①複数の種類を許すこと、②値が無い場合や省略できる場合の扱い、③初期値、④データの確認、⑤JSON などの形式との相互変換だ。</div></div>
+    </div>
+
+    <h3 class="blk">まとめ方の比較</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>方法</th><th>取り出し方</th><th>型の書き添え</th><th>値の確認</th></tr>
+      <tr><td>tuple / list</td><td>位置の番号</td><td>できるが項目ごとには書けない</td><td>なし</td></tr>
+      <tr><td>dict</td><td>項目名</td><td>全体にしか書けない</td><td>なし</td></tr>
+      <tr><td>namedtuple</td><td>位置と項目名の両方</td><td>限定的</td><td>なし</td></tr>
+      <tr><td>class</td><td>項目名</td><td>書ける</td><td>自分で書く</td></tr>
+      <tr><td>dataclass</td><td>項目名</td><td>項目ごとに書ける</td><td>なし</td></tr>
+      <tr><td><b>Pydantic</b></td><td>項目名</td><td>項目ごとに書ける</td><td><span class="up">自動</span></td></tr>
+    </table>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>データのまとめ方の選択肢が一覧できる</li><li>Pydantic がなぜ「行き着いた形」と言えるか、流れの中で理解できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>昔から: tuple / list / dict / set / namedtuple / class</li>
+        <li>新しめ: dataclass</li>
+        <li>いずれも確認や変換は別に用意する必要がある</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ 代替案 ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>代替案<span class="tag">なぜ Pydantic を選ぶのか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>データを確認するライブラリには dataclass、attrs、Pydantic などがあります。FastAPI を使うなら Pydantic 一択です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の組み込みのデータ構造、特に辞書は使いたくなる。でも辞書は「決まりがゆるすぎる」と気づくことになる。自由には代償があって、すべてを自分で確かめる必要がある。①その項目は省略できるのか？ ②項目が無い場合、初期値はあるか？ ③その項目は本当に存在するか？ ④存在するなら、値の種類は正しいか？ ⑤正しいなら、値の範囲や文字の並びの条件に合っているか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>少なくとも3つの選択肢が、これらの要件に応えている。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧰</div><h4>dataclass</h4><p>Python の標準の一部。追加のインストールが要りません。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>attrs</h4><p>外部のパッケージ。dataclass の機能を包み込んで広げたものです。</p></div>
+      <div class="mini"><div class="ic">🛡️</div><h4>Pydantic</h4><p>外部のパッケージ。FastAPI に組み込まれています。</p><span class="pill">本書はこれ</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI を使っている、あるいは使う予定なら、Pydantic 一択だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>比較の要点は「Python の継承（<code>BaseModel</code> を受け継ぐこと）に頼るのが Pydantic、デコレータで定義するのが dataclass と attrs」。書き方の好みの問題だね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>別の比較では、Pydantic は <b>marshmallow</b> や <b>Voluptuous</b> といった古くからある確認用のパッケージより優れていた。Python 標準の型ヒントの書き方をそのまま使えるのも Pydantic の大きな利点だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書は Pydantic を使う。FastAPI を使わないなら、別の選択肢が合うこともあるだろう。</div></div>
+    </div>
+
+    <h3 class="blk">Pydantic が提供する確認</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">❗</div><h4>必須／任意</h4><p>その項目が無くてもよいかどうか。</p></div>
+      <div class="mini"><div class="ic">🔧</div><h4>初期値</h4><p>渡されなかったときに使う値。</p></div>
+      <div class="mini"><div class="ic">🔢</div><h4>期待する種類</h4><p>文字列なのか、整数なのか。</p></div>
+      <div class="mini"><div class="ic">📏</div><h4>値の範囲の制限</h4><p>0以上120以下、2文字以上など。</p></div>
+      <div class="mini"><div class="ic">🧪</div><h4>追加の確認</h4><p>自分で書いた処理による確認。</p></div>
+      <div class="mini"><div class="ic">🔄</div><h4>相互変換</h4><p>JSON など、送れる形との行き来。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>Pydantic と競合する選択肢、そして利点を客観的に説明できる</li><li>型ヒントを土台にしているという Pydantic の特徴を理解できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>候補: dataclass / attrs / Pydantic / marshmallow / Voluptuous</li>
+        <li>本書は Pydantic（FastAPI と組み合わさっている利便性）</li>
+        <li>Pydantic = <code>BaseModel</code> を受け継ぐ + 型ヒントが土台</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ 簡単な例 ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>簡単な例<span class="tag">model.py / data.py / web.py の3ファイル</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Pydantic の <code>BaseModel</code> を受け継いで形を定義し、一覧に詰めて FastAPI から返せば、自動で JSON になって返事として届きます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここまでは1つの文字列を窓口に渡す方法を見てきた。でも実際の API では、複数の種類のデータのまとまりを送ったり受け取ったりすることが多い。ここで Pydantic のモデルが初登場する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>3つのファイルを使う例だ。①<code>model.py</code> が形を定義、②<code>data.py</code> が仮のデータの置き場、③<code>web.py</code> が窓口を定義する。この章ではすべて同じ場所に置く。後の章で層ごとに分ける。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>model.py</h4><p>データの形（項目名と種類）を定義する。</p><span class="when">形の定義</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>data.py</h4><p>その形のデータを何件か用意して返す。</p><span class="when">仮のデータ</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>web.py</h4><p>窓口を作り、データを返す。</p><span class="when">外への出口</span></div>
+    </div>
+
+    <h3 class="blk">model.py：Creature モデル</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">5つの項目を持つデータの形を定義します。<code>BaseModel</code> を受け継ぐのがポイントです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Pydantic から、モデルの元になるものを取り出す。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="cmt"># BaseModel を受け継いで Creature という形を作る。これだけで確認の機能が付く。</span>
+<span class="kw">class</span> <span class="fn">Creature</span>(BaseModel):
+    <span class="cmt"># 名前は文字列。以下の5項目はすべて、渡されなければ失敗する必須の項目。</span>
+    name: <span class="kw">str</span>
+    <span class="cmt"># 国コードも文字列。</span>
+    country: <span class="kw">str</span>
+    <span class="cmt"># 地域も文字列。</span>
+    area: <span class="kw">str</span>
+    <span class="cmt"># 説明も文字列。</span>
+    description: <span class="kw">str</span>
+    <span class="cmt"># 別名も文字列。</span>
+    aka: <span class="kw">str</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>Creature</code> は Pydantic の <code>BaseModel</code> を受け継いでいる。各項目の <code>: str</code> は、文字列であることを示す型ヒントだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>重要な点。この例では全部の項目が必須だ。Pydantic では、型に <code>Optional</code>（省略できる指定）が無ければ、その項目は必ず値を持たなければならない。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">定義した形に、実際の値を入れてデータを1件作ります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># さきほど定義した形を取り込む。</span>
+<span class="kw">from</span> model <span class="kw">import</span> Creature
+
+<span class="cmt"># 項目名を指定して値を渡す。名前を書いているので、並べる順番は自由でよい。</span>
+thing = <span class="fn">Creature</span>(
+    <span class="cmt"># 名前。</span>
+    name=<span class="str">"yeti"</span>,
+    <span class="cmt"># 国コード。CN は中国。</span>
+    country=<span class="str">"CN"</span>,
+    <span class="cmt"># 地域。</span>
+    area=<span class="str">"Himalayas"</span>,
+    <span class="cmt"># 説明。</span>
+    description=<span class="str">"Hirsute Himalayan"</span>,
+    <span class="cmt"># 別名。</span>
+    aka=<span class="str">"Abominable Snowman"</span>,
+)
+<span class="cmt"># --- この時点で起きていること ---</span>
+<span class="cmt"># 5項目すべてが揃っていて、すべて文字列なので、確認を通って作られる。</span>
+<span class="cmt"># 1つでも欠けていたり、種類が違ったりすると、ここで失敗する。</span>
+</pre></details>
+
+    <h3 class="blk">data.py：仮のデータの置き場</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">2件のデータを用意し、それを返す処理を作ります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 定義した形を取り込む。</span>
+<span class="kw">from</span> model <span class="kw">import</span> Creature
+
+<span class="cmt"># 先頭のアンダースコアは「外から直接触らないでほしい」という書き手の意思表示。</span>
+<span class="cmt"># list[Creature] は「Creature の形のデータだけが入った一覧」という書き添え。</span>
+_creatures: <span class="kw">list</span>[Creature] = [
+    <span class="cmt"># 1件目のデータ。</span>
+    <span class="fn">Creature</span>(
+        name=<span class="str">"yeti"</span>,
+        country=<span class="str">"CN"</span>,
+        area=<span class="str">"Himalayas"</span>,
+        description=<span class="str">"Hirsute Himalayan"</span>,
+        aka=<span class="str">"Abominable Snowman"</span>,
+    ),
+    <span class="cmt"># 2件目のデータ。area の "*" は「どこにでもいる」という意味で使っている。</span>
+    <span class="fn">Creature</span>(
+        name=<span class="str">"sasquatch"</span>,
+        country=<span class="str">"US"</span>,
+        area=<span class="str">"*"</span>,
+        description=<span class="str">"Yeti's Cousin Eddie"</span>,
+        aka=<span class="str">"Bigfoot"</span>,
+    ),
+]
+
+<span class="cmt"># 一覧を直接見せる代わりに、この処理を通して渡す。返すのは Creature の一覧だと書き添えている。</span>
+<span class="kw">def</span> <span class="fn">get_creatures</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="cmt"># 用意しておいた一覧をそのまま返す。</span>
+    <span class="kw">return</span> _creatures
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>型ヒント <code>list[Creature]</code> で、これは <code>Creature</code> だけが入った一覧だと示している。ビッグフットはほぼどこにでもいることになっているので、<code>area</code> には <code>"*"</code> を使った。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ちょっとした情報の隠し方として、<code>_creatures</code> を直接公開せず、<code>get_creatures()</code> を通して返している。</div></div>
+    </div>
+
+    <h3 class="blk">web.py：FastAPI の窓口</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">一覧をそのまま返すだけの窓口です。JSON への変換は書く必要がありません。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model <span class="kw">import</span> Creature
+<span class="cmt"># データを返す処理を取り込む。</span>
+<span class="kw">from</span> data <span class="kw">import</span> get_creatures
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /creature への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/creature"</span>)
+<span class="cmt"># 返すのは Creature の一覧だと書き添えている。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="cmt"># データを取ってきて、そのまま返す。JSON への変換は FastAPI がやってくれる。</span>
+    <span class="kw">return</span> <span class="fn">get_creatures</span>()
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">サーバを起動します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ファイル名の部分（コロンの前）と、その中の変数名（コロンの後ろ）を指定して起動する。</span>
+$ uvicorn creature:app
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Started server process [24782]</span>
+<span class="cmt"># INFO:     Waiting for application startup.</span>
+<span class="cmt"># INFO:     Application startup complete.</span>
+<span class="cmt"># INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</span>
+<span class="cmt"># 注：ファイル名が web.py なら uvicorn web:app と書く。原書の例に合わせている。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie で問い合わせると、2件のデータが JSON で返ってきます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 作った窓口に問い合わせる。</span>
+$ http http://localhost:8000/creature
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 183</span>
+<span class="cmt"># content-type: application/json    ← 中身が JSON であることが自動で示されている</span>
+<span class="cmt"># date: Mon, 12 Sep 2022 02:21:15 GMT</span>
+<span class="cmt"># server: uvicorn</span>
+<span class="cmt">#</span>
+<span class="cmt"># [                                 ← 角かっこは一覧を表す</span>
+<span class="cmt">#     {</span>
+<span class="cmt">#         "aka": "Abominable Snowman",</span>
+<span class="cmt">#         "area": "Himalayas",</span>
+<span class="cmt">#         "country": "CN",</span>
+<span class="cmt">#         "name": "yeti",</span>
+<span class="cmt">#         "description": "Hirsute Himalayan"</span>
+<span class="cmt">#     },</span>
+<span class="cmt">#     {</span>
+<span class="cmt">#         "aka": "Bigfoot",</span>
+<span class="cmt">#         "country": "US",</span>
+<span class="cmt">#         "area": "*",</span>
+<span class="cmt">#         "name": "sasquatch",</span>
+<span class="cmt">#         "description": "Yeti's Cousin Eddie"</span>
+<span class="cmt">#     }</span>
+<span class="cmt"># ]</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI と Starlette は、<code>Creature</code> の一覧を自動的に JSON の文字列に変換する。初期の出力形式だから、こちらで指定する必要はない。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">サーバ側の画面には、受け付けた記録が出ます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを起動している画面に表示される1行。</span>
+<span class="cmt"># どこから、どの動詞で、どの住所に来て、どの番号で返したかが記録される。</span>
+INFO:     127.0.0.1:52375 - <span class="str">"GET /creature HTTP/1.1"</span> 200 OK
+</pre></details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「形の定義 → 仮データ → 窓口」という最小の作り方が書けるようになる</li><li>型ヒント <code>list[Creature]</code> の使い方が身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>BaseModel</code> を受け継いで形を定義</li>
+        <li>項目に型ヒントを書くだけでよい</li>
+        <li>FastAPI が自動で JSON に変換して返す</li>
+        <li>全項目が必須（<code>Optional</code> を書かない場合）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ タイプ検証 ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>タイプを検証する<span class="tag">種類が違えばその場で止まる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Pydantic はデータを作る時点で種類を確認します。合っていなければ <code>ValidationError</code> が出ます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここまでで、①変数と処理に型ヒントを付ける、②Pydantic のモデルを定義して使う、③データの置き場からモデルの一覧を返す、④一覧を JSON に自動変換して相手に返す、を見た。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>では実際にデータを確認してみよう。<code>Creature</code> の項目に、違う種類の値を入れてみる。Pydantic の確認はデータを作る時点で走る。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">文字列を入れるべき項目に、わざと一覧を入れてみます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 定義した形を取り込む。</span>
+<span class="kw">from</span> model <span class="kw">import</span> Creature
+
+<span class="cmt"># データを1件作ろうとする。</span>
+dragon = <span class="fn">Creature</span>(
+    <span class="cmt"># 名前は文字列。ここは問題ない。</span>
+    name=<span class="str">"dragon"</span>,
+    <span class="cmt"># 国コードも文字列。問題ない。</span>
+    country=<span class="str">"*"</span>,
+    <span class="cmt"># 地域も文字列。問題ない。</span>
+    area=<span class="str">"*"</span>,
+    <span class="cmt"># ここが問題。description は文字列の想定だが、角かっこで囲んだ一覧を渡している。</span>
+    description=[<span class="str">"扁額のような"</span>, <span class="str">"炎を吐く"</span>],
+    <span class="cmt"># 別名は文字列。問題ない。</span>
+    aka=<span class="str">"ドラゴン"</span>,
+)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># pydantic.error_wrappers.ValidationError:</span>
+<span class="cmt"># 1 validation error for Creature description</span>
+<span class="cmt">#   str type expected (type=type_error.str)</span>
+<span class="cmt"># 「Creature の description で文字列を期待していた」と、項目名つきで教えてくれる。</span>
+<span class="cmt"># dragon という名前にデータは入らず、この行で処理が止まる。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>description</code> に文字列ではなく一覧を入れているので、Pydantic が「文字列を期待していたよ」と失敗を知らせてくれた。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：確認が無いと、どこで問題が起きるか</h4>
+      <p>もし確認が無ければ、<code>description</code> に一覧が入ったまま処理が進みます。問題が表面化するのは、たとえば画面に表示しようとしたときや、文字数を数えようとしたときです。エラーが出る場所と、間違った値が入った場所が離れているので、原因を探すのに時間がかかります。</p>
+      <p>Pydantic はデータを作る瞬間に止めるので、間違った値がどこから来たかがすぐ分かります。FastAPI の窓口では、外から届いたデータがこの確認に引っかかると、処理に入る前に 422 のエラーが返ります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「確認のコードを書かなくても、モデルが違反を弾いてくれる」と分かる</li><li>入力を確かめるコードを大きく減らせる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>データを作る時点で Pydantic が種類を確認する</li>
+        <li>種類が違うと <code>ValidationError</code></li>
+        <li>Web の層でも同じように確認される</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ 値の検証 ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>値を検証する<span class="tag">長さ・範囲・文字の並び</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Pydantic は種類に加えて、長さ・範囲・文字の並びなどの条件も宣言して書けます。<code>constr</code>、<code>conint</code>、<code>Field()</code> を使います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>種類が合っているだけでは足りない場合もある。値そのものに条件をかけたいとき、Pydantic は色々用意している。</div></div>
+    </div>
+
+    <h3 class="blk">指定できる条件</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>対象</th><th>指定</th><th>意味</th></tr>
+      <tr><td rowspan="5">整数・小数<br>（<code>conint</code> など）</td><td><code>gt</code></td><td>より大きい</td></tr>
+      <tr><td><code>lt</code></td><td>未満</td></tr>
+      <tr><td><code>ge</code></td><td>以上</td></tr>
+      <tr><td><code>le</code></td><td>以下</td></tr>
+      <tr><td><code>multiple_of</code></td><td>その値の整数倍であること</td></tr>
+      <tr><td rowspan="5">文字列<br>（<code>constr</code>）</td><td><code>min_length</code></td><td>最小の文字数</td></tr>
+      <tr><td><code>max_length</code></td><td>最大の文字数</td></tr>
+      <tr><td><code>to_upper</code></td><td>大文字に変換する</td></tr>
+      <tr><td><code>to_lower</code></td><td>小文字に変換する</td></tr>
+      <tr><td><code>regex</code></td><td>指定した文字の並びに合うこと</td></tr>
+      <tr><td rowspan="2">タプル・リスト・セット</td><td><code>min_items</code></td><td>最小の要素数</td></tr>
+      <tr><td><code>max_items</code></td><td>最大の要素数</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これらはモデルの型の部分で指定する。</div></div>
+    </div>
+
+    <h3 class="blk">書き方1：<code>constr</code> で最小2文字を求める</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">名前が2文字未満なら受け付けない、という条件を付けた例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># モデルの元になるものと、条件付きの文字列を作る道具を取り出す。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, constr
+
+<span class="cmt"># Creature という形を作る。</span>
+<span class="kw">class</span> <span class="fn">Creature</span>(BaseModel):
+    <span class="cmt"># 単なる文字列ではなく「2文字以上の文字列」という条件付きの種類にしている。</span>
+    name: <span class="fn">constr</span>(min_length=<span class="num">2</span>)
+    country: <span class="kw">str</span>
+    area: <span class="kw">str</span>
+    description: <span class="kw">str</span>
+    aka: <span class="kw">str</span>
+
+<span class="cmt"># 名前に空の文字列を渡してみる。長さ0なので条件を満たさない。</span>
+c = <span class="fn">Creature</span>(name=<span class="str">""</span>, country=<span class="str">"*"</span>, area=<span class="str">"*"</span>, description=<span class="str">"d"</span>, aka=<span class="str">"a"</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># pydantic.error_wrappers.ValidationError:</span>
+<span class="cmt">#   1 validation error for Creature name</span>
+<span class="cmt">#   ensure this value has at least 2 characters</span>
+<span class="cmt">#   (type=value_error.any_str.min_length)</span>
+<span class="cmt"># 「この値は少なくとも2文字必要」と、条件の内容まで含めて教えてくれる。</span>
+</pre></details>
+
+    <h3 class="blk">書き方2：<code>Field</code> を使う</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じ条件を、別の書き方で表したものです。結果はまったく同じです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># モデルの元になるものと、項目ごとの条件を書く道具を取り出す。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="cmt"># Creature という形を作る。</span>
+<span class="kw">class</span> <span class="fn">Creature</span>(BaseModel):
+    <span class="cmt"># 種類は普通の文字列にしておき、条件は Field のほうに書く。</span>
+    <span class="cmt"># 最初の ... は「この項目は必須で、初期値は無い」という意味の記号。</span>
+    name: <span class="kw">str</span> = <span class="fn">Field</span>(..., min_length=<span class="num">2</span>)
+    country: <span class="kw">str</span>
+    area: <span class="kw">str</span>
+    description: <span class="kw">str</span>
+    aka: <span class="kw">str</span>
+
+<span class="cmt"># 同じく、名前に空の文字列を渡してみる。</span>
+c = <span class="fn">Creature</span>(name=<span class="str">""</span>, country=<span class="str">"*"</span>, area=<span class="str">"*"</span>, description=<span class="str">"d"</span>, aka=<span class="str">"a"</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># pydantic.error_wrappers.ValidationError:</span>
+<span class="cmt">#   1 validation error for Creature name</span>
+<span class="cmt">#   ensure this value has at least 2 characters</span>
+<span class="cmt">#   (type=value_error.any_str.min_length)</span>
+<span class="cmt"># 書き方1とまったく同じ結果になる。好みで選んでよい。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>Field(...)</code> の <code>...</code> は「値が必須で、初期値は無い」という意味だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Pydantic の最小限の紹介はここまで。要点は、<b>データの確認が自動でできる</b>こと。Web の層やデータの層でデータを受け取るときに、この力が効いてくる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：自分で書くとどれだけの量になるか</h4>
+      <p>「name は2〜50文字」「age は0以上120以下の整数」「email は英数字と @ を含む」という3つの条件を、自分で書くとします。項目の存在を確かめる <code>if</code>、種類を確かめる <code>if</code>、範囲を確かめる <code>if</code>、そしてそれぞれのエラーメッセージ…と、3項目で20行以上になります。項目が増えるほど、この量も比例して増えます。</p>
+      <p>Pydantic なら <code>name: constr(min_length=2, max_length=50)</code> <code>age: conint(ge=0, le=120)</code> のように3行で済み、エラーメッセージも「どの項目が、どの条件に反したか」の形で自動的に作られます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「文字列は2〜50文字、ID は正の整数」のような決まりを宣言して書ける</li><li>確認のコードがほとんど無くても、崩れにくい API が組める</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>値の確認もモデルの定義に書ける</li>
+        <li><code>conint</code>, <code>constr</code>: 種類ごとの条件</li>
+        <li><code>Field(..., min_length=2)</code>: 同じ意味の別の書き方</li>
+        <li><code>...</code> は「必須・初期値なし」の意味</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「型ヒントは <code>name: type</code> / 関数の戻り値は <code>-&gt; type</code> の形。Python 本体は無視するが mypy が確認する」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>型ヒントが「実行時に強制されない」ことは重要だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「データのまとめ方には tuple / list / dict / namedtuple / class / dataclass / Pydantic と歴代の選択肢がある」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>確認と JSON 化までやってくれるのが Pydantic だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「Pydantic は <code>BaseModel</code> を受け継いで、型ヒント付きの項目を書くだけで使える」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>初期値が無く、省略できる指定も無ければ必須の扱いになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「FastAPI は Pydantic のモデルを戻り値として返せば、自動で JSON にして返す」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>入力でも出力でも同じ仕組みだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「<code>constr</code>, <code>conint</code>, <code>Field()</code> で値の確認もモデルの定義に含められる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>長さ、範囲、文字の並び、すべて宣言して書ける。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>型ヒントの仕組み</div>
+      <p style="font-size:14px;margin:0">Python の型ヒントは「実行時には強制されない」のに、どうやって役に立つのですか？ mypy と Pydantic それぞれの活用のしかたを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Python 本体は型ヒントの記述を無視して実行する。けれど型ヒントは情報として残るので、道具が活用できる。mypy は型を調べる道具で、コードを動かさずに解析して型の食い違いを指摘する。Pydantic は型ヒントを「データの形の定義」として使い、データを作る時点で項目の種類を確認する。同じ型ヒントの情報を、用途によって違う道具が利用している。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Python 本体が型ヒントを無視することに触れている<br>□ mypy が動かさずに型を調べることを述べている<br>□ Pydantic がデータを作る時点で確認することを述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>辞書と Pydantic モデルの違い</div>
+      <p style="font-size:14px;margin:0">「とりあえず辞書で受け取って中身を確認しよう」というやり方ではなく、Pydantic のモデルを使うべき理由を、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">辞書は中身に何が入っているか保証が無いので、項目の存在、種類、値の範囲などをすべて自分で確かめるコードを書かなければならない。Pydantic のモデルなら、<code>BaseModel</code> を受け継いで型ヒントを書くだけで、これらの確認が自動で走る。さらにエラーの内容も分かりやすく、JSON との相互変換も組み込まれている。書くコードが減り、間違いも減り、そのまま説明にもなる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 辞書は中身が保証されないという欠点に触れている<br>□ Pydantic が自動で確認してくれることを述べている<br>□ JSON 変換や、定義がそのまま説明になる点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>BaseModel の必須項目</div>
+      <p style="font-size:14px;margin:0">Pydantic の <code>BaseModel</code> を受け継いだ形で、ある項目を「省略できる」ようにするのと「必須」にするのは、どう書き分けますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">初期状態では Pydantic の項目は必須の扱いで、値を渡さないと <code>ValidationError</code> になる。省略できるようにしたい場合は <code>Optional[str]</code> を型に書き、<code>= None</code> のような初期値を与える。あるいは Python 3.10 以降なら <code>str | None = None</code> の形で同じことを表せる。<code>Field(..., …)</code> の <code>...</code> は「必須で初期値なし」を明示するためのもの。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 初期状態では必須、という前提に触れている<br>□ <code>Optional[type]</code> または <code>type | None</code> の書き方に触れている<br>□ 初期値（<code>= None</code> など）を与える必要がある、と説明している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>値の検証</div>
+      <p style="font-size:14px;margin:0">Pydantic で「name は2文字以上の文字列」「age は 0 以上 120 以下の整数」という条件を表すには、どう書きますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>from pydantic import BaseModel, constr, conint</code> と書いたうえで、<code>name: constr(min_length=2)</code>、<code>age: conint(ge=0, le=120)</code> と書く。または <code>Field(..., min_length=2)</code>、<code>Field(..., ge=0, le=120)</code> を使ってもよい。値が条件を満たさないと、データを作る時点で <code>ValidationError</code> が発生する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>constr</code>/<code>conint</code> または <code>Field</code> を使う書き方を示している<br>□ <code>min_length</code>, <code>ge</code>, <code>le</code> などの正しい指定名を使っている<br>□ 違反すると <code>ValidationError</code> が出ることに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>FastAPI と Pydantic の組み合わせ</div>
+      <p style="font-size:14px;margin:0">Pydantic のモデルを FastAPI のパス関数の戻り値として返すと、どんなことが自動で起きますか？ 返事の側について、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">FastAPI が内部の <code>jsonable_encoder()</code> で Pydantic のモデルを「JSON にできる形」へ変換し、続いて JSON の文字列にして、<code>Content-Type: application/json</code> を付けて返事として返す。<code>list[Creature]</code> の場合は一覧として返る。これによりパス関数は単純にモデルを返すだけで、JSON の返事ができあがる。変換の命令を手で呼ぶ必要も、日時で失敗する心配も無くなる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 戻り値を JSON に自動変換することを述べている<br>□ <code>Content-Type: application/json</code> が自動で付くことに触れている<br>□ 変換の命令を書く必要が無くなる、という利点に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>公式の手引きを読む</h4><p>Pydantic 公式ドキュメント（docs.pydantic.dev）で <code>BaseModel</code> の入門を読む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>自分のモデルに mypy をかける</h4><p>わざと型の食い違いを作って、指摘されることを確かめる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>条件の指定を一通り試す</h4><p><code>conint</code>, <code>constr</code>, <code>Field</code> の指定を試して、どんな条件が書けるか体感する。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># モデルの元と、条件付きの種類を作る道具を取り出す。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, constr, conint
+
+<span class="cmt"># 利用者を表す形を作る。</span>
+<span class="kw">class</span> <span class="fn">User</span>(BaseModel):
+    <span class="cmt"># 名前は2文字以上50文字以下の文字列。</span>
+    name: <span class="fn">constr</span>(min_length=<span class="num">2</span>, max_length=<span class="num">50</span>)
+    <span class="cmt"># 年齢は0以上120以下の整数。ge は以上、le は以下。</span>
+    age: <span class="fn">conint</span>(ge=<span class="num">0</span>, le=<span class="num">120</span>)
+
+<span class="cmt"># 条件を満たす値でデータを作る。問題なく作られる。</span>
+u = <span class="fn">User</span>(name=<span class="str">"ハル"</span>, age=<span class="num">22</span>)
+<span class="fn">print</span>(u)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># name='ハル' age=22</span>
+
+<span class="cmt"># 年齢に範囲外の値を渡してみる。</span>
+u2 = <span class="fn">User</span>(name=<span class="str">"ハル"</span>, age=<span class="num">200</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ValidationError: 1 validation error for User age</span>
+<span class="cmt">#   ensure this value is less than or equal to 120</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>第3章の例を書き直す</h4><p>戻り値の種類を Pydantic のモデルにしてみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「依存関係」へ</h4><p><code>Header()</code> や <code>Body()</code> の裏側にある依存性注入の仕組みを学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第5章「Pydantic、タイプヒント、モデルツアー」の図解 ― 原文の全節（タイプ・ヒンティング／データのグループ化／代替案／簡単な例／タイプを検証する／値を検証する）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

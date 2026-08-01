@@ -1,0 +1,1154 @@
+<meta charset="utf-8">
+<title>3. RAGによるデータとのチャット ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第3章</span>
+  <h1>3. RAGによるデータとのチャット</h1>
+  <p>2章で保存したデータから、質問に最も関係する部分を取り出してLLMに渡す——RAGの後半「<b>検索</b>」と「<b>生成</b>」を完成させます。さらに本番で使える品質にするための工夫（質問の書き換え・振り分け・SQLへの変換）まで学びます。</p>
+  <p>コードはすべてPythonです。1行ずつ日本語の説明と、実行結果のコメントを付けました。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">🐍 コードはPythonのみ</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#intro">📖 導入 ― 手作業のコピペでは回らない</a>
+  <a href="#s31">3.1 RAGについて</a>
+  <a class="sub" href="#s311">3.1.1 関連ドキュメントを検索する</a>
+  <a class="sub" href="#s312">3.1.2 取得した内容で回答を生成する</a>
+  <a href="#s32">3.2 クエリの変換</a>
+  <a class="sub" href="#s321">3.2.1 Rewrite-Retrieve-Read</a>
+  <a class="sub" href="#s322">3.2.2 マルチクエリ検索</a>
+  <a class="sub" href="#s323">3.2.3 RAG-Fusion</a>
+  <a class="sub" href="#s324">3.2.4 HyDE（仮想ドキュメント埋め込み）</a>
+  <a href="#s33">3.3 クエリルーティング</a>
+  <a class="sub" href="#s331">3.3.1 論理ルーティング</a>
+  <a class="sub" href="#s332">3.3.2 セマンティックルーティング</a>
+  <a href="#s34">3.4 クエリ構築</a>
+  <a class="sub" href="#s341">3.4.1 メタデータへのフィルタリング</a>
+  <a class="sub" href="#s342">3.4.2 テキストからSQLへの変換</a>
+  <a href="#s35">3.5 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のPythonコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。コードを飛ばしても流れがつかめます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな質問がどう変わるか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。</p>
+  <div class="gl">
+    <div class="item"><div class="w">RAG<span>検索拡張生成</span></div><p>答えさせる前に手元の資料から関係する部分を検索し、質問と一緒にLLMへ渡す仕組み。</p></div>
+    <div class="item"><div class="w">クエリ</div><p>利用者が投げる質問・検索の言葉のこと。</p></div>
+    <div class="item"><div class="w">リトリーバー<span>retriever</span></div><p>質問を受け取って、関係するかたまりを取り出して返す係。</p></div>
+    <div class="item"><div class="w">as_retriever</div><p>ベクトルストアから、上のような取り出し係を作る呼び方。</p></div>
+    <div class="item"><div class="w">k</div><p>取り出す件数。多いほど遅く・高く・雑音が混じりやすくなります。</p></div>
+    <div class="item"><div class="w">コンテキスト</div><p>質問と一緒にLLMへ渡す、答えの材料になる文章。</p></div>
+    <div class="item"><div class="w">チェーン</div><p>部品を順につないだ処理の流れ。<code>|</code> でつなげます。</p></div>
+    <div class="item"><div class="w">@chain</div><p>ふつうの関数に、LangChainの部品と同じ呼び方（invoke など）を付ける印。</p></div>
+    <div class="item"><div class="w">レイテンシー</div><p>質問してから答えが返るまでの待ち時間。</p></div>
+    <div class="item"><div class="w">クエリ変換</div><p>利用者の言葉足らずな質問を、検索に向いた形に作り替えること。</p></div>
+    <div class="item"><div class="w">Rewrite-Retrieve-Read</div><p>検索の前に、LLMに質問を書き直させる方法。</p></div>
+    <div class="item"><div class="w">マルチクエリ検索</div><p>1つの質問から複数の言い方を作り、それぞれで検索して結果を合わせる方法。</p></div>
+    <div class="item"><div class="w">重複排除</div><p>複数の検索で同じものが何度も出てきたとき、1件にまとめること。</p></div>
+    <div class="item"><div class="w">RAG-Fusion</div><p>複数の検索結果の順位を合わせて、1つの順位に作り直す方法。</p></div>
+    <div class="item"><div class="w">RRF<span>順位の逆数による統合</span></div><p>各検索での順位から点数を出して合計し、総合順位を作る計算方法。</p></div>
+    <div class="item"><div class="w">再ランク付け</div><p>いったん取り出した結果を、別の基準で並べ直すこと。</p></div>
+    <div class="item"><div class="w">HyDE</div><p>質問から「仮の答えの文章」を作り、その文章で検索する方法。</p></div>
+    <div class="item"><div class="w">ルーティング</div><p>質問を、答えを持っていそうな保管場所へ振り分けること。</p></div>
+    <div class="item"><div class="w">論理ルーティング</div><p>候補の一覧をLLMに見せて、どれを使うべきかLLMに選ばせる方法。</p></div>
+    <div class="item"><div class="w">セマンティックルーティング</div><p>各保管場所を表す文章を数値にしておき、質問に最も近いものを選ぶ方法。</p></div>
+    <div class="item"><div class="w">関数呼び出し対応モデル</div><p>「決められた形で答える」ことができるモデル。選択肢からの分類に向きます。</p></div>
+    <div class="item"><div class="w">クエリ構築</div><p>ふつうの日本語の質問を、データベースが読める命令文に変換すること。</p></div>
+    <div class="item"><div class="w">構造化データ</div><p>表のように、列と行がきっちり決まっているデータ。</p></div>
+    <div class="item"><div class="w">非構造化データ</div><p>文章や画像のように、決まった形を持たないデータ。</p></div>
+    <div class="item"><div class="w">メタデータフィルター</div><p>「公開年が1980」「評価が8.5以上」のように、付随情報で絞り込む条件。</p></div>
+    <div class="item"><div class="w">SelfQueryRetriever</div><p>日本語の質問から、絞り込み条件と検索語を自動で切り分けてくれる取り出し係。</p></div>
+    <div class="item"><div class="w">SQL</div><p>データベースに「この条件のデータを出して」と伝えるための命令文の書き方。</p></div>
+    <div class="item"><div class="w">読み取り専用ユーザー</div><p>データを見ることはできるが、書き換えや削除はできない権限の利用者。</p></div>
+    <div class="item"><div class="w">タイムアウト</div><p>処理が一定時間を超えたら打ち切る設定。重い処理で全体が止まるのを防ぎます。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">RAGの後半を完成させる</span></div></div>
+  <div class="card">
+    <p class="lead">「2章でデータを保存しました。あとはどう使うんですか？」とソラ。リク先輩は「保存した中から、質問に最も関係する箇所を取り出して、LLMに渡すんだ。それがRAGの後半だよ」と答えます。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">この章では、RAGの「検索」と「生成」を完成させ、本物の質問応答アプリを作ります。さらに、本番で使える丈夫なRAGに必要な工夫——<b>クエリ変換</b>（曖昧な質問の書き換え・多面化・並べ直し・HyDE）、<b>クエリルーティング</b>（質問を適切な保管場所へ振り分ける）、<b>クエリ構築</b>（日本語をSQLや絞り込み条件に変換）——を学びます。</p>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">RAGは3つの段階——①インデックス化（2章）、②<b>検索</b>（質問に関係するかたまりを取り出す）、③<b>生成</b>（取り出したかたまりを材料としてLLMに渡し答えを作る）。この章は②③を完成させます。</p>
+    <div class="cycle">
+      <div class="node"><h4>① インデックス化</h4><p>資料を検索できる形で保存しておきます。</p><span class="when">2章で完了</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 検索</h4><p>質問が来たら、関係するかたまりを取り出します。</p><span class="when">この章 3.1.1</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 生成</h4><p>取り出したかたまりを質問と一緒に渡し、答えを作らせます。</p><span class="when">この章 3.1.2</span></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">さらに本番の品質にするため、利用者の曖昧な質問を<b>作り替え</b>、複数の保管場所へ<b>振り分け</b>、日本語を各保管場所の命令文（SQLなど）に<b>変換</b>する方法を学びます。</p>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>LLMは最新の情報を知らず、毎回手で資料を貼り付けるのは現実的でない。自動で関係する情報を取り出して渡す仕組みが必要だから。</li>
+        <li>本番の利用者の質問は言葉足らず・曖昧で、そのままだと嘘の回答を招くから。</li>
+        <li>必要なデータは複数の保管場所（複数のベクトルストア、表形式のデータベースなど）に散らばっていて、表のデータも扱う必要があるから。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li><code>as_retriever</code> で関係する資料を取り出し、それを材料にLLMで答えを作る質問応答アプリを作れる。</li>
+        <li>クエリ変換（Rewrite-Retrieve-Read・マルチクエリ・RAG-Fusion・HyDE）で曖昧な質問に対応できる。</li>
+        <li>論理／セマンティックの振り分けで、質問を適切な保管場所へ回せる。</li>
+        <li>SelfQueryRetrieverやテキスト→SQLで、日本語を検索条件に変換できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 導入 ============ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― 手作業のコピペでは回らない</h2><span class="tag">正しい情報を添えれば答えられる</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>先生、2章でデータをベクトルストアに保存しました。次は？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>いよいよRAGの本番だ。<b>RAG（検索拡張生成）</b>は、外の保管場所から取り出した材料をLLMに与えて、答えの正確さを高める手法だ。例を見よう。ChatGPTに「最新の男子FIFAワールドカップ優勝国は？」と聞くと、古い情報（2018年フランス）を返すことがある。本当は2022年のアルゼンチンなのに。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>学習データが古いんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。でも、Wikipediaの「現王者はアルゼンチン、2022年大会で3度目の優勝」という文を<b>コンテキスト</b>として指示文に添えると、正しく「アルゼンチン」と答える。ただ、毎回手で貼り付けるのは本番では非現実的だ。だから「利用者の質問に応じて関係する情報を自動で取り出し、指示文に付け足してから答えを作る」仕組みが要る。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：同じ質問、材料の有無で答えが変わる</h4>
+      <p><b>材料なし</b>：「最新の男子FIFAワールドカップ優勝国は？」→「フランスです（2018年大会）」。学習の締め切りが2022年より前だと、古い答えになります。</p>
+      <p><b>材料あり</b>：質問の前に「現王者はアルゼンチン、2022年大会で3度目の優勝」という1文を添える→「アルゼンチンです」。モデル自体は変えていません。渡した材料が変わっただけです。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3.1 ============ -->
+<section id="s31">
+  <div class="sec-head"><div class="sec-num">3.1</div><div><h2>RAGについて</h2><span class="tag">3つの段階と、その実装</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：RAGは①インデックス化、②検索、③生成の3段階です。まず①のおさらいから。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>RAGは3つの段階からなる。①<b>インデックス化</b>（外のデータを前処理して数値の並びをベクトルストアに入れる。2章でやった）、②<b>検索</b>（質問に応じて関係する数値の並びとデータを取り出す）、③<b>生成</b>（元の指示文と取り出したデータを合わせて最終の指示文を作りLLMに送る）。まずインデックス化を、もう一度ゼロから。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 読み取り役・埋め込みモデル・切り分け役・ベクトルストアの部品を読み込む。</span>
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> TextLoader
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain_postgres.vectorstores <span class="kw">import</span> PGVector
+
+<span class="cmt"># 資料のファイルを読み込んで、Document の一覧にする。</span>
+raw_documents = <span class="fn">TextLoader</span>(<span class="str">'./test.txt'</span>).<span class="fn">load</span>()
+
+<span class="cmt"># 1,000文字ずつ、200文字重ねながらかたまりに切り分ける。</span>
+text_splitter = <span class="fn">RecursiveCharacterTextSplitter</span>(chunk_size=<span class="num">1000</span>, chunk_overlap=<span class="num">200</span>)
+documents = text_splitter.<span class="fn">split_documents</span>(raw_documents)
+
+<span class="cmt"># 埋め込みモデルの呼び出し口と、データベースへのつなぎ先を用意する。</span>
+model = <span class="fn">OpenAIEmbeddings</span>()
+connection = <span class="str">'postgresql+psycopg://langchain:langchain@localhost:6024/langchain'</span>
+
+<span class="cmt"># かたまりを数値に変えて保存する。ここまでが「インデックス化」で、1回やれば以後使い回せる。</span>
+db = PGVector.<span class="fn">from_documents</span>(documents, model, connection=connection)
+</pre></details>
+  </div>
+
+  <div class="card" id="s311">
+    <h3 class="blk" style="margin-top:4px">3.1.1 関連ドキュメントを検索する</h3>
+    <p class="lead"><b>要するに</b>：質問を数値に変え、保存済みの中から近いものを取り出します。この一連の作業をまとめてくれるのが<span class="term" data-tip="質問を受け取って、関係するかたまりを取り出して返す係。">リトリーバー</span>です。</p>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>質問を数値の並びに変える</h4><p>保存のときと同じ埋め込みモデルを使います。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>最も近い数値の並びを探す</h4><p>ベクトルストアの中から、意味が近い順に探します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>対応する本文を取り出す</h4><p>数値からは文章に戻せないので、一緒に保存しておいた本文を取り出します。</p></div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 保存済みのベクトルストアから、「質問を渡すと関係する資料を返す係」を作る。</span>
+retriever = db.<span class="fn">as_retriever</span>()
+
+<span class="cmt"># 質問を渡すと、上の3手順が内部で自動的に行われ、関係する資料の一覧が返る。</span>
+docs = retriever.<span class="fn">invoke</span>(<span class="str">"古代ギリシャ哲学史における主要人物は誰ですか？"</span>)
+
+<span class="cmt"># 何件返ってきたかを確認する。何も指定しないと既定の件数（4件）になる。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(docs))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 4</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6">取り出す件数は <code>k</code> で調整できます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 取り出す件数を2件に絞った取り出し係を作る。k が件数の指定。</span>
+retriever = db.<span class="fn">as_retriever</span>(search_kwargs={<span class="str">"k"</span>: <span class="num">2</span>})
+
+<span class="cmt"># 同じ質問を投げても、返る件数が2件になる。</span>
+docs = retriever.<span class="fn">invoke</span>(<span class="str">"古代ギリシャ哲学史における主要人物は誰ですか？"</span>)
+
+<span class="cmt"># 件数を確認する。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(docs))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 2</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>たくさん取った方がよさそうですけど、<code>k</code> を小さく？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>逆効果に思えるよね。でも、取り出す件数が増えるほど処理が遅くなって、指示文が大きくなって答えを作る費用も上がる。それに関係のない文章が混じって嘘の回答を招く危険も高まる。多ければいいわけじゃないんだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>🟣 なぜ件数を増やしすぎてはいけないのか</h4>
+      <ul>
+        <li>取り出す処理そのものと、長い指示文を送る通信で、待ち時間が延びるから。</li>
+        <li>指示文に含まれるトークンが増えるほど、1回あたりの料金が上がるから。</li>
+        <li>関係のない文章が混ざると、LLMがそちらに引きずられて誤った答えを作るから。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" id="s312">
+    <h3 class="blk" style="margin-top:4px">3.1.2 取得した内容で回答を生成する</h3>
+    <p class="lead"><b>要するに</b>：取り出したかたまりを指示文の <code>{context}</code> に入れ、質問と一緒にモデルへ渡します。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># チャットモデルと、役割つきの雛形の部品を読み込む。</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+<span class="cmt"># 保存済みのベクトルストアから取り出し係を作る。</span>
+retriever = db.<span class="fn">as_retriever</span>()
+
+<span class="cmt"># 指示文の雛形を作る。「渡した材料の中だけを見て答えて」と縛るのが要点。</span>
+<span class="cmt"># この一文がないと、モデルが自分の記憶で勝手に答えてしまうことがある。</span>
+prompt = ChatPromptTemplate.<span class="fn">from_template</span>(<span class="str">"""以下のコンテキストのみに基づいて質問に答えてください:
+{context}
+
+質問: {question}
+"""</span>)
+
+<span class="cmt"># 答えを作るモデルを用意する。毎回同じ答えになるよう temperature=0 にする。</span>
+llm = <span class="fn">ChatOpenAI</span>(model_name=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+<span class="cmt"># 「雛形に入れる → モデルに渡す」を1本につなぐ。</span>
+chain = prompt | llm
+
+<span class="cmt"># まず質問に関係する資料を取り出す。</span>
+docs = retriever.<span class="fn">invoke</span>(<span class="str">"古代ギリシャ哲学史における主要人物は誰ですか？"</span>)
+
+<span class="cmt"># 取り出した資料を材料に、同じ質問への答えを作らせる。</span>
+<span class="fn">print</span>(chain.<span class="fn">invoke</span>({<span class="str">"context"</span>: docs, <span class="str">"question"</span>: <span class="str">"古代ギリシャ哲学史における主要人物は誰ですか？"</span>}))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ソクラテス、プラトン、アリストテレスが主要人物として挙げられます。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この取り出し→整形→生成の流れを、1つの関数にまとめると使い回しやすい。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ふつうの関数に、部品と同じ呼び方を付けるための印を読み込む。</span>
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> chain
+
+<span class="cmt"># 取り出し係・雛形・モデルを、それぞれ1つずつ用意しておく。</span>
+retriever = db.<span class="fn">as_retriever</span>()
+prompt = ChatPromptTemplate.<span class="fn">from_template</span>(<span class="str">"""以下のコンテキストのみに基づいて質問に答えてください:
+{context}
+
+質問: {question}
+"""</span>)
+llm = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+<span class="cmt"># この印を付けると、関数が invoke などで呼べる部品になる。</span>
+<span class="kw">@chain</span>
+<span class="kw">def</span> <span class="fn">qa</span>(input):
+    <span class="cmt"># 1) 質問に関係する資料を取り出す。</span>
+    docs = retriever.<span class="fn">invoke</span>(input)
+    <span class="cmt"># 2) 取り出した資料と質問を雛形に入れて、送る指示文を組み立てる。</span>
+    formatted = prompt.<span class="fn">invoke</span>({<span class="str">"context"</span>: docs, <span class="str">"question"</span>: input})
+    <span class="cmt"># 3) 組み立てた指示文をモデルに渡して答えを作らせる。</span>
+    answer = llm.<span class="fn">invoke</span>(formatted)
+    <span class="cmt"># 4) 答えを返す。使う側は質問1つを渡すだけでよくなる。</span>
+    <span class="kw">return</span> answer
+
+<span class="cmt"># 質問を1つ渡すだけで、取り出しから答えの生成までが行われる。</span>
+<span class="fn">print</span>(qa.<span class="fn">invoke</span>(<span class="str">"古代ギリシャ哲学史における主要人物は誰ですか？"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ソクラテス、プラトン、アリストテレスが主要人物として挙げられます。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>取り出した資料も一緒に返せば（<code>return {"answer": answer, "docs": docs}</code>）、後から根拠を確認できる。複数の手順を1つの関数に包む——これが実用的なLLMアプリの鍵だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>これで基本的なRAGができました！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>個人用ならね。でも本番で複数の利用者が使うには、もっと丈夫なRAGが要る。4つの問いに答えなきゃいけない。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">❓</div><h4>① 質問の質がばらつく</h4><p>言葉足らず・曖昧な質問をどう扱うか。→ <b>3.2 クエリ変換</b></p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>② 保管場所が複数ある</h4><p>どこに聞きに行くかをどう決めるか。→ <b>3.3 ルーティング</b></p></div>
+      <div class="mini"><div class="ic">🧮</div><h4>③ 表のデータも扱いたい</h4><p>日本語をどう検索条件に変換するか。→ <b>3.4 クエリ構築</b></p></div>
+      <div class="mini"><div class="ic">📚</div><h4>④ 保存の仕方を良くする</h4><p>インデックス化をどう改良するか。→ <b>2.8（2章で完了）</b></p></div>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>RAGは外の材料をLLMに与えて正確さを高める。LLM単体は最新情報を知らず、嘘を答えうる。</li>
+        <li>3段階：インデックス化・検索・生成。手作業の貼り付けでなく自動で関係する情報を取り出して渡す。</li>
+        <li><code>as_retriever</code> で検索をまとめられる。<code>k</code> で件数を調整（多すぎは遅延・費用・嘘の元）。</li>
+        <li>取り出し→整形→生成を1つの関数に包む（<code>@chain</code>）。本番にはクエリ変換・振り分け・クエリ構築が必要。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3.2 ============ -->
+<section id="s32">
+  <div class="sec-head"><div class="sec-num">3.2</div><div><h2>クエリの変換</h2><span class="tag">曖昧な質問を、検索に向いた形に作り替える</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：基本のRAGの弱点は、結果が利用者の質問の質に左右されすぎることです。<span class="term" data-tip="利用者の言葉足らずな質問を、検索に向いた形に作り替えること。">クエリ変換</span>は、質問のほうを加工して対処します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>基本のRAGの大きな課題は、結果が利用者の質問の質に左右されすぎること。本番では質問は不完全・曖昧・言葉足らずになりがちで、嘘の回答を招く。<b>クエリ変換</b>は、利用者の入力を加工してこれに対処するやり方の集まりだ。</div></div>
+    </div>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>やり方</th><th>何をする</th><th>向いている場面</th><th>コスト</th></tr>
+      <tr><td>Rewrite-Retrieve-Read</td><td>検索前に質問を書き直す</td><td>余計な話が多い、言葉足らず</td><td>LLM呼び出しが2回</td></tr>
+      <tr><td>マルチクエリ検索</td><td>複数の言い方で検索して合わせる</td><td>複数の視点が要る質問</td><td>検索が複数回</td></tr>
+      <tr><td>RAG-Fusion</td><td>複数結果の順位を統合して並べ直す</td><td>広く集めて上位を見極めたい</td><td>マルチクエリ＋計算</td></tr>
+      <tr><td>HyDE</td><td>仮の答えを作ってそれで検索</td><td>質問文と資料の書き方が違う</td><td>LLM呼び出しが2回</td></tr>
+    </table>
+    </div>
+  </div>
+
+  <div class="card" id="s321">
+    <h3 class="blk" style="margin-top:4px">3.2.1 Rewrite-Retrieve-Read ― 検索の前に書き直す</h3>
+    <p class="lead"><b>要するに</b>：検索する前に、LLMに「検索に向いた言い方」へ書き直させます。とても単純ですが効果があります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>Microsoftの研究チームの<b>Rewrite-Retrieve-Read</b>は、検索の前にLLMに質問を書き直させる、すごく単純な手法だ。たとえば、こんな言葉足らずな質問を投げると——「今朝目覚めて歯を磨き、ニュースを読んで、コンロの食べ物を忘れて……古代ギリシャ哲学史の主要人物は誰？」——モデルは要らない情報に気を取られて「コンテキストに情報がありません」と答えてしまう。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>余計な話が多すぎますね。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：書き直すと検索結果がどう変わるか</h4>
+      <p><b>元の質問</b>：「今朝目覚めて歯を磨き、ニュースを読んで、コンロの食べ物を忘れて……古代ギリシャ哲学史の主要人物は誰ですか？」</p>
+      <p>この文全体を数値に変えると、「歯磨き」「ニュース」「コンロ」の意味が大きく混ざり、哲学の資料から遠い位置になります。結果、無関係なかたまりが返り、答えは「情報がありません」。</p>
+      <p><b>書き直し後</b>：「古代ギリシャ哲学の主要人物」。これで哲学の資料が正しく当たり、ソクラテス・プラトン・アリストテレスが返ります。</p>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 「検索に向いた言い方に書き直して」と頼む指示文の雛形を作る。</span>
+<span class="cmt"># 末尾に ** を付けさせているのは、どこまでが検索語かを機械的に切り出すため。</span>
+rewrite_prompt = ChatPromptTemplate.<span class="fn">from_template</span>(
+    <span class="str">"""Webの検索エンジンでより良い回答を得るための検索クエリを生成し、
+    クエリ末尾に '**' を付けてください。質問: {x} 回答:"""</span>)
+
+<span class="cmt"># モデルの返答から、余計な引用符と目印の ** を取り除いて検索語だけにする。</span>
+<span class="kw">def</span> <span class="fn">parse_rewriter_output</span>(message):
+    <span class="kw">return</span> message.content.<span class="fn">strip</span>(<span class="str">'"'</span>).<span class="fn">strip</span>(<span class="str">"**"</span>)
+
+<span class="cmt"># 「雛形 → モデル → 後始末」を1本につないで、書き直し係を作る。</span>
+rewriter = rewrite_prompt | llm | parse_rewriter_output
+
+<span class="cmt"># 印を付けて、この関数も部品として呼べるようにする。</span>
+<span class="kw">@chain</span>
+<span class="kw">def</span> <span class="fn">qa_rrr</span>(input):
+    <span class="cmt"># 1) まず質問を、検索に向いた短い言い方に書き直す。</span>
+    new_query = rewriter.<span class="fn">invoke</span>(input)
+    <span class="cmt"># 2) 書き直したほうの言い方で検索する（元の質問では検索しない）。</span>
+    docs = retriever.<span class="fn">invoke</span>(new_query)
+    <span class="cmt"># 3) 答えを作るときは、利用者が実際に書いた元の質問を使う。</span>
+    formatted = prompt.<span class="fn">invoke</span>({<span class="str">"context"</span>: docs, <span class="str">"question"</span>: input})
+    <span class="cmt"># 4) モデルに渡して答えを作らせる。</span>
+    answer = llm.<span class="fn">invoke</span>(formatted)
+    <span class="kw">return</span> answer
+
+<span class="cmt"># 余計な話が大量に混ざった質問を投げてみる。</span>
+<span class="fn">print</span>(qa_rrr.<span class="fn">invoke</span>(<span class="str">"今朝目覚めて歯を磨き、ニュースを読んで、コンロの食べ物を忘れて……"</span>
+              <span class="str">"古代ギリシャ哲学史の主要人物は誰ですか？"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ソクラテス、プラトン、アリストテレスが主要人物です。</span>
+<span class="cmt"># ↑ 書き直さずに検索すると「コンテキストに情報がありません」になっていた</span>
+</pre></details>
+
+    <div class="branch ng">デメリット：LLMの呼び出しが2回続くので、答えが返るまでの待ち時間が増えます。</div>
+  </div>
+
+  <div class="card" id="s322">
+    <h3 class="blk" style="margin-top:4px">3.2.2 マルチクエリ検索 ― 複数の言い方で探す</h3>
+    <p class="lead"><b>要するに</b>：1つの質問から複数の言い方を作り、それぞれで検索して、結果を1つにまとめます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>1つの言い方だけだと、必要な情報の全体をとらえきれないことがある。<b>マルチクエリ検索</b>は、LLMに元の質問から複数の言い方を作らせて、それぞれを同時に検索して、結果を合わせる。1つの質問が複数の見方に関わるときに効く。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 役割つきの雛形の部品を読み込む。</span>
+<span class="kw">from</span> langchain.prompts <span class="kw">import</span> ChatPromptTemplate
+
+<span class="cmt"># 「同じ質問を5通りの言い方に直して」と頼む指示文を作る。</span>
+<span class="cmt"># 言い方を変えることで、1つの言い方では届かなかった資料にも当たるようにする。</span>
+perspectives_prompt = ChatPromptTemplate.<span class="fn">from_template</span>(
+    <span class="str">"""あなたはAI言語モデルのアシスタントです。与えられたユーザーの質問の5つの
+    異なるバージョンを生成し、ベクトルストアから関連ドキュメントを取得してください。
+    質問を多面的に生成することで、距離ベースの類似検索の制限を克服する手助けをします。
+    これらの代替質問は改行で区切ってください。元の質問: {question}"""</span>)
+
+<span class="cmt"># モデルの返答は改行で区切られた1本の文字列なので、行ごとに切り分けて一覧にする。</span>
+<span class="kw">def</span> <span class="fn">parse_queries_output</span>(message):
+    <span class="kw">return</span> message.content.<span class="fn">split</span>(<span class="str">'\n'</span>)
+
+<span class="cmt"># 「雛形 → モデル → 行に分ける」を1本につないで、質問の言い換えを作る係にする。</span>
+query_gen = perspectives_prompt | llm | parse_queries_output
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次に、作った各質問で同時に取り出して、重なりを取り除く。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 「一覧の一覧」（質問ごとの検索結果）を受け取り、重なりを取り除いて1本の一覧にする。</span>
+<span class="kw">def</span> <span class="fn">get_unique_union</span>(document_lists):
+    <span class="cmt"># 本文をキーにして辞書に入れる。同じ本文は上書きされるので、自然に1件だけ残る。</span>
+    deduped_docs = {
+        doc.page_content: doc
+        <span class="kw">for</span> sublist <span class="kw">in</span> document_lists <span class="kw">for</span> doc <span class="kw">in</span> sublist
+    }
+    <span class="cmt"># 辞書に残った中身だけを取り出して、一覧の形に戻す。</span>
+    <span class="kw">return</span> <span class="fn">list</span>(deduped_docs.<span class="fn">values</span>())
+
+<span class="cmt"># 「言い換えを5本作る → 5本まとめて同時に検索する → 重なりを取り除く」を1本につなぐ。</span>
+<span class="cmt"># batch は一覧を受け取ってまとめて処理するので、5回順番に呼ぶより速い。</span>
+retrieval_chain = query_gen | retriever.batch | get_unique_union
+
+<span class="cmt"># 質問を1つ渡すだけで、5通りで検索した結果がまとめて返る。</span>
+docs = retrieval_chain.<span class="fn">invoke</span>({<span class="str">"question"</span>: <span class="str">"古代ギリシャ哲学史における主要人物は誰ですか？"</span>})
+
+<span class="cmt"># 重なりを取り除いた後の件数を確認する。5本×4件＝20件から重複が消えている。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(docs))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 9</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span><code>.batch</code> で同時に取得するんですね。同じ取り出し係に似た質問を投げるから、重複が出ると。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう、だから重なりを取り除く。ここでは辞書のキーに本文を使って重なりをなくしている。新しい処理は全部 <code>retrieval_chain</code> に包まれている。質問応答の本体は以前とほぼ同じだ。<b>各やり方を独立したチェーンとして書く</b>のが、使い回しや組み合わせの鍵なんだ。</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s323">
+    <h3 class="blk" style="margin-top:4px">3.2.3 RAG-Fusion ― 順位を統合して並べ直す</h3>
+    <p class="lead"><b>要するに</b>：マルチクエリに<b>並べ直し</b>を足したものです。「どの言い方でも上位に来たもの」を最上位に押し上げます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><b>RAG-Fusion</b>はマルチクエリ検索に似ているけど、取り出した資料全部に<b>並べ直し</b>の手順を加える。<b>RRF</b>という計算で、複数の検索結果の順位を合わせて、1つの順位に作り直す。各言い方での順位を合わせると、最も関係の深い資料が上位に上がってくる。点数の尺度が違う結果どうしを合わせるのに向いている。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 複数の検索結果（一覧の一覧）を受け取り、順位をもとに1本の順位に作り直す。</span>
+<span class="kw">def</span> <span class="fn">reciprocal_rank_fusion</span>(results: <span class="fn">list</span>[<span class="fn">list</span>], k=<span class="num">60</span>):
+    <span class="cmt"># 資料ごとの合計点を入れる箱と、本文から資料本体を引くための箱を用意する。</span>
+    fused_scores = {}
+    documents = {}
+    <span class="cmt"># 言い換えごとの検索結果を、1本ずつ順に見ていく。</span>
+    <span class="kw">for</span> docs <span class="kw">in</span> results:
+        <span class="cmt"># その結果の中での順位（0番目、1番目…）と資料を一緒に取り出す。</span>
+        <span class="kw">for</span> rank, doc <span class="kw">in</span> <span class="fn">enumerate</span>(docs):
+            <span class="cmt"># 本文を、その資料を見分けるための目印として使う。</span>
+            doc_str = doc.page_content
+            <span class="cmt"># 初めて出てきた資料なら、点数を0から始める。</span>
+            <span class="kw">if</span> doc_str <span class="kw">not</span> <span class="kw">in</span> fused_scores:
+                fused_scores[doc_str] = <span class="num">0</span>
+                documents[doc_str] = doc
+            <span class="cmt"># 順位が上（数字が小さい）ほど大きな点数を足す。</span>
+            <span class="cmt"># どの言い方でも上位に来た資料は、何度も足されて合計が大きくなる。</span>
+            fused_scores[doc_str] += <span class="num">1</span> / (rank + k)
+    <span class="cmt"># 合計点の高い順に並べ直す。</span>
+    reranked_doc_strs = <span class="fn">sorted</span>(fused_scores, key=<span class="kw">lambda</span> d: fused_scores[d], reverse=<span class="kw">True</span>)
+    <span class="cmt"># 並べ直した順に、資料の本体を取り出して返す。</span>
+    <span class="kw">return</span> [documents[doc_str] <span class="kw">for</span> doc_str <span class="kw">in</span> reranked_doc_strs]
+
+<span class="cmt"># 「言い換えを作る → まとめて検索 → 順位を統合して並べ直す」を1本につなぐ。</span>
+retrieval_chain = generate_queries | retriever.batch | reciprocal_rank_fusion
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：RRFの点数計算（k＝60のとき）</h4>
+      <p>ある資料Aが、5通りの言い方のうち3通りで1位（順位0）だったとします。点数は <code>1/(0+60)</code> ＝ 0.0167 が3回足されて<b>0.05</b>。</p>
+      <p>資料Bは、5通り全部で4位（順位3）でした。点数は <code>1/(3+60)</code> ＝ 0.0159 が5回足されて<b>0.079</b>。Bのほうが上になります。</p>
+      <p>つまり「一部で突出」より「どの見方でもそこそこ上位」が評価されます。<code>k</code> を大きくすると順位の差が縮まり、下位の資料の影響が強まります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>RAG-Fusionの強みは、利用者の意図を的確にとらえて、複雑な質問を扱いながら探す範囲を広げて、思いがけない資料と出会えるようにすることだ。</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s324">
+    <h3 class="blk" style="margin-top:4px">3.2.4 HyDE（仮想ドキュメント埋め込み） ― 仮の答えで探す</h3>
+    <p class="lead"><b>要するに</b>：質問から「仮の答えの文章」を作り、その文章で検索します。答えの文章のほうが、答えが書いてある資料に近いからです。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最後に<b>HyDE</b>。利用者の質問から<b>仮の文章</b>（仮の回答文）を作って、それを数値に変えて近いものを探す手法だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なんで仮の回答を作るんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>理由はね——LLMが作った仮の文章のほうが、元の質問よりも「関係する本物の資料」に近い数値を持つんだ。質問より、答えらしい文章のほうが、答えが書いてある資料に似ているからね。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：質問文と資料の書き方の差</h4>
+      <p><b>質問</b>：「古代ギリシャ哲学史の主要人物は？」——これは疑問形の短い文です。</p>
+      <p><b>資料</b>：「ソクラテスは問答法を用い、その弟子プラトンはイデア論を展開した。さらにアリストテレスは…」——こちらは平叙文の説明です。</p>
+      <p>疑問形と説明文は書き方が違うため、数値の位置も離れがちです。そこで先に「ソクラテス、プラトン、アリストテレスなどが挙げられる」という<b>仮の答え</b>を作り、その文章で検索します。答えらしい文章どうしなので位置が近く、正しい資料に当たりやすくなります。仮の答えの内容が間違っていても構いません。検索の道しるべとして使うだけだからです。</p>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 雛形・文字列の取り出し役・チャットモデルの部品を読み込む。</span>
+<span class="kw">from</span> langchain.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+<span class="cmt"># 「この質問に答える文章を書いて」と頼む指示文を作る。ここで作るのは仮の答え。</span>
+prompt_hyde = ChatPromptTemplate.<span class="fn">from_template</span>(
+    <span class="str">"""質問に答える文章を書いてください。\n 質問: {question} \n 文章:"""</span>)
+
+<span class="cmt"># 「雛形 → モデル → 文字列だけ取り出す」を1本につないで、仮の答えを作る係にする。</span>
+generate_doc = prompt_hyde | <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0</span>) | <span class="fn">StrOutputParser</span>()
+
+<span class="cmt"># 作った仮の答えを、そのまま取り出し係に渡す。</span>
+<span class="cmt"># 質問文ではなく、この仮の答えの文章が数値に変えられて検索に使われる。</span>
+retrieval_chain = generate_doc | retriever
+
+<span class="cmt"># 質問を1つ渡すと、仮の答えを経由して関係する資料が返る。</span>
+docs = retrieval_chain.<span class="fn">invoke</span>({<span class="str">"question"</span>: <span class="str">"古代ギリシャ哲学史における主要人物は誰ですか？"</span>})
+
+<span class="cmt"># 返ってきた件数を確認する。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(docs))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 4</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>あとは取り出した資料を材料として最終の指示文に渡して答えを作る。まとめると、クエリ変換は「利用者の質問を1つ以上の新しい質問に作り替えて、結果を合わせる」こと。代表的なやり方は——関係ない文言を取り除く、過去のやり取りで補う（「LAはどう？」を「LAの天気」に）、関連する質問も出して幅広く集める、複雑な質問を単純な質問に分ける、など。どれを使うかは用途しだいだ。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>Rewrite-Retrieve-Read：検索前にLLMで質問を明確に書き直す。単純だがLLM呼び出しが2回で待ち時間増。</li>
+        <li>マルチクエリ検索：複数の言い方を作って同時に検索、重なりを除いてまとめる。</li>
+        <li>RAG-Fusion：マルチクエリ＋RRFによる並べ直し。複数の見方で上位のものを浮かび上がらせる。</li>
+        <li>HyDE：質問から仮の答えの文章を作り、その数値で検索（答えの文章のほうが資料に近い）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3.3 ============ -->
+<section id="s33">
+  <div class="sec-head"><div class="sec-num">3.3</div><div><h2>クエリルーティング</h2><span class="tag">どこに聞きに行くかを決める</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：データは1か所とは限りません。質問を、答えを持っていそうな保管場所へ<span class="term" data-tip="質問を、答えを持っていそうな保管場所へ振り分けること。">振り分け</span>ます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>必要なデータは1つのベクトルストアだけじゃなく、表形式のデータベースや別のベクトルストアに散らばることがある。たとえばLangChainのPython向け資料とJavaScript向け資料で2つのベクトルストアがあるとき、質問を解決できそうな保管場所へ<b>振り分ける</b>必要がある。</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s331">
+    <h3 class="blk" style="margin-top:4px">3.3.1 論理ルーティング ― LLMに選ばせる</h3>
+    <p class="lead"><b>要するに</b>：候補の一覧をLLMに見せて、「どれを使うべきか」を決まった形で答えさせます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><b>論理ルーティング</b>は、複数の保管場所の情報をLLMに与えて、どれを使うべきかをLLM自身に判断させる。GPT-4oみたいな<b>決まった形で答えられるモデル</b>で、各質問をどれかの行き先に分類する。形を定義して、決まった形の出力を得るんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 選択肢を限定する型と、雛形・モデル・スキーマの部品を読み込む。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Literal
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="cmt"># 返してほしい答えの形を決める。ここでは「行き先の名前」を1つだけ返させる。</span>
+<span class="kw">class</span> <span class="fn">RouteQuery</span>(BaseModel):
+    <span class="str">"""ユーザーの質問を最も適切なデータソースにルーティングする"""</span>
+    <span class="cmt"># Literal で、この2つの文字列以外は答えられないようにしている。</span>
+    datasource: Literal[<span class="str">"python_docs"</span>, <span class="str">"js_docs"</span>] = <span class="fn">Field</span>(
+        ...,
+        description=<span class="str">"ユーザーの質問に対して最も関連性の高いデータソースを選択する"</span>
+    )
+
+<span class="cmt"># 判断に使うモデルを用意する。毎回同じ判断になるよう temperature=0 にする。</span>
+llm = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+<span class="cmt"># 上で決めた形を守らせる設定に変える。</span>
+structured_llm = llm.<span class="fn">with_structured_output</span>(RouteQuery)
+
+<span class="cmt"># 何を基準に選ぶかを、前提の指示として書いておく。</span>
+system = <span class="str">"""あなたはユーザーの質問を適切なデータソースにルーティングする専門家です。
+質問で言及されているプログラミング言語に基づき、関連データソースへルーティングしてください。"""</span>
+
+<span class="cmt"># 前提の指示と、利用者の質問を並べた雛形を作る。</span>
+prompt = ChatPromptTemplate.<span class="fn">from_messages</span>([(<span class="str">"system"</span>, system), (<span class="str">"human"</span>, <span class="str">"{question}"</span>)])
+
+<span class="cmt"># 「雛形 → 形を守るモデル」をつないで、振り分け係にする。</span>
+router = prompt | structured_llm
+
+<span class="cmt"># 実際に質問を投げてみる。Pythonの話なので python_docs が選ばれる。</span>
+<span class="fn">print</span>(router.<span class="fn">invoke</span>({<span class="str">"question"</span>: <span class="str">"Pythonでチェーンを作るには？"</span>}))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># datasource='python_docs'</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6">判断した行き先を使って、実際に処理を切り替えます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 振り分け係の判断結果を受け取り、対応する処理を選ぶ。</span>
+<span class="kw">def</span> <span class="fn">choose_route</span>(result):
+    <span class="cmt"># すべて小文字にそろえてから、部分的に一致するかで判定する。</span>
+    <span class="cmt"># 完全一致で比べないのは、モデルが少し違う書き方を返すことがあるため。</span>
+    <span class="kw">if</span> <span class="str">"python_docs"</span> <span class="kw">in</span> result.datasource.<span class="fn">lower</span>():
+        <span class="kw">return</span> <span class="str">"chain for python_docs"</span>
+    <span class="cmt"># どちらでもなければ、もう一方の処理を使う。</span>
+    <span class="kw">else</span>:
+        <span class="kw">return</span> <span class="str">"chain for js_docs"</span>
+
+<span class="cmt"># 「振り分け係 → 処理の選択」を1本につなぐ。</span>
+full_chain = router | <span class="fn">RunnableLambda</span>(choose_route)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span><code>result.datasource</code> をそのまま比較せず、小文字にして部分一致で見てますね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>鋭い。LLMの出力はもともとばらつきがあるから、決めた形どおりの文字列を返さないこともある。小文字化＋部分一致で、処理の丈夫さを保っているんだ。<b>LLMの出力のばらつきへの備え</b>は、常に意識すべき大事なテーマだ。論理ルーティングは、参照すべき保管場所をはっきり数え上げられる場面（ベクトルストア・データベース・各種サービス）で力を発揮する。</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s332">
+    <h3 class="blk" style="margin-top:4px">3.3.2 セマンティックルーティング ― 意味の近さで選ぶ</h3>
+    <p class="lead"><b>要するに</b>：各行き先を表す文章をあらかじめ数値にしておき、質問に最も近いものを選びます。LLMに判断させません。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 近さを測る計算、文字列の取り出し役、雛形、印、モデルと埋め込みを読み込む。</span>
+<span class="kw">from</span> langchain.utils.math <span class="kw">import</span> cosine_similarity
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> PromptTemplate
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> chain
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI, OpenAIEmbeddings
+
+<span class="cmt"># 物理の質問向けの指示文を用意する。{query} に実際の質問が入る。</span>
+physics_template = <span class="str">"""あなたは非常に賢い物理学の教授です。物理の質問に対して、簡潔かつ
+わかりやすい形で答えるのが得意です。答えがわからない場合は、正直にわからないと認めてください。
+
+質問です:
+{query}"""</span>
+
+<span class="cmt"># 数学の質問向けの指示文も用意する。</span>
+math_template = <span class="str">"""あなたは優れた数学者です。難しい問題を要素に分解し、それぞれに回答し、
+それらを組み合わせてより大きな問いに答えられるので、数学の質問が得意です。
+
+質問です:
+{query}"""</span>
+
+<span class="cmt"># 埋め込みモデルの呼び出し口を作る。</span>
+embeddings = <span class="fn">OpenAIEmbeddings</span>()
+
+<span class="cmt"># 2つの指示文を一覧にまとめる。</span>
+prompt_templates = [physics_template, math_template]
+
+<span class="cmt"># 2つの指示文をあらかじめ数値に変えておく。質問が来るたびに変換しなくて済む。</span>
+prompt_embeddings = embeddings.<span class="fn">embed_documents</span>(prompt_templates)
+
+<span class="cmt"># 印を付けて、この関数も部品として呼べるようにする。</span>
+<span class="kw">@chain</span>
+<span class="kw">def</span> <span class="fn">prompt_router</span>(query):
+    <span class="cmt"># 1) 質問を数値に変える。</span>
+    query_embedding = embeddings.<span class="fn">embed_query</span>(query)
+    <span class="cmt"># 2) 質問の数値と、2つの指示文の数値それぞれとの近さを計算する。</span>
+    similarity = <span class="fn">cosine_similarity</span>([query_embedding], prompt_embeddings)[<span class="num">0</span>]
+    <span class="cmt"># 3) 最も近かったほうの指示文を選ぶ。argmax は最大値の位置を返す。</span>
+    most_similar = prompt_templates[similarity.<span class="fn">argmax</span>()]
+    <span class="cmt"># 4) 選んだ指示文を、使える雛形の形にして返す。</span>
+    <span class="kw">return</span> PromptTemplate.<span class="fn">from_template</span>(most_similar)
+
+<span class="cmt"># 「指示文を選ぶ → モデルに渡す → 文字列だけ取り出す」を1本につなぐ。</span>
+semantic_router = prompt_router | <span class="fn">ChatOpenAI</span>() | <span class="fn">StrOutputParser</span>()
+
+<span class="cmt"># 物理の質問を投げる。物理向けの指示文のほうが意味が近いので、そちらが選ばれる。</span>
+<span class="fn">print</span>(semantic_router.<span class="fn">invoke</span>(<span class="str">"ブラックホールとは何ですか？"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ブラックホールは、非常に強い重力によって光さえも脱出できない天体です。…</span>
+<span class="cmt"># ↑ 物理学の教授としての指示文が選ばれたので、その口調で簡潔に答えている</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>「ブラックホールとは？」だと、物理の教授の指示文が選ばれるんですね。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th></th><th>論理ルーティング</th><th>セマンティックルーティング</th></tr>
+      <tr><td>判断するのは</td><td>LLM</td><td>数値の近さの計算</td></tr>
+      <tr><td>準備するもの</td><td>選択肢の一覧と判断基準の指示文</td><td>各行き先を表す文章（あらかじめ数値化）</td></tr>
+      <tr><td>1回あたりの費用</td><td>LLM呼び出しが1回増える</td><td>質問の数値化だけ（安い）</td></tr>
+      <tr><td>結果のばらつき</td><td>ある（小文字化＋部分一致で対策）</td><td>ない（計算結果は毎回同じ）</td></tr>
+      <tr><td>向く場面</td><td>行き先をはっきり数え上げられるとき</td><td>行き先が「話題」で分かれるとき</td></tr>
+    </table>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>論理ルーティング：決まった形で答えられるモデルで、スキーマに従い行き先を分類。出力のばらつきに備え小文字化＋部分一致で丈夫に。</li>
+        <li>セマンティックルーティング：各行き先を表す文章を数値にして、質問の数値と最も近いものを選ぶ。</li>
+        <li>保管場所はベクトルストア・データベース・各種サービスなど多岐にわたる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3.4 ============ -->
+<section id="s34">
+  <div class="sec-head"><div class="sec-num">3.4</div><div><h2>クエリ構築</h2><span class="tag">日本語を、データベースが読める形に変える</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：実務のデータの多くは表の形で保管されています。<span class="term" data-tip="ふつうの日本語の質問を、データベースが読める命令文に変換すること。">クエリ構築</span>は、日本語の質問をその保管場所の命令文に変換します。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>RAGは決まった形を持たないデータの検索に有効だけど、実際に運用されているデータの大半は表の形で、データベースに入っている。それに決まった形を持たないデータにも、大事な情報を含む付随情報が付いている。<b>クエリ構築</b>は、日本語の質問を、対象のデータベースが読める命令文に変えることだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>たとえば？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>「1980年のエイリアンを題材にした映画は？」を考えてみて。これは決まった形を持たない話題（「エイリアン」、意味での検索向き）と、はっきりした条件（<code>公開年 == 1980</code>）の両方を含んでいる。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">💭</div><h4>意味で探す部分</h4><p>「エイリアンを題材にした」——あらすじの文章を数値にして、近いものを探します。</p></div>
+      <div class="mini"><div class="ic">🔢</div><h4>条件で絞る部分</h4><p>「1980年の」——公開年がちょうど1980のものだけに絞ります。数値の近さでは正確に扱えません。</p></div>
+    </div>
+  </div>
+
+  <div class="card" id="s341">
+    <h3 class="blk" style="margin-top:4px">3.4.1 テキストからメタデータへのフィルタリング</h3>
+    <p class="lead"><b>要するに</b>：<code>SelfQueryRetriever</code> が、日本語の質問を「絞り込み条件」と「意味で探す言葉」の2つに自動で切り分けてくれます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>多くのベクトルストアは、付随情報で検索を絞り込める。LangChainの <code>SelfQueryRetriever</code> は、日本語の質問を条件付きの検索に変える作業をまとめてくれる。LLMで、質問とあらかじめ決めておいた項目の一覧から、絞り込み条件を取り出して実行するんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 検索条件にできる項目を書くための部品と、自動で条件を組み立てる取り出し係を読み込む。</span>
+<span class="kw">from</span> langchain.chains.query_constructor.base <span class="kw">import</span> AttributeInfo
+<span class="kw">from</span> langchain.retrievers.self_query.base <span class="kw">import</span> SelfQueryRetriever
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+<span class="cmt"># 絞り込みに使える項目を、名前・説明・値の種類の3点で書き並べる。</span>
+<span class="cmt"># 説明はLLMが読むので、日本語で分かりやすく書いておく。</span>
+fields = [
+    <span class="fn">AttributeInfo</span>(name=<span class="str">"genre"</span>, description=<span class="str">"映画のジャンル"</span>, type=<span class="str">"string or list[string]"</span>),
+    <span class="fn">AttributeInfo</span>(name=<span class="str">"year"</span>, description=<span class="str">"映画の公開年"</span>, type=<span class="str">"integer"</span>),
+    <span class="fn">AttributeInfo</span>(name=<span class="str">"director"</span>, description=<span class="str">"映画の監督"</span>, type=<span class="str">"string"</span>),
+    <span class="fn">AttributeInfo</span>(name=<span class="str">"rating"</span>, description=<span class="str">"映画の1〜10の評価"</span>, type=<span class="str">"float"</span>),
+]
+
+<span class="cmt"># 本文そのものが何を表しているかを、1行で説明しておく。</span>
+description = <span class="str">"映画の簡単な要約"</span>
+
+<span class="cmt"># 条件を組み立てる役のモデルを用意する。毎回同じ条件になるよう temperature=0 にする。</span>
+llm = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0</span>)
+
+<span class="cmt"># モデル・ベクトルストア・本文の説明・項目一覧を渡して、取り出し係を作る。</span>
+retriever = SelfQueryRetriever.<span class="fn">from_llm</span>(llm, db, description, fields)
+
+<span class="cmt"># 日本語で質問する。数値の条件（8.5以上）と話題（SF）が自動で切り分けられる。</span>
+<span class="fn">print</span>(retriever.<span class="fn">invoke</span>(<span class="str">"評価が高い（8.5以上）のSF映画は何ですか？"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [Document(page_content='宇宙船が未知の惑星に不時着し…', metadata={'genre': 'SF', 'rating': 9.2, 'year': 1979}),</span>
+<span class="cmt">#  Document(page_content='人工知能が自我を持ち…', metadata={'genre': 'SF', 'rating': 8.8, 'year': 1982})]</span>
+<span class="cmt"># ↑ 評価8.5未満の作品は、意味が近くても除外されている</span>
+</pre></details>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>質問と項目一覧をLLMに送る</h4><p>「どんな項目で絞り込めるか」を先に伝えてあります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>条件と検索語を取り出す</h4><p><code>rating &gt; 8.5</code>・<code>genre = SF</code> という条件と、本文を探すための言葉に分かれます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>条件をベクトルストアの形式に直す</h4><p>保管場所ごとに条件の書き方が違うので、そこに合わせます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>条件で絞ってから、意味で探す</h4><p>2つの探し方を組み合わせた結果が返ります。</p></div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s342">
+    <h3 class="blk" style="margin-top:4px">3.4.2 テキストからSQLへの変換</h3>
+    <p class="lead"><b>要するに</b>：日本語の質問をSQLに変換して実行します。<b>ただし安全対策が必須</b>です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>SQLと表形式のデータベースは、決まった形のデータの主な保管先だけど、日本語で直接やり取りはできない。LLMで利用者の質問をSQLに変換できる。うまく働かせるには2つ——①<b>データベースの説明</b>（テーブルの定義や実際の数行を指示文に渡す）、②<b>見本の提示</b>（質問とSQLの組を数件示す）。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># SQLを実行する道具、データベースへのつなぎ役、質問をSQLに変える部品を読み込む。</span>
+<span class="kw">from</span> langchain_community.tools <span class="kw">import</span> QuerySQLDatabaseTool
+<span class="kw">from</span> langchain_community.utilities <span class="kw">import</span> SQLDatabase
+<span class="kw">from</span> langchain.chains <span class="kw">import</span> create_sql_query_chain
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+<span class="cmt"># 対象のデータベースにつなぐ。つないだ時点で、表の構造がLLMに渡せる形で読み取られる。</span>
+db = SQLDatabase.<span class="fn">from_uri</span>(<span class="str">"sqlite:///Chinook.db"</span>)
+
+<span class="cmt"># SQLを書く役のモデルを用意する。毎回同じSQLになるよう temperature=0 にする。</span>
+llm = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+<span class="cmt"># 「日本語の質問 → SQL」に変換する係を作る。表の構造が自動で指示文に含まれる。</span>
+write_query = <span class="fn">create_sql_query_chain</span>(llm, db)
+
+<span class="cmt"># 「SQL → 実行して結果を返す」道具を用意する。</span>
+execute_query = <span class="fn">QuerySQLDatabaseTool</span>(db=db)
+
+<span class="cmt"># 2つをつないで、「質問を渡すと結果が返る」1本の流れにする。</span>
+chain = write_query | execute_query
+
+<span class="cmt"># 日本語で質問する。内部では COUNT(*) を使うSQLが作られて実行される。</span>
+<span class="fn">print</span>(chain.<span class="fn">invoke</span>(<span class="str">'従業員は何人いますか？'</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [(8,)]</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>LLMが作ったSQLを本番のデータベースで実行するの、危なくないですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>本当に大事な懸念だ。LLMが作ったSQLを本番のデータベースで制限なく実行するのは危険だ。対策は3つある。これは一例で、LLMアプリの安全性は今も研究が進む分野だよ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">👁️</div><h4>① 読み取り専用で実行する</h4><p>データを見ることはできるが、書き換えや削除はできない権限で動かします。</p></div>
+      <div class="mini"><div class="ic">🚧</div><h4>② テーブルの権限を絞る</h4><p>その利用者に、対象のテーブル以外へのアクセス権を与えません。</p></div>
+      <div class="mini"><div class="ic">⏱️</div><h4>③ 時間で打ち切る</h4><p>アプリ側で上限時間を決め、重い処理が長時間走り続けないようにします。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>🟣 なぜ危険なのか</h4>
+      <ul>
+        <li>LLMの出力はもともとばらつくため、意図しない削除や書き換えのSQLを作る可能性があるから。</li>
+        <li>全件を突き合わせるような重い処理を作ってしまうと、データベース全体が遅くなり、他の利用者にも影響が出るから。</li>
+        <li>利用者の入力次第で、見せてはいけないテーブルの中身まで引き出せてしまう可能性があるから。</li>
+      </ul>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>クエリ構築：日本語を、データベースやベクトルストアの命令文（SQL・絞り込み条件）に変える。</li>
+        <li>SelfQueryRetriever：質問を「絞り込み条件」＋「本文を探す言葉」に分ける。項目の一覧を先に決めておく。</li>
+        <li>テキスト→SQL：データベースの説明（テーブル定義・実データの数行）と見本の提示で精度を上げる。</li>
+        <li>安全策：読み取り専用の利用者・テーブル権限の制限・時間での打ち切り。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3.5 ============ -->
+<section id="s35">
+  <div class="sec-head"><div class="sec-num">3.5</div><div><h2>まとめ</h2><span class="tag">本番品質のRAGは組み合わせ</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この章では、関係する資料を効率よく取り出して、指示文に組み込んで、LLMに正確で最新の答えを出させる方法を学んだ。本番品質のRAGには、クエリ変換・クエリ構築・振り分け・インデックス化の改良を組み合わせる必要がある。クエリ変換は曖昧な質問を検索向きに、クエリ構築は表のデータの命令文に、振り分けは適切な保管場所へ回す。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>RAGの全体像が見えました！次は？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次の4章は「LangGraphを使ってチャットボットにメモリを追加する」だ。やり取りごとに記憶できるようにして、ChatGPTみたいに何度も往復して会話できるようにするよ。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>クエリ変換</h4><p>曖昧な質問を検索向きに作り替える。</p><span class="when">3.2</span></div>
+      <div class="cycle-arrow">＋</div>
+      <div class="node"><h4>ルーティング</h4><p>どの保管場所に聞くかを決める。</p><span class="when">3.3</span></div>
+      <div class="cycle-arrow">＋</div>
+      <div class="node"><h4>クエリ構築</h4><p>日本語を検索条件・SQLに変える。</p><span class="when">3.4</span></div>
+      <div class="cycle-arrow">＋</div>
+      <div class="node"><h4>インデックス改良</h4><p>保存の仕方を工夫する。</p><span class="when">2.8</span></div>
+    </div>
+    <div class="loopback">この4つを組み合わせたものが「本番品質のRAG」</div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>関係する資料を取り出す→指示文に組み込む→LLMで正確・最新の答え、という流れを完成。</li>
+        <li>本番のRAG＝クエリ変換＋クエリ構築＋振り分け＋インデックス化の改良の組み合わせ。</li>
+        <li>次章はLangGraphでチャットボットに記憶を追加し、何度も往復する会話を可能にする。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが5つのポイントを言葉にする</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>今日のポイントです。1つ目は「RAGは検索→生成。<code>as_retriever</code> で関係するかたまりを取り出して、材料として渡して答えを作る」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><code>k</code> は多すぎると逆効果、も。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「曖昧な質問にはクエリ変換。Rewrite-Retrieve-Read・マルチクエリ・RAG-Fusion・HyDE」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>各やり方を独立したチェーンにすると使い回しやすい。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「複数の保管場所には振り分け。論理（決まった形で選ぶ）とセマンティック（文章を数値にして近いものを選ぶ）」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LLM出力のばらつきに備える、も大事だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「表のデータにはクエリ構築。SelfQueryRetrieverで絞り込み条件、テキスト→SQL」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>SQLは読み取り専用・権限の制限・時間での打ち切りで安全に。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>5つ目は「本番のRAGはこれらを組み合わせる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>完璧だ。次は記憶を追加しよう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>RAGの3段階</div>
+      <p style="font-size:14px;margin:0">❓ RAGの3つの段階（インデックス化・検索・生成）を、それぞれ何をするかを含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">インデックス化は、外のデータを前処理し、文章を数値の並びに変えてベクトルストアに入れる（2章で扱った準備段階）。検索は、利用者の質問を数値に変え、ベクトルストアから最も近い数値の並びと対応する文章のかたまりを取り出す。生成は、取り出した資料を元の指示文に材料として組み込み、LLMに送って正確で最新の答えを作らせる。手で材料を貼り付けるのではなく、この3段階で自動的に関係する情報を取り出して渡す。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ インデックス化＝前処理して数値の並びをベクトルストアに格納、に触れている<br>□ 検索＝質問を数値に変え関係するかたまりを取得、に触れている<br>□ 生成＝取得データを材料に組み込んでLLMで回答、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>kは大きい方がいい？</div>
+      <p style="font-size:14px;margin:0">❓ 検索で取り出す件数 <code>k</code> を大きくすればするほど良いわけではないのはなぜですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">取り出す件数が増えるほど、アプリの処理が遅くなり、指示文が大きくなって答えを作る費用も上がる。さらに、関係のない文章を含むかたまりが混ざって、LLMが嘘の回答を作る危険も高まる。だから「常に多く取ればよい」わけではなく、質問に本当に関係する適切な件数に絞る方が、速さ・費用・正確さのつり合いが良い。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 件数が多いと処理が遅く・費用が上がる、に触れている<br>□ 関係のないかたまりが混ざって嘘の回答を招く、に触れている<br>□ 適切な件数に絞る方が良い、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>クエリ変換の使い分け</div>
+      <p style="font-size:14px;margin:0">❓ Rewrite-Retrieve-Read・マルチクエリ検索・HyDEの3つを、それぞれどんな手法か説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Rewrite-Retrieve-Readは、検索の前にLLMで利用者の曖昧・言葉足らずな質問を、より良い検索の言い方に書き直してから検索する手法。マルチクエリ検索は、元の質問からLLMに複数の言い方を作らせ、それぞれ同時に検索して結果の重なりを除いてまとめる手法（1つの質問が複数の見方に関わるとき有効）。HyDEは、質問から仮の答えの文章を作り、その数値で近いものを探す手法（質問より答えの文章のほうが、本物の関係する資料に近い数値を持つため）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Rewrite-Retrieve-Read＝検索前に質問を書き直す、に触れている<br>□ マルチクエリ＝複数の言い方を作って統合、に触れている<br>□ HyDE＝仮の答えの文章を作りその数値で検索、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>ルーティングの2種類</div>
+      <p style="font-size:14px;margin:0">❓ 論理ルーティングとセマンティックルーティングの違いを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">論理ルーティングは、複数の保管場所の情報をLLMに与え、決まった形で答えられるモデルで、スキーマに従って「どの保管場所を使うべきか」をLLM自身に分類・判断させる。セマンティックルーティングは、各保管場所を表す複数の文章をあらかじめ数値にしておき、利用者の質問の数値との近さを計算して、最も近い文章（保管場所）を選ぶ。前者はLLMの判断、後者は意味の近さの計算で振り分ける。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 論理ルーティング＝LLMが決まった形で保管場所を分類、に触れている<br>□ セマンティックルーティング＝文章を数値にして近さで選ぶ、に触れている<br>□ 両者の判断基準の違い（LLMの判断 vs 意味の近さ）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>テキストからSQLの安全策</div>
+      <p style="font-size:14px;margin:0">❓ LLMが作ったSQLを本番のデータベースで実行する際、なぜ危険で、どんな安全策が必要ですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">LLMの出力はもともとばらつきがあり、想定外の壊すような命令（削除や重い集計など）を作る恐れがあるから、本番のデータベースで制限なく実行するのは危険。安全策は、①読み取り専用の利用者で実行する、②その利用者に対象にしたいテーブル以外へのアクセス権を与えない、③アプリ側で上限時間を決めて重い処理が長時間走らないようにする。これらは一例で、LLMアプリの安全性は今も研究が進む分野なので、推奨される内容は更新され続ける。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ LLM出力はばらつき想定外の命令を作りうる、に触れている<br>□ 読み取り専用・テーブル権限の制限・時間での打ち切り、のうち複数を挙げている<br>□ 安全性は研究途上で推奨内容が更新される、に触れている（できれば）</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして確かめる</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">▶️</div><h4>基本RAGを完成させる</h4><p>2章で作ったベクトルストアに <code>as_retriever</code> を付け、この章の <code>qa</code> 関数で質問→回答を試しましょう。<code>return {"answer": ..., "docs": ...}</code> で根拠も確認すると理解が深まります。</p></div>
+      <div class="mini"><div class="ic">✍️</div><h4>クエリ変換を体験する</h4><p>わざと言葉足らずな質問を作り、Rewrite-Retrieve-Readで書き直し前後の検索結果の違いを観察しましょう。</p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>ルーティングを試す</h4><p>2つの話題の指示文を用意し、セマンティックルーティングでどちらが選ばれるかを確かめましょう。</p></div>
+      <div class="mini"><div class="ic">🎬</div><h4>SelfQueryRetrieverを動かす</h4><p>付随情報付きの小さなデータ（映画など）を作り、「評価8.5以上のSF」のような質問で絞り込みが効くか試しましょう。</p></div>
+      <div class="mini"><div class="ic">📗</div><h4>公式のチュートリアル</h4><p>python.langchain.com/docs/tutorials/qa_chat_history/ で、会話履歴つきのRAGを確認しましょう（次章の記憶にもつながります）。</p></div>
+      <div class="mini"><div class="ic">🔐</div><h4>SQLの安全策を書き出す</h4><p>自分のデータベースに対して、読み取り専用の利用者・テーブル権限・上限時間をどう設定するかを書き出してみましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第3章 RAGによるデータとのチャット ― 図解版<br>次章：<b>4. LangGraphを使ってチャットボットにメモリを追加する</b></p>
+
+</div>

@@ -1,0 +1,1172 @@
+<meta charset="utf-8">
+<title>10. テスト評価、モニタリング、継続的改善 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  nav.toc a.sub2{font-size:12.5px; padding-left:38px; color:#7b83ab}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第10章</span>
+  <h1>10. テスト評価、モニタリング、継続的改善</h1>
+  <p>公開して終わりではありません。LLMは同じ質問でも違う答えを返し、平気で嘘をつくことがあります。この章では、気まぐれなAIを相手に<b>品質を保ち続ける仕組み</b>——設計・検証・本番運用の3段階でのテストと、それをぐるぐる回す改善の輪の作り方を学びます。</p>
+  <p>コードはすべてPythonです。1行ずつ日本語の説明と、実行結果のコメントを付けました。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">🐍 コードはPythonのみ</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#intro">📖 導入 ― ここからが本当のスタート</a>
+  <a href="#s101">10.1 開発サイクルの3フェーズ</a>
+  <a href="#s102">10.2 設計フェーズ</a>
+  <a href="#s103">10.3 検証フェーズ</a>
+  <a class="sub" href="#s1031">10.3.1 データセットを作成する</a>
+  <a class="sub" href="#s1032">10.3.2 評価基準を定義する</a>
+  <a class="sub2" href="#s10321">10.3.2.1 LLM-as-a-judgeの精度を上げる</a>
+  <a class="sub2" href="#s10322">10.3.2.2 ペアワイズ評価</a>
+  <a class="sub" href="#s1033">10.3.3 リグレッションテスト</a>
+  <a class="sub" href="#s1034">10.3.4 エージェントの評価（3粒度）</a>
+  <a class="sub2" href="#s10341">10.3.4.1 最終レスポンス</a>
+  <a class="sub2" href="#s10342">10.3.4.2 単一ステップ</a>
+  <a class="sub2" href="#s10343">10.3.4.3 軌跡</a>
+  <a href="#s104">10.4 本番運用フェーズ</a>
+  <a class="sub" href="#s1041">10.4.1 トレース</a>
+  <a class="sub" href="#s1042">10.4.2 フィードバックを集める</a>
+  <a class="sub" href="#s1043">10.4.3 分類とタグ付け</a>
+  <a class="sub" href="#s1044">10.4.4 エラーの監視と修正</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のPythonコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。コードを飛ばしても流れがつかめます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな点数が付くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。</p>
+  <div class="gl">
+    <div class="item"><div class="w">決定論的でない</div><p>同じことを入力しても、毎回まったく同じ結果になるとは限らない性質。LLMはこれに当たります。</p></div>
+    <div class="item"><div class="w">ハルシネーション</div><p>もっともらしい嘘を、自信たっぷりに答えてしまうこと。</p></div>
+    <div class="item"><div class="w">アサーション</div><p>「ここではこうなっているはず」を書いておき、違ったらその場で知らせる仕組み。</p></div>
+    <div class="item"><div class="w">リグレッション<span>後退</span></div><p>直したつもりが、前より性能が悪くなってしまうこと。</p></div>
+    <div class="item"><div class="w">継続的改善サイクル</div><p>設計→テスト→公開→監視→修正→設計…とぐるぐる回し続ける進め方。</p></div>
+    <div class="item"><div class="w">自己修正RAG</div><p>検索結果や答えの良し悪しをLLM自身に採点させ、駄目なら別の手段に切り替えるRAG。</p></div>
+    <div class="item"><div class="w">ルーティング</div><p>質問を、答えを持っていそうな探し方へ振り分けること。</p></div>
+    <div class="item"><div class="w">フォールバック</div><p>うまくいかなかったときに、別の手段へ切り替えること。</p></div>
+    <div class="item"><div class="w">構造化出力</div><p>文章ではなく、決められた項目の形で答えてもらうこと。</p></div>
+    <div class="item"><div class="w">制御フロー</div><p>処理をどの順番で、どの条件でどこへ進めるかの流れ。</p></div>
+    <div class="item"><div class="w">データセット</div><p>「入力」と「こう答えてほしい」の組を集めたもの。性能を測る物差しになります。</p></div>
+    <div class="item"><div class="w">グラウンドトゥルース<span>正解データ</span></div><p>「これが正しい答え」と人が決めた内容。比べる基準になります。</p></div>
+    <div class="item"><div class="w">エッジケース</div><p>めったに起きないが、起きると壊れやすい特殊な場合。</p></div>
+    <div class="item"><div class="w">合成データ</div><p>実際の利用者から集めたものではなく、人工的に作り出したデータ。</p></div>
+    <div class="item"><div class="w">オフライン評価</div><p>用意しておいたデータでまとめて採点すること。公開前に行います。</p></div>
+    <div class="item"><div class="w">オンライン評価</div><p>本番で動いている最中に、その場で採点すること。正解はありません。</p></div>
+    <div class="item"><div class="w">評価器</div><p>出力に点数を付ける仕組み。人・計算・LLMの3種類があります。</p></div>
+    <div class="item"><div class="w">ヒューリスティック評価器</div><p>人が書いた計算式や条件で、機械的に点数を出す仕組み。</p></div>
+    <div class="item"><div class="w">LLM-as-a-judge</div><p>採点そのものをLLMにやらせる仕組み。人の採点基準を指示文に書いておきます。</p></div>
+    <div class="item"><div class="w">アノテーションキュー</div><p>人が採点すべきものを順番待ちに並べて、効率よく作業できるようにする画面。</p></div>
+    <div class="item"><div class="w">Few-shot</div><p>見本をいくつか見せてから本番をやらせること。採点の好みを覚えさせるのに使います。</p></div>
+    <div class="item"><div class="w">ペアワイズ評価</div><p>1つに点数を付けるのではなく、2つ並べてどちらが良いかを選ぶ採点。</p></div>
+    <div class="item"><div class="w">ドリフト</div><p>データの傾向やモデルが変わって、結果が知らないうちに変わっていくこと。</p></div>
+    <div class="item"><div class="w">ベースライン</div><p>比較の基準にする、過去のバージョンの成績。</p></div>
+    <div class="item"><div class="w">軌跡<span>トラジェクトリ</span></div><p>エージェントが実際にたどった手順の並び。どのツールをどの順で呼んだか。</p></div>
+    <div class="item"><div class="w">ブラックボックス</div><p>中身の仕組みは見ずに、入れたものと出てきたものだけで判断すること。</p></div>
+    <div class="item"><div class="w">num_repetitions</div><p>同じテストを何回繰り返すかの指定。答えのばらつきを見るために使います。</p></div>
+    <div class="item"><div class="w">トレース</div><p>入力から出力までに通った全ての段階の記録。</p></div>
+    <div class="item"><div class="w">可観測性</div><p>中で何が起きているかが外から見える状態になっていること。</p></div>
+    <div class="item"><div class="w">ガードレール</div><p>危ない入力や出力を止めるための、あらかじめ設けた歯止め。</p></div>
+    <div class="item"><div class="w">スパン</div><p>トレースの中の1区切り。1つの処理にあたる部分。</p></div>
+    <div class="item"><div class="w">ベータリリース</div><p>全員には出さず、少人数にだけ先に使ってもらうこと。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">公開してからが本番</span></div></div>
+  <div class="card">
+    <p class="lead">前の章で、ソラはついに自分のアプリを本番の環境に出しました。けれどリク先輩は「<b>ここからが本当のスタートだよ</b>」と言います。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">LLMは同じ質問でも違う答えを返したり、平気で嘘をつくことがあります。この章では、そんな気まぐれなAIを相手に「品質を保ち続ける仕組み」——テスト・評価・監視の作り方を学びます。</p>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">LLMアプリは、普通のプログラムと違って「毎回同じ結果」を出してくれません。だから一度作って終わりではなく、<b>「設計」「検証」「本番運用」の3つの段階それぞれでテストし、見つけた問題を次の設計に戻す</b>という、ぐるぐる回る改善の輪を作ることが大事です。</p>
+    <div class="cycle">
+      <div class="node"><h4>① 設計</h4><p>作っている最中。エラーが利用者に届く前に、アプリ自身に直させます。</p><span class="when">10.2</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 検証</h4><p>公開の直前。前より悪くなっていないかを確かめます。</p><span class="when">10.3</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 本番運用</h4><p>公開後。実際の利用者への影響を監視します。</p><span class="when">10.4</span></div>
+    </div>
+    <div class="loopback">↻ 本番で見つけた問題を、①設計と②検証に戻す ― これが「継続的改善サイクル」</div>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>LLMは決まった答えを返さないうえに、もっともらしい嘘を平気で言う。放っておくと、利用者に間違った情報を届けてしまう。</li>
+        <li>そうした誤りは、会社の評判や顧客の信頼を一気に損なう大きな危険になる。</li>
+        <li>「動いた！」で終わらせず、品質を測り続ける仕組みがないと、いつの間にか性能が落ちていても気づけない。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li>アプリ自身が誤りに気づいて直す仕組み（自己修正RAG）を組める。</li>
+        <li>公開の前に「前より悪くなっていないか」を自動で確かめられる。</li>
+        <li>公開後のAIの動きを監視し、見つけた問題を改善の輪に戻せる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 導入 ============ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― ここからが本当のスタート</h2><span class="tag">なぜLLMアプリは特別なのか</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>先輩、聞いてくださいよ。ついに僕のアプリ、本番に出せました！もう完成ですね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>お、おめでとう。……でも残念ながら、ここからが本当のスタートなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>ええっ！？どういうことですか……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>君のアプリの中心にいるのはLLMだよね。LLMは「決まった結果を返すとは限らない」——つまり、同じ質問をしても毎回まったく同じ答えを返すとは限らないんだ。しかも、もっともらしい嘘をつくこともある。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>あ、それ「ハルシネーション」ってやつですよね。前に教わりました。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。指示文の書き方、利用者の入力の形、検索してきた情報……いろんな要因で、不正確だったり古かったりする情報を作ってしまう。それが危険な内容だったら、会社の信用が一気に吹き飛ぶ。だから、テストして・評価して・監視して・直し続ける仕組みが要るんだ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10.1 ============ -->
+<section id="s101">
+  <div class="sec-head"><div class="sec-num">10.1</div><div><h2>開発サイクルにおけるテストテクニック</h2><span class="tag">3つの段階、3つの目的</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：テストは、開発の3つの段階それぞれで役割が違います。3つがつながって、ぐるぐる回る輪になります。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>テストって、普通のプログラムでも書きますよね。何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>いい質問だ。LLMアプリのテストは、開発の<b>3つの段階</b>それぞれで役割が違うんだ。順番に見ていこう。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>まず「<b>設計の段階</b>」。作っている真っ最中だね。ここではテストを<b>その場での合否チェック</b>としてアプリの中に組み込む。チェックに落ちたら、その失敗をLLMに伝えて「自分で直して」とやらせる。目的は、誤りが<b>利用者に届く前に</b>アプリの中で片づけることだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なるほど、アプリが自分で自分のミスに気づいて直す、と。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。次が「<b>検証の段階</b>」。本番に出す<b>直前</b>のテストだ。目的は、実際の利用者に公開する前に<b>前より悪くなっていないか</b>を見つけて直すこと。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>「前より悪くなってないか」をチェックするんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そして最後が「<b>本番運用の段階</b>」。実際に利用者が使っている状態を監視するテストだ。利用者に影響する誤りを見つけて、それを設計や検証の段階に返す。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>あ、それで一周するんですね。設計→テスト→公開→監視→修正→再設計……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。この3つを組み合わせると「<b>継続的改善サイクル</b>」というぐるぐる回る輪ができる。本番で起きた問題を、効率よく素早く見つけて直すための仕組みだ。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>段階</th><th>いつ</th><th>目的</th><th>やること</th></tr>
+      <tr><td>設計</td><td>作っている最中</td><td>誤りを利用者に届かせない</td><td>その場での合否チェック→失敗をLLMに伝えて自己修正</td></tr>
+      <tr><td>検証</td><td>公開の直前</td><td>前より悪くなっていないか確認</td><td>データセットで採点し、過去のバージョンと比べる</td></tr>
+      <tr><td>本番運用</td><td>公開後、動いている間</td><td>実際の影響を把握する</td><td>記録を取り、その場で採点し、問題を前の2段階に返す</td></tr>
+    </table>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>設計の段階＝開発中。その場での合否チェックで、誤りが利用者に届く前に自己修正させる。</li>
+        <li>検証の段階＝公開の直前。前より悪くなっていないかを見つけて直す。</li>
+        <li>本番運用の段階＝稼働中。利用者への影響を監視し、前の2段階に返す。</li>
+        <li>この3つがつながり、設計→テスト→公開→監視→修正→再設計の改善の輪になる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10.2 ============ -->
+<section id="s102">
+  <div class="sec-head"><div class="sec-num">10.2</div><div><h2>設計フェーズ</h2><span class="tag">アプリ自身に採点させ、駄目なら切り替える</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：<span class="term" data-tip="検索結果や答えの良し悪しをLLM自身に採点させ、駄目なら別の手段に切り替えるRAG。">自己修正RAG</span>を組みます。検索結果が質問に関係あるかをLLMに採点させ、駄目ならWeb検索に切り替えて取り直します。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>設計の段階の「アプリが自己修正する」って、具体的にどうやるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>RAGを例にしよう。RAGは、質問に答えるために関係する情報を検索してきて、それを材料にLLMが答えを作る仕組みだったね。でも、検索が的外れだったり情報が足りなかったりすると、嘘を作りやすい。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>ありそうですね……。検索がズレてたら答えもズレますもんね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこでLLM自身に「検索してきた情報は本当に質問に関係あるか？」を採点させる。そしてLangGraphで<b>処理の流れ</b>を組むんだ。これが「自己修正RAG」だ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>振り分け</h4><p>質問を、適切な探し方（ベクトルストア検索か、Web検索か）に振り分けます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>検索して、関連性を採点する</h4><p>ベクトルストア検索に回ったら資料を探し、その関連性をLLMが採点します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>答えを作る</h4><p>関連ありと判断したら、その情報をもとに答えを作ります。</p><div class="branch ng">関連なしと判断されたら、5へ（Web検索に切り替え）。</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>嘘でないか確認する</h4><p>作った答えが渡した資料に基づいているかを確認し、正確で適切なときだけ利用者に見せます。</p><div class="branch ok">問題なければ、ここで終了。</div><div class="branch ng">質問に答えられていなければ、5へ。</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>Web検索に切り替える</h4><p>質問をWeb検索向けに書き換えて、情報を取り直します。そして2に戻ります。</p></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>おお、何重にもチェックが入ってる……！ダメだったらやり直すんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。繰り返し答えを作りながら自己修正して、出力の質を上げていくんだ。まずは題材として、3つのブログ記事を検索できる形に整えてみよう。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 切り分け役、Web読み取り役、保管場所、埋め込みモデルなどの部品を読み込む。</span>
+<span class="kw">from</span> langchain.text_splitter <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> WebBaseLoader
+<span class="kw">from</span> langchain_community.vectorstores <span class="kw">import</span> InMemoryVectorStore
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="cmt"># 検索対象にしたい3つの記事の場所を並べる。</span>
+urls = [
+    <span class="str">"https://blog.langchain.dev/top-5-langgraph-agents-in-production-2024/"</span>,
+    <span class="str">"https://blog.langchain.dev/langchain-state-of-ai-2024/"</span>,
+    <span class="str">"https://blog.langchain.dev/introducing-ambient-agents/"</span>,
+]
+
+<span class="cmt"># 各ページを読み込む。1ページから複数の資料が返ることがあるので、二重の一覧になる。</span>
+docs = [<span class="fn">WebBaseLoader</span>(url).<span class="fn">load</span>() <span class="kw">for</span> url <span class="kw">in</span> urls]
+
+<span class="cmt"># 二重になっている一覧を、1本の平らな一覧にならし直す。</span>
+docs_list = [item <span class="kw">for</span> sublist <span class="kw">in</span> docs <span class="kw">for</span> item <span class="kw">in</span> sublist]
+
+<span class="cmt"># 長い記事を250文字ずつのかたまりに切る役を作る。重ねは0にしている。</span>
+text_splitter = RecursiveCharacterTextSplitter.<span class="fn">from_tiktoken_encoder</span>(
+    chunk_size=<span class="num">250</span>, chunk_overlap=<span class="num">0</span>
+)
+
+<span class="cmt"># 実際に切り分ける。</span>
+doc_splits = text_splitter.<span class="fn">split_documents</span>(docs_list)
+
+<span class="cmt"># 各かたまりを数値に変えて、メモリ上の保管場所に入れる。</span>
+vectorstore = InMemoryVectorStore.<span class="fn">from_documents</span>(
+    documents=doc_splits,
+    embedding=<span class="fn">OpenAIEmbeddings</span>(),
+)
+
+<span class="cmt"># 質問を渡すと関係する資料を返す係を作る。</span>
+retriever = vectorstore.<span class="fn">as_retriever</span>()
+
+<span class="cmt"># 実際に質問を投げて、関係する資料が取れるか確かめる。</span>
+results = retriever.<span class="fn">invoke</span>(
+    <span class="str">"2024年に本番環境で使用されている2つのLangGraphエージェントは何ですか？"</span>)
+<span class="fn">print</span>(<span class="str">"検索結果: \n"</span>, results)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 検索結果:</span>
+<span class="cmt"># [Document(page_content='…本番環境で稼働しているエージェントの事例…'), …]</span>
+</pre></details>
+
+    <h3 class="blk">検索結果を採点させる</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次が肝心。LLMに「検索してきた資料は質問に関係しているか？」を <code>yes</code>／<code>no</code> で採点させる。採点結果を<b>プログラムで扱いやすい形</b>にしておくのがポイントだ。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 雛形・モデル・スキーマの部品を読み込む。</span>
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="cmt"># 採点結果の形を決める。答えは必ず1つの項目に入る文字列になる。</span>
+<span class="kw">class</span> <span class="fn">GradeDocuments</span>(BaseModel):
+    <span class="str">"""取得したドキュメントの関連性確認のためのバイナリスコア"""</span>
+    <span class="cmt"># yes か no のどちらかを入れる項目。説明文はLLMも読む。</span>
+    binary_score: <span class="kw">str</span> = <span class="fn">Field</span>(
+        description=<span class="str">"ドキュメントは質問に関連していますか、'yes' または 'no'"</span>
+    )
+
+<span class="cmt"># 採点役のモデルを用意する。判断がぶれないよう、ばらつきを0にする。</span>
+llm = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+<span class="cmt"># 上で決めた形を必ず守らせる設定に変える。これで返り値が必ず yes か no になる。</span>
+structured_llm_grader = llm.<span class="fn">with_structured_output</span>(GradeDocuments)
+
+<span class="cmt"># 採点役としての立場と、判断の基準を前提の指示として書く。</span>
+system = <span class="str">"""あなたは、取得したドキュメントがユーザーの質問にどれだけ関連しているかを評価する採点者です。
+ドキュメントに質問に関連するキーワードや意味内容が含まれていれば、関連ありとして評価してください。
+ドキュメントが質問に関連しているかどうかを示すために、「yes」または「no」のバイナリスコアを付けてください。"""</span>
+
+<span class="cmt"># 前提の指示と、採点対象（資料と質問）を並べた雛形を作る。</span>
+grade_prompt = ChatPromptTemplate.<span class="fn">from_messages</span>(
+    [
+        (<span class="str">"system"</span>, system),
+        (<span class="str">"human"</span>, <span class="str">"取得したドキュメント: \n\n {document} \n\n ユーザーの質問: {question}"</span>),
+    ]
+)
+
+<span class="cmt">#「雛形 → 形を守るモデル」をつないで、採点する仕組みを作る。</span>
+retrieval_grader = grade_prompt | structured_llm_grader
+
+<span class="cmt"># 試しに質問を1つ用意して、関係する資料を取ってくる。</span>
+question = <span class="str">"agent memory"</span>
+docs = retriever.<span class="fn">invoke</span>(question)
+
+<span class="cmt"># 先頭の資料の本文だけを取り出して、採点にかける。</span>
+doc_txt = docs[<span class="num">0</span>].page_content
+
+<span class="cmt"># 採点する。答えは自由な文章ではなく、決まった形で返る。</span>
+<span class="fn">print</span>(retrieval_grader.<span class="fn">invoke</span>({<span class="str">"question"</span>: question, <span class="str">"document"</span>: doc_txt}))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># binary_score='yes'</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>出力が <code>binary_score='yes'</code> って、ちゃんと決まった形で返ってきてますね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう、ここが大事なんだ。Pydanticを使って、2択の判断を<b>プログラムで扱いやすい形</b>にしている。これで「<code>yes</code> なら答えを作る処理へ、<code>no</code> ならWeb検索へ」と、流れの中で次の行き先を決められる。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>あとはLangGraphで全体を組めば、手元の資料で答えられないとき、質問をWeb検索向けに書き換えて切り替える……という流れまで作れる。LangSmithを使えば、この処理の移り変わりを画面で見ながら不具合を追える。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>自分の作ったAIが「いま検索がダメだったからWebに切り替えた」って見えるの、面白いですね！</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：採点があるかないかで何が変わるか</h4>
+      <p>手元の資料は「LangGraphのブログ記事3本」だけです。ここに「今日の東京の天気は？」と聞かれたとします。</p>
+      <p><b>採点なし</b>：検索は必ず何かを返すので、天気とは無関係な記事のかたまりが渡され、LLMはその断片から無理やり答えを作ります。結果はもっともらしい嘘になります。</p>
+      <p><b>採点あり</b>：<code>binary_score='no'</code> と判定され、Web検索に切り替わります。正しい天気の情報を取り直してから答えるので、嘘になりません。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>自己修正RAGは「振り分け → 検索 → 関連性の採点 → 生成 → 嘘でないかの確認 → 駄目ならWeb検索へ切り替え」という流れ。</li>
+        <li>LLMに関連性を <code>yes</code>／<code>no</code> で採点させ、Pydanticで決まった形の出力にする。</li>
+        <li>その判定結果を使って、LangGraphの流れの中で次の処理を決める。</li>
+        <li>LangSmithで処理の移り変わりを見ながら、不具合を追える。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10.3 ============ -->
+<section id="s103">
+  <div class="sec-head"><div class="sec-num">10.3</div><div><h2>検証フェーズ</h2><span class="tag">公開の直前に、成績を測る</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：公開の前に、正確さ・応答の速さ・費用を測ります。まず「正解」を集めたデータセットを作るところから始めます。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>次は検証の段階ですね。本番に出す直前のテスト。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。目的は、本番に出す前にアプリの成績を測って評価すること。LLMの<b>正確さ・応答の速さ・費用</b>を効率よくつかんで、改善につなげるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>でも「正解」がないと成績って測れなくないですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>鋭い。だからまず「データセット」を作るところから始めるんだ。</div></div>
+    </div>
+  </div>
+
+  <!-- 10.3.1 -->
+  <div class="card" id="s1031">
+    <h3 class="blk" style="margin-top:4px">10.3.1 データセットを作成する</h3>
+    <p class="lead"><b>要するに</b>：<span class="term" data-tip="入力とこう答えてほしいの組を集めたもの。">データセット</span>は「入力」と「期待される出力」の組を集めたものです。作り方は3つあります。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>データセットって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>「入力」と「期待される出力」を組で集めたものだよ。これを使ってアプリの成績を測る。「この質問にはこう答えてほしい」という見本集だね。作り方は大きく3つある。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">✍️</div><h4>① 手で作る</h4><p>想定する入力と、それに対する理想の答えを人が書きます。小さく始めて、質の高いものを10〜50個ほど用意し、運用で見つかった特殊な場合を少しずつ足していきます。</p></div>
+      <div class="mini"><div class="ic">📜</div><h4>② 記録から作る</h4><p>本番が動き出したら、実際の入力を記録して後から足します。現実によくある質問を集められます。</p></div>
+      <div class="mini"><div class="ic">🧪</div><h4>③ 人工的に作る</h4><p>いろいろな場面や特殊な場合を真似て、擬似的に生成したデータ。実際のデータが足りないときに役立ちます。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>最初は手で作って、運用しながら実データで増やしていくのがよさそうですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。LangSmithでは画面から新しいデータセットを作れる。CSVのファイルを取り込むこともできる。データセットには3種類あるよ。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>種類</th><th>形</th><th>向いている評価</th></tr>
+      <tr><td><code>kv</code>（既定）</td><td>好きな項目名と値の組で、入出力を自由に表せる</td><td>入力や出力が複数ある処理やエージェント。<b>最も柔軟でおすすめ</b></td></tr>
+      <tr><td><code>llm</code></td><td>指示文1つ・返答1つの単純な形</td><td>言語モデルそのものの評価</td></tr>
+      <tr><td><code>chat</code></td><td>会話のやり取りの形</td><td>チャットボットの評価</td></tr>
+    </table>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6">追加ボタンから、入力と出力の例をJSONで足していけますし、データの形も決められます。</p>
+  </div>
+
+  <!-- 10.3.2 -->
+  <div class="card" id="s1032">
+    <h3 class="blk" style="margin-top:4px">10.3.2 評価基準を定義する</h3>
+    <p class="lead"><b>要するに</b>：出力を<b>どう採点するか</b>を決めます。用意したテスト一式でまとめて採点することを<span class="term" data-tip="用意しておいたデータでまとめて採点すること。公開前に行う。">オフライン評価</span>と呼びます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>データセットができたら、次は何をするんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>アプリの出力を<b>どう採点するか</b>＝評価の物差しを決める。あらかじめ用意したテスト一式でまとめて評価することを「<b>オフライン評価</b>」とも呼ぶ。ここでは、各データに「期待される出力＝<b>正解データ</b>」を付けて、アプリの答えと比べるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>採点する仕組みって何種類かあるんですか？</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🙋</div><h4>① 人が採点する</h4><p>文章の自然さなど、計算では表せない良し悪しを人が点数化します。順番待ちの画面で効率よく集められます。</p><span class="pill">導入順 2番目</span></div>
+      <div class="mini"><div class="ic">🧮</div><h4>② 計算で採点する</h4><p>人が書いた関数や条件で機械的に点数を出します。「出力が正しいJSONか」のように正解なしで確かめるものと、正解と突き合わせるものがあります。</p><span class="pill">導入順 1番目</span></div>
+      <div class="mini"><div class="ic">🤖</div><h4>③ LLMが採点する</h4><p>人の採点基準を指示文に書き、LLMに「この答えは正解に照らして正しいか」を評価させます。</p><span class="pill">導入順 3番目</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>AIをAIが採点するんですか！？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。最初は単純な計算による採点から始めて、次に人の採点、最後にLLMによる採点へ移って人の作業を自動にする、という順番がいい。基準がしっかり固まってから規模を広げるんだ。あ、ひとつコツがある。LLMに採点させるときは「0〜10点で採点して」みたいな曖昧な指示は避けること。人が同じ判断を再現しやすい、単純な指示文にするんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>確かに、10点と8点の違いって人間でも説明しにくいですもんね……。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>🟣 なぜ曖昧なスコア指示を避けるのか</h4>
+      <ul>
+        <li>「7点」と「8点」の境目が定義できないため、同じ答えでも呼ぶたびに点数が変わってしまうから。</li>
+        <li>点数がぶれると、前より良くなったのか悪くなったのかを比べられなくなるから。</li>
+        <li>「事実として正しいか（yes／no）」のような2択なら、人もLLMも同じ判断を再現しやすいから。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.2.1 -->
+  <div class="card" id="s10321">
+    <h3 class="blk" style="margin-top:4px">10.3.2.1 LLM-as-a-judge評価器の精度を上げる</h3>
+    <p class="lead"><b>要するに</b>：人が直した内容を<b>見本として貯めて</b>、次回以降の採点の指示文に組み込みます。使うほど人の好みに近づきます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>でも、AIが採点した結果ってどこまで信用できるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>まさにそこが問題なんだ。精度を上げるには指示文を何度も改良する必要があって、手間も時間もかかる。そこでLangSmithは「<b>見本を見せる仕組み</b>」を用意している。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>LLMが採点する</h4><p>答えに点数と講評を付けます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>人が直す</h4><p>その採点に、人の判断や好みを反映した修正を加えます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>見本として保存する</h4><p>その修正を、理由のメモと一緒に保存します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>次回の採点に組み込まれる</h4><p>保存した見本が、次からの指示文に自動で入ります。</p><div class="branch ok">これを繰り返すほど、採点が人の好みに近づいていきます。</div></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>使うほど人の好みに近づいていくんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。これが自分で良くなっていく仕組みだ。LangSmithでは、対象のデータセットから採点役を追加する画面で設定でき、LLMによる採点を選んで見本を使う形にすると、修正を貯めるデータセットが自動で作られる。採点の基準も整数や2択で指定できる。</div></div>
+    </div>
+  </div>
+
+  <!-- 10.3.2.2 -->
+  <div class="card" id="s10322">
+    <h3 class="blk" style="margin-top:4px">10.3.2.2 ペアワイズ評価</h3>
+    <p class="lead"><b>要するに</b>：1つに点数を付けるのではなく、<b>2つ並べてどちらが良いか</b>を選びます。人にもLLMにも負担が軽い方法です。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>1個の答えに点数をつけるのって難しそうですね。「80点」って言われても基準が分からないというか。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこで「<b>ペアワイズ評価</b>」だ。1個に絶対の点数をつけるんじゃなく、<b>2つの出力を並べてどっちが良いか</b>を判断する。「AとB、どっちが役に立つ？具体的？安全？」という比べ方だね。これなら人にもLLMにも負担が軽い。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>確かに「どっちが好き？」なら答えやすいです。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LangSmithはこの比べ方にそのまま対応していて、違うバージョンの出力を並べて見比べられる。専用のタブで各組の詳細を見られて、順位の点数をクリックすれば各評価の履歴も追える。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：絶対点と、2つ並べる採点の違い</h4>
+      <p>ある答えに<b>絶対点</b>を付けさせると、1回目は「7点」、2回目は「8点」と返ることがあります。どちらが正しいのか判断できません。</p>
+      <p>同じ2つの答えを<b>並べて</b>「どちらがより具体的か」と聞けば、何度聞いてもほぼ同じ側が選ばれます。改善したかどうかを判断するには、こちらのほうが役に立ちます。</p>
+    </div>
+  </div>
+
+  <!-- 10.3.3 -->
+  <div class="card" id="s1033">
+    <h3 class="blk" style="margin-top:4px">10.3.3 リグレッションテスト</h3>
+    <p class="lead"><b>要するに</b>：AIは「100%合格」を前提にできません。代わりに<b>前のバージョンより悪くなっていないか</b>を見ます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>普通のテストって、全部合格しないとダメですよね？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>従来のソフトウェアはそうだ。テストが100%通れば安定した動きを保証できる。でもAIは違うんだ。<b>ドリフト</b>——データの傾向が変わったりモデルが更新されたりして、結果が大きく変わることがある。だからAIアプリのテストは、評価用のデータで必ずしも100%通るとは限らない。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>えっ、じゃあ何を基準にすればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>「100%合格」じゃなく「前より悪くなっていないか」を見るんだ。これが<b>リグレッションテスト</b>。モデルの更新や変更が、比較の基準にする過去のバージョンに対して<b>後退していない</b>ことを確かめるのが目的だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なるほど、絶対評価じゃなくて「前のバージョンとの比較」なんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。LangSmithの比較画面がこれに対応していて、基準から変わった例をすぐ確認できる。後退した実行と良くなった実行が色違いで目立つようになっているんだ。複数の実験を比べたり、基準を決めて思わぬ後退を見つけたり、動きが変わったデータを詳しく見たりできる。モデルや指示文を乗り換えるときに特に役立つ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：100%合格を求めるとどうなるか</h4>
+      <p>50件のデータで採点したところ、旧バージョンは46件正解、新バージョンは48件正解でした。</p>
+      <p><b>100%合格を基準にすると</b>：どちらも不合格になり、改善したのかどうかが分かりません。</p>
+      <p><b>前との比較で見ると</b>：正解が2件増えたので改善。ただし旧では正解だったのに新で不正解になった1件があれば、そこは<b>後退</b>として個別に確認します。合計点だけでなく、変わった個々の例を見るのがポイントです。</p>
+    </div>
+  </div>
+
+  <!-- 10.3.4 -->
+  <div class="card" id="s1034">
+    <h3 class="blk" style="margin-top:4px">10.3.4 エージェントのパフォーマンスを評価する（3つの粒度）</h3>
+    <p class="lead"><b>要するに</b>：エージェントは実行のたびに動きが変わります。<b>最終の答え・1つの判断・たどった手順の並び</b>という3つの細かさで見ます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>エージェントのテストって、普通のアプリより難しそうですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。エージェントは進む先の判断にLLMを使うから、毎回の結果が大きく変わる。呼ぶ機能が変わったり、同じところを回り続けたり、終わるまでの回数がばらついたり。だから理想的には<b>3つの細かさ</b>でテストするんだ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🎯</div><h4>① 最終の答え</h4><p>中身を見ずに、最終的な答えで仕事を終えられたかを見ます。入力＝質問（＋使える機能）、出力＝最終の答え。</p></div>
+      <div class="mini"><div class="ic">🔍</div><h4>② 1つの判断</h4><p>特定の機能の呼び出しや判断1つを深く見ます。出力＝どの機能を呼んだか。</p></div>
+      <div class="mini"><div class="ic">🧭</div><h4>③ たどった手順</h4><p>実際に通った全ての手順を見ます。出力＝呼んだ機能の並び。</p></div>
+    </div>
+  </div>
+
+  <!-- 10.3.4.1 -->
+  <div class="card" id="s10341">
+    <h3 class="blk" style="margin-top:4px">10.3.4.1 エージェントの最終レスポンスをテストする</h3>
+    <p class="lead"><b>要するに</b>：中身を見ずに、答えだけで合否を判断します。採点はLLMに任せます。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 評価の仕組みにつなぐための部品を読み込む。</span>
+<span class="kw">from</span> langsmith <span class="kw">import</span> Client
+
+<span class="cmt"># つなぎ役を1つ作る。</span>
+client = <span class="fn">Client</span>()
+
+<span class="cmt"># 「質問」と「こう答えてほしい」の組を並べる。これが成績を測る物差しになる。</span>
+examples = [
+    (<span class="str">"最も多く支出した国の顧客はどこですか？また、いくら使いましたか？"</span>,
+        <span class="str">"最も支出額が多かった国はアメリカで、総支出額は523.06ドルです。"</span>),
+    (<span class="str">"2013年に最も購入された曲は何ですか？"</span>,
+        <span class="str">"2013年に最も購入された曲は「Hot Girl」です。"</span>),
+    (<span class="str">"レッド・ツェッペリンのアルバムはいくつありますか？"</span>,
+        <span class="str">"レッド・ツェッペリンは14枚のアルバムをリリースしています。"</span>),
+    (<span class="str">"「Big Ones」アルバムの総価格はいくらですか？"</span>,
+        <span class="str">"「Big Ones」の総価格は14.85ドルです。"</span>),
+    (<span class="str">"2009年に最も売上を上げた販売代理店はどこですか？"</span>,
+        <span class="str">"スティーブ・ジョンソンが2009年に最も多く売上を上げました。"</span>),
+]
+
+<span class="cmt"># このデータセットに付ける名前。あとで結果を見るときの目印になる。</span>
+dataset_name = <span class="str">"SQL Agent Response"</span>
+
+<span class="cmt"># 同じ名前のものがまだ無ければ作る。二重に作らないための確認。</span>
+<span class="kw">if</span> <span class="kw">not</span> client.<span class="fn">has_dataset</span>(dataset_name=dataset_name):
+    dataset = client.<span class="fn">create_dataset</span>(dataset_name=dataset_name)
+    <span class="cmt"># 上の組を、入力側と出力側の2つの並びに分ける。</span>
+    inputs, outputs = <span class="fn">zip</span>(
+        *[({<span class="str">"input"</span>: text}, {<span class="str">"output"</span>: label}) <span class="kw">for</span> text, label <span class="kw">in</span> examples]
+    )
+    <span class="cmt"># 分けたものを、作ったデータセットにまとめて登録する。</span>
+    client.<span class="fn">create_examples</span>(inputs=inputs, outputs=outputs, dataset_id=dataset.id)
+
+<span class="cmt"># 1件の質問を受け取り、エージェントを動かして最終の答えだけを取り出す。</span>
+<span class="kw">def</span> <span class="fn">predict_sql_agent_answer</span>(example: <span class="fn">dict</span>):
+    <span class="str">"""回答評価に使う"""</span>
+    <span class="cmt"># データセットの入力を、エージェントが受け取れる形に直す。</span>
+    msg = {<span class="str">"messages"</span>: (<span class="str">"user"</span>, example[<span class="str">"input"</span>])}
+    <span class="cmt"># エージェントを最後まで動かす。</span>
+    messages = graph.<span class="fn">invoke</span>(msg, config)
+    <span class="cmt"># 履歴のいちばん最後、つまり最終の答えだけを返す。</span>
+    <span class="kw">return</span> {<span class="str">"response"</span>: messages[<span class="str">'messages'</span>][-<span class="num">1</span>].content}
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6">次に、LLMに「エージェントの答え」と「正解」を比べさせます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 公開されている指示文を取ってくる仕組み、モデル、評価の実行役を読み込む。</span>
+<span class="kw">from</span> langchain <span class="kw">import</span> hub
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langsmith.evaluation <span class="kw">import</span> evaluate
+
+<span class="cmt"># 「答えと正解を比べる」ための指示文を、公開されているものから取ってくる。</span>
+<span class="cmt"># 自分で書かなくても、実績のある採点の指示文をそのまま使える。</span>
+grade_prompt_answer_accuracy = hub.<span class="fn">pull</span>(<span class="str">"langchain-ai/rag-answer-vs-reference"</span>)
+
+<span class="cmt"># 1件ぶんの実行結果を受け取り、点数を返す採点役を作る。</span>
+<span class="kw">def</span> <span class="fn">answer_evaluator</span>(run, example) -> <span class="fn">dict</span>:
+    <span class="str">"""RAGの回答精度を評価するためのシンプルな評価ツール"""</span>
+
+    <span class="cmt"># データセットに入っていた質問を取り出す。</span>
+    input_question = example.inputs[<span class="str">"input"</span>]
+    <span class="cmt"># 期待される答え（正解）を取り出す。</span>
+    reference = example.outputs[<span class="str">"output"</span>]
+    <span class="cmt"># エージェントが実際に返した答えを取り出す。</span>
+    prediction = run.outputs[<span class="str">"response"</span>]
+
+    <span class="cmt"># 採点役のモデルを用意する。判断がぶれないようばらつきを0にする。</span>
+    llm = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+    <span class="cmt"># 採点の指示文とモデルをつなぐ。</span>
+    answer_grader = grade_prompt_answer_accuracy | llm
+
+    <span class="cmt"># 質問・正解・実際の答えの3つを渡して採点させる。</span>
+    score = answer_grader.<span class="fn">invoke</span>({<span class="str">"question"</span>: input_question,
+                                  <span class="str">"correct_answer"</span>: reference,
+                                  <span class="str">"student_answer"</span>: prediction})
+    <span class="cmt"># 返ってきた中から点数の部分だけを取り出す。</span>
+    score = score[<span class="str">"Score"</span>]
+
+    <span class="cmt"># 点数に名前を付けて返す。この名前が画面上の項目名になる。</span>
+    <span class="kw">return</span> {<span class="str">"key"</span>: <span class="str">"answer_v_reference_score"</span>, <span class="str">"score"</span>: score}
+
+<span class="cmt"># 実際に評価を回す。同じテストを3回繰り返して、答えのばらつきを見る。</span>
+<span class="cmt"># 1回だけだと、たまたま良かった（悪かった）だけかもしれないため。</span>
+experiment_results = <span class="fn">evaluate</span>(
+    predict_sql_agent_answer,
+    data=dataset_name,
+    evaluators=[answer_evaluator],
+    num_repetitions=<span class="num">3</span>,
+)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># View the evaluation results for experiment: 'SQL Agent Response-xxxx'</span>
+<span class="cmt"># （LangSmithの画面で、5問×3回＝15件の採点結果を確認できる）</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span><code>num_repetitions=3</code> って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>同じテストを3回繰り返す指定だ。LLMは毎回答えが揺れるから、1回だけだとたまたまの結果かもしれない。複数回やってばらつきを見るんだ。</div></div>
+    </div>
+  </div>
+
+  <!-- 10.3.4.2 -->
+  <div class="card" id="s10342">
+    <h3 class="blk" style="margin-top:4px">10.3.4.2 エージェントの単一ステップをテストする</h3>
+    <p class="lead"><b>要するに</b>：「最初に呼ぶべき機能を、本当に呼んだか」を1点／0点で確かめます。問題の原因を絞り込めます。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 実行結果とデータの形を表す部品を読み込む。</span>
+<span class="kw">from</span> langsmith.schemas <span class="kw">import</span> Example, Run
+
+<span class="cmt"># エージェントを最後まで動かさず、1回だけ判断させて結果を返す。</span>
+<span class="kw">def</span> <span class="fn">predict_assistant</span>(example: <span class="fn">dict</span>):
+    <span class="str">"""単一ツール呼び出し評価のためにアシスタントを呼び出す"""</span>
+    <span class="cmt"># データセットの入力を、発言の形に直す。</span>
+    msg = [ (<span class="str">"user"</span>, example[<span class="str">"input"</span>]) ]
+    <span class="cmt"># 判断の部分だけを1回呼ぶ。ここに「どの機能を使いたいか」の申告が入る。</span>
+    result = assistant_runnable.<span class="fn">invoke</span>({<span class="str">"messages"</span>:msg})
+    <span class="kw">return</span> {<span class="str">"response"</span>: result}
+
+
+<span class="cmt"># 最初に呼ばれた機能が、期待したものと同じかを確かめる採点役。</span>
+<span class="kw">def</span> <span class="fn">check_specific_tool_call</span>(root_run: Run, example: Example) -> <span class="fn">dict</span>:
+    <span class="str">"""最初のツール呼び出しが期待されるツール呼び出しと一致するか確認する"""</span>
+    <span class="cmt"># 最初に呼ぶべきだと決めておいた機能の名前。</span>
+    expected_tool_call = <span class="str">'sql_db_list_tables'</span>
+
+    <span class="cmt"># 実際に返ってきた内容を取り出す。</span>
+    response = root_run.outputs[<span class="str">"response"</span>]
+
+    <span class="cmt"># 申告された機能のうち、1つ目の名前を取り出す。</span>
+    <span class="kw">try</span>:
+        tool_call = <span class="fn">getattr</span>(response, <span class="str">'tool_calls'</span>, [])[<span class="num">0</span>][<span class="str">'name'</span>]
+    <span class="cmt"># 何も申告されていなければ、名前は無しとして扱う（ここで止まらないようにする）。</span>
+    <span class="kw">except</span> (IndexError, KeyError):
+        tool_call = <span class="kw">None</span>
+
+    <span class="cmt"># 期待と同じなら1点、違えば0点。曖昧さがないので毎回同じ判定になる。</span>
+    score = <span class="num">1</span> <span class="kw">if</span> tool_call == expected_tool_call <span class="kw">else</span> <span class="num">0</span>
+    <span class="kw">return</span> {<span class="str">"score"</span>: score, <span class="str">"key"</span>: <span class="str">"single_tool_call"</span>}
+
+<span class="cmt"># 評価を回す。ここでも3回繰り返してばらつきを見る。</span>
+experiment_results = <span class="fn">evaluate</span>(
+    predict_assistant,
+    data=dataset_name,
+    evaluators=[check_specific_tool_call],
+    num_repetitions=<span class="num">3</span>,
+    metadata={<span class="str">"version"</span>: metadata},
+)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># single_tool_call の平均が 1.0 なら、毎回正しい機能から始められている</span>
+<span class="cmt"># 0.67 なら、3回に1回は違う機能から始めてしまっている</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なるほど、「最初に <code>sql_db_list_tables</code> を呼ぶはず」って決めておいて、その通りか確認するんですね。</div></div>
+    </div>
+  </div>
+
+  <!-- 10.3.4.3 -->
+  <div class="card" id="s10343">
+    <h3 class="blk" style="margin-top:4px">10.3.4.3 エージェントの軌跡をテストする</h3>
+    <p class="lead"><b>要するに</b>：呼んだ機能の<b>並び</b>が期待どおりかを見ます。厳しさを3段階から選べます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最後はたどった手順。エージェントが通った全ての段階（どの機能をどの順で何回呼んだか）が期待どおりかを見る。評価の仕方を3通り用意してみよう。「順不同で全部呼んだか」「正しい順で全部呼んだか」「正しい順で、余計な呼び出しもなく完全に一致か」だ。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># エージェントを最後まで動かし、履歴を丸ごと返す。</span>
+<span class="kw">def</span> <span class="fn">predict_sql_agent_messages</span>(example: <span class="fn">dict</span>):
+    <span class="str">"""回答評価に使う"""</span>
+    msg = {<span class="str">"messages"</span>: (<span class="str">"user"</span>, example[<span class="str">"input"</span>])}
+    messages = graph.<span class="fn">invoke</span>(msg, config)
+    <span class="cmt"># 最終の答えだけでなく、途中の全ての発言を返すのがここでの違い。</span>
+    <span class="kw">return</span> {<span class="str">"response"</span>: messages}
+
+<span class="cmt"># 履歴の中から、呼ばれた機能の名前だけを出てきた順に拾い出す。</span>
+<span class="kw">def</span> <span class="fn">find_tool_calls</span>(messages):
+    tool_calls = [
+        tc[<span class="str">'name'</span>]
+        <span class="kw">for</span> m <span class="kw">in</span> messages[<span class="str">'messages'</span>] <span class="kw">for</span> tc <span class="kw">in</span> <span class="fn">getattr</span>(m, <span class="str">'tool_calls'</span>, [])
+    ]
+    <span class="kw">return</span> tool_calls
+
+<span class="cmt"># 【厳しさ1】期待した機能が、順番は問わず全部呼ばれたかを見る。</span>
+<span class="kw">def</span> <span class="fn">contains_all_tool_calls_any_order</span>(
+    root_run: Run, example: Example
+) -> <span class="fn">dict</span>:
+    <span class="str">"""期待したツールが「順不同で」全部呼ばれたか確認する"""</span>
+    <span class="cmt"># 呼ばれてほしい機能の一覧。</span>
+    expected = [
+        <span class="str">'sql_db_list_tables'</span>,
+        <span class="str">'sql_db_schema'</span>,
+        <span class="str">'sql_db_query_checker'</span>,
+        <span class="str">'sql_db_query'</span>,
+        <span class="str">'check_result'</span>
+    ]
+    messages = root_run.outputs[<span class="str">"response"</span>]
+    tool_calls = <span class="fn">find_tool_calls</span>(messages)
+    <span class="cmt"># 期待した5つがすべて含まれていれば1点。順番も回数も問わない。</span>
+    <span class="kw">if</span> <span class="fn">set</span>(expected) &lt;= <span class="fn">set</span>(tool_calls):
+        score = <span class="num">1</span>
+    <span class="kw">else</span>:
+        score = <span class="num">0</span>
+    <span class="kw">return</span> {<span class="str">"score"</span>: <span class="fn">int</span>(score), <span class="str">"key"</span>: <span class="str">"multi_tool_call_any_order"</span>}
+
+<span class="cmt"># 【厳しさ2】期待した機能が、正しい順番で全部呼ばれたかを見る。</span>
+<span class="kw">def</span> <span class="fn">contains_all_tool_calls_in_order</span>(root_run: Run, example: Example) -> <span class="fn">dict</span>:
+    <span class="str">"""期待したツールが「正しい順番で」全部呼ばれたか確認する"""</span>
+    messages = root_run.outputs[<span class="str">"response"</span>]
+    tool_calls = <span class="fn">find_tool_calls</span>(messages)
+    <span class="cmt"># 前から順に1回だけ通る形にして、後戻りできないようにする。</span>
+    it = <span class="fn">iter</span>(tool_calls)
+    expected = [
+        <span class="str">'sql_db_list_tables'</span>,
+        <span class="str">'sql_db_schema'</span>,
+        <span class="str">'sql_db_query_checker'</span>,
+        <span class="str">'sql_db_query'</span>,
+        <span class="str">'check_result'</span>
+    ]
+    <span class="cmt"># 期待した順に見つかっていけば1点。間に別の呼び出しが挟まっていてもよい。</span>
+    <span class="kw">if</span> <span class="fn">all</span>(elem <span class="kw">in</span> it <span class="kw">for</span> elem <span class="kw">in</span> expected):
+        score = <span class="num">1</span>
+    <span class="kw">else</span>:
+        score = <span class="num">0</span>
+    <span class="kw">return</span> {<span class="str">"score"</span>: <span class="fn">int</span>(score), <span class="str">"key"</span>: <span class="str">"multi_tool_call_in_order"</span>}
+
+<span class="cmt"># 【厳しさ3】正しい順番で、余計な呼び出しも一切ないかを見る。</span>
+<span class="kw">def</span> <span class="fn">contains_all_tool_calls_in_order_exact_match</span>(
+    root_run: Run, example: Example
+) -> <span class="fn">dict</span>:
+    <span class="str">"""期待したツールが「正しい順番」かつ「余計な呼び出しなし」で完全一致か確認する"""</span>
+    expected = [
+        <span class="str">'sql_db_list_tables'</span>,
+        <span class="str">'sql_db_schema'</span>,
+        <span class="str">'sql_db_query_checker'</span>,
+        <span class="str">'sql_db_query'</span>,
+        <span class="str">'check_result'</span>
+    ]
+    messages = root_run.outputs[<span class="str">"response"</span>]
+    tool_calls = <span class="fn">find_tool_calls</span>(messages)
+    <span class="cmt"># 並びがまったく同じときだけ1点。1回でも余計に呼べば0点になる。</span>
+    <span class="kw">if</span> tool_calls == expected:
+        score = <span class="num">1</span>
+    <span class="kw">else</span>:
+        score = <span class="num">0</span>
+    <span class="kw">return</span> {<span class="str">"score"</span>: <span class="fn">int</span>(score), <span class="str">"key"</span>: <span class="str">"multi_tool_call_in_exact_order"</span>}
+
+<span class="cmt"># 3つの採点役をまとめて回す。厳しさの違いが並んで見えるので比べやすい。</span>
+experiment_results = <span class="fn">evaluate</span>(
+    predict_sql_agent_messages,
+    data=dataset_name,
+    evaluators=[
+        contains_all_tool_calls_any_order,
+        contains_all_tool_calls_in_order,
+        contains_all_tool_calls_in_order_exact_match
+    ],
+    num_repetitions=<span class="num">3</span>,
+)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># multi_tool_call_any_order        : 1.0   （必要な機能は全部呼べている）</span>
+<span class="cmt"># multi_tool_call_in_order         : 1.0   （順番も守れている）</span>
+<span class="cmt"># multi_tool_call_in_exact_order   : 0.33  （余計な呼び出しが混じっている回がある）</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>「順不同でOK」「順番もぴったり」「余計なものも無しで完全一致」の3段階で厳しさを変えられるんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。仕事によって、順番が大事なときと、呼びさえすればいいときがあるからね。これらはどれもLangSmithの画面で確認・調査できる。エージェントは呼び出しがばらつきやすいから、こうしたテストで費用の増加や信頼性の低下を防ぐんだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：3つの厳しさの点数の違い</h4>
+      <p>実際に呼ばれた並びが <code>[list_tables, schema, query_checker, schema, query, check_result]</code> だったとします（<code>schema</code> を2回呼んでいる）。</p>
+      <p><b>順不同</b>：期待した5つはすべて含まれるので<b>1点</b>。<b>正しい順</b>：期待した順に現れているので<b>1点</b>。<b>完全一致</b>：余計な <code>schema</code> が1回混じっているので<b>0点</b>。</p>
+      <p>この3つを並べて見ると、「必要なことはできているが、無駄な呼び出しが1回ある」と分かります。無駄な呼び出しは費用と待ち時間に直結するので、改善の手がかりになります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>エージェント評価の3つの細かさ：最終の答え／1つの判断／たどった手順の並び。</li>
+        <li>最終の答えは、中身を見ずにLLMに採点させる。</li>
+        <li>1つの判断は「最初の機能が期待どおりか」を1点／0点で確かめる。</li>
+        <li>手順の並びは「順不同／順番どおり／完全一致」の3段階の厳しさで評価できる。</li>
+        <li><code>num_repetitions</code> で複数回実行し、ばらつきを考える。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10.4 ============ -->
+<section id="s104">
+  <div class="sec-head"><div class="sec-num">10.4</div><div><h2>本番運用フェーズ</h2><span class="tag">正解がない世界で、品質を測る</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：実際の利用者が触って初めて出る不具合があります。中で何が起きているかを見える状態にし、その場で採点する仕組みを整えます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>検証の段階をちゃんとやれば、もう安心ですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>いや、それでも実際の利用者が触って初めて出る不具合や特殊な場合があるんだ。応答の速さや出力の妥当さに影響することもある。だから本番では「<b>中で何が起きているかが見える状態</b>」と「その場での採点」の仕組みを整える。これがLLMへの入出力に対する<b>歯止め</b>になって、指示の乗っ取りや有害な内容から守ってくれる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>危ない入力や出力を、そこで止めるんですね。</div></div>
+    </div>
+  </div>
+
+  <!-- 10.4.1 -->
+  <div class="card" id="s1041">
+    <h3 class="blk" style="margin-top:4px">10.4.1 トレース</h3>
+    <p class="lead"><b>要するに</b>：<span class="term" data-tip="入力から出力までに通った全ての段階の記録。">トレース</span>は、入力から出力までに通った全段階の記録です。設定は環境変数を入れるだけです。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>まず何から設定すればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LangSmithの<b>記録</b>の機能だ。記録っていうのは、アプリが入力から出力に至るまでの一連の段階のこと。LangSmithを使えば、その道筋を見て・調べて・試せる。設定は設定値を入れるだけだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次は<b>ターミナルに打ち込むコマンド</b>です（Pythonではありません）。</p>
+    <details class="code"><summary>コマンドを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 記録の機能を有効にする。この1行を入れるだけで、以降の実行が自動で記録される。</span>
+export LANGCHAIN_TRACING_V2=true
+
+<span class="cmt"># どのアカウントの記録として送るかを決める鍵。自分のものに置き換える。</span>
+export LANGCHAIN_API_KEY=&lt;your-api-key&gt;
+
+<span class="cmt"># 使うLLMの鍵。ここではOpenAIだが、他の提供元でもよい。</span>
+export OPENAI_API_KEY=&lt;your-openai-api-key&gt;
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>これを設定したら、記録は自動でLangSmithの画面に集まる。記録の件数、成功と失敗の割合、応答の速さ、使ったトークン数と費用などが見られるよ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>費用まで見えるの、ありがたいですね。気づいたら請求がすごいことに……ってなりたくないので。</div></div>
+    </div>
+  </div>
+
+  <!-- 10.4.2 -->
+  <div class="card" id="s1042">
+    <h3 class="blk" style="margin-top:4px">10.4.2 本番環境でフィードバックを集める</h3>
+    <p class="lead"><b>要するに</b>：本番には比べるための正解がありません。だから<b>その場で採点する</b>方式に切り替えます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>本番だと、検証の段階みたいに「正解」と比べられないですよね？正解がないんだから。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。本番には比べるための正解が存在しない。だから、利用者の入力を処理しているその場で成績を点数化するんだ。これを「<b>オンライン評価</b>」と呼ぶ。集められる意見は少なくとも2種類ある。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">👍</div><h4>① 利用者からの意見</h4><p>「良い」「悪い」のボタンを押してもらったり、詳しい感想をもらったり。はっきり伝えてもらう形でも、行動から読み取る形でも集められます。記録の全体にも、その中の1区切りにも付けられます。</p></div>
+      <div class="mini"><div class="ic">🤖</div><h4>② LLMによる採点</h4><p>採点役を記録に直接組み込んで、嘘や有害な返答を見つけます。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>検証の段階で使ったLLMによる採点を、本番でもそのまま使えるんですね。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th></th><th>オフライン評価（検証）</th><th>オンライン評価（本番）</th></tr>
+      <tr><td>いつ</td><td>公開の直前、まとめて</td><td>動いている最中、その場で</td></tr>
+      <tr><td>正解</td><td>ある（人が用意）</td><td>ない</td></tr>
+      <tr><td>採点の材料</td><td>正解との比較</td><td>利用者の反応、LLMによる採点</td></tr>
+      <tr><td>目的</td><td>前より悪くなっていないか</td><td>実際の利用で問題が出ていないか</td></tr>
+    </table>
+    </div>
+  </div>
+
+  <!-- 10.4.3 -->
+  <div class="card" id="s1043">
+    <h3 class="blk" style="margin-top:4px">10.4.3 分類とタグ付け</h3>
+    <p class="lead"><b>要するに</b>：入出力に<b>札を付ける</b>仕組みを作ります。正解の札があるかどうかで、やり方が変わります。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>有害な発言を防いだり、利用者の気持ちを分析したりするには、どうすればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>利用者の入力や出力に<b>札を付ける</b>仕組みを作るんだ。これは、正解の札が付いたデータを持っているかどうかで方法が変わる。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏷️</div><h4>正解の札が無い場合</h4><p>LLMによる採点で、決めた基準に沿って分類し、札を付けます。</p></div>
+      <div class="mini"><div class="ic">📐</div><h4>正解の札がある場合</h4><p>自分で書いた計算による採点で、出力を正解の札と突き合わせて点数化します。</p></div>
+    </div>
+  </div>
+
+  <!-- 10.4.4 -->
+  <div class="card" id="s1044">
+    <h3 class="blk" style="margin-top:4px">10.4.4 エラーのモニタリングと修正</h3>
+    <p class="lead"><b>要するに</b>：本番で見つけた誤りを<b>テスト用のデータに足す</b>ことで、再発を防ぎます。これが改善の輪を閉じる部分です。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>本番でエラーが見つかったら、どうするのが一番いいですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LangSmithの記録が誤りや特殊な場合を捕まえてくれる。その誤りを<b>テスト用のデータに追加</b>して、公開前のまとめての採点で再発を防ぐんだ。これが改善の輪の「戻す」部分だね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>見つけたバグを、次のテストのネタにするんですね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。あともう一つ有効なのが、いきなり全員に公開せず<b>少人数のグループに段階的に出す</b>こと。そこで大きな不具合を見つけて直し、信頼できる評価用のデータを作りながら、費用や速さ、品質を測っていく。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>本番で誤りを見つける</h4><p>記録から、失敗した例や想定外の入力を拾います。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>テスト用のデータに足す</h4><p>その入力と、正しい答えを組にして登録します。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>次の公開前に必ず確かめる</h4><p>同じ誤りが再び起きないことが、自動で確認されるようになります。</p></div>
+    </div>
+    <div class="loopback">↻ 誤りが見つかるたびにデータが増え、アプリは崩れにくくなっていく</div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>記録は、入力から出力までの一連の段階。設定値を入れるだけで有効になり、自動で集まる。</li>
+        <li>本番には正解がないので、その場で点数化する。利用者の反応とLLMによる採点を使う。</li>
+        <li>分類と札付けは、有害な発言の検出や気持ちの分析に必要。正解の札の有無でやり方が変わる。</li>
+        <li>見つけた誤りをテスト用のデータに足して再発を防ぐ。段階的に少人数へ出すのも有効。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが5つのポイントを言葉にする</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>今日のポイントを言ってみますね。1つ目は「LLMアプリは気まぐれだから、設計・検証・本番運用の<b>3段階でテストして改善の輪を回す</b>」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。一度作って終わりじゃなく、ぐるぐる回し続けるのが肝心だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「設計の段階では、LLM自身に検索結果や答えを採点させて<b>自己修正RAG</b>を組む」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>判定を決まった形の出力にして、流れの分岐に使うんだったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「検証の段階では、<b>データセット</b>を用意して採点役（人・計算・LLM）で点数を付け、<b>前より悪くなっていないか</b>を確認する」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>AIは100%合格を前提にできない。過去のバージョンとの比較が大事だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「エージェントは<b>最終の答え・1つの判断・たどった手順</b>の3つの細かさでテストする」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最終結果だけじゃ原因が分からないからね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>5つ目は「本番運用の段階では、<b>記録</b>で中を見える状態にし、<b>その場の採点</b>で反応を集めて、見つけた誤りを次の設計に戻す」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>完璧だ。テスト・評価・監視・継続的な改善の輪こそ、利用者が安心して使える製品の土台なんだよ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>3つの段階</div>
+      <p style="font-size:14px;margin:0">❓ LLMアプリ開発の「設計」「検証」「本番運用」の3つの段階は、それぞれ何のためにテストを行うのか説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">設計の段階は、開発中のアプリに誤りへの対処を組み込み、誤りが利用者に届く前にLLMに自己修正させるためのテストを行う。検証の段階は、本番に出す直前に、前のバージョンより性能が悪くなっていないかを見つけて直すためのテストを行う。本番運用の段階は、実際の利用者に影響する誤りを監視・検知し、その結果を設計・検証の段階に戻すためのテストを行う。この3つがつながって継続的な改善の輪になる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 設計＝利用者に届く前の自己修正、に触れている<br>□ 検証＝公開直前の後退の検出、に触れている<br>□ 本番運用＝稼働中の監視と前段階への還元、に触れている<br>□ 3つがつながって改善の輪になることに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>自己修正RAG</div>
+      <p style="font-size:14px;margin:0">❓ 設計の段階で作る「自己修正RAG」とはどういう仕組みか、なぜ必要なのかを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">基本のRAGは、検索してきた情報が不正確だったり足りなかったりすると、もっともらしい嘘を起こしやすい。自己修正RAGは、LLM自身に「検索結果は質問に関係しているか」「作った答えは嘘でないか」を採点させ、駄目ならWeb検索などに切り替えて情報を取り直す仕組み。LangGraphで処理の流れを組み、採点結果を決まった形の出力にして、次にどの処理へ進むかを決める。これにより、繰り返し答えを作りながら自己修正し、出力の質を上げられる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ RAGは嘘を起こしやすい、という前提に触れている<br>□ LLM自身に関連性や答えを採点させる点に触れている<br>□ 駄目なときに切り替える（Web検索など）点に触れている<br>□ LangGraphと決まった形の出力で分岐を制御する点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>リグレッションテスト</div>
+      <p style="font-size:14px;margin:0">❓ AIアプリのテストが、従来のソフトウェアのように「100%合格」を前提にできないのはなぜですか。代わりに何を見ますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">AIの出力は、データの傾向の変化やモデルの更新による変化（ドリフト）で結果が大きく変わることがあるため、評価用のデータで必ずしも100%合格するとは限らない。そこで、絶対的な合格ではなく「比較の基準にする過去のバージョンに対して性能が後退していないか」を見るリグレッションテストを行う。LangSmithの比較画面を使うと、後退した実行と良くなった実行を色分けで確認できる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ドリフト（傾向の変化やモデル更新による変化）で結果が変わることに触れている<br>□ だから100%合格を前提にできない、という結論に触れている<br>□ 過去のバージョンとの比較で後退を見る、という点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>エージェントの3つの細かさ</div>
+      <p style="font-size:14px;margin:0">❓ エージェントをテストする3つの細かさ「最終の答え」「1つの判断」「たどった手順」は、それぞれ何を見るものですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">最終の答えは、エージェントの中身を見ずに、最終的な答えで仕事を終えられたかを見る（LLMに採点させる）。1つの判断は、特定の機能の呼び出しや判断1つを深く見て、正しい機能を選んだかを確かめる。たどった手順は、エージェントが通った全ての段階（どの機能をどの順番で呼んだか）を見て、期待どおりの流れだったかを評価する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 最終の答え＝最終結果／仕事の完了、に触れている<br>□ 1つの判断＝個々の機能の呼び出しや判断、に触れている<br>□ たどった手順＝全段階の並び／順番、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>オフライン評価とオンライン評価</div>
+      <p style="font-size:14px;margin:0">❓ 検証の段階の「オフライン評価」と本番運用の段階の「オンライン評価」は何が違いますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">オフライン評価は、あらかじめ用意したテスト用のデータを使い、各データに「期待される出力＝正解」を付けて、アプリの答えと正解を比べる方式。公開前にまとめて行う。一方オンライン評価は、本番には比べるための正解が存在しないため、利用者の入力を処理しているその場で成績を点数化する方式。利用者の反応やLLMによる採点を使って、正解なしで品質を評価する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ オフライン評価＝事前のデータ＋正解との比較、に触れている<br>□ オンライン評価＝本番でその場、正解なし、に触れている<br>□ オンラインでは利用者の反応やLLMによる採点を使う点に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして確かめる</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">📗</div><h4>LangSmithの公式を触る</h4><p>docs.smith.langchain.com で、データセットの作成・採点役・記録の設定を実際に触ってみましょう。</p></div>
+      <div class="mini"><div class="ic">✍️</div><h4>小さなデータセットを作る</h4><p>質問と理想の答えの組を5個ほど手作りして、自分のRAGアプリに <code>evaluate</code> を回してみましょう。</p></div>
+      <div class="mini"><div class="ic">📊</div><h4>2つのバージョンを比べる</h4><p>指示文を少し変えた2つのバージョンの結果を並べて、後退が起きていないか観察しましょう。</p></div>
+      <div class="mini"><div class="ic">⚖️</div><h4>採点の指示文を書いてみる</h4><p>LLMに採点させるための単純な指示文を書き、「0〜10点」のような曖昧な指示を避ける感覚をつかみましょう。</p></div>
+      <div class="mini"><div class="ic">🧩</div><h4>自己修正RAGを動かす</h4><p>本書のGitHubにある自己修正RAGの完全な定義を読んで、実際に動かしてみましょう。</p></div>
+      <div class="mini"><div class="ic">🔁</div><h4>改善の輪を1周させる</h4><p>本番で見つけた誤りを1件、テスト用のデータに足して、次の採点で再発しないことを確かめましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第10章 テスト評価、モニタリング、継続的改善 ― 図解版<br>次章：<b>11. LLMを使って構築する</b></p>
+
+</div>

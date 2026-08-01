@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第7章 フレームワークの比較 ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0}
+  @media(max-width:760px){.vs{grid-template-columns:1fr}}
+  .vs .side{border:1px solid var(--line); border-radius:14px; padding:14px 16px; background:var(--panel2)}
+  .vs .side.f{border-color:#42d6c355}
+  .vs .side.k{border-color:#ffb45455}
+  .vs .side h4{margin:0 0 8px; font-size:14px}
+  .vs .side.f h4{color:var(--accent2)} .vs .side.k h4{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第7章</div>
+  <h1>第7章　フレームワークの比較</h1>
+  <p>Flask、Django、FastAPI を並べ、同じ窓口を4種類のデータの受け取り方（パス・クエリ・ボディ・ヘッダ）で書き比べます。最後にデータベース、その他の機能、その他のフレームワークまで広く見わたします。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全10節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① Flask</a>
+  <a href="#s2">② パス（Flask と FastAPI）</a>
+  <a href="#s3">③ クエリパラメータ</a>
+  <a href="#s4">④ ボディ</a>
+  <a href="#s5">⑤ ヘッダ</a>
+  <a href="#s6">⑥ Django</a>
+  <a href="#s7">⑦ その他のフレームワーク機能</a>
+  <a href="#s8">⑧ データベース</a>
+  <a href="#s9">⑨ 推薦の言葉</a>
+  <a href="#s10">⑩ その他の Python ウェブ・フレームワーク</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">マイクロフレームワーク</div><p>必要最小限の機能だけを提供し、足りない部分は別のパッケージで足していく設計の枠組みです。</p></div>
+    <div class="item"><div class="w">モノリシック <span>一体型</span></div><p>必要な機能を1つの大きなまとまりとして全部そろえている作りのことです。</p></div>
+    <div class="item"><div class="w">WSGI</div><p>Python のプログラムと Web サーバをつなぐ、1件ずつ順に処理する方式の取り決めです。</p></div>
+    <div class="item"><div class="w">ASGI</div><p>WSGI の非同期版。返事待ちの間に別の処理を進められる方式の取り決めです。</p></div>
+    <div class="item"><div class="w">Quart</div><p>Flask と同じ書き方のまま、ASGI に対応させたフレームワークです。</p></div>
+    <div class="item"><div class="w">jsonify</div><p>Flask で、返す値を JSON の形式に変換する命令です。</p></div>
+    <div class="item"><div class="w">request オブジェクト</div><p>Flask で、届いた問い合わせの内容がまとめて入っているもの。ここから値を取り出します。</p></div>
+    <div class="item"><div class="w">ORM</div><p>データベースの表を、プログラムの中のデータとして扱えるようにする仕組み。SQL を自動で組み立てます。</p></div>
+    <div class="item"><div class="w">ODM</div><p>ORM の、表形式ではないデータベース向けの版です。</p></div>
+    <div class="item"><div class="w">SQL</div><p>データベースに「この条件のデータを取ってきて」と伝えるための言語です。</p></div>
+    <div class="item"><div class="w">NoSQL</div><p>表の形にしばられないデータベース。Redis、MongoDB などがあります。</p></div>
+    <div class="item"><div class="w">SQLAlchemy</div><p>Python でデータベースを扱うための定番のパッケージ。SQL を直接書くことも、ORM として使うこともできます。</p></div>
+    <div class="item"><div class="w">SQLModel</div><p>SQLAlchemy と Pydantic を組み合わせた、FastAPI の作者による新しいパッケージです。</p></div>
+    <div class="item"><div class="w">URLConf</div><p>Django で、住所と処理の対応を1か所の表にまとめて書く仕組みです。</p></div>
+    <div class="item"><div class="w">ビュー関数</div><p>Django で、問い合わせを受けて返事を作る処理のこと。他の枠組みのパス関数にあたります。</p></div>
+    <div class="item"><div class="w">管理画面 <span>admin</span></div><p>Django が自動で作る、データを追加・編集・削除できる画面です。</p></div>
+    <div class="item"><div class="w">テンプレート</div><p>決まった形の HTML の中に、その都度の値を差し込んで画面を作る仕組みです。</p></div>
+    <div class="item"><div class="w">Jinja</div><p>最もよく使われるテンプレートの仕組み。Flask、Django、FastAPI のどれでも使えます。</p></div>
+    <div class="item"><div class="w">SSE <span>サーバ送信イベント</span></div><p>サーバ側から、つながっている相手に一方的に情報を送り続ける仕組みです。</p></div>
+    <div class="item"><div class="w">WebSocket</div><p>サーバと相手が、つながったまま双方向にやり取りを続けられる仕組みです。</p></div>
+    <div class="item"><div class="w">キュー <span>queue</span></div><p>時間のかかる仕事を並べておき、手の空いた処理担当が順に取り出す仕組みです。</p></div>
+    <div class="item"><div class="w">マルチパート</div><p>1回の送信の中に、ファイルと文字などの複数の部分を含める形式です。</p></div>
+    <div class="item"><div class="w">Bottle / Litestar / AIOHTTP / Socketify.py</div><p>Flask・Django・FastAPI 以外の Python の Web 用の枠組みです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">同じ窓口を書き比べる</span></h2></div>
+  <div class="card">
+    <p class="lead">カフェの隣の席で、別のエンジニアが「Flask こそ最高だぜ」と熱弁しています。ハルは「他のフレームワークとどう違うんですか？」と師匠に尋ねます。タカ師匠は「他を知らずして自分の道具の価値はわからない」と笑い、Flask、Django、そして本書の主役 FastAPI を並べ、同じ窓口を4種類のデータの受け取り方（パス、クエリ、ボディ、ヘッダ）で書き比べていきます。最後にデータベース、その他の機能、その他のフレームワークまで広く見わたします。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧩</div><h4>Flask</h4><p>最小限の機能。必要なものは自分で足す。1件ずつ順に処理する方式。</p></div>
+      <div class="mini"><div class="ic">🏛️</div><h4>Django</h4><p>データベースの機能や管理画面まで最初から全部入り。</p></div>
+      <div class="mini"><div class="ic">⚡</div><h4>FastAPI</h4><p>型ヒント + Pydantic + 非同期対応の新しい世代。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を3行で</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>Flask</b> は<span class="term" data-tip="必要最小限の機能だけを提供し、足りない部分は別のパッケージで足していく設計。">マイクロフレームワーク</span>（1件ずつ順に処理する WSGI が土台）、<b>Django</b> は機能が全部そろった一体型（データベースの仕組みが内蔵）、<b>FastAPI</b> は型ヒント + Pydantic + ASGI の新しい世代です。三者とも住所と処理を結びつけますが、データの取り出し方と、確認の自動化の度合いが大きく違います。FastAPI は依存性注入と型ヒントを使い、Flask より宣言的で、Django より軽量です。データベース機能は Django が一番手厚いですが、FastAPI には SQLModel という新しい選択肢があります。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>三大フレームワークの位置関係を一言で説明できるようになる</li>
+        <li>自分の案件に「どれを選ぶか」を、必要な条件から判断できる</li>
+        <li>他のフレームワークの経験者と話すときの共通の言葉が持てる</li>
+        <li>既にある Flask/Django の資産を FastAPI に移すかどうかの判断材料になる</li>
+        <li>「他の選択肢」を知ることで、FastAPI を無条件に選ばず、場面に合わせて使える</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① Flask ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>Flask<span class="tag">軽くて習得が早い、順に処理する枠組み</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Flask は軽量で習得が早い、1件ずつ順に処理する方式のマイクロフレームワークです。非同期版として Quart があります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>まず Flask から。<b>マイクロフレームワーク</b>を名乗っている。基本の機能だけを提供して、必要に応じて他のパッケージを足していく設計だ。Django より小さく、最初に覚えるのは早い。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>重要な性質。Flask は ASGI ではなく <b>WSGI が土台の、1件ずつ順に処理する方式</b>だ。新しい非同期のサーバには直接は対応していない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ASGI に対応した Flask 互換のものとして <b>Quart</b> がある。</div></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>Flask の「軽さ」と「1件ずつ処理する性質」を説明できる</li><li>非同期が必要なら Quart や FastAPI だと分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>Flask = マイクロフレームワーク</li><li>WSGI（1件ずつ順に処理）が土台</li><li>Quart = Flask 互換の ASGI 版</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② パス ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>パス（Flask と FastAPI の比較）<span class="tag">住所の一部を受け取る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>書き方は似ていますが、Flask は <code>&lt;who&gt;</code> という記法で、JSON にするために <code>jsonify()</code> が必要な場合があります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>両者ともデコレータで住所と窓口を結びつける。第3章の「住所から挨拶する相手を取得」する窓口を、両方で書いてみよう。</div></div>
+    </div>
+
+    <div class="vs">
+      <div class="side f"><h4>⚡ FastAPI</h4>
+        <p style="font-size:13.5px;color:var(--sub);margin:0 0 8px">波かっこで置き場所を作り、返した文字は自動で JSON になります。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 波かっこ {who} が、住所の中の置き場所。GET はデコレータの名前で示す。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi/{who}"</span>)
+<span class="cmt"># 置き場所と同じ名前の引数に、その値が自動で入る。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who):
+    <span class="cmt"># 返す文字。JSON への変換は書かなくてよい。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- /hi/Mom に問い合わせた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+      </div>
+      <div class="side k"><h4>🧩 Flask</h4>
+        <p style="font-size:13.5px;color:var(--sub);margin:0 0 8px">不等号で置き場所を作り、動詞を明示し、JSON への変換を自分で呼びます。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、JSON に変換する命令を取り出す。</span>
+<span class="kw">from</span> flask <span class="kw">import</span> Flask, jsonify
+
+<span class="cmt"># アプリ全体を作る。__name__ は、このファイルの位置を枠組みに教えるための決まり文句。</span>
+app = <span class="fn">Flask</span>(__name__)
+
+<span class="cmt"># 不等号 &lt;who&gt; が置き場所。methods で受け付ける動詞を明示している。</span>
+<span class="fn">@app.route</span>(<span class="str">"/hi/&lt;who&gt;"</span>, methods=[<span class="str">"GET"</span>])
+<span class="cmt"># 置き場所と同じ名前の引数に、その値が入る。ここは FastAPI と同じ。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who):
+    <span class="cmt"># 文字列を返すときは、JSON にするために jsonify を呼ぶ必要がある。</span>
+    <span class="kw">return</span> <span class="fn">jsonify</span>(<span class="str">f"Hello? {who}?"</span>)
+<span class="cmt"># --- /hi/Mom に問い合わせた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+      </div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ポイントは3つ。①Flask では住所の置き場所が <code>{who}</code> ではなく <code>&lt;who&gt;</code>、②Flask では <code>methods=["GET"]</code> を明示的に書く（書かなければ初期値で GET）、③JSON にしたいなら <code>jsonify()</code> を呼ぶ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>補足：Flask 2.0 以降は <code>@app.get(...)</code> のような FastAPI と同じ書き方にも対応している。<code>jsonify()</code> は最近の Flask なら項目名と値の組を返す場合は自動で変換してくれるが、文字列のような他の種類では呼ぶ必要がある。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「FastAPI から Flask へ／Flask から FastAPI へ」移すとき、何が変わるかを把握できる</li><li>どちらがより宣言的かを判断できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>FastAPI: <code>{who}</code> + 自動で JSON</li>
+        <li>Flask: <code>&lt;who&gt;</code> + <code>jsonify()</code>（または最近の自動変換）</li>
+        <li>Flask は動詞を明示するのが推奨</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ クエリ ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>クエリパラメータ<span class="tag">引数で宣言 vs 手で取り出す</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI は引数として宣言するだけ。Flask は <code>request.args</code> から自分で取り出します。</p>
+
+    <div class="vs">
+      <div class="side f"><h4>⚡ FastAPI</h4>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 住所には置き場所を書いていない。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># 住所に無い引数なので、住所のうしろの条件から取ると判断される。</span>
+<span class="cmt"># : str の書き添えにより、文字列であることの確認も自動で行われる。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who: <span class="kw">str</span>):
+    <span class="cmt"># 受け取った値を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- /hi?who=Mom に問い合わせた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+<span class="cmt"># --- who を省いた場合 ---</span>
+<span class="cmt"># 422 のエラーが自動で返る。処理の中身は実行されない。</span>
+</pre></details>
+      </div>
+      <div class="side k"><h4>🧩 Flask</h4>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体、届いた問い合わせの入れ物、JSON 変換の命令を取り出す。</span>
+<span class="kw">from</span> flask <span class="kw">import</span> Flask, request, jsonify
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">Flask</span>(__name__)
+
+<span class="cmt"># 住所と動詞を指定する。</span>
+<span class="fn">@app.route</span>(<span class="str">"/hi"</span>, methods=[<span class="str">"GET"</span>])
+<span class="cmt"># 引数を書かない。値は処理の中で自分で取りに行く。</span>
+<span class="kw">def</span> <span class="fn">greet</span>():
+    <span class="cmt"># request.args に条件が入っている。そこから who という名前の値を取り出す。</span>
+    <span class="cmt"># 値が無い場合は None が入る。確認は自分で書く必要がある。</span>
+    who = request.args.<span class="fn">get</span>(<span class="str">"who"</span>)
+    <span class="cmt"># 文字列を JSON にして返す。</span>
+    <span class="kw">return</span> <span class="fn">jsonify</span>(<span class="str">f"Hello? {who}?"</span>)
+<span class="cmt"># --- /hi?who=Mom に問い合わせた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+<span class="cmt"># --- who を省いた場合 ---</span>
+<span class="cmt"># "Hello? None?" が返る。エラーにはならない。</span>
+</pre></details>
+      </div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Flask では、届いた問い合わせの入れ物から値を取り出す。住所のうしろの条件は <code>request.args</code> という組み合わせに入っている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>FastAPI なら引数として宣言するだけで済むんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、その違いが大きい。FastAPI は引数に型ヒントがあれば、Pydantic が確認もしてくれる。Flask は自分で書く。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：値が無かったときの違い</h4>
+      <p><code>/hi</code> に <code>who</code> を付けずに問い合わせたとします。FastAPI では処理の中身が実行される前に 422 のエラーが返り、「who が必要です」という内容も含まれます。</p>
+      <p>Flask では <code>request.args.get("who")</code> が <code>None</code> を返し、そのまま <code>"Hello? None?"</code> という文章ができてしまいます。これを防ぐには <code>if who is None:</code> のような確認を自分で書く必要があります。窓口が20個あれば、20か所に書きます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「FastAPI の簡潔さ」が、行数として目に見える</li><li>データの受け取り方の作法の違いが理解できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>FastAPI: 引数で宣言、型ヒント付き</li><li>Flask: <code>request.args.get()</code> で取得</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ ボディ ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>ボディ<span class="tag">送られた本体からの取り出し</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>本体の取り出しも同じ構図です。FastAPI は引数で宣言、Flask は <code>request.json</code> 経由です。</p>
+
+    <div class="vs">
+      <div class="side f"><h4>⚡ FastAPI</h4>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、本体から値を取り出す部品を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Body
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># データを送る動詞である post に結びつける。</span>
+<span class="fn">@app.post</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># who は本体から取り出す、という指定。</span>
+<span class="cmt"># embed=True は「本体が {"who": "Mom"} の形で来る」という意味。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who: <span class="kw">str</span> = <span class="fn">Body</span>(embed=<span class="kw">True</span>)):
+    <span class="cmt"># 取り出した値を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- {"who": "Mom"} を送った結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+      </div>
+      <div class="side k"><h4>🧩 Flask</h4>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体、問い合わせの入れ物、JSON 変換の命令を取り出す。</span>
+<span class="kw">from</span> flask <span class="kw">import</span> Flask, request, jsonify
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">Flask</span>(__name__)
+
+<span class="cmt"># 住所と、データを送る動詞を指定する。</span>
+<span class="fn">@app.route</span>(<span class="str">"/hi"</span>, methods=[<span class="str">"POST"</span>])
+<span class="cmt"># 引数は書かない。</span>
+<span class="kw">def</span> <span class="fn">greet</span>():
+    <span class="cmt"># request.json に、送られてきた本体が入っている。そこから who を取り出す。</span>
+    who = request.json.<span class="fn">get</span>(<span class="str">"who"</span>)
+    <span class="cmt"># 文字列を JSON にして返す。</span>
+    <span class="kw">return</span> <span class="fn">jsonify</span>(<span class="str">f"Hello? {who}?"</span>)
+<span class="cmt"># --- {"who": "Mom"} を送った結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+      </div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Flask は送られた JSON を <code>request.json</code> に入れている。これも自分で <code>.get("who")</code> する。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>確認込みでデータを引数として受け取れる FastAPI の利点が明確になる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>FastAPI: <code>Body(embed=True)</code> で引数として</li><li>Flask: <code>request.json.get(...)</code> で取得</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ ヘッダ ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>ヘッダ<span class="tag">4か所すべてで同じ構図</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>添えられた情報も同じです。FastAPI は引数で宣言、Flask は <code>request.headers</code> 経由。4か所すべてで一貫した違いです。</p>
+
+    <div class="vs">
+      <div class="side f"><h4>⚡ FastAPI</h4>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、添えられた情報を取り出す部品を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Header
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /hi への GET を結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># who は添えられた情報から取り出す、という指定。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(who: <span class="kw">str</span> = <span class="fn">Header</span>()):
+    <span class="cmt"># 取り出した値を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"Hello? {who}?"</span>
+<span class="cmt"># --- who: Mom を添えて問い合わせた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+      </div>
+      <div class="side k"><h4>🧩 Flask</h4>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体、問い合わせの入れ物、JSON 変換の命令を取り出す。</span>
+<span class="kw">from</span> flask <span class="kw">import</span> Flask, request, jsonify
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">Flask</span>(__name__)
+
+<span class="cmt"># 住所と動詞を指定する。</span>
+<span class="fn">@app.route</span>(<span class="str">"/hi"</span>, methods=[<span class="str">"GET"</span>])
+<span class="cmt"># 引数は書かない。</span>
+<span class="kw">def</span> <span class="fn">greet</span>():
+    <span class="cmt"># request.headers に添えられた情報が入っている。そこから who を取り出す。</span>
+    <span class="cmt"># 名前の大文字と小文字は区別されない。</span>
+    who = request.headers.<span class="fn">get</span>(<span class="str">"who"</span>)
+    <span class="cmt"># 文字列を JSON にして返す。</span>
+    <span class="kw">return</span> <span class="fn">jsonify</span>(<span class="str">f"Hello? {who}?"</span>)
+<span class="cmt"># --- who: Mom を添えて問い合わせた結果 ---</span>
+<span class="cmt"># "Hello? Mom?"</span>
+</pre></details>
+      </div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>同じ形だ。Flask では <code>request.headers</code> から取り出す。名前の大文字と小文字は区別されない。</div></div>
+    </div>
+
+    <h3 class="blk">4か所の比較まとめ</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>データの場所</th><th>FastAPI</th><th>Flask</th></tr>
+      <tr><td>パス</td><td><code>/hi/{who}</code> + 引数 <code>who</code></td><td><code>/hi/&lt;who&gt;</code> + 引数 <code>who</code></td></tr>
+      <tr><td>クエリ</td><td>引数 <code>who: str</code></td><td><code>request.args.get("who")</code></td></tr>
+      <tr><td>ボディ</td><td>引数 <code>who: str = Body(embed=True)</code></td><td><code>request.json.get("who")</code></td></tr>
+      <tr><td>ヘッダ</td><td>引数 <code>who: str = Header()</code></td><td><code>request.headers.get("who")</code></td></tr>
+      <tr><td><b>確認</b></td><td><span class="up">型ヒントから自動</span></td><td><span class="down">自分で書く</span></td></tr>
+      <tr><td><b>説明ページ</b></td><td><span class="up">自動生成される</span></td><td><span class="down">別途用意する</span></td></tr>
+    </table>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>4か所（パス／クエリ／ボディ／ヘッダ）すべてで、FastAPI の書き方の利点を比較できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>FastAPI: <code>Header()</code> で引数として宣言</li>
+        <li>Flask: <code>request.headers.get(...)</code> で取得</li>
+        <li>4か所すべてが「引数で宣言するか、問い合わせの入れ物から取るか」という同じ構図</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ Django ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>Django<span class="tag">大きく複雑、そして全部入り</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Django は機能が全部そろった重量級の一体型です。住所の対応を1つの表にまとめる方式で、データベースの仕組みが内蔵されています。ASGI 対応は 3.0 以降です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Django は Flask や FastAPI より<b>大きく複雑</b>だ。公式サイトの言葉を借りれば「<b>締め切りに追われる完璧主義者</b>」が対象。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>内蔵の <b>ORM</b>（データベースの表をプログラムのデータとして扱う仕組み）があり、データベースを裏に持つサイトに便利だ。道具の集まりというよりは「<b>ひとまとまりの大きなアプリ</b>」だね。複雑さと覚える手間に見合うかどうかは、作るもの次第。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔から WSGI だったが、3.0 から ASGI にも対応している。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きな違い：Django はデコレータを使わず、<b>1つの <code>URLConf</code> という表</b>で住所と処理（<b>ビュー関数</b>と呼ぶ）の対応を定義する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一覧で見られるんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、住所を1か所で見られるのは強みだ。逆に「処理を見ただけではどの住所に結びついているか分からない」という欠点もある。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏷️</div><h4>デコレータ方式（Flask / FastAPI）</h4><p>処理のすぐ上に住所が書いてあるので、その処理がどの住所かがすぐ分かります。ただし全体の一覧は自分で探すことになります。</p></div>
+      <div class="mini"><div class="ic">📋</div><h4>表方式（Django）</h4><p>住所の対応が1か所にまとまっているので、全体を見わたせます。ただし処理を見ただけでは住所が分かりません。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「Django は何のためのフレームワークか」を判断できる</li><li>データベース中心の業務サイトでの選択肢として認識できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Django = 機能が全部そろった一体型・「完璧主義者」向け</li>
+        <li>ORM・管理画面が組み込み</li>
+        <li>3.0 から ASGI 対応</li>
+        <li>住所は <code>URLConf</code> の一覧方式</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ その他の機能 ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>その他のウェブ・フレームワーク機能<span class="tag">フォーム・ファイル・テンプレート・通信</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>フォーム、ファイル、テンプレート、SSE、キュー、WebSocket といった付随する機能は、三者それぞれ対応しています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>フレームワークは他にもいろいろやってくれる。三者を機能ごとに並べると…</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">📝</div><h4>フォーム</h4><p>三者すべてが、標準的な HTML のフォームに対応しています。</p></div>
+      <div class="mini"><div class="ic">📎</div><h4>ファイル</h4><p>複数の部分を含む送信を扱い、ファイルの受け取りと送り出しに対応します。</p></div>
+      <div class="mini"><div class="ic">🧾</div><h4>テンプレート</h4><p>決まった形の中に値を差し込んで画面を作ります。API 中心ではなく、画面中心のサイト向けです。</p></div>
+    </div>
+
+    <h3 class="blk">テンプレート</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>仕組み</th><th>対応</th></tr>
+      <tr><td><b>Jinja</b></td><td>最もよく使われる。Flask, Django, FastAPI すべてで使える</td></tr>
+      <tr><td>Django 独自のテンプレート</td><td>Django には専用のものもある</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk">HTTP 以外の通信</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>仕組み</th><th>FastAPI</th><th>Flask</th><th>Django</th></tr>
+      <tr><td><b>サーバ送信イベント（SSE）</b><br><span style="font-size:12px;color:#8b93bf">サーバから一方的に送り続ける</span></td><td>sse-starlette</td><td>Flask-SSE</td><td>Django EventStream</td></tr>
+      <tr><td><b>WebSocket</b><br><span style="font-size:12px;color:#8b93bf">つながったまま双方向にやり取り</span></td><td><span class="up">標準で対応</span></td><td>別のパッケージ</td><td>Django Channels</td></tr>
+      <tr><td><b>キュー</b><br><span style="font-size:12px;color:#8b93bf">時間のかかる仕事を並べて処理</span></td><td colspan="3">三者とも外部のパッケージ（ZeroMQ、Celery、Redis、RabbitMQ など）に任せる</td></tr>
+    </table>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>自分の案件に必要な機能が、どの枠組みで使えるかの判断材料になる</li><li>WebSocket や SSE を使う場合の、ライブラリ選びの見当がつく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>フォーム／ファイル／テンプレート: 三者とも対応</li>
+        <li>SSE / WebSocket: 三者とも何らかの形で対応</li>
+        <li>キュー: 外部のパッケージ（Celery など）に任せる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ データベース ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>データベース<span class="tag">組み込みか、別ライブラリか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Flask と FastAPI はデータベースの機能を別のライブラリ（SQLAlchemy／SQLModel）に任せます。Django は ORM と管理画面が組み込みです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Flask と FastAPI は<b>基本のパッケージにデータベースの機能を含まない</b>。一方 Django はデータベースの機能が中心にある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データの層からデータベースを使う方法は4つ。①<b>SQL を直接書く</b>（PostgreSQL、SQLite など）、②<b>表形式でないデータベースを直接使う</b>（Redis、MongoDB、Elasticsearch）、③<b>ORM</b>（SQL を自動で組み立てる）、④<b>ODM</b>（表形式でないデータベース用の同様の仕組み）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表形式のデータベースには、<b>SQLAlchemy</b> がよく使われる。SQL を直接書くところから ORM まで、複数の使い方ができる強力なパッケージだ。Flask や FastAPI の開発者の定番の選択だね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI の作者 Sebastián Ramírez は、SQLAlchemy と Pydantic を組み合わせた <b>SQLModel</b> を作っている。第14章で詳しくやる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Django は ORM が最初から入っていて、自動で作られる<b>管理画面</b>も持つ。技術者でない人にデータの管理をしてもらう、という用途には便利だが…</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>注意点が？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>実際にあった話で、詳しくない人が管理画面の警告を読み違えて、控えから手作業で元に戻す羽目になったことがある。便利だけど、誰でも触れるからこその落とし穴もある。</div></div>
+    </div>
+
+    <h3 class="blk">データベースへの4つのアクセス方法</h3>
+    <div class="grid4">
+      <div class="mini"><div class="ic">🗒️</div><h4>① SQL を直接</h4><p>問い合わせの文を自分で書きます。細かく制御できます。</p></div>
+      <div class="mini"><div class="ic">🗂️</div><h4>② NoSQL を直接</h4><p>表形式でないデータベースを、その方式のまま使います。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>③ ORM</h4><p>プログラムのデータの操作から、SQL を自動で組み立てます。</p></div>
+      <div class="mini"><div class="ic">📄</div><h4>④ ODM</h4><p>ORM と同じことを、表形式でないデータベースに対して行います。</p></div>
+    </div>
+
+    <h3 class="blk">三者のデータベース対応</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>枠組み</th><th>データベース機能</th><th>典型的な選択</th><th>管理画面</th></tr>
+      <tr><td>Flask</td><td>基本には含まない</td><td>SQLAlchemy</td><td>別途用意</td></tr>
+      <tr><td>FastAPI</td><td>基本には含まない</td><td>SQLAlchemy / SQLModel</td><td>別途用意</td></tr>
+      <tr><td>Django</td><td><span class="up">ORM が組み込み</span></td><td>Django ORM</td><td><span class="up">自動生成</span></td></tr>
+    </table>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：管理画面の便利さと危うさ</h4>
+      <p>Django の管理画面があれば、技術者でない担当者がブラウザから商品情報を追加・修正できます。専用の画面を作る手間がゼロで済みます。</p>
+      <p>一方で、その画面には削除の機能も並んでいます。「関連するデータもまとめて削除されます」という警告の意味が伝わらないまま操作されると、注文履歴まで消えることがあります。誰がどこまで触れるかの設定を、最初にきちんと決めておく必要があります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>データベース中心の案件で Django が選ばれやすい理由が分かる</li><li>FastAPI + SQLModel という新しい選択肢を知る</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Flask/FastAPI: データベースは別ライブラリ（SQLAlchemy/SQLModel）</li>
+        <li>Django: ORM・管理画面が組み込み</li>
+        <li>管理画面の便利さと危うさは表裏一体</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ 推薦の言葉 ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>推薦の言葉<span class="tag">選び方の指針</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI と Flask は似た立ち位置（軽量・素早い立ち上げ）。Django は大規模でデータベース中心の案件向けです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>簡単にまとめると、Flask と FastAPI は素早く立ち上げて動かす点ではほぼ同じ。Django は理解に時間がかかるけど、大規模でデータベースへの依存度が高いサイトに使える機能がたくさんある。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🚀</div><h4>Flask ≒ FastAPI</h4><p>軽量で、素早く立ち上げられます。小〜中規模の API 中心の案件に向きます。</p></div>
+      <div class="mini"><div class="ic">🏗️</div><h4>Django</h4><p>大規模・データベース中心。チームに技術者でない人がいて、管理画面が必要な場合にも向きます。</p></div>
+      <div class="mini"><div class="ic">🎯</div><h4>選ぶ基準</h4><p>必要な機能の量と、覚える手間のバランスで決めます。</p></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>案件ごとに枠組みを選ぶときの指針が持てる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Flask ≒ FastAPI: 軽量・素早い立ち上げ</li>
+        <li>Django: 大規模・データベース中心・チームに技術者でない人がいる場合</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ その他 ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>その他のPythonウェブ・フレームワーク<span class="tag">主要3つ以外の選択肢</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>主要3つ以外にも Bottle、Litestar、AIOHTTP、Socketify.py などの選択肢があります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>主要な3つは Flask、Django、FastAPI。でも他にも面白い選択肢がある。</div></div>
+    </div>
+    <div class="grid4">
+      <div class="mini"><div class="ic">🍶</div><h4>Bottle</h4><p>Python のファイル1つに収まる最小限の枠組み。考えを試すのに向きます。</p><span class="pill">超軽量</span></div>
+      <div class="mini"><div class="ic">⭐</div><h4>Litestar</h4><p>FastAPI と同様、ASGI/Starlette と Pydantic が土台。独自の方針を持ちます。</p><span class="pill">同系統の代替</span></div>
+      <div class="mini"><div class="ic">🔌</div><h4>AIOHTTP</h4><p>ASGI の呼ぶ側と受ける側の両方を扱えます。例のコードが充実しています。</p><span class="pill">両対応</span></div>
+      <div class="mini"><div class="ic">🏎️</div><h4>Socketify.py</h4><p>非常に高い性能を掲げる、新しく登場した枠組みです。</p><span class="pill">高速をうたう</span></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「FastAPI 一択」と思い込まず、状況によって選び分けられる</li><li>軽い試作には Bottle、非常に高い速度が必要なら Socketify.py、といった見当がつく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Bottle: 超軽量</li>
+        <li>Litestar: FastAPI と同系統の代替</li>
+        <li>AIOHTTP: ASGI の呼ぶ側・受ける側の両方</li>
+        <li>Socketify.py: 高速をうたう新しい枠組み</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「Flask は WSGI が土台のマイクロフレームワーク、Django は機能が全部そろった一体型、FastAPI は ASGI が土台の新しい世代」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>立ち位置の違いを覚えておくと、案件選びで迷わない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「FastAPI はデータを引数で宣言、Flask は <code>request.args</code>/<code>headers</code>/<code>json</code> から自分で取得」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>宣言する形か、手順を書く形か、という書き方の違いだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「Django はデコレータではなく <code>URLConf</code> の表の方式」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>全体を見わたせるのが利点だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「データベース機能：Django は組み込み、Flask/FastAPI は別ライブラリ（SQLAlchemy/SQLModel）」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Django は管理画面も自動で作る。便利だけど落とし穴もある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「主要3つ以外にも Bottle, Litestar, AIOHTTP, Socketify.py などの選択肢がある」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>視野を広く持つ習慣が大事だ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>三大フレームワークの位置づけ</div>
+      <p style="font-size:14px;margin:0">Flask、Django、FastAPI の3つを、それぞれ一言で特徴づけて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Flask は「マイクロフレームワーク」、必要最低限の機能だけを提供し、外部のライブラリで補う。WSGI が土台（1件ずつ順に処理）。Django は「締め切りに追われる完璧主義者向け」、ORM や管理画面まで内蔵した機能が全部そろった一体型で、大きなデータベース中心のサイトに向く。FastAPI は「型ヒント + Pydantic + ASGI の新しい世代」、軽量で宣言的、自動の説明ページが強みで、非同期にも対応。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Flask が WSGI 土台・マイクロな枠組みであることを述べている<br>□ Django が機能が全部そろった一体型であることを述べている<br>□ FastAPI が ASGI・型ヒント・自動ドキュメントを軸にしていることを述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>リクエストデータ取得の違い</div>
+      <p style="font-size:14px;margin:0">FastAPI と Flask で、添えられた情報（ヘッダ）から値を取り出す書き方はどう違いますか？ それぞれの長所・短所を含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">FastAPI は <code>def greet(who: str = Header()):</code> のように、パス関数の引数として宣言する。Flask は <code>request.headers.get("who")</code> のように、共通の入れ物から自分で取り出す。FastAPI の長所は、宣言的で簡潔、型ヒントによる自動の確認、自動の説明ページへの反映。短所は覚える手間。Flask の長所は明示的・自由・単純。短所は同じコードが増え、確認を自分で書く必要があること。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ FastAPI の引数で宣言する書き方に触れている<br>□ Flask の <code>request.headers</code> の書き方に触れている<br>□ 双方の長所・短所を客観的に述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>Django のルーティング</div>
+      <p style="font-size:14px;margin:0">Django の住所の対応づけは Flask/FastAPI と何が違いますか？ その違いの長所と短所を述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Flask と FastAPI はデコレータで住所と処理を結びつける（処理の上に <code>@app.get(...)</code> のように書く）。Django はそれをせず、<code>URLConf</code> という1つの表（urls.py）で「この住所はこのビュー関数に」と一覧で定義する。長所は住所の対応を1か所で見わたせること、短所は処理だけを見ても、それがどの住所に結びついているか直接は分からない点。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Django は <code>URLConf</code> の表の方式と述べている<br>□ Flask/FastAPI はデコレータの方式と述べている<br>□ 双方の長所・短所（見わたしやすさ と 結びつきの見えやすさ）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>データベース機能</div>
+      <p style="font-size:14px;margin:0">データベース機能において、Django と Flask/FastAPI の違いを説明してください。FastAPI でデータベースを使う場合の典型的な選択肢にも触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Django は ORM が最初から入っていて、管理画面も自動で作られる。データベース中心の業務サイトでは Django が選ばれやすい。Flask と FastAPI は基本のパッケージにデータベース機能を含まず、外部のライブラリで対応する。典型的には SQLAlchemy がよく使われる。FastAPI の作者は SQLAlchemy と Pydantic を組み合わせた SQLModel を作っており、これが新しい選択肢。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Django は ORM/管理画面が組み込み、と述べている<br>□ Flask/FastAPI は別ライブラリと述べている<br>□ SQLAlchemy / SQLModel の存在に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>他の選択肢</div>
+      <p style="font-size:14px;margin:0">Python の Web フレームワークの主要3つ（Flask, Django, FastAPI）以外にも、興味深い選択肢があります。本書で紹介されているものから2つ以上挙げて、それぞれの特徴を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>Bottle</b>：Python のファイル1つに収まる超軽量なパッケージ。考えを試すことや小さな道具に向く。<b>Litestar</b>：FastAPI と同様 ASGI/Starlette と Pydantic を土台にする。独自の方針を持つ代替案。<b>AIOHTTP</b>：ASGI の呼ぶ側・受ける側の両方を扱える。例のコードが充実。<b>Socketify.py</b>：非常に高い性能を掲げる新しい枠組み。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 2つ以上の枠組みを挙げている<br>□ それぞれの特徴を正しく説明している<br>□ 「軽量／高速／代替」など、選ぶ基準が見える説明になっている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>Flask の入門を読む</h4><p>公式ドキュメント（flask.palletsprojects.com）のクイックスタートを読み、FastAPI の例と書き比べる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>Django の入門を試す</h4><p>公式の手引き（djangoproject.com）で最初のアプリを作り、<code>URLConf</code> の感覚をつかむ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>SQLModel を確認する</h4><p>公式ドキュメント（sqlmodel.tiangolo.com）で FastAPI との組み合わせを確認。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>Litestar と比べる</h4><p>litestar.dev で FastAPI との違いを比較してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「ウェブ・レイヤー」へ</h4><p>FastAPI の Web の層を本格的に組み立てる。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第7章「フレームワークの比較」の図解 ― 原文の全節（Flask／パス／クエリパラメータ／ボディ／ヘッダ／Django／その他のフレームワーク機能／データベース／推薦の言葉／その他の Python ウェブ・フレームワーク）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

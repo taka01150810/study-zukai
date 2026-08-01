@@ -1,0 +1,1283 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第12章 テスト ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+  .pyramid{display:flex; flex-direction:column; align-items:center; gap:8px; margin:16px 0}
+  .pyramid .lv{border-radius:10px; padding:12px 16px; text-align:center; border:1px solid var(--line)}
+  .pyramid .l1{width:38%; min-width:200px; background:#ff6b8b1a; border-color:#ff6b8b55}
+  .pyramid .l2{width:62%; min-width:260px; background:#ffb4541a; border-color:#ffb45455}
+  .pyramid .l3{width:88%; background:#5ee7a01a; border-color:#5ee7a055}
+  .pyramid .lv b{display:block; font-size:14px; color:#fff}
+  .pyramid .lv span{font-size:12.5px; color:var(--sub)}
+  .tree{background:#0c0f1e; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:12px 0;
+    font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; line-height:1.75; color:#cdd6f4; overflow-x:auto}
+  .tree .d{color:#7fd4ff} .tree .c{color:#6b7394}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第12章</div>
+  <h1>第12章　テスト</h1>
+  <p>pytest による単体・統合・全体の確認、差し替えの2つのやり方（モックとフェイク）、仕様から自動でテストを作る方法（Schemathesis）、負荷の確認（Locust）まで。確認の全体像をまとめて学びます。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全15節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① ウェブAPIテスト</a>
+  <a href="#s2">② どこでテストするか（テストピラミッド）</a>
+  <a href="#s3">③ 何をテストすべきか</a>
+  <a href="#s4">④ Pytest</a>
+  <a href="#s5">⑤ レイアウト</a>
+  <a href="#s6">⑥ 単体テストの自動化</a>
+  <a href="#s7">⑦ モック</a>
+  <a href="#s8">⑧ ダブルとフェイク</a>
+  <a href="#s9">⑨ ウェブ層のテスト</a>
+  <a href="#s10">⑩ サービス層のテスト</a>
+  <a href="#s11">⑪ データ層のテスト</a>
+  <a href="#s12">⑫ 自動統合テスト</a>
+  <a href="#s13">⑬ リポジトリ・パターン</a>
+  <a href="#s14">⑭ フルテストの自動化（Schemathesis）</a>
+  <a href="#s15">⑮ セキュリティ・テスト</a>
+  <a href="#s16">⑯ 負荷テスト（Locust）</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">単体テスト</div><p>1つの処理だけを取り出して、期待どおりに動くかを確かめることです。</p></div>
+    <div class="item"><div class="w">統合テスト</div><p>層と層のつなぎ目が、正しくやり取りできているかを確かめることです。</p></div>
+    <div class="item"><div class="w">フルテスト</div><p>外からの問い合わせからデータベースまで、全部を通して確かめることです。</p></div>
+    <div class="item"><div class="w">テストピラミッド</div><p>単体を多く、統合を中くらい、全体を少なく、という数の配分を表した考え方です。</p></div>
+    <div class="item"><div class="w">リグレッション</div><p>直したはずの場所や、動いていた場所が、別の変更で壊れてしまうことです。</p></div>
+    <div class="item"><div class="w">pytest</div><p>Python でテストを書いて動かすための、いちばん広く使われている道具です。</p></div>
+    <div class="item"><div class="w">assert</div><p>「ここはこうなっているはず」と書く行。違えばその場でテストが失敗します。</p></div>
+    <div class="item"><div class="w">fixture</div><p>テストで使う準備（データや接続）を用意して、必要なテストに渡す pytest の仕組みです。</p></div>
+    <div class="item"><div class="w">スコープ</div><p>その準備を、どの範囲で1回作るか。テストごと、ファイルごと、全体で1回などがあります。</p></div>
+    <div class="item"><div class="w">パラメータ化</div><p>1つのテストに、いくつもの入力を順に与えて確かめる書き方です。</p></div>
+    <div class="item"><div class="w">分離 <span>isolation</span></div><p>確かめたい処理だけを動かし、その先の処理は動かさないようにすることです。</p></div>
+    <div class="item"><div class="w">モック <span>mock</span></div><p>実行中に、ある処理を別のものに一時的に差し替える方法です。</p></div>
+    <div class="item"><div class="w">ダブル／フェイク</div><p>本物の代わりに用意した、確認用の別の実装のことです。</p></div>
+    <div class="item"><div class="w">構造テスト</div><p>中の作り（どの処理を呼んでいるか）を知ったうえで確かめるやり方です。</p></div>
+    <div class="item"><div class="w">振る舞いテスト</div><p>中の作りを知らずに、入力と出力だけで確かめるやり方です。</p></div>
+    <div class="item"><div class="w">ファーストクラスオブジェクト</div><p>処理そのものを、値と同じように渡したり入れ替えたりできる性質のことです。</p></div>
+    <div class="item"><div class="w">コンテキストマネージャ</div><p><code>with</code> と一緒に書き、その範囲の中だけ何かを有効にする書き方です。</p></div>
+    <div class="item"><div class="w">プロパティベーステスト</div><p>入力を人が考えるのではなく、条件から自動で大量に作って試すやり方です。</p></div>
+    <div class="item"><div class="w">OpenAPIスキーマ</div><p>API の仕様を決まった形式で書き表したもの。FastAPI が自動で作ります。</p></div>
+    <div class="item"><div class="w">Hypothesis</div><p>入力を自動で作り出す、プロパティベーステストの土台になるパッケージです。</p></div>
+    <div class="item"><div class="w">Schemathesis</div><p>OpenAPI の仕様を読んで、API に対するテストを自動で作って実行する道具です。</p></div>
+    <div class="item"><div class="w">TestClient</div><p>実際の通信を行わずに、プログラムの中から窓口を直接呼べる FastAPI の仕組みです。</p></div>
+    <div class="item"><div class="w">負荷テスト</div><p>大量の問い合わせが来たときに、どこまで耐えられるかを確かめることです。</p></div>
+    <div class="item"><div class="w">Locust</div><p>負荷の確認を Python のコードで書ける、定番の道具です。</p></div>
+    <div class="item"><div class="w">リポジトリ・パターン</div><p>データの出し入れの方法を1か所にまとめ、保存先を差し替えやすくする設計です。</p></div>
+    <div class="item"><div class="w">Unit of Work</div><p>ひとまとまりの操作を、全部成功か全部取り消しかのどちらかにする仕組みです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">確認する人は何を試すか</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠は古い冗談でハルを笑わせます。「確認担当の技術者がバーに入った。ビールを1本注文した。0本注文した。99999999本注文した。トカゲを注文した。-1本注文した。意味のない文字列を注文した。そこへ最初の本物の客が入ってきて、トイレはどこかと尋ねた。バーは炎上した」。ハルは大笑い。本章では、pytest による単体・統合・全体の確認、差し替えの2つのやり方、仕様から自動でテストを作る方法、負荷の確認まで、全体像を学びます。</p>
+    <div class="example">
+      <h4>🔎 この冗談が言っていること</h4>
+      <p>確認担当の人は「想定内の入力」だけでなく、0、極端に大きい数、種類の違うもの、負の数、意味のない文字列といった<b>想定外の入力</b>を試します。それらはすべて通ります。しかし、実際の利用者が持ち込んだのは「トイレはどこか」という、そもそも想定されていなかった問いでした。</p>
+      <p>つまり、入力の値をいくら網羅しても、「そういう使われ方をするとは考えていなかった」という抜けは残る、という話です。この章で学ぶのは、少なくとも値の網羅は自動化できる、という部分です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead"><span class="term" data-tip="単体を多く、統合を中くらい、全体を少なく、という数の配分。">テストピラミッド</span>は 単体（多）→ 統合（中）→ 全体（少）の三層です。pytest が Python の確認の標準です。確かめたい処理を切り離す手段は<b>モック</b>（中の作りを知って差し替える）と<b>フェイク</b>（別の実装に入れ替える）の2系統。API の仕様を使った自動生成のテスト（<b>Schemathesis</b>）で、全体をまとめて叩けます。負荷の確認には Locust が定番です。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>単体／統合／全体の確認の位置づけを使い分けられる</li>
+        <li>pytest の準備の仕組み、複数入力の与え方、差し替えを使いこなせる</li>
+        <li>モックとフェイクの使い分けを判断できる</li>
+        <li>Schemathesis で API を自動的に叩いて、弱い部分を見つけられる</li>
+        <li>Locust で負荷の確認の基本を組める</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① Web API テスト ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>ウェブAPIテスト<span class="tag">手で確かめる道具</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>手での確認（HTTPie など）と自動の確認（pytest）の二段構えです。壊れの再発を防ぐには自動化が必要です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここまで手で確かめる道具をいくつか見てきた。HTTPie / Requests / HTTPX / ブラウザ。さらに、①<b>curl</b>：非常に有名。本書は書き方が単純な HTTPie を使ったが、②<b>Httpbin</b>：Requests の作者による確認用のサーバ、③<b>Postman</b>：API の確認をまとめて行える環境、④<b>Chrome DevTools</b>：ブラウザに組み込まれている道具。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これらは全部「全体を通した確認」に使える。コードを書いた直後の確かめに便利だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>でも、後の変更で以前の確認が壊れたら（<b>再発</b>）どうする？ 変更のたびに何十もの確認を手でやり直すのは避けたい。そこで<b>自動の確認</b>だ。pytest で組む。</div></div>
+    </div>
+    <div class="grid4">
+      <div class="mini"><div class="ic">🌀</div><h4>curl</h4><p>非常に広く使われている。書き方は少し複雑です。</p></div>
+      <div class="mini"><div class="ic">🧪</div><h4>Httpbin</h4><p>問い合わせの中身を確認するための、確認用のサーバです。</p></div>
+      <div class="mini"><div class="ic">📮</div><h4>Postman</h4><p>API の確認をまとめて行える環境。画面から操作できます。</p></div>
+      <div class="mini"><div class="ic">🔧</div><h4>Chrome DevTools</h4><p>ブラウザに組み込まれた道具。実際の通信を見られます。</p></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>手で: HTTPie / curl / Postman / DevTools</li>
+        <li>自動で: pytest が中心</li>
+        <li>再発を防ぐには自動化が必要</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② テストピラミッド ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>どこでテストするか<span class="tag">テストピラミッド</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>確認は 単体（多）→ 統合（中）→ 全体（少）の配分で組むのが基本です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>確認は3種類に分けられる。<b>単体</b>：層の中の、個々の処理。<b>統合</b>：層をまたいだつながり。<b>全体</b>：API 全体と、その下の全部。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これを<b>テストピラミッド</b>と呼ぶ。幅は、それぞれに含めるべき数の相対的な多さを示す。底（単体）がいちばん多く、頂点（全体）がいちばん少ない。</div></div>
+    </div>
+
+    <div class="pyramid">
+      <div class="lv l1"><b>フルテスト</b><span>数件。全部を通して確かめる。遅く、手間がかかる。</span></div>
+      <div class="lv l2"><b>統合テスト</b><span>中くらいの数。層と層のつなぎ目を確かめる。</span></div>
+      <div class="lv l3"><b>単体テスト</b><span>大量。1つの処理を確かめる。速く、失敗の場所がすぐ分かる。</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：逆の配分だとどうなるか</h4>
+      <p>全体を通す確認ばかり100件書いたとします。1件あたり2秒かかるなら、全部で200秒。しかも、どこか1か所が壊れると、その場所を通るすべてが赤くなります。100件が同時に失敗し、原因の場所を探すことになります。</p>
+      <p>単体の確認が多ければ、1件あたり0.01秒で終わり、失敗するのは壊れた処理に対応する1〜2件だけです。どこが原因かが、失敗した名前を見ただけで分かります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>単体: 処理1つの確認。いちばん多く書く</li>
+        <li>統合: 層と層のつながり。中くらいの数</li>
+        <li>全体: すべてを通した確認。少なめ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ 何をテストすべきか ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>何をテストすべきか<span class="tag">入力の種類とエラーの場所</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>入力の種類（欠け／重複／種類違い／巨大 など）を網羅します。どの層でエラーが起きるかも意識します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>入力に対して正しい出力が出るかを確かめる。次のような入力を試すといい。①項目が欠けている、②重複している、③種類が違う、④並び順が違う、⑤正しくない値、⑥非常に大きい入力や出力。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>問題はどこでも起きうる。①<b>Web層</b>：Pydantic が形の違いを見つけて 422 を返す。②<b>データ層</b>：データベースが、欠け・重複・SQL の誤りで失敗を出す。巨大な結果を一度に渡すと、時間切れやメモリ不足になる。③<b>どの層でも</b>：ふつうの書き間違い。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🕳️</div><h4>欠けている</h4><p>必要な項目が入っていない。</p></div>
+      <div class="mini"><div class="ic">👯</div><h4>重複している</h4><p>すでにあるものと同じ。</p></div>
+      <div class="mini"><div class="ic">🔤</div><h4>種類が違う</h4><p>数のはずが文字になっている。</p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>並び順が違う</h4><p>想定と違う順で届く。</p></div>
+      <div class="mini"><div class="ic">🚫</div><h4>正しくない値</h4><p>範囲の外、あり得ない値。</p></div>
+      <div class="mini"><div class="ic">🐘</div><h4>非常に大きい</h4><p>時間切れやメモリ不足の原因になる。</p></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>入力の型: 欠け／重複／種類違い／巨大／正しくない値</li>
+        <li>Web層: 形が合わなければ 422</li>
+        <li>データ層: データベースからの失敗、メモリ不足</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ pytest ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>Pytest<span class="tag">4つの自動的な機能</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>pytest は Python での確認の標準です。自動での発見、準備の仕組み、複数入力の与え方が強力です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の標準には昔から <code>unittest</code> がある。後に <code>nose</code> が改良を試みた。今ほとんどの開発者は <b>pytest</b> を選ぶ。両者より多機能で使いやすい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>標準には入っていないので <code>pip install pytest</code>。さらに <code>pip install pytest-mock</code> で、差し替えの仕組みが自動で使えるようになる。後で使う。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 確認の道具そのものを入れる。</span>
+$ pip install pytest
+<span class="cmt"># 処理の差し替えを扱いやすくする追加の道具を入れる。</span>
+$ pip install pytest-mock
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Successfully installed pytest-7.4.3</span>
+<span class="cmt"># Successfully installed pytest-mock-3.12.0</span>
+</pre></details>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">🔍</div><h4>自動で見つける</h4><p>ファイル名や処理の名前が <code>test_</code> で始まるものを自動で集めます。下のフォルダもたどります。</p></div>
+      <div class="mini"><div class="ic">📊</div><h4>失敗の詳細</h4><p>失敗した行について、「期待した値」と「実際の値」を表示します。</p></div>
+      <div class="mini"><div class="ic">🧰</div><h4>準備の仕組み</h4><p>共通のデータや、データベースの用意を提供します。FastAPI の依存性注入と似た形です。</p></div>
+      <div class="mini"><div class="ic">🔢</div><h4>複数の入力</h4><p>同じ処理に、いくつもの入力を順に与えて確かめられます。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>pip install pytest pytest-mock</code></li>
+        <li>自動で発見: <code>test_*.py</code>, <code>test_*()</code> を集める</li>
+        <li>準備の仕組み: 共通の用意</li>
+        <li>複数の入力: 1つの処理でいくつもの場合を確かめる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ レイアウト ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>レイアウト<span class="tag">テストをどこに置くか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>置き場所には意見が分かれます。本書は一番上に <code>test/</code> を置き、種類別・層別に分けます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>確認の置き場所は意見が分かれる。合理的な案は2つ。①一番上に <code>test/</code> を置き、対象ごとに下のフォルダを作る、②各コードのフォルダ（<code>web/</code>, <code>service/</code> など）の下に <code>test/</code> を作る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その中で、種類別（単体・統合・全体）のフォルダを作るかも判断が必要だ。本書の構成はこうする。</div></div>
+    </div>
+    <div class="tree">
+<span class="d">test/</span>
+├── <span class="d">unit/</span>            <span class="c"># 1つの処理だけを確かめる</span>
+│   ├── <span class="d">web/</span>         <span class="c"># 外からの受け口の層</span>
+│   ├── <span class="d">service/</span>     <span class="c"># 機能の本体の層</span>
+│   └── <span class="d">data/</span>        <span class="c"># データの保存先の層</span>
+├── <span class="d">integration/</span>     <span class="c"># 層と層のつなぎ目</span>
+└── <span class="d">full/</span>            <span class="c"># 全部を通した確認</span>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>一番上に <code>test/</code></li>
+        <li>種類別: unit / integration / full</li>
+        <li>unit はさらに層別: web / service / data</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ 単体テストの自動化 ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>単体テストの自動化<span class="tag">切り離すことが要</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>単体の確認は、1つの層・1つのことだけを見ます。そのために、確かめたい処理を切り離す必要があります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>単体の確認は、1つの層の中の1つのことを見る。ふつうは処理に値を渡して、何が返るかを確かめる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そのためには、確かめたいコードを<b>切り離す</b>必要がある。そうしないと、他のコードまで一緒に確かめることになってしまう。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>単体の確認 = 1つの層の中の1つの処理</li><li>確かめたい対象を切り離す必要がある</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ モック ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>モック<span class="tag">実行中に処理を差し替える</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>モックは処理を実行中に差し替えます。書き方は4通りあります。中の作りを知って行うため、構造の確認寄りです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書の構成では、住所 → Web層の処理 → サービス層 → データ層 → データベース、と呼び出しがつながる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>単体の確認は単純に聞こえるけど、ほとんどの処理は他の処理を呼ぶので、その先をどう抑えるかが問題になる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python では処理そのものを値のように扱えるので、ある処理を別の処理で置き換えられる。<code>unittest</code> には<b>差し替えのための機能</b>がある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>差し替えは切り離しの手段として人気だけど、「結果よりも<b>コードの中の作りについての知識</b>を必要としすぎる」という批判もある。<b>構造の確認</b>（中が見える、差し替え）と <b>振る舞いの確認</b>（中を知らない、別の実装）の違いだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まず、呼ばれる側の小さなファイルです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 決まった前置きの文章を返すだけの処理。</span>
+<span class="kw">def</span> <span class="fn">preamble</span>() -&gt; <span class="kw">str</span>:
+    <span class="kw">return</span> <span class="str">"The answer to your question is: "</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">それを呼ぶ側のファイルです。前置きに、足し算の結果をつなげて返します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 前置きを返すファイルを取り込む。</span>
+<span class="kw">import</span> mod1
+
+<span class="cmt"># 2つの数を受け取り、前置きの文章と足し算の結果をつなげて返す。</span>
+<span class="kw">def</span> <span class="fn">summer</span>(a: <span class="kw">int</span>, b: <span class="kw">int</span>) -&gt; <span class="kw">str</span>:
+    <span class="cmt"># str() は数を文字に変換する。文字と文字は + でつなげられる。</span>
+    <span class="kw">return</span> mod1.<span class="fn">preamble</span>() + <span class="fn">str</span>(a + b)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まずは差し替えなしで、そのまま確かめてみます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 確かめたいファイルを取り込む。</span>
+<span class="kw">import</span> mod2
+
+<span class="kw">def</span> <span class="fn">test_summer</span>():
+    <span class="cmt"># 5 と 6 を渡して呼ぶ。中で前置きと 11 がつながる。</span>
+    result = mod2.<span class="fn">summer</span>(<span class="num">5</span>, <span class="num">6</span>)
+    <span class="cmt"># 前置きも含めた文字列全体が一致することを確かめる。</span>
+    <span class="kw">assert</span> result == <span class="str">"The answer to your question is: 11"</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># -q は表示を最小限にする指定。</span>
+$ pytest -q test_summer1.py
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># .                                                          [100%]</span>
+<span class="cmt"># 1 passed in 0.04s</span>
+<span class="cmt"># ドット1つが、通ったテスト1件を表す。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>でも、前置きの文章は付け足しであって、「足し算が正しいか」だけを確かめたいとしたら？ 前置きを差し替えて無くしてしまう。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">差し替えの書き方を4通り並べたものです。どれも結果は同じです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 差し替えのための機能を取り込む。</span>
+<span class="kw">from</span> unittest <span class="kw">import</span> mock
+<span class="cmt"># 確かめたいファイルを取り込む。</span>
+<span class="kw">import</span> mod2
+
+<span class="cmt"># 書き方1：with の範囲の中だけ差し替える。</span>
+<span class="kw">def</span> <span class="fn">test_caller_a</span>():
+    <span class="cmt"># 文字列で「どの処理を差し替えるか」を指定し、返す値を空にする。</span>
+    <span class="kw">with</span> mock.<span class="fn">patch</span>(<span class="str">"mod1.preamble"</span>, return_value=<span class="str">""</span>):
+        <span class="cmt"># この中では、前置きが空になる。</span>
+        result = mod2.<span class="fn">summer</span>(<span class="num">5</span>, <span class="num">6</span>)
+        <span class="cmt"># 足し算の結果だけが返ることを確かめる。</span>
+        <span class="kw">assert</span> result == <span class="str">"11"</span>
+
+<span class="cmt"># 書き方2：差し替えたものに名前を付け、返す値を後から設定する。</span>
+<span class="kw">def</span> <span class="fn">test_caller_b</span>():
+    <span class="kw">with</span> mock.<span class="fn">patch</span>(<span class="str">"mod1.preamble"</span>) <span class="kw">as</span> mock_preamble:
+        <span class="cmt"># 名前を通して、返す値を空に設定する。</span>
+        mock_preamble.return_value = <span class="str">""</span>
+        result = mod2.<span class="fn">summer</span>(<span class="num">5</span>, <span class="num">6</span>)
+        <span class="kw">assert</span> result == <span class="str">"11"</span>
+
+<span class="cmt"># 書き方3：処理の上に飾りとして書く。差し替えたものは引数として渡ってくる。</span>
+<span class="fn">@mock.patch</span>(<span class="str">"mod1.preamble"</span>, return_value=<span class="str">""</span>)
+<span class="kw">def</span> <span class="fn">test_caller_c</span>(mock_preamble):
+    <span class="cmt"># この処理の間ずっと差し替えが効いている。with で囲む必要がない。</span>
+    result = mod2.<span class="fn">summer</span>(<span class="num">5</span>, <span class="num">6</span>)
+    <span class="kw">assert</span> result == <span class="str">"11"</span>
+
+<span class="cmt"># 書き方4：書き方2とほぼ同じ。返す値を別の呼び出しで設定している。</span>
+<span class="kw">def</span> <span class="fn">test_caller_d</span>():
+    <span class="kw">with</span> mock.<span class="fn">patch</span>(<span class="str">"mod1.preamble"</span>) <span class="kw">as</span> mock_preamble:
+        mock_preamble.return_value = <span class="str">""</span>
+        result = mod2.<span class="fn">summer</span>(<span class="num">5</span>, <span class="num">6</span>)
+        <span class="kw">assert</span> result == <span class="str">"11"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ....                                                       [100%]</span>
+<span class="cmt"># 4 passed in 0.13s</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>4通りを解説する。①<b>書き方1</b>：<code>with</code> の範囲の中だけ差し替える。指定するのは <code>"mod1.preamble"</code>（完全な名前の文字列）と、返す値。②<b>書き方2</b>：<code>as</code> で差し替えたものに名前を付けて使う。③<b>書き方3</b>：処理の上に飾りとして書く。差し替えたものは引数として渡る。④<b>書き方4</b>：ほぼ2と同じで、返す値を別の行で設定している。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>重要な点。差し替える対象の<b>文字列の名前</b>は、確かめたいコード（ここでは <code>summer()</code>）の中で呼ばれている書き方と一致していないといけない。差し替えの仕組みは、その名前をたどって、元のものへの参照を断ち切るからだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>結果として、4つの確認すべてで <code>summer(5, 6)</code> を呼んだとき、本物ではなく差し替えたものが呼ばれる。差し替えたものは空の文字を返すので、<code>summer()</code> は足し算の結果だけを返す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>差し替えは複雑だ。詳しくは Python の公式の説明を参照してくれ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：名前の指定を間違えるとどうなるか</h4>
+      <p><code>mod2.py</code> が <code>from mod1 import preamble</code> と書いていた場合、<code>mod2</code> の中には <code>preamble</code> という名前が直接できています。このとき <code>mock.patch("mod1.preamble")</code> と書いても、<code>mod2</code> が持っている名前は差し替わりません。本物が呼ばれ、テストは前置き付きの文字列を受け取って失敗します。</p>
+      <p>この場合は <code>mock.patch("mod2.preamble")</code> と、<b>呼ばれる側から見た名前</b>を指定します。これが「中の作りを知る必要がある」と言われる理由です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>mock.patch()</code> で処理を差し替える</li>
+        <li>4つの書き方（with ／ as ／ 飾り ／ 別の行で設定）</li>
+        <li>差し替えの対象は「呼ばれる側から見た名前」で指定</li>
+        <li>構造の確認 = 中の作りの知識が要る</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ ダブルとフェイク ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>ダブルスとフェイクをテストする<span class="tag">別の実装に入れ替える</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>フェイクは、環境変数で本物と入れ替える方法です。中の作りを知らずに済むため、振る舞いの確認寄りです。本書の <code>fake/</code> がまさにこれです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>差し替えは「<code>summer()</code> が <code>mod1.preamble</code> を取り込んでいる」という中の作りの知識を必要とした。構造の確認だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>同じことを<b>振る舞いの確認</b>でやるには？ 1つの方法は<b>代わりの実装</b>を用意することだ。確認に必要なことだけを行う別のコードで、取り込みの切り替えで実現できる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">呼ぶ側に、取り込み先を切り替える仕組みを入れます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 環境変数を読むための標準の機能を取り込む。</span>
+<span class="kw">import</span> os
+
+<span class="cmt"># UNIT_TEST という環境変数が設定されているかを確かめる。</span>
+<span class="kw">if</span> os.<span class="fn">getenv</span>(<span class="str">"UNIT_TEST"</span>):
+    <span class="cmt"># 設定されていれば、確認用のファイルを mod1 という名前で使う。</span>
+    <span class="kw">import</span> fake_mod1 <span class="kw">as</span> mod1
+<span class="kw">else</span>:
+    <span class="cmt"># 設定されていなければ、本物を使う。</span>
+    <span class="kw">import</span> mod1
+
+<span class="cmt"># 本文は前と同じ。どちらが取り込まれているかを、この処理は知らない。</span>
+<span class="kw">def</span> <span class="fn">summer</span>(a: <span class="kw">int</span>, b: <span class="kw">int</span>) -&gt; <span class="kw">str</span>:
+    <span class="kw">return</span> mod1.<span class="fn">preamble</span>() + <span class="fn">str</span>(a + b)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">確認用の実装です。同じ名前の処理を持ち、空の文字を返します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 本物と同じ名前の処理を用意する。</span>
+<span class="cmt"># 中身は空の文字を返すだけ。前置きを消したいだけなので、これで足りる。</span>
+<span class="kw">def</span> <span class="fn">preamble</span>() -&gt; <span class="kw">str</span>:
+    <span class="kw">return</span> <span class="str">""</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">確認する側です。取り込みより<b>前に</b>環境変数を設定します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 環境変数を設定するための機能を取り込む。</span>
+<span class="kw">import</span> os
+<span class="cmt"># ここが重要。mod2 を取り込む「前に」設定する。</span>
+<span class="cmt"># 後に書くと、mod2 はすでに本物を取り込んでしまっている。</span>
+os.environ[<span class="str">"UNIT_TEST"</span>] = <span class="str">"true"</span>
+
+<span class="cmt"># ここで取り込むと、中では確認用のファイルが使われる。</span>
+<span class="kw">import</span> mod2
+
+<span class="kw">def</span> <span class="fn">test_summer</span>():
+    <span class="cmt"># 前置きが空になるので、足し算の結果だけが返る。</span>
+    result = mod2.<span class="fn">summer</span>(<span class="num">5</span>, <span class="num">6</span>)
+    <span class="kw">assert</span> result == <span class="str">"11"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># .                                                          [100%]</span>
+<span class="cmt"># 1 passed in 0.04s</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>この取り込みを切り替える方法は、環境変数を確認する行を書く必要があるけど、呼び出しごとの差し替えを書かなくて済む。どちらがいいかは選択だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>次の節からは取り込みを切り替える方法を使う。層を定義するときに使った <b><code>fake/</code> のまとまり</b>とうまく組み合わさる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>まとめると、確認のコードの中で処理を差し替えるか、代わりの実装を取り込むか。他にも切り離す手段はあるけど、これらでうまくいく。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔧</div><h4>モック（差し替え）</h4><p><b>長所：</b>確認する側だけで完結し、確かめたいコードを変えなくてよい。<br><b>短所：</b>どの処理をどう呼んでいるか、中の作りを知る必要がある。</p><span class="pill">構造の確認</span></div>
+      <div class="mini"><div class="ic">🔁</div><h4>フェイク（入れ替え）</h4><p><b>長所：</b>確かめたいコードは、どちらが使われているかを知らずに済む。使い回しやすい。<br><b>短所：</b>切り替えの仕組みを、確かめたい側に書き込む必要がある。</p><span class="pill">振る舞いの確認</span></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>代わりの実装 = 確認用の別ファイル</li>
+        <li>環境変数で取り込み先を切り替える</li>
+        <li>中の作りを知らないので、振る舞いの確認になる</li>
+        <li>本書の <code>fake/</code> はこのやり方</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ Web ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>ウェブ層のテスト<span class="tag">浅い確認</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Web層の確認は、<code>fake/</code> への取り込みの切り替えで切り離します。準備の仕組みで見本を渡し、失敗の確認も行います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web層はサイトの API そのものだ。理想は、各窓口に最低1つの確認。窓口が存在すること、指定が効くこと、正しい番号とデータが返ることを確かめたい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>補足。これらは「<b>浅い</b>」確認だ。Web 層の中だけを見る。だからサービス層への呼び出しは、途中で止める必要がある。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Web層に、取り込みの切り替えを入れます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 環境変数を読む機能を取り込む。</span>
+<span class="kw">import</span> os
+<span class="cmt"># 窓口のまとめと、エラーを返す知らせを取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, HTTPException
+<span class="cmt"># データの形と、2つの知らせを取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+
+<span class="cmt"># 確認用の設定がされているかを見る。</span>
+<span class="kw">if</span> os.<span class="fn">getenv</span>(<span class="str">"CRYPTID_UNIT_TEST"</span>):
+    <span class="cmt"># されていれば、仮データのファイルを service という名前で使う。</span>
+    <span class="kw">import</span> fake.creature <span class="kw">as</span> service
+<span class="kw">else</span>:
+    <span class="cmt"># されていなければ、本物のサービス層を使う。</span>
+    <span class="kw">import</span> service.creature <span class="kw">as</span> service
+
+<span class="cmt"># この中の住所は /creature から始まる。</span>
+router = <span class="fn">APIRouter</span>(prefix=<span class="str">"/creature"</span>)
+
+<span class="cmt"># 一覧を返す窓口。</span>
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="kw">return</span> service.<span class="fn">get_all</span>()
+
+<span class="cmt"># 1件を返す窓口。見つからなければ 404 に変換する。</span>
+<span class="fn">@router.get</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Creature:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">get_one</span>(name)
+    <span class="kw">except</span> Missing <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">404</span>, detail=exc.msg)
+
+<span class="cmt"># 作成の窓口。すでにあれば 409 に変換する。</span>
+<span class="fn">@router.post</span>(<span class="str">"/"</span>, status_code=<span class="num">201</span>)
+<span class="kw">def</span> <span class="fn">create</span>(creature: Creature) -&gt; Creature:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">create</span>(creature)
+    <span class="kw">except</span> Duplicate <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">409</span>, detail=exc.msg)
+
+<span class="cmt"># 更新と削除も同じ形で書く。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Web層の確認です。準備の仕組みを2つ使っています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 取り込みより前に、確認用の設定をする。</span>
+<span class="kw">import</span> os
+os.environ[<span class="str">"CRYPTID_UNIT_TEST"</span>] = <span class="str">"true"</span>
+
+<span class="cmt"># 確認の道具、エラーの知らせ、データの形、確かめたい相手を取り込む。</span>
+<span class="kw">import</span> pytest
+<span class="kw">from</span> fastapi <span class="kw">import</span> HTTPException
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="kw">import</span> web.creature <span class="kw">as</span> code
+
+<span class="cmt"># 確認で使う見本のデータを用意する準備。</span>
+<span class="fn">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">sample</span>() -&gt; Creature:
+    <span class="kw">return</span> <span class="fn">Creature</span>(name=<span class="str">"dragon"</span>, country=<span class="str">"*"</span>, area=<span class="str">""</span>,
+                    description=<span class="str">"そびえる炎の獣"</span>, aka=<span class="str">"ドラゴン"</span>)
+
+<span class="cmt"># 仮データにもとから入っている一覧を取り出す準備。</span>
+<span class="fn">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">fakes</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="cmt"># code.service は、切り替えによって仮データのファイルを指している。</span>
+    <span class="kw">return</span> code.service.<span class="fn">get_all</span>()
+
+<span class="cmt"># 作成できるかの確認。引数に sample と書くと、上の準備が渡ってくる。</span>
+<span class="kw">def</span> <span class="fn">test_create</span>(sample):
+    resp = code.<span class="fn">create</span>(sample)
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># すでにあるものを作ろうとしたときの確認。2つの準備を同時に受け取っている。</span>
+<span class="kw">def</span> <span class="fn">test_create_duplicate</span>(fakes, sample):
+    <span class="cmt"># 見本の名前を、すでに存在する名前に書き換える。</span>
+    sample.name = fakes[<span class="num">0</span>].name
+    <span class="cmt"># この中でエラーの知らせが出ることを期待し、その内容を exc で受け取る。</span>
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(HTTPException) <span class="kw">as</span> exc:
+        _ = code.<span class="fn">create</span>(sample)
+    <span class="cmt"># 返す番号が 409（すでにあるものと衝突）であることを確かめる。</span>
+    <span class="kw">assert</span> exc.value.status_code == <span class="num">409</span>
+
+<span class="cmt"># 存在するものを取得できるかの確認。</span>
+<span class="kw">def</span> <span class="fn">test_get_one</span>(fakes):
+    resp = code.<span class="fn">get_one</span>(fakes[<span class="num">0</span>].name)
+    <span class="kw">assert</span> resp == fakes[<span class="num">0</span>]
+
+<span class="cmt"># 存在しないものを取得したときの確認。</span>
+<span class="kw">def</span> <span class="fn">test_get_one_missing</span>():
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(HTTPException) <span class="kw">as</span> exc:
+        _ = code.<span class="fn">get_one</span>(<span class="str">"boxturtle"</span>)
+    <span class="cmt"># 404（見つからない）が返ることを確かめる。</span>
+    <span class="kw">assert</span> exc.value.status_code == <span class="num">404</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 4 passed</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>環境変数 <code>CRYPTID_UNIT_TEST</code> を設定することで、Web のファイルは本物のサービス層ではなく<b>仮のもの</b>（データベースを呼ばず、仮のデータを返す）を取り込む。これで確認が切り離される。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>環境変数 <code>CRYPTID_UNIT_TEST</code> で仮のものに切り替え</li>
+        <li>準備の仕組み <code>sample</code>, <code>fakes</code> で共通のデータ</li>
+        <li><code>pytest.raises(HTTPException)</code> で 404/409 を確認</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ サービス ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>サービス層のテスト<span class="tag">同じ形で、1つ下を切り替える</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>サービス層も確認のときは仮のものに切り替えます。失敗の知らせは受け止めず、Web層に任せます。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">サービス層に、取り込みの切り替えを入れます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 環境変数を読む機能を取り込む。</span>
+<span class="kw">import</span> os
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+
+<span class="cmt"># 確認用の設定がされているかを見る。</span>
+<span class="kw">if</span> os.<span class="fn">getenv</span>(<span class="str">"CRYPTID_UNIT_TEST"</span>):
+    <span class="cmt"># されていれば、仮データのファイルを data という名前で使う。</span>
+    <span class="kw">import</span> fake.creature <span class="kw">as</span> data
+<span class="kw">else</span>:
+    <span class="cmt"># されていなければ、本物のデータ層を使う。</span>
+    <span class="kw">import</span> data.creature <span class="kw">as</span> data
+
+<span class="cmt"># ここから下は、下の層に渡すだけの処理。失敗の知らせは受け止めず、そのまま上に流す。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="kw">return</span> data.<span class="fn">get_all</span>()
+
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Creature:
+    <span class="kw">return</span> data.<span class="fn">get_one</span>(name)
+
+<span class="kw">def</span> <span class="fn">create</span>(creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> data.<span class="fn">create</span>(creature)
+
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> data.<span class="fn">modify</span>(name, creature)
+
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> data.<span class="fn">replace</span>(name, creature)
+
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>):
+    <span class="kw">return</span> data.<span class="fn">delete</span>(name)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">サービス層の確認です。受け止めるのは番号ではなく、アプリ側の知らせです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 取り込みより前に、確認用の設定をする。</span>
+<span class="kw">import</span> os
+os.environ[<span class="str">"CRYPTID_UNIT_TEST"</span>] = <span class="str">"true"</span>
+
+<span class="cmt"># 確認の道具、データの形、2つの知らせ、確かめたい相手を取り込む。</span>
+<span class="kw">import</span> pytest
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+<span class="kw">import</span> service.creature <span class="kw">as</span> code
+
+<span class="cmt"># 見本のデータを用意する準備。</span>
+<span class="fn">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">sample</span>() -&gt; Creature:
+    <span class="kw">return</span> <span class="fn">Creature</span>(name=<span class="str">"dragon"</span>, country=<span class="str">"*"</span>, area=<span class="str">""</span>,
+                    description=<span class="str">"そびえる炎の獣"</span>, aka=<span class="str">"ドラゴン"</span>)
+
+<span class="cmt"># 作成できるかの確認。</span>
+<span class="kw">def</span> <span class="fn">test_create</span>(sample):
+    resp = code.<span class="fn">create</span>(sample)
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 存在しないものを取得したときの確認。</span>
+<span class="cmt"># Web層と違い、ここで受け止めるのは番号ではなく Missing という知らせ。</span>
+<span class="kw">def</span> <span class="fn">test_get_one_missing</span>():
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Missing):
+        _ = code.<span class="fn">get_one</span>(<span class="str">"boxturtle"</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 2 passed</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>サービス層の確認は Web層と似ているけど、取り込むのは1つ下のデータ層だ。失敗の知らせは受け止めず、Web層に処理させる。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>サービス層も、確認のときは仮のものに切り替える</li>
+        <li>失敗の知らせは受け止めずに通す</li>
+        <li>Web層の確認と似た形になる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑪ データ ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">11</div><h2>データ層のテスト<span class="tag">メモリ上のデータベースを使う</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>データ層は下にもう層がないので、確認が楽です。仮のものへの差し替えではなく、メモリ上のデータベースを使います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データ層は下にもう層がないので、確認が楽だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web層やサービス層の確認と違い、データ層では仮のファイルへの差し替えは不要だ。代わりに別の環境変数で、<b>メモリ上だけの SQLite</b> を使うようにする。データ層のコードを変える必要はなく、取り込みの前に環境変数を設定するだけでいい。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">データ層の確認です。本物の SQL がそのまま動きます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 取り込みより前に、保存先をメモリ上に指定する。</span>
+<span class="kw">import</span> os
+os.environ[<span class="str">"CRYPTID_SQLITE_DB"</span>] = <span class="str">":memory:"</span>
+
+<span class="cmt"># 確認の道具、データの形、2つの知らせ、確かめたい相手を取り込む。</span>
+<span class="kw">import</span> pytest
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+<span class="kw">from</span> data <span class="kw">import</span> creature <span class="kw">as</span> code
+
+<span class="cmt"># 見本のデータを用意する準備。</span>
+<span class="fn">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">sample</span>() -&gt; Creature:
+    <span class="kw">return</span> <span class="fn">Creature</span>(name=<span class="str">"dragon"</span>, country=<span class="str">"*"</span>, area=<span class="str">""</span>,
+                    description=<span class="str">"そびえる炎の獣"</span>, aka=<span class="str">"ドラゴン"</span>)
+
+<span class="cmt"># 保存できるかの確認。実際に SQL の insert が動く。</span>
+<span class="kw">def</span> <span class="fn">test_create</span>(sample):
+    resp = code.<span class="fn">create</span>(sample)
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 同じものを2回保存したときの確認。</span>
+<span class="kw">def</span> <span class="fn">test_create_duplicate</span>(sample):
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Duplicate):
+        _ = code.<span class="fn">create</span>(sample)
+
+<span class="cmt"># 保存したものを取得できるかの確認。</span>
+<span class="kw">def</span> <span class="fn">test_get_one</span>(sample):
+    resp = code.<span class="fn">get_one</span>(sample.name)
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 無いものを取得したときの確認。</span>
+<span class="kw">def</span> <span class="fn">test_get_one_missing</span>():
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Missing):
+        _ = code.<span class="fn">get_one</span>(<span class="str">"boxturtle"</span>)
+
+<span class="cmt"># 書き換えられるかの確認。</span>
+<span class="kw">def</span> <span class="fn">test_modify</span>(sample):
+    <span class="cmt"># 国をカナダに変えてみる。</span>
+    sample.country = <span class="str">"CA"</span>
+    resp = code.<span class="fn">modify</span>(sample.name, sample)
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 削除できるかの確認。</span>
+<span class="kw">def</span> <span class="fn">test_delete</span>(sample):
+    resp = code.<span class="fn">delete</span>(sample.name)
+    <span class="cmt"># 削除の処理は何も返さないので、返り値は「無い」になる。</span>
+    <span class="kw">assert</span> resp <span class="kw">is</span> <span class="kw">None</span>
+
+<span class="cmt"># すでに消したものを、もう一度消そうとしたときの確認。</span>
+<span class="kw">def</span> <span class="fn">test_delete_missing</span>(sample):
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Missing):
+        _ = code.<span class="fn">delete</span>(sample.name)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 7 passed</span>
+</pre></details>
+
+    <h3 class="blk">3つの層の切り離し方まとめ</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>層</th><th>切り離しの方法</th><th>設定する環境変数</th></tr>
+      <tr><td>Web層</td><td>サービス層の代わりに仮のものを取り込む</td><td><code>CRYPTID_UNIT_TEST</code></td></tr>
+      <tr><td>サービス層</td><td>データ層の代わりに仮のものを取り込む</td><td><code>CRYPTID_UNIT_TEST</code></td></tr>
+      <tr><td>データ層</td><td>保存先をメモリ上にする（コードは変えない）</td><td><code>CRYPTID_SQLITE_DB=":memory:"</code></td></tr>
+    </table>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>データ層: メモリ上のデータベースで確認</li>
+        <li>環境変数は取り込みの前に設定</li>
+        <li>ファイルを汚さず、何度でも同じ結果になる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑫ 統合テスト ===== -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">12</div><h2>自動統合テスト<span class="tag">層と層のつなぎ目</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>統合の確認は「層と層のつながり」を見ます。SQLite はメモリ版で代用し、他のデータベースには専用の代用品や、使い捨ての環境を使います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>統合の確認は、違うコードが層と層の<b>間</b>でどうやり取りするかを見る。意見は分かれる。①Web→サービス、Web→データ など、部分的な経路を確かめる、②基本は全部を通すが、最後の保存先だけを代用品にする。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>SQLite を使ってきたなら、メモリ版をファイル版の代用にできる。問い合わせがごく標準的なものなら、他のデータベースに対しても十分な代用になる可能性がある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>特定のデータベースの代用品としては、①PostgreSQL：<b>pgmock</b>、②MongoDB：<b>mongomock</b>、③多数に対応：<b>Pytest Mock Resources</b>（使い捨ての環境で各種のデータベースを起動し、pytest と組み合わせる）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最後に、本番と同じ種類のデータベースを確認用に立ち上げることもできる。これまでの切り替えと同じく、環境変数で詳細を渡す。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🐘</div><h4>pgmock</h4><p>PostgreSQL の代用品です。</p></div>
+      <div class="mini"><div class="ic">🍃</div><h4>mongomock</h4><p>MongoDB の代用品です。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>Pytest Mock Resources</h4><p>使い捨ての環境で各種のデータベースを起動し、pytest と組み合わせます。</p></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>統合の確認 = 層と層のつながりを見る</li>
+        <li>メモリ上の SQLite で代用できる</li>
+        <li>特定のデータベースの代用品: pgmock, mongomock, Pytest Mock Resources</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑬ リポジトリパターン ===== -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-num">13</div><h2>リポジトリ・パターン<span class="tag">本書では未実装だが知っておく</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>データの出し入れをまとめる設計と、ひとまとまりの操作を全部成功か全部取り消しにする仕組みです。本書では実装しませんが、選択肢として知っておく価値があります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書では実装しないけど、興味深い<b>リポジトリ・パターン</b>がある。単純な中間のデータの置き場で、これまでの仮のデータ層に似ている。実際のデータベース向けに、差し替え可能な保存先とやり取りする。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>関連して <b>Unit of Work</b> という考え方もある。ひとまとまりの操作が、全体として確定されるか、全部取り消されるかのどちらかになることを保証する。これまで本書の問い合わせは1回で完結していたけど、実際のデータベースでは、複数の段階を踏む処理が必要になる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>リポジトリ・パターンは依存性注入とも関係が深い。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：全部成功か全部取り消しが必要な場面</h4>
+      <p>「口座Aから1万円引いて、口座Bに1万円足す」という処理を考えます。1つ目が成功し、2つ目の直前でサーバが落ちたとすると、1万円がどこにも存在しない状態になります。</p>
+      <p>ひとまとまりとして扱えば、2つ目が失敗した時点で1つ目も取り消され、元の状態に戻ります。「途中まで進んだ状態」が残らないことが保証されます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>リポジトリ = データの置き場をまとめる設計</li>
+        <li>Unit of Work = ひとまとまりの操作の全部成功か全部取り消し</li>
+        <li>依存性注入と相性が良い</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑭ フルテスト ===== -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-num">14</div><h2>フルテストの自動化<span class="tag">仕様からテストを自動で作る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Schemathesis は API の仕様から自動でテストを作ります。型ヒントが「テストを作る元」にもなります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>全体の確認は、すべての層をまとめて、できるだけ本番に近い形で動かす。本書の確認の多くがこれだった。窓口を呼び、サービス層を通り、データ層を通り、結果が返ってくる。中でどう動くかは気にせず、外から見た結果だけを見る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>API 全体の各窓口を完全に確かめる方法は2つ。①<b>通信を経由する</b>：サーバにアクセスする確認用のコードを書く（HTTPie や Requests）、②<b><code>TestClient</code></b>：FastAPI に組み込まれているもので、実際の通信をせずに直接呼べる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ただ、窓口ごとに1つ以上の確認が必要になる。これは書く量が多すぎる。<b>プロパティベーステスト</b>がより新しいやり方で、FastAPI が作る <b>OpenAPI の仕様</b>（<code>openapi.json</code>）を使う。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">必要なパッケージを2つ入れます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 入力を自動で作り出す土台のパッケージ。</span>
+$ pip install hypothesis
+<span class="cmt"># 上を API の仕様に対して使えるようにするパッケージ。</span>
+$ pip install schemathesis
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Successfully installed hypothesis-6.92.0</span>
+<span class="cmt"># Successfully installed schemathesis-3.21.0</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Hypothesis が土台のライブラリ、Schemathesis はそれを FastAPI が作る仕様に対して適用するものだ。Schemathesis を動かすと仕様を読み込み、さまざまなデータで大量の確認を作ってくれる（自分で考えなくていい）。pytest とも連動する。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">確認しやすいように、入口を簡素にしておきます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># 2つのまとまりを取り込む。</span>
+<span class="kw">from</span> web <span class="kw">import</span> explorer, creature
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># 2つのまとまりを組み込む。サーバの起動の記述は省いてある。</span>
+app.<span class="fn">include_router</span>(explorer.router)
+app.<span class="fn">include_router</span>(creature.router)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">仕様の場所を渡して実行します。窓口の数だけ自動で確認が行われます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 仕様が置かれている住所を渡すだけ。あとは自動で進む。</span>
+$ schemathesis http://localhost:8000/openapi.json
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ===================== Schemathesis test session starts =====================</span>
+<span class="cmt"># Schema location: http://localhost:8000/openapi.json</span>
+<span class="cmt"># Base URL: http://localhost:8000/</span>
+<span class="cmt"># Specification version: Open API 3.0.2</span>
+<span class="cmt"># Workers: 1</span>
+<span class="cmt"># Collected API operations: 12      ← 12個の窓口を見つけた</span>
+<span class="cmt">#</span>
+<span class="cmt"># GET /explorer/ .                                            [  8%]</span>
+<span class="cmt"># POST /explorer/ .                                           [ 16%]</span>
+<span class="cmt"># PATCH /explorer/ F                                          [ 25%]  ← F は失敗</span>
+<span class="cmt"># GET /explorer .                                             [ 33%]</span>
+<span class="cmt"># POST /explorer .                                            [ 41%]</span>
+<span class="cmt"># GET /explorer/{name} .                                      [ 50%]</span>
+<span class="cmt"># DELETE /explorer/{name} .                                   [ 58%]</span>
+<span class="cmt"># GET /creature/ .                                            [ 66%]</span>
+<span class="cmt"># POST /creature/ .                                           [ 75%]</span>
+<span class="cmt"># PATCH /creature/ F                                          [ 83%]  ← F は失敗</span>
+<span class="cmt"># GET /creature/{name} .                                      [ 91%]</span>
+<span class="cmt"># DELETE /creature/{name} .                                   [100%]</span>
+<span class="cmt"># ドットが通ったもの、F が失敗したもの。</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># --- 最後にまとめが表示される ---</span>
+<span class="cmt"># Performed checks:</span>
+<span class="cmt">#     not_a_server_error                717 / 727 passed          FAILED</span>
+<span class="cmt">#     「サーバ側の失敗が出ていないか」の確認を 727 回行い、717 回は通った。</span>
+<span class="cmt">#     つまり 10 回はサーバ側の失敗が起きた、ということ。</span>
+<span class="cmt">#</span>
+<span class="cmt"># Hint: You can visualize test results in Schemathesis.io</span>
+<span class="cmt"># by using `--report` in your CLI command.</span>
+<span class="cmt">#     結果を見やすくまとめたい場合の案内。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>更新の窓口で2つ失敗が出た。続く詳細の部分に、どこで失敗したかが載る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>速いし、窓口ごとに「壊れる入力」を自分で考えなくて済む。この方法は、仕様から型と条件を読み取り、各窓口に渡す値の範囲を自動で作り出す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これは型ヒントの思わぬ利点の1つだ。最初は「ただの書き添え」だったものが、こうつながる。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>型ヒント</h4><p>「ここは文字列」「2文字以上」と書き添える。</p><span class="when">第5章</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>OpenAPI の仕様</h4><p>FastAPI が自動で仕様を作る。</p><span class="when">第3章</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>説明ページとテスト</h4><p>自動の説明ページと、自動生成のテスト。</p><span class="when">この章</span></div>
+    </div>
+    <div class="loopback">↺ 型ヒントを1か所書くだけで、説明・確認・入力の検査の3つに効いてきます。</div>
+
+    <div class="example">
+      <h4>🔎 具体例：どんな入力が自動で作られるか</h4>
+      <p><code>name: str</code> と書かれた項目に対して、自動生成の仕組みは、空の文字列、非常に長い文字列、絵文字、改行を含む文字列、制御文字などを次々に試します。<code>age: int</code> なら、0、-1、非常に大きい数、境界の値などです。</p>
+      <p>これらを人が思いつく限り書き出すと、1つの窓口で20〜30件になります。窓口が12個あれば数百件です。自動で作ってもらえば、書く量はコマンド1行で済みます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>全体の確認の2つのやり方: 通信を経由する か <code>TestClient</code></li>
+        <li>自動生成のテスト: Schemathesis + Hypothesis</li>
+        <li>型ヒント → OpenAPI の仕様 → 自動のテスト</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑮ セキュリティ ===== -->
+<section id="s15">
+  <div class="sec-head"><div class="sec-num">15</div><h2>セキュリティ・テスト<span class="tag">身分の確認が必要な窓口も自動で</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Schemathesis を使えば、身分の確認が必要な窓口も自動で確かめられます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>安全に関することは、あらゆることを含む。悪意だけでなく、うっかりや、避けられない出来事からも守る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第11章で身分と権限の確認を扱った。これらは扱いが難しく、間違えやすい。Schemathesis を知った今、身分の確認に対応させる方法の説明を読むといい。確認が必要な窓口のテストの大部分を自動化できる。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>身分と権限の確認も、自動生成のテストで扱える</li><li>公式の説明を参照する</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑯ 負荷テスト ===== -->
+<section id="s16">
+  <div class="sec-head"><div class="sec-num">16</div><h2>負荷テスト<span class="tag">どこまで耐えられるか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>負荷の確認は Locust が定番です。Python のコードで書けて、非常に多くの利用者を模した状況を作れます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>負荷の確認は、アプリが大量の通信をどう扱うかを見る。①窓口への呼び出し、②データベースの読み書き、③メモリの使用量、④保存領域の使用量、⑤通信の遅れと帯域。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>Locust</b> を使えば、確認の内容を全部 Python のコードで書ける。何十万人分の利用を模した状況を作れるし、複数のサーバを同時に確かめられる。<code>pip install locust</code> で入る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最初に確かめるのは「同時に何人まで処理できるか」かもしれない。実際に人が来る前に、どこで限界が来るかを知っておく必要がある。だから、あらかじめ負荷をかけて確かめる。詳細は Locust の説明を参照してくれ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>拡張として <b>grasshopper</b>（Locust の拡張）があり、複数の呼び出しにまたがる時間の計測などができる。<code>pip install locust-grasshopper</code> で入る。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">📞</div><h4>窓口への呼び出し</h4><p>1秒あたり何件さばけるか。</p></div>
+      <div class="mini"><div class="ic">🗄️</div><h4>データベースの読み書き</h4><p>同時にどれだけ処理できるか。</p></div>
+      <div class="mini"><div class="ic">🧠</div><h4>メモリの使用量</h4><p>件数が増えると、どこまで増えるか。</p></div>
+      <div class="mini"><div class="ic">💾</div><h4>保存領域の使用量</h4><p>記録やデータが、どれだけ場所を取るか。</p></div>
+      <div class="mini"><div class="ic">🌐</div><h4>通信の遅れと帯域</h4><p>返事が返るまでの時間と、運べる量。</p></div>
+      <div class="mini"><div class="ic">🦗</div><h4>Locust</h4><p>上のすべてを、Python のコードで確かめられます。</p></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：先に確かめておくと何が違うか</h4>
+      <p>公開後に人が集まってから「同時100人で返事が返らなくなる」と分かった場合、その時点で利用者が待たされ、信用も落ちます。原因を調べ、直し、動かし直すまでの間ずっと問題が続きます。</p>
+      <p>公開前に確かめておけば、同じ限界を、誰にも影響がない状態で見つけられます。「同時100人で応答が3秒を超える」と分かれば、その前に構成を変えるか、処理を見直すかを選べます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Locust = 負荷の確認の定番の道具</li>
+        <li>Python のコードで書ける</li>
+        <li>何十万人分の状況を模せる</li>
+        <li>拡張: grasshopper</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">6つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「テストピラミッド：単体（多）→ 統合（中）→ 全体（少）」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>数の配分が重要だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「pytest が Python の確認の標準。準備の仕組み、複数入力、差し替えが中心の機能」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>pip install pytest pytest-mock</code> から始めよう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「切り離す方法は、差し替え（構造の確認）と 別の実装（振る舞いの確認）」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書は <code>fake/</code> による、振る舞いの確認寄りだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「環境変数と取り込みの切り替えで、確認のときの依存を切り替える」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>CRYPTID_UNIT_TEST</code>、<code>CRYPTID_SQLITE_DB=":memory:"</code> を使い分ける。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「Schemathesis は仕様から自動でテストを作る」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>型ヒントの思わぬ恩恵だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>6つ目、「負荷の確認は Locust と grasshopper」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本番に出す前の、規模の確認に必要だ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>テストピラミッド</div>
+      <p style="font-size:14px;margin:0">「テストピラミッド」とは何ですか？ なぜピラミッドの形になるのか、3層それぞれの役割と数の配分を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">確認の種類と数の理想的な配分を示した図。底に「単体の確認」（いちばん多い）、中央に「統合の確認」（中くらい）、頂点に「全体の確認」（いちばん少ない）を置く形。単体は速くて手間が少なく、処理1つを切り離して確かめるので大量に書ける。全体の確認は遅く手間がかかり、すべての層を通るので少数に絞る。この形は、手間と確かめられる範囲の釣り合いを表している。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 単体／統合／全体 の3層を挙げている<br>□ それぞれの数の配分（多→中→少）を述べている<br>□ 手間と確かめられる範囲の釣り合いに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>モックとフェイクの違い</div>
+      <p style="font-size:14px;margin:0">確かめたい対象を切り離すための「差し替え」と「別の実装」はどう違いますか？ それぞれの長所と短所を述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">差し替えは <code>mock.patch()</code> で実行中に処理を入れ替える方法。長所は確認する側だけで完結し、確かめたいコードを変えなくてよい点。短所は「確かめたい対象がどの処理を呼んでいるか」という中の作りの知識が必要なこと（構造の確認寄り）。別の実装は、確認用のファイルを用意して取り込みの切り替えで入れ替える方法。長所は確かめたい対象がそれを意識しないので振る舞いの確認に近く、本書の <code>fake/</code> のように使い回しやすい。短所は環境変数や切り替えの記述を、確かめたい側に組み込む必要があること。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 差し替えの仕組みと長所・短所を述べている<br>□ 別の実装の仕組みと長所・短所を述べている<br>□ 構造の確認 と 振る舞いの確認 の観点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>準備の仕組みの役割</div>
+      <p style="font-size:14px;margin:0">pytest の準備の仕組み（fixture）とは何ですか？ 範囲（スコープ）による動きの違いも含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">確認する処理に、共通の用意（データ、データベースの初期化など）を提供する仕組み。<code>@pytest.fixture</code> という印を付けて定義し、確認する処理の引数として名前を書くと、pytest が自動で呼び出して値を渡してくれる。範囲は <code>function</code>（初期値。各処理の前に新しく実行）、<code>class</code>（まとまりごと）、<code>module</code>（ファイルごと）、<code>session</code>（全体で1回）の4種類。重い用意（データベースへの接続など）は全体で1回、軽い見本のデータは毎回新しく、というのが一般的。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 共通の用意を提供することを述べている<br>□ 印を付けて定義し、引数で受け取る動きを説明している<br>□ 範囲（テストごと／全体で1回 など）の使い分けに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>単体テストでの切り離し方</div>
+      <p style="font-size:14px;margin:0">本書では Web層・サービス層・データ層 の単体の確認で、それぞれどう「切り離し」を実現していますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>Web層</b>：環境変数 <code>CRYPTID_UNIT_TEST</code> を設定して、サービス層の代わりに <code>fake/</code> のまとまりを取り込む。サービス層 → データ層 → データベース の呼び出しをすべて仮のものに置き換える。<b>サービス層</b>：同じ環境変数で、データ層の代わりに仮のものを取り込む。<b>データ層</b>：別の環境変数 <code>CRYPTID_SQLITE_DB=":memory:"</code> で、SQLite をファイルではなくメモリ上で動かす。本物の SQL を動かしながら、ファイルを汚さない。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Web層とサービス層の、仮のものへの切り替えに触れている<br>□ 環境変数 <code>CRYPTID_UNIT_TEST</code> の役割を述べている<br>□ データ層がメモリ上のデータベースで確認することに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>Schemathesis の価値</div>
+      <p style="font-size:14px;margin:0">Schemathesis は何をしてくれる道具ですか？ 自分で書くテストと比べて、何が嬉しいですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">FastAPI が自動で作る OpenAPI の仕様（<code>/openapi.json</code>）を読み込み、各窓口に対して「型と条件にもとづくさまざまな入力」を自動で作って確かめる。自動生成のテストと呼ばれるやり方。自分で書く場合は「壊れそうな入力」を人が考えて書く必要があったが、これは自動でやってくれる。結果として、窓口の数が増えても、確認を用意する手間が増えない。型ヒントが仕様を経由してテストの生成にまで効いてくるのは、FastAPI の作りの思わぬ恩恵。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 仕様から自動でテストを作る仕組みに触れている<br>□ 自動生成のテストという考え方を述べている<br>□ 自分で書く場合との手間の比較に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>差し替えと別の実装を体感する</h4><p>本章の小さなファイル（<code>mod1.py</code>, <code>mod2.py</code>, <code>test_summer*.py</code>）を実際に動かして、違いを確かめる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>自分のアプリで自動生成のテストを試す</h4><p><code>/openapi.json</code> を取得し、Schemathesis を実行してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>pytest の説明を読む</h4><p>準備の仕組み、複数入力の与え方、一時的な差し替えの章を読む。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 複数の入力を1つの処理で確かめる書き方。</span>
+<span class="kw">import</span> pytest
+
+<span class="cmt"># 角かっこの中に、確かめたい組み合わせを並べる。</span>
+<span class="cmt"># 左が入力、右が期待する結果。3組を用意している。</span>
+<span class="fn">@pytest.mark.parametrize</span>(<span class="str">"a,b,expected"</span>, [
+    (<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>),
+    (<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>),
+    (-<span class="num">1</span>, <span class="num">1</span>, <span class="num">0</span>),
+])
+<span class="cmt"># 引数の名前を、上で並べた名前と合わせる。</span>
+<span class="kw">def</span> <span class="fn">test_add</span>(a, b, expected):
+    <span class="cmt"># 3組それぞれについて、この行が1回ずつ実行される。</span>
+    <span class="kw">assert</span> a + b == expected
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 3 passed</span>
+<span class="cmt"># 1つの処理を書くだけで、3件分の確認になる。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>負荷の確認を試す</h4><p>Locust の入門で、簡単な確認を書いてみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「生産」へ</h4><p>本番の運用という観点で、確認と見張りがどうつながるかを学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第12章「テスト」の図解 ― 原文の全節（ウェブAPIテスト／どこでテストするか／何をテストすべきか／Pytest／レイアウト／単体テストの自動化／モック／ダブルスとフェイク／ウェブ／サービス／データ／自動統合テスト／リポジトリ・パターン／フルテストの自動化／セキュリティ・テスト／負荷テスト）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

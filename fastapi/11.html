@@ -1,0 +1,1279 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第11章 認証認可 ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+  .warn-box{border:1px solid #ff6b8b55; background:#ff6b8b0f; border-radius:14px; padding:14px 18px; margin:16px 0}
+  .warn-box h4{margin:0 0 7px; color:#ff9db3; font-size:14px}
+  .warn-box p{margin:0; font-size:13.5px; color:#f5d5dc}
+  .jwt{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12px}
+  .jwt span{padding:8px 12px; border-radius:8px; word-break:break-all}
+  .jwt .h{background:#ff6b8b22; border:1px solid #ff6b8b55; color:#ffb0c0}
+  .jwt .p{background:#b78cff22; border:1px solid #b78cff55; color:#d7c0ff}
+  .jwt .s{background:#42d6c322; border:1px solid #42d6c355; color:#9ff0e5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第11章</div>
+  <h1>第11章　認証認可</h1>
+  <p>「あなたは誰か（認証）」と「何ができるか（認可）」。共有の合言葉による方法から始めて、個別の利用者の確認、そして OAuth2 + JWT の現代的なやり方まで。異なる場所からの呼び出しの許可（CORS）や、既存のパッケージの選択肢も見わたします。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全9節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① 間奏曲：認証は必要か？</a>
+  <a href="#s2">② 認証メソッド</a>
+  <a href="#s3">③ グローバル認証：共有シークレット</a>
+  <a href="#s4">④ シンプルな個人認証</a>
+  <a href="#s5">⑤ よりファンシーな個人認証</a>
+  <a class="sub" href="#s5-oauth">└ OAuth2</a>
+  <a class="sub" href="#s5-model">└ ユーザモデル</a>
+  <a class="sub" href="#s5-data">└ ユーザ・データ層</a>
+  <a class="sub" href="#s5-fake">└ ユーザ・仮データ層</a>
+  <a class="sub" href="#s5-service">└ ユーザ・サービス層</a>
+  <a class="sub" href="#s5-web">└ ユーザ・Web層</a>
+  <a class="sub" href="#s5-test">└ テストだ！</a>
+  <a class="sub" href="#s5-top">└ トップレイヤー</a>
+  <a class="sub" href="#s5-steps">└ 認証のステップ</a>
+  <a class="sub" href="#s5-jwt">└ JWT</a>
+  <a class="sub" href="#s5-oidc">└ サードパーティ認証：OIDC</a>
+  <a href="#s6">⑥ 認可</a>
+  <a href="#s7">⑦ ミドルウェア</a>
+  <a href="#s8">⑧ CORS</a>
+  <a href="#s9">⑨ サードパーティ・パッケージ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">認証 <span>authentication</span></div><p>「あなたは誰か」を確かめること。名前とパスワードの照合などです。</p></div>
+    <div class="item"><div class="w">認可 <span>authorization</span></div><p>「その人に、この操作をする権限があるか」を確かめることです。</p></div>
+    <div class="item"><div class="w">HTTPS</div><p>通信の中身を暗号化して、途中で読まれないようにする仕組みです。</p></div>
+    <div class="item"><div class="w">サービス拒否攻撃</div><p>大量の問い合わせを送りつけて、サービスを使えなくする攻撃です。</p></div>
+    <div class="item"><div class="w">レート制限</div><p>一定時間に受け付ける問い合わせの数に上限を設けることです。</p></div>
+    <div class="item"><div class="w">HTTP Basic 認証</div><p>名前とパスワードを、決まった形で毎回添えて送る、古くからの簡単な方法です。</p></div>
+    <div class="item"><div class="w">APIキー</div><p>意味のない長い文字列。これを持っていること自体が身分の証明になります。</p></div>
+    <div class="item"><div class="w">OAuth2</div><p>身分と権限のやり取りをそろえるための取り決め。いくつかの手順の型があります。</p></div>
+    <div class="item"><div class="w">JWT</div><p>利用者の情報を、改ざんを検出できる形で1つの文字列にまとめたもの。</p></div>
+    <div class="item"><div class="w">トークン</div><p>ログイン後に渡される、身分を示す文字列。以降の問い合わせに添えます。</p></div>
+    <div class="item"><div class="w">ハッシュ化</div><p>元に戻せない形に文字列を変換すること。パスワードはこの形で保存します。</p></div>
+    <div class="item"><div class="w">bcrypt</div><p>パスワードのハッシュ化によく使われる方式。総当たりに時間がかかるよう作られています。</p></div>
+    <div class="item"><div class="w">passlib</div><p>Python でパスワードのハッシュ化と照合を行うためのパッケージです。</p></div>
+    <div class="item"><div class="w">python-jose</div><p>Python で JWT を作ったり読んだりするためのパッケージです。</p></div>
+    <div class="item"><div class="w">401</div><p>「まだ身分が確認できていない」という意味の返事の番号です。</p></div>
+    <div class="item"><div class="w">409</div><p>「すでに存在するものと衝突している」という意味の返事の番号です。</p></div>
+    <div class="item"><div class="w">Authorization ヘッダ</div><p>問い合わせに添える情報のうち、身分を示す文字列を入れる場所です。</p></div>
+    <div class="item"><div class="w">Bearer</div><p>「この文字列を持っている人として扱ってください」という、添え方の種類です。</p></div>
+    <div class="item"><div class="w">クレーム <span>claim</span></div><p>トークンの中に入っている、利用者に関する情報のひとつひとつです。</p></div>
+    <div class="item"><div class="w">Base64URL</div><p>どんなデータも、住所の中で使える文字だけで表す変換の方式です。</p></div>
+    <div class="item"><div class="w">OIDC <span>OpenID Connect</span></div><p>「Google のアカウントでログイン」のような、外部のサービスで身分を確認する仕組みです。</p></div>
+    <div class="item"><div class="w">ACL <span>アクセス制御リスト</span></div><p>「誰が、何をしてよいか」を1つずつ並べて管理するやり方です。</p></div>
+    <div class="item"><div class="w">RBAC <span>役割による制御</span></div><p>利用者を「役割」に結びつけ、役割ごとに権限を決めるやり方です。</p></div>
+    <div class="item"><div class="w">ミドルウェア</div><p>問い合わせと返事の両方を、処理の前後で横から扱う仕組みです。</p></div>
+    <div class="item"><div class="w">CORS</div><p>別の場所にある画面から、この窓口を呼んでよいかを決める仕組みです。</p></div>
+    <div class="item"><div class="w">オリジン <span>origin</span></div><p>通信の方式・ドメイン・入口番号の3つの組み合わせ。1つでも違えば別のオリジンです。</p></div>
+    <div class="item"><div class="w">カーディナリティが低い</div><p>取りうる値の種類が少ないこと。「はい／いいえ」の2種類だけ、などです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">誰でも編集できたら困る</span></h2></div>
+  <div class="card">
+    <p class="lead">カフェに来た見知らぬ客が「生き物のデータベースを編集したいんですけど」と言い出します。タカ師匠：「誰でも編集できたら大変なことになる。だから<b>認証</b>（あなたは誰？）と<b>認可</b>（何ができる？）が必要だ」。本章では HTTP Basic 認証から始めて、OAuth2 + JWT、CORS、既存のパッケージの選択肢まで、Web の安全に関する最重要の話題を一気に見わたします。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を5行で</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>認証</b>は「あなたは誰か」、<b>認可</b>は「何ができるか」です。最初に共有の合言葉（HTTP Basic）で全体をまとめて確認する方法を試し、次に個別の利用者の確認（名前＋<span class="term" data-tip="元に戻せない形に変換したもの。パスワードはこの形で保存する。">ハッシュ化したパスワード</span>）、最後に OAuth2 + JWT の現代的なやり方を実装します。トークンは <code>Authorization</code> という添え情報で運びます。認可は役割で管理する方法や、1つずつ並べる方法で権限を扱います。別の場所からの呼び出しの許可（CORS）は、横から扱う仕組みで設定します。既存のパッケージを使えば実装の手間を省けます。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>認証と認可の違いをきちんと使い分けられる</li>
+        <li>HTTP Basic ／ APIキー ／ OAuth2 ／ JWT の使い分けを判断できる</li>
+        <li>パスワードはハッシュ化して保存する、という原則が身につく</li>
+        <li>CORS の設定で「信頼できる画面側」を指定できる</li>
+        <li>身分と権限のための既存のパッケージを探す手がかりが持てる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① 認証は必要か ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>間奏曲：認証は必要か？<span class="tag">完全に匿名では何が困るか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>認証が必要な場面は多くあります。完全に匿名だと、攻撃にも計測にも弱くなります。HTTPS も必須です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>認証は「あなたは誰なのか」という話だ。秘密の情報を、その人だけを表すものに結びつける必要がある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部のページを誰でも見られるようにしてはダメですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>できなくはない。けど、大量の問い合わせを送りつけて使えなくする攻撃にさらされる。受け付ける数の上限は Web サーバの外でも設定できる（第13章）けど、ほぼすべての公開された窓口の提供者は、最低限の確認を求めている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>安全のためだけじゃなく、「サイトがどれだけ役に立っているか」も知りたい。①何人が使ったか、②よく見られているページ、③変更後に利用が増えたか、④よくある閲覧の順番。これらの答えには、それぞれの訪問者の確認が要る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>注意。確認が必要なサイトは、必ず HTTPS を使うべきだ。暗号化しない通信では、秘密の情報が途中で読み取られる。HTTPS の設定は第13章で扱う。</div></div>
+    </div>
+
+    <div class="warn-box">
+      <h4>⚠️ HTTPS が必須である理由</h4>
+      <p>暗号化されていない通信では、送った内容が途中の経路でそのまま読めます。名前とパスワードを送れば、それがそのまま見えます。同じ無線ネットワークにいる人が見られる場合もあります。身分の確認を行うサイトでは、HTTPS は選択肢ではなく前提です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>認証 = 身分の確認</li>
+        <li>公開された窓口には、最低限の確認が必要</li>
+        <li>利用状況を数える目的でも認証は役に立つ</li>
+        <li>認証・認可を行うなら HTTPS は必須</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② 認証メソッド ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>認証メソッド<span class="tag">4つの方式</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>方式は名前＋パスワード／APIキー／OAuth2／JWT の4つ。本章は OAuth2 + JWT を中心に扱います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web での確認の方式と道具はたくさんある。①<b>名前とパスワード</b>：HTTP Basic / Digest の方式、②<b>APIキー</b>：意味のない長い文字列に秘密を持たせる、③<b>OAuth2</b>：身分と権限のための取り決めの集まり、④<b>JWT</b>：署名された利用者情報を含む文字列の形式。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本章は最初の2つを軽く触れて、3〜4の現代的なやり方（OAuth2 + JWT）をしっかり実装する。</div></div>
+    </div>
+    <div class="grid4">
+      <div class="mini"><div class="ic">🔑</div><h4>名前＋パスワード</h4><p>古くからある方式。毎回添えて送ります。</p><span class="pill">単純</span></div>
+      <div class="mini"><div class="ic">🎫</div><h4>APIキー</h4><p>長い文字列を1つ持たせるだけ。プログラム同士でよく使います。</p><span class="pill">単純</span></div>
+      <div class="mini"><div class="ic">🏛️</div><h4>OAuth2</h4><p>身分と権限の取り決めの集まり。複数の手順の型があります。</p><span class="pill">本章の中心</span></div>
+      <div class="mini"><div class="ic">📜</div><h4>JWT</h4><p>利用者の情報を1つの文字列にまとめる形式。改ざんを検出できます。</p><span class="pill">本章の中心</span></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>HTTP Basic / Digest: 古くからの方式</li>
+        <li>APIキー: 単純な秘密の文字列</li>
+        <li>OAuth2: 取り決めの集まり。複雑</li>
+        <li>JWT: 署名された文字列</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ 共有シークレット ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>グローバル認証：共有シークレット<span class="tag">いちばん単純な方法</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>HTTP Basic は単純ですが、合言葉を全員で共有する形なので、個別の利用者を見分けられません。学習用には向きますが、本番には向きません。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いちばん単純な確認は、サーバだけが知っている合言葉を渡すことだ。一致すれば確認成功。暗号化されていないと、途中で読み取られる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>新しく <code>auth.py</code> を作る。<code>main.py</code> とは別のサーバを立てるので、他のサーバが動いていないか確認しよう。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まず、送られた名前とパスワードをそのまま返すだけの窓口です。まだ何も確認していません。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを動かす道具を取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="cmt"># 枠組み本体と、依存関係、エラー、番号の定義を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends, HTTPException, status
+<span class="cmt"># 名前とパスワードを決まった形で受け取るための部品を取り込む。</span>
+<span class="kw">from</span> fastapi.security <span class="kw">import</span> HTTPBasic, HTTPBasicCredentials
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># 名前とパスワードを取り出す仕組みを1つ用意する。</span>
+basic = <span class="fn">HTTPBasic</span>()
+
+<span class="cmt"># /who への GET を、この下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/who"</span>)
+<span class="cmt"># Depends で包むことで、送られてきた名前とパスワードが creds に入ってくる。</span>
+<span class="kw">def</span> <span class="fn">get_user</span>(creds: HTTPBasicCredentials = <span class="fn">Depends</span>(basic)) -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 受け取った内容をそのまま返す。この時点では正しいかどうかを見ていない。</span>
+    <span class="kw">return</span> {<span class="str">"username"</span>: creds.username, <span class="str">"password"</span>: creds.password}
+
+<span class="cmt"># 直接動かされたときだけサーバを起動する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(<span class="str">"auth:app"</span>, reload=<span class="kw">True</span>)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie から名前とパスワードを送ります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># -a のあとに 名前:パスワード と書くと、決まった形で添えて送ってくれる。</span>
+<span class="cmt"># -q は余計な表示を減らす指定。</span>
+$ http -q -a me:secret localhost:8000/who
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "password": "secret",</span>
+<span class="cmt">#     "username": "me"</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 何を送っても、そのまま返ってくる。まだ確認していないため。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Python からでも同じことができます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 問い合わせ用のパッケージを取り込む。</span>
+<span class="kw">import</span> requests
+
+<span class="cmt"># auth= に 名前とパスワードの組を渡すと、決まった形で添えてくれる。</span>
+r = requests.<span class="fn">get</span>(<span class="str">"http://localhost:8000/who"</span>, auth=(<span class="str">"me"</span>, <span class="str">"secret"</span>))
+<span class="cmt"># 返ってきた内容を表示する。</span>
+<span class="fn">print</span>(r.<span class="fn">json</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {'username': 'me', 'password': 'secret'}</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>自動で作られる説明ページ（<code>/docs</code>）でも試せる。右の下向き矢印 → Try It Out → Execute、で名前とパスワードの入力欄が出る。何を入れても送信できる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>今のコードは「送られたものをそのまま返す」だけで、何も確認していない。次は合言葉を1組だけ持たせて、それと一致するか確かめる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">決められた組み合わせと一致するかを確かめる版です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを動かす道具を取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="cmt"># 枠組み本体、依存関係、エラー、番号の定義を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends, HTTPException, status
+<span class="cmt"># 名前とパスワードを受け取る部品を取り込む。</span>
+<span class="kw">from</span> fastapi.security <span class="kw">import</span> HTTPBasic, HTTPBasicCredentials
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># 名前とパスワードを取り出す仕組みを用意する。</span>
+basic = <span class="fn">HTTPBasic</span>()
+
+<span class="cmt"># 正解の組み合わせをコードの中に置いておく。学習用の書き方で、本番では避ける。</span>
+SECRET_USER = <span class="str">"newphone"</span>
+SECRET_PASSWORD = <span class="str">"whodis?"</span>
+
+<span class="cmt"># /who への GET を結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/who"</span>)
+<span class="kw">def</span> <span class="fn">get_user</span>(creds: HTTPBasicCredentials = <span class="fn">Depends</span>(basic)) -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 名前とパスワードの両方が正解と一致するかを確かめる。and は「両方とも」の意味。</span>
+    <span class="kw">if</span> creds.username == SECRET_USER <span class="kw">and</span> creds.password == SECRET_PASSWORD:
+        <span class="cmt"># 一致すれば内容を返す。</span>
+        <span class="kw">return</span> {<span class="str">"username"</span>: creds.username, <span class="str">"password"</span>: creds.password}
+    <span class="cmt"># 一致しなければ 401（まだ身分が確認できていない）を返す。</span>
+    <span class="kw">raise</span> <span class="fn">HTTPException</span>(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=<span class="str">"Hey!"</span>,
+    )
+
+<span class="cmt"># 直接動かされたときだけサーバを起動する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(<span class="str">"auth:app"</span>, reload=<span class="kw">True</span>)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>補足：<code>HTTP_401_UNAUTHORIZED</code> は FastAPI の番号の定義から取り込める。401 は正式には「Unauthorized（許可されていない）」だけど、実際の意味は「<b>まだ身分が確認できていない</b>」だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">間違った組み合わせと、正しい組み合わせの両方を試します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 正解ではない組み合わせを送ってみる。</span>
+$ http -a me:secret localhost:8000/who
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 401 Unauthorized</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt">#</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "detail": "Hey!"</span>
+<span class="cmt"># }</span>
+
+<span class="cmt"># 正解の組み合わせを送ってみる。</span>
+$ http -q -a newphone:whodis? localhost:8000/who
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "password": "whodis?",</span>
+<span class="cmt">#     "username": "newphone"</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 一致したので、内容が返ってきた。</span>
+</pre></details>
+
+    <div class="warn-box">
+      <h4>⚠️ この方法の限界</h4>
+      <p>合言葉が1組しかないので、「誰が使ったか」を区別できません。10人で共有すれば、10人全員が同じ扱いになります。1人だけ利用を止めたい場合、合言葉を変えるしかなく、残り9人にも影響します。またパスワードをそのまま返している点も、実際のサービスでは避けます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>FastAPI で HTTP Basic を使う方法が分かる</li><li>名前とパスワードを依存性注入で受け取る書き方が身につく</li><li>401 の意味が「まだ確認できていない」だと正しく理解できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>HTTPBasic()</code> を <code>Depends()</code> で渡す</li>
+        <li><code>HTTPException(401)</code> で確認の失敗を返す</li>
+        <li>共有の合言葉では、個別の利用者を見分けられない</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ 個人認証 ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>シンプルな個人認証<span class="tag">8つの手順</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>個別の確認は、利用者の表にハッシュ化したパスワードを保存し、HTTPS で送り、ハッシュ同士を比べるのが基本です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>前の節のやり方は大ざっぱで、安全ではないし、個人を見分けられない。多くのサイトは、①個別の訪問者を定義する、②特定の窓口へのアクセスを特定の訪問者に結びつける（認証）、③一部の窓口や訪問者に違う権限を割り当てられるようにする（認可）、④訪問者ごとの情報（興味、購入の記録など）を保存する、ことを望む。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>訪問者が人なら名前・メール・パスワード、外部のプログラムなら APIキーと秘密の文字列を使う。</div></div>
+    </div>
+
+    <h3 class="blk">本物の個人認証の手順</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>名前とパスワードを送る</h4><p>問い合わせに添える情報としてサーバに送る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>HTTPS で守る</h4><p>途中で読み取られないよう暗号化する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>パスワードをハッシュ化する</h4><p>元に戻せない別の文字列に変換する。ハッシュから元のパスワードは復元できない。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>表に保存する</h4><p>名前と<b>ハッシュ化したパスワード</b>を保存する。<div class="branch ng">元のパスワードそのものは、絶対に保存しない。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次回も同じ方式でハッシュ化して比べる</h4><p>入力された文字を同じ方式で変換し、保存済みのものと比べる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">6</div><div class="line"></div></div><div class="body"><h4>一致したら利用者の情報を渡す</h4><p>一致しなければ「無い」を返すか、失敗を投げる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">7</div><div class="line"></div></div><div class="body"><h4>サービス層で記録を残す</h4><p>関連する数値や記録を作る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">8</div></div><div class="body"><h4>Web層で必要な処理に渡す</h4><p>確認済みの利用者の情報を、それを必要とする処理に渡す。</p></div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：ハッシュ化していると何が守られるか</h4>
+      <p>保存されている値が <code>$2b$12$KIXQ...</code> のような文字列だとします。この値を見ても、元のパスワードが <code>hello123</code> だったのかどうかは分かりません。変換は一方向で、逆向きに計算する方法が用意されていないからです。</p>
+      <p>ログインのときは、入力された <code>hello123</code> を同じ方式で変換し、保存されている文字列と一致するかを比べます。一致すれば本人と判断できます。元のパスワードをどこにも保存せずに、確認だけができます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>利用者の表（名前 + ハッシュ化したパスワード）</li>
+        <li>パスワードは保存の前にハッシュ化</li>
+        <li>HTTPS で読み取りを防ぐ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ OAuth2 + JWT ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>よりファンシーな個人認証<span class="tag">OAuth2 + JWT を層ごとに作る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>個別の確認は OAuth2 + JWT + bcrypt が現代の基本です。外部のサービスで身分を確認する場合は OIDC を使います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本章では FastAPI の公式の説明とは逆に、データ層から上に登っていく。</div></div>
+    </div>
+
+    <h3 class="blk" id="s5-oauth">OAuth2</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>OAuth 2.0</b> は、あるサイトやアプリが、利用者に代わって別のサービスの情報にアクセスできるようにするための取り決めだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔は、B のログイン名とパスワードを A に教えて、A があなたの B の情報にアクセスする、ということがあった。これは続かず、OAuth が定められた。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>OAuth2 はよく使われるが複雑な<b>権限</b>の取り決めだ。いくつかの手順の型がある。本章では<b>認可コードの型</b>を使う。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">必要なパッケージを3つ入れます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># JWT を作ったり読んだりするためのパッケージ。角かっこの中は、暗号の追加部品の指定。</span>
+$ pip install python-jose[cryptography]
+<span class="cmt"># パスワードを安全にハッシュ化・照合するためのパッケージ。</span>
+$ pip install passlib
+<span class="cmt"># 入力欄からの送信を受け取るためのパッケージ。ログインの窓口で必要になる。</span>
+$ pip install python-multipart
+<span class="cmt"># --- 実行結果（各行） ---</span>
+<span class="cmt"># Successfully installed python-jose-3.3.0 ...</span>
+</pre></details>
+
+    <h3 class="blk" id="s5-model">ユーザモデル</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">保存する形は2項目だけです。項目名が <code>password</code> ではないことに注目してください。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># モデルの元になるものを取り込む。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="cmt"># 利用者を表す形を作る。</span>
+<span class="kw">class</span> <span class="fn">User</span>(BaseModel):
+    <span class="cmt"># 利用者の名前。1件を特定するための値としても使う。</span>
+    name: <span class="kw">str</span>
+    <span class="cmt"># ハッシュ化したあとの文字列。項目名を hash にしておくことで、</span>
+    <span class="cmt"># 「ここに生のパスワードを入れてはいけない」と読み手に伝わる。</span>
+    hash: <span class="kw">str</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>hash</code> はハッシュ化したあとのパスワードだ。元の文字ではない。</div></div>
+    </div>
+
+    <h3 class="blk" id="s5-data">ユーザ・データ層</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">利用者用の表と、削除済みを移す表の2つを用意します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># つながり、取っ手、重複の知らせを取り込む。</span>
+<span class="kw">from</span> .init <span class="kw">import</span> conn, curs, IntegrityError
+<span class="cmt"># 自分で定義した2つの知らせを取り込む。</span>
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+<span class="cmt"># 利用者の形を取り込む。</span>
+<span class="kw">from</span> model.user <span class="kw">import</span> User
+
+<span class="cmt"># 今使っている利用者の表。無ければ作る。</span>
+curs.<span class="fn">execute</span>(<span class="str">"""create table if not exists user(
+    name text primary key,
+    hash text)"""</span>)
+
+<span class="cmt"># 削除済みの利用者を移しておく表。項目は同じ。</span>
+curs.<span class="fn">execute</span>(<span class="str">"""create table if not exists xuser(
+    name text primary key,
+    hash text)"""</span>)
+
+<span class="cmt"># データベースから返る並びを、扱いやすい形に変換する。</span>
+<span class="kw">def</span> <span class="fn">row_to_model</span>(row: <span class="kw">tuple</span>) -&gt; User:
+    <span class="cmt"># 0番目が名前、1番目がハッシュ。</span>
+    <span class="kw">return</span> <span class="fn">User</span>(name=row[<span class="num">0</span>], hash=row[<span class="num">1</span>])
+
+<span class="cmt"># 形を、渡し方に合う形へ変換する。</span>
+<span class="kw">def</span> <span class="fn">model_to_dict</span>(user: User) -&gt; <span class="kw">dict</span>:
+    <span class="kw">return</span> user.<span class="fn">dict</span>() <span class="kw">if</span> user <span class="kw">else</span> <span class="kw">None</span>
+
+<span class="cmt"># 名前を指定して1件を取得する。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; User:
+    qry = <span class="str">"select * from user where name=:name"</span>
+    params = {<span class="str">"name"</span>: name}
+    curs.<span class="fn">execute</span>(qry, params)
+    row = curs.<span class="fn">fetchone</span>()
+    <span class="kw">if</span> row:
+        <span class="kw">return</span> <span class="fn">row_to_model</span>(row)
+    <span class="kw">else</span>:
+        <span class="cmt"># 見つからなければ「見つからない」を投げる。</span>
+        <span class="kw">raise</span> <span class="fn">Missing</span>(msg=<span class="str">f"User {name} not found"</span>)
+
+<span class="cmt"># すべてを取得する。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[User]:
+    qry = <span class="str">"select * from user"</span>
+    curs.<span class="fn">execute</span>(qry)
+    <span class="kw">return</span> [<span class="fn">row_to_model</span>(row) <span class="kw">for</span> row <span class="kw">in</span> curs.<span class="fn">fetchall</span>()]
+
+<span class="cmt"># 新しく1件を保存する。</span>
+<span class="kw">def</span> <span class="fn">create</span>(user: User) -&gt; User:
+    <span class="cmt"># 入れる項目名を明示して書いている。表の項目が増えたときに壊れにくい。</span>
+    qry = <span class="str">"insert into user (name, hash) values (:name, :hash)"</span>
+    params = <span class="fn">model_to_dict</span>(user)
+    <span class="kw">try</span>:
+        curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 同じ名前がすでにある場合の知らせを受け止める。</span>
+    <span class="kw">except</span> IntegrityError:
+        <span class="kw">raise</span> <span class="fn">Duplicate</span>(msg=<span class="str">f"User {user.name} already exists"</span>)
+    <span class="kw">return</span> <span class="fn">get_one</span>(user.name)
+
+<span class="cmt"># 既存の1件を書き換える。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, user: User) -&gt; User:
+    qry = <span class="str">"update user set name=:name, hash=:hash where name=:name_orig"</span>
+    params = <span class="fn">model_to_dict</span>(user)
+    <span class="cmt"># どの行かを見失わないよう、元の名前を追加で入れる。</span>
+    params[<span class="str">"name_orig"</span>] = name
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 1行だけ書き換わったかを確かめる。</span>
+    <span class="kw">if</span> curs.rowcount == <span class="num">1</span>:
+        <span class="kw">return</span> <span class="fn">get_one</span>(user.name)
+    <span class="kw">else</span>:
+        <span class="kw">raise</span> <span class="fn">Missing</span>(msg=<span class="str">f"User {name} not found"</span>)
+
+<span class="cmt"># 1件を削除する。ただし完全には消さず、別の表に移す。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>):
+    <span class="cmt"># 消す前に、内容を読んでおく。あとで移すために必要。</span>
+    user = <span class="fn">get_one</span>(name)
+    qry = <span class="str">"delete from user where name = :name"</span>
+    params = {<span class="str">"name"</span>: name}
+    res = curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 1行も消えていなければ、対象が無かったということ。</span>
+    <span class="kw">if</span> curs.rowcount != <span class="num">1</span>:
+        <span class="kw">raise</span> <span class="fn">Missing</span>(msg=<span class="str">f"User {name} not found"</span>)
+    <span class="cmt"># 読んでおいた内容を、削除済み用の表に入れる。記録を残すため。</span>
+    qry = <span class="str">"insert into xuser (name, hash) values (:name, :hash)"</span>
+    curs.<span class="fn">execute</span>(qry, <span class="fn">model_to_dict</span>(user))
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>補足。このコードは <code>user</code>（利用中）と <code>xuser</code>（削除済み）の2つの表を作る。よくある作りは、利用者の表に「削除済みかどうか」の項目を足すやり方だけど、私は別の表に移す方式を採る。理由は2つ。①すべての問い合わせで「削除済みでないこと」の確認を繰り返さなくて済む、②問い合わせが速くなる。「はい／いいえ」のように<b>値の種類が少ない</b>項目には、索引が効きにくい。</div></div>
+    </div>
+
+    <h3 class="blk" id="s5-fake">ユーザ・仮データ層</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">データベースを使わない、確認用の仮の実装です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 利用者の形と、2つの知らせを取り込む。</span>
+<span class="kw">from</span> model.user <span class="kw">import</span> User
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+
+<span class="cmt"># 仮の利用者を2件用意する。hash の値は形をまねただけの仮のもの。</span>
+_users = [
+    <span class="fn">User</span>(name=<span class="str">"taka"</span>, hash=<span class="str">"$2b$12$abcdef..."</span>),
+    <span class="fn">User</span>(name=<span class="str">"haru"</span>, hash=<span class="str">"$2b$12$ghijkl..."</span>),
+]
+
+<span class="cmt"># 名前を指定して1件を返す。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; User:
+    <span class="cmt"># 一覧を1件ずつ確認する。</span>
+    <span class="kw">for</span> u <span class="kw">in</span> _users:
+        <span class="kw">if</span> u.name == name:
+            <span class="kw">return</span> u
+    <span class="cmt"># 見つからなければ「見つからない」を投げる。本物のデータ層と同じ動きにそろえている。</span>
+    <span class="kw">raise</span> <span class="fn">Missing</span>(msg=<span class="str">f"User {name} not found"</span>)
+
+<span class="cmt"># すべてを返す。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[User]:
+    <span class="kw">return</span> _users
+
+<span class="cmt"># 作成。仮なので、受け取ったものをそのまま返す。</span>
+<span class="kw">def</span> <span class="fn">create</span>(user: User) -&gt; User:
+    <span class="kw">return</span> user
+
+<span class="cmt"># 更新。同じく、受け取ったものをそのまま返す。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, user: User) -&gt; User:
+    <span class="kw">return</span> user
+
+<span class="cmt"># 削除。仮なので何もしない。pass は「何もしない」という意味。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>):
+    <span class="kw">pass</span>
+</pre></details>
+
+    <h3 class="blk" id="s5-service">ユーザ・サービス層</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">ハッシュ化、照合、トークンの作成と読み取りが集まる場所です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 日時と、時間の長さを扱う標準の機能を取り込む。有効期限の計算に使う。</span>
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timedelta
+<span class="cmt"># JWT を作ったり読んだりする機能を取り込む。</span>
+<span class="kw">from</span> jose <span class="kw">import</span> jwt
+<span class="cmt"># パスワードのハッシュ化と照合を行う機能を取り込む。</span>
+<span class="kw">from</span> passlib.context <span class="kw">import</span> CryptContext
+<span class="cmt"># 利用者の形、データ層、知らせを取り込む。</span>
+<span class="kw">from</span> model.user <span class="kw">import</span> User
+<span class="kw">from</span> data <span class="kw">import</span> user <span class="kw">as</span> data
+<span class="kw">from</span> errors <span class="kw">import</span> Missing
+
+<span class="cmt"># 署名に使う秘密の文字列。これが漏れると、誰でも正しい見た目のトークンを作れてしまう。</span>
+<span class="cmt"># 本番では、コードに書かずに環境変数から読む。</span>
+SECRET_KEY = <span class="str">"keep-it-secret-keep-it-safe"</span>
+<span class="cmt"># 署名に使う計算の方式。</span>
+ALGORITHM = <span class="str">"HS256"</span>
+<span class="cmt"># トークンが有効な時間（分）。短いほど、漏れたときの影響が小さい。</span>
+ACCESS_TOKEN_EXPIRE_MINUTES = <span class="num">15</span>
+
+<span class="cmt"># ハッシュ化の設定を1つ用意する。bcrypt という方式を使う指定。</span>
+<span class="cmt"># deprecated="auto" は、古い方式が見つかったら自動で新しい方式に移す設定。</span>
+pwd_context = <span class="fn">CryptContext</span>(schemes=[<span class="str">"bcrypt"</span>], deprecated=<span class="str">"auto"</span>)
+
+<span class="cmt"># 入力されたパスワードが、保存されているハッシュと合っているかを確かめる。</span>
+<span class="kw">def</span> <span class="fn">verify_password</span>(plain: <span class="kw">str</span>, hash: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="cmt"># 入力を同じ方式で変換して比べる。合っていれば真、違えば偽を返す。</span>
+    <span class="kw">return</span> pwd_context.<span class="fn">verify</span>(plain, hash)
+
+<span class="cmt"># 入力されたパスワードを、保存用のハッシュに変換する。</span>
+<span class="kw">def</span> <span class="fn">get_hash</span>(plain: <span class="kw">str</span>) -&gt; <span class="kw">str</span>:
+    <span class="kw">return</span> pwd_context.<span class="fn">hash</span>(plain)
+
+<span class="cmt"># トークンの中から利用者の名前を取り出す。</span>
+<span class="kw">def</span> <span class="fn">get_jwt_username</span>(token: <span class="kw">str</span>) -&gt; <span class="kw">str</span> | <span class="kw">None</span>:
+    <span class="kw">try</span>:
+        <span class="cmt"># 秘密の文字列を使って中身を読み取る。署名が合わなければここで失敗する。</span>
+        payload = jwt.<span class="fn">decode</span>(token, SECRET_KEY, algorithms=[ALGORITHM])
+        <span class="cmt"># sub という項目に、利用者の名前を入れる決まりにしている。</span>
+        <span class="kw">return</span> payload.<span class="fn">get</span>(<span class="str">"sub"</span>)
+    <span class="cmt"># 読み取れなかった場合（改ざん、期限切れなど）は「無い」を返す。</span>
+    <span class="kw">except</span> jwt.JWTError:
+        <span class="kw">return</span> <span class="kw">None</span>
+
+<span class="cmt"># トークンから、実際の利用者の情報を取り出す。</span>
+<span class="kw">def</span> <span class="fn">get_current_user</span>(token: <span class="kw">str</span>) -&gt; User | <span class="kw">None</span>:
+    <span class="cmt"># まず名前を取り出す。</span>
+    name = <span class="fn">get_jwt_username</span>(token)
+    <span class="cmt"># 取り出せなければ、それ以上進まない。</span>
+    <span class="kw">if</span> <span class="kw">not</span> name:
+        <span class="kw">return</span> <span class="kw">None</span>
+    <span class="kw">try</span>:
+        <span class="cmt"># 名前でデータ層から探す。</span>
+        <span class="kw">return</span> <span class="fn">lookup_user</span>(name)
+    <span class="cmt"># 削除済みなどで見つからない場合は「無い」を返す。</span>
+    <span class="kw">except</span> Missing:
+        <span class="kw">return</span> <span class="kw">None</span>
+
+<span class="cmt"># 名前で利用者を探す。</span>
+<span class="kw">def</span> <span class="fn">lookup_user</span>(name: <span class="kw">str</span>) -&gt; User | <span class="kw">None</span>:
+    <span class="kw">return</span> data.<span class="fn">get_one</span>(name)
+
+<span class="cmt"># 名前とパスワードで本人かどうかを確かめる。</span>
+<span class="kw">def</span> <span class="fn">auth_user</span>(name: <span class="kw">str</span>, plain: <span class="kw">str</span>) -&gt; User | <span class="kw">None</span>:
+    <span class="kw">try</span>:
+        <span class="cmt"># まず名前で探す。</span>
+        user = <span class="fn">lookup_user</span>(name)
+        <span class="cmt"># 見つかり、かつパスワードも合っていれば、その利用者を返す。</span>
+        <span class="kw">if</span> user <span class="kw">and</span> <span class="fn">verify_password</span>(plain, user.hash):
+            <span class="kw">return</span> user
+    <span class="cmt"># 見つからない場合は、何もせず下に進む。</span>
+    <span class="kw">except</span> Missing:
+        <span class="kw">pass</span>
+    <span class="cmt"># 名前が無い場合も、パスワードが違う場合も、同じ「無い」を返す。</span>
+    <span class="cmt"># どちらが原因かを外に伝えないことで、名前を推測されにくくする。</span>
+    <span class="kw">return</span> <span class="kw">None</span>
+
+<span class="cmt"># トークンを作る。</span>
+<span class="kw">def</span> <span class="fn">create_access_token</span>(data_: <span class="kw">dict</span>, expires: timedelta | <span class="kw">None</span> = <span class="kw">None</span>):
+    <span class="cmt"># 渡された内容を写し取る。元のものを書き換えないため。</span>
+    src = data_.<span class="fn">copy</span>()
+    <span class="cmt"># 現在の時刻を取得する。</span>
+    now = datetime.<span class="fn">utcnow</span>()
+    <span class="cmt"># 有効期間が指定されていなければ、15分を使う。</span>
+    <span class="kw">if</span> <span class="kw">not</span> expires:
+        expires = <span class="fn">timedelta</span>(minutes=<span class="num">15</span>)
+    <span class="cmt"># exp という項目に、いつまで有効かを入れる。読み取る側はこれを見て期限切れを判断する。</span>
+    src[<span class="str">"exp"</span>] = now + expires
+    <span class="cmt"># 秘密の文字列で署名して、1つの文字列にまとめる。</span>
+    encoded_jwt = jwt.<span class="fn">encode</span>(src, SECRET_KEY, algorithm=ALGORITHM)
+    <span class="kw">return</span> encoded_jwt
+
+<span class="cmt"># ここから下は、データ層に渡すだけの処理。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; User:
+    <span class="kw">return</span> data.<span class="fn">get_one</span>(name)
+
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[User]:
+    <span class="kw">return</span> data.<span class="fn">get_all</span>()
+
+<span class="kw">def</span> <span class="fn">create</span>(user: User) -&gt; User:
+    <span class="kw">return</span> data.<span class="fn">create</span>(user)
+
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, user: User) -&gt; User:
+    <span class="kw">return</span> data.<span class="fn">modify</span>(name, user)
+
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>):
+    <span class="kw">return</span> data.<span class="fn">delete</span>(name)
+</pre></details>
+
+    <div class="warn-box">
+      <h4>⚠️ 秘密の文字列の扱い</h4>
+      <p>上の <code>SECRET_KEY</code> は、コードの中に直接書いてあります。これは説明のための書き方で、本番では避けます。この文字列を知っている人は、正しい見た目のトークンを自由に作れてしまうためです。第10章で学んだように、環境変数から読む形にして、コードの保管場所には入れません。</p>
+    </div>
+
+    <h3 class="blk" id="s5-web">ユーザ・Web層</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">ログインの窓口と、トークンを確認する窓口です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 時間の長さを扱う機能を取り込む。</span>
+<span class="kw">from</span> datetime <span class="kw">import</span> timedelta
+<span class="cmt"># 窓口のまとめ、依存関係、エラー、番号の定義を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends, HTTPException, status
+<span class="cmt"># トークンを受け取る部品と、ログイン用の入力欄を受け取る部品を取り込む。</span>
+<span class="kw">from</span> fastapi.security <span class="kw">import</span> OAuth2PasswordBearer, OAuth2PasswordRequestForm
+<span class="cmt"># 利用者の形、サービス層、知らせを取り込む。</span>
+<span class="kw">from</span> model.user <span class="kw">import</span> User
+<span class="kw">import</span> service.user <span class="kw">as</span> service
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+
+<span class="cmt"># トークンが有効な時間（分）。</span>
+ACCESS_TOKEN_EXPIRE_MINUTES = <span class="num">15</span>
+<span class="cmt"># この中の住所は /user から始まる。</span>
+router = <span class="fn">APIRouter</span>(prefix=<span class="str">"/user"</span>)
+<span class="cmt"># 「トークンを受け取る」仕組みを用意する。tokenUrl は、トークンを発行する窓口の住所。</span>
+<span class="cmt"># 説明ページの画面が、この住所を使ってログインの入力欄を表示する。</span>
+oauth2_dep = <span class="fn">OAuth2PasswordBearer</span>(tokenUrl=<span class="str">"/user/token"</span>)
+
+<span class="cmt"># 確認に失敗したときの返し方を、1か所にまとめておく。</span>
+<span class="kw">def</span> <span class="fn">unauthed</span>():
+    <span class="kw">raise</span> <span class="fn">HTTPException</span>(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        <span class="cmt"># 名前とパスワードのどちらが違うかは伝えない。推測されにくくするため。</span>
+        detail=<span class="str">"Incorrect username or password"</span>,
+        <span class="cmt"># 「この方式で身分を示してください」と相手に伝える添え情報。</span>
+        headers={<span class="str">"WWW-Authenticate"</span>: <span class="str">"Bearer"</span>},
+    )
+
+<span class="cmt"># ログインの窓口。ここでトークンを発行する。</span>
+<span class="fn">@router.post</span>(<span class="str">"/token"</span>)
+<span class="cmt"># Depends() だけを書くと、名前とパスワードの入力欄の内容が form_data に入る。</span>
+<span class="kw">async def</span> <span class="fn">create_access_token</span>(
+    form_data: OAuth2PasswordRequestForm = <span class="fn">Depends</span>(),
+):
+    <span class="cmt"># 名前とパスワードで本人かどうかを確かめる。</span>
+    user = service.<span class="fn">auth_user</span>(form_data.username, form_data.password)
+    <span class="cmt"># 確認できなければ、401 を返してここで終わる。</span>
+    <span class="kw">if</span> <span class="kw">not</span> user:
+        <span class="fn">unauthed</span>()
+    <span class="cmt"># 有効期間を計算する。</span>
+    expires = <span class="fn">timedelta</span>(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    <span class="cmt"># 利用者の名前を sub という項目に入れて、トークンを作る。</span>
+    access_token = service.<span class="fn">create_access_token</span>(
+        data_={<span class="str">"sub"</span>: user.name}, expires=expires
+    )
+    <span class="cmt"># 作ったトークンと、その添え方の種類を返す。</span>
+    <span class="kw">return</span> {<span class="str">"access_token"</span>: access_token, <span class="str">"token_type"</span>: <span class="str">"bearer"</span>}
+
+<span class="cmt"># 送られてきたトークンをそのまま返すだけの、確認用の窓口。</span>
+<span class="fn">@router.get</span>(<span class="str">"/token"</span>)
+<span class="cmt"># Depends(oauth2_dep) と書くと、添えられたトークンが取り出されて token に入る。</span>
+<span class="cmt"># トークンが無い場合は、この処理に入る前に 401 が返る。</span>
+<span class="kw">def</span> <span class="fn">get_access_token</span>(token: <span class="kw">str</span> = <span class="fn">Depends</span>(oauth2_dep)) -&gt; <span class="kw">dict</span>:
+    <span class="kw">return</span> {<span class="str">"token"</span>: token}
+
+<span class="cmt"># ここから下は、利用者の作成・取得などの窓口。</span>
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[User]:
+    <span class="kw">return</span> service.<span class="fn">get_all</span>()
+
+<span class="fn">@router.get</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; User:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">get_one</span>(name)
+    <span class="kw">except</span> Missing <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">404</span>, detail=exc.msg)
+
+<span class="fn">@router.post</span>(<span class="str">"/"</span>, status_code=<span class="num">201</span>)
+<span class="kw">def</span> <span class="fn">create</span>(user: User) -&gt; User:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">create</span>(user)
+    <span class="cmt"># すでにある場合は 409（すでにあるものと衝突）を返す。</span>
+    <span class="kw">except</span> Duplicate <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">409</span>, detail=exc.msg)
+
+<span class="cmt"># 更新と削除も同じ形で書く。</span>
+</pre></details>
+
+    <h3 class="blk" id="s5-test">テストだ！</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>利用者の部分の単体の確認と全体の確認は、生き物や探検家と似たものになる。本書の付属サイトに置いてある。</div></div>
+    </div>
+
+    <h3 class="blk" id="s5-top">トップレイヤー</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">利用者のまとまりを、アプリ本体に組み込みます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを動かす道具と、枠組み本体を取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># 3つのまとまりをまとめて取り込む。user が新しく加わった。</span>
+<span class="kw">from</span> web <span class="kw">import</span> explorer, creature, user
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># 探検家のまとまりを組み込む。</span>
+app.<span class="fn">include_router</span>(explorer.router)
+<span class="cmt"># 生き物のまとまりを組み込む。</span>
+app.<span class="fn">include_router</span>(creature.router)
+<span class="cmt"># 利用者のまとまりを組み込む。これで /user/token が使えるようになる。</span>
+app.<span class="fn">include_router</span>(user.router)
+
+<span class="cmt"># 一番上の住所。</span>
+<span class="fn">@app.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">top</span>():
+    <span class="kw">return</span> <span class="str">"top here"</span>
+
+<span class="cmt"># 直接動かされたときだけサーバを起動する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(<span class="str">"main:app"</span>, reload=<span class="kw">True</span>)
+</pre></details>
+
+    <h3 class="blk" id="s5-steps">認証のステップ</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>入力欄が表示される</h4><p>窓口がトークンを必要とする設定になっている場合、名前とパスワードの入力欄が作られて相手に送られる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>送信して照合する</h4><p>送られた名前とパスワード（同じ方式でハッシュ化したもの）を、手元のデータベースと照らし合わせる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>トークンが返る</h4><p>一致すれば、JWT 形式の<b>アクセストークン</b>が作られて返る。<div class="branch ng">一致しなければ 401 が返る。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>以降はトークンを添える</h4><p>次からの問い合わせでは、<code>Authorization</code> にトークンを添えて送る。サーバ側は読み取って名前などに戻す。データベースを再度探す必要がない。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>確認済みとして扱える</h4><p>その名前は確認済みなので、サーバは記録や個人向けの情報に使える。</p></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>確認できた情報で何ができるか。①誰がいつどの窓口を使ったかの記録を作る、②その人だけの情報を保存する。</div></div>
+    </div>
+
+    <h3 class="blk" id="s5-jwt">JWT</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>JWT は<b>文字列の形式</b>であって、確認の方式そのものではない。OAuth2 などの情報を運ぶのに使える。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>JWT はドットで区切られた3つの部分でできている。①<b>先頭部</b>：計算の方式と種別、②<b>中身</b>：利用者の情報など、③<b>署名</b>：書き換えられていないかを確かめるため。各部分は、住所の中でも使える文字だけに変換された JSON だ。</div></div>
+    </div>
+
+    <div class="jwt">
+      <span class="h">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>
+      <span style="color:var(--sub);padding:8px 0">.</span>
+      <span class="p">eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ</span>
+      <span style="color:var(--sub);padding:8px 0">.</span>
+      <span class="s">SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</span>
+    </div>
+    <div class="grid3">
+      <div class="mini" style="border-color:#ff6b8b55"><div class="ic">📋</div><h4>① 先頭部</h4><p>どの方式で署名したか、どんな種別かが書かれています。</p></div>
+      <div class="mini" style="border-color:#b78cff55"><div class="ic">👤</div><h4>② 中身</h4><p>利用者の名前や有効期限などが入っています。<b>暗号化はされていない</b>ので、誰でも読めます。</p></div>
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">🔏</div><h4>③ 署名</h4><p>秘密の文字列で作られた印。中身が書き換えられると合わなくなります。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ふつうの文字だけでできているので、住所・条件・添え情報・保存された小さなデータなど、いろいろな場所で運べる。JWT はデータベースを探す手間を省けるが、その代わり<b>取り消された権限をその場で見つけられない</b>という意味でもある。</div></div>
+    </div>
+
+    <div class="warn-box">
+      <h4>⚠️ 中身は「読めるが、書き換えられない」</h4>
+      <p>JWT の中身は暗号化されていません。誰でも変換を戻して読めます。だから、見られて困る情報（パスワード、個人を特定する詳細な情報）は入れません。</p>
+      <p>一方で、中身を書き換えると署名が合わなくなり、サーバ側で読み取るときに失敗します。つまり「読めるが、書き換えられない」という性質です。</p>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：取り消しが効かないとはどういうことか</h4>
+      <p>ある利用者を、管理画面から削除したとします。しかしその人が5分前に受け取ったトークンは、まだ有効期限内です。サーバは毎回データベースを見ないので、そのトークンを添えた問い合わせは通ってしまいます。</p>
+      <p>この対策として、有効期限を15分など短めにします。または、取り消したトークンの一覧を別に持って毎回確認しますが、それをすると「データベースを見なくて済む」という利点が減ります。速さと取り消しやすさは、どちらかを選ぶ関係にあります。</p>
+    </div>
+
+    <h3 class="blk" id="s5-oidc">サードパーティ認証：OIDC</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>「Google のアカウントでログイン」「Facebook でログイン」のようなものは <b>OIDC（OpenID Connect）</b> だ。OAuth2 の上に作られた取り決めで、外部の対応サイトにつなぐと、OAuth2 のアクセストークンと<b>身元を示すトークン</b>が返る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI の公式は OIDC の例を含まないけど、他の人が作ったものが多数ある。FastAPI OIDC, fastapi-third-party-auth, FastAPI Resource Server, oauthlib, pyoidc, oic, oidc-op, OpenID Connect など。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>現代的な確認の仕組みを、層ごとに組み立てられる</li><li>トークンの利点と注意点を理解して使い分けられる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>利用者の層: モデル / データ / 仮データ / サービス / Web の5つ</li>
+        <li>パスワード: bcrypt でハッシュ化（passlib）</li>
+        <li>トークン: JWT（python-jose）</li>
+        <li>ログインの窓口: <code>POST /user/token</code> で発行</li>
+        <li>以降: <code>Authorization: Bearer ...</code> で運ぶ</li>
+        <li>外部の身元確認: OIDC</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ 認可 ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>認可<span class="tag">段階的に複雑さに対応する</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>認可は「はい／いいえ」→「1つずつ並べる」→「役割で管理する」の順で、複雑さに応じて段階を上げます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>認証は「誰」、認可は「何」。どの対象に、どんな方法でアクセスできるか。組み合わせの数は膨大になり得る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書では探検家と生き物が主な対象だ。「読み取り」「一覧」はゆるく、「追加」「変更」「削除」は厳しく、というのが普通。書き込みの許可は、読み取りより制限すべきだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>完全に公開なら認可は不要。いちばん単純な認可は<b>はい／いいえの1つの値</b>（この人は管理者か否か）。データの件数が多い場合は、一覧の取得を管理者以外に制限したいこともある。複雑になるにつれて、認可も細かくなる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>管理者だけを見分ける</h4><p>確認済みの名前を、管理者の表と照らし合わせる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>全員を確認し、一部を管理者とする</h4><p>全員の身分を確認したうえで、管理者の表で管理者かどうかを確かめる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>複数の権限を持たせる</h4><p>権限の定義の表と、「誰がどの権限を持つか」の組み合わせの表を作る（<b>1つずつ並べる方式</b>）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>役割で管理する</h4><p>役割の表と、「誰がどの役割か」の組み合わせの表を作る（<b>役割による制御</b>）。</p></div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔘</div><h4>はい／いいえ</h4><p>「管理者かどうか」だけを見ます。小規模で権限が単純な場合に向きます。</p><span class="pill">単純</span></div>
+      <div class="mini"><div class="ic">📋</div><h4>1つずつ並べる（ACL）</h4><p>利用者ごとに個別の権限を持たせます。細かい制御ができます。</p><span class="pill">中規模</span></div>
+      <div class="mini"><div class="ic">👥</div><h4>役割で管理する（RBAC）</h4><p>利用者を役割に結びつけ、役割に権限を結びつけます。人数が多い場合に向きます。</p><span class="pill">大規模</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：役割で管理すると何が楽か</h4>
+      <p>1つずつ並べる方式で、100人の利用者にそれぞれ10個の権限を設定していたとします。「編集者は下書きも見られるようにする」という変更が入ると、編集者にあたる30人分を1つずつ直すことになります。</p>
+      <p>役割で管理していれば、「編集者」という役割に権限を1つ足すだけで、その役割の30人全員に反映されます。新しく編集者が加わったときも、役割を1つ設定するだけで済みます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>認可 = 何ができるか</li>
+        <li>段階: はい／いいえ → 1つずつ並べる → 役割で管理する</li>
+        <li>書き込みは読み取りより厳しく</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ ミドルウェア ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>ミドルウェア<span class="tag">前後をまとめて扱う</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>ミドルウェアは、問い合わせと返事を横から扱う層です。全体にかかる処理に向きます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI では Web 層に「くるむ」コードを挟める。問い合わせを受け取り、それに何かをして、パス関数に渡し、返事を受け取り、何かをして、呼び出し元に返す。デコレータが処理をくるむのと似ている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ミドルウェアか、依存性注入（<code>Depends()</code>）か。状況による。<b>CORS のような、全体にかかる安全の設定</b>にはミドルウェアが便利だ。</div></div>
+    </div>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>問い合わせを受け取る</h4><p>パス関数より先に、ここを通る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>何かをする</h4><p>記録を残す、許可を確かめる、など。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>パス関数に渡す</h4><p>本来の処理が動く。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>返事を受け取る</h4><p>返す前に、もう一度ここを通る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>何かをして返す</h4><p>添え情報を足す、時間を記録する、など。</p></div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>ミドルウェア = 問い合わせと返事をくるむ</li>
+        <li>全体にかかる処理に向く</li>
+        <li>依存性注入との使い分けを考える</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ CORS ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>CORS<span class="tag">どの画面からの呼び出しを許すか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>CORS は、別の場所にある正規の画面との通信を許可する仕組みです。<code>CORSMiddleware</code> で設定します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>CORS</b> は、別のサーバにある信頼できる画面と、この窓口との通信の話だ。画面も裏側も同じ場所にあるなら関係ない。けど最近は画面側と FastAPI の裏側が分かれていて、両者は同じ<b>オリジン</b>を持たない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>オリジンは、通信の方式（http か https か）＋ ドメイン（例：google.com）＋ 入口番号（例：443、8000）の組み合わせだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>裏側は、どうやって信頼できる画面と、そうでないものを見分けるか？ それが CORS だ。裏側が何を信頼するかを指定する。①オリジン、②動詞、③添え情報、④その設定を覚えておく時間。</div></div>
+    </div>
+
+    <h3 class="blk">オリジンとは</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>比べる相手</th><th>オリジン</th><th>同じか</th></tr>
+      <tr><td>基準</td><td><code>https://ui.cryptids.com:443</code></td><td>―</td></tr>
+      <tr><td>方式が違う</td><td><code>http://ui.cryptids.com:443</code></td><td><span class="down">別のオリジン</span></td></tr>
+      <tr><td>ドメインが違う</td><td><code>https://other.com:443</code></td><td><span class="down">別のオリジン</span></td></tr>
+      <tr><td>入口番号が違う</td><td><code>https://ui.cryptids.com:8000</code></td><td><span class="down">別のオリジン</span></td></tr>
+      <tr><td>すべて同じ</td><td><code>https://ui.cryptids.com:443</code></td><td><span class="up">同じオリジン</span></td></tr>
+    </table>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">信頼する画面を指定する設定です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># 別の場所からの呼び出しを扱う部品を取り込む。</span>
+<span class="kw">from</span> fastapi.middleware.cors <span class="kw">import</span> CORSMiddleware
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># くるむ処理として、別の場所からの呼び出しの設定を追加する。</span>
+app.<span class="fn">add_middleware</span>(
+    CORSMiddleware,
+    <span class="cmt"># 許可する呼び出し元の一覧。ここに書かれていない場所からの呼び出しは拒否される。</span>
+    allow_origins=[<span class="str">"https://ui.cryptids.com"</span>],
+    <span class="cmt"># 許可する動詞。* はすべてという意味。必要なものだけに絞るほうが安全。</span>
+    allow_methods=[<span class="str">"*"</span>],
+    <span class="cmt"># 許可する添え情報。同じく * はすべて。</span>
+    allow_headers=[<span class="str">"*"</span>],
+)
+<span class="cmt"># --- この設定で起きること ---</span>
+<span class="cmt"># ui.cryptids.com の画面からの呼び出しは通る。</span>
+<span class="cmt"># 別のドメインの画面からブラウザ経由で呼ぼうとすると、ブラウザ側で止められる。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これで、他のドメインからの直接の呼び出しは止められる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：設定しないとどうなるか</h4>
+      <p>画面が <code>https://ui.cryptids.com</code>、窓口が <code>https://api.cryptids.com</code> にあるとします。CORS を設定していないと、ブラウザは「別のオリジンへの呼び出しは許可されていない」と判断し、画面側でエラーになります。窓口自体は動いているのに、画面からは使えません。</p>
+      <p>逆に <code>allow_origins=["*"]</code>（すべて許可）にすると、どんなサイトの画面からもこの窓口を呼べます。悪意のあるサイトが、訪問者のブラウザを通じてこの窓口を呼び出せてしまいます。必要な相手だけを書くのが基本です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>CORS = 別の場所にある画面との通信の許可</li>
+        <li>オリジン = 方式 + ドメイン + 入口番号</li>
+        <li><code>CORSMiddleware</code> で許可する相手を指定</li>
+        <li>指定していない場所からの呼び出しは止められる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ サードパーティ ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>サードパーティ・パッケージ<span class="tag">全部を自分で書かなくてよい</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>身分と権限の仕組みは、既存のパッケージを使うのも選択肢です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>身分と権限の仕組みを、全部自分で書く必要はないかもしれない。FastAPI のまわりは急速に広がっていて、便利なパッケージが多数ある。私が全部を確かめたわけではないが、一見の価値はある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI Users, FastAPI JWT Auth, FastAPI-Login, fastapi-auth0, AuthX, FastAPI-User-Auth, fastapi-authz, fastapi-opa, FastAPI-key-auth, FastAPI Auth Middleware, fastapi-JWT, fastapi_auth2, fastapi-sso, Fief など。</div></div>
+    </div>
+    <div class="warn-box">
+      <h4>⚠️ 選ぶときに見ておきたいこと</h4>
+      <p>安全に関わる部分は、間違うと影響が大きい場所です。パッケージを選ぶときは、最終更新がいつか、問題の報告に対応されているか、どれくらい使われているか、を確認します。長く更新されていないものは、見つかった問題が直されないまま残っている可能性があります。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>FastAPI まわりの選択肢は急速に増えている</li>
+        <li>全部を自分で書く必要はない</li>
+        <li>用途に合うものを見極めて選ぶ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">6つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「認証 = 誰、認可 = 何。両方とも公開された窓口にはほぼ必須」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>HTTPS もセットでね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「HTTP Basic → 個別の確認 → OAuth2 + JWT の順に強くなる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>学習用には Basic、本番には OAuth2 + JWT。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「パスワードはハッシュ化して保存。そのままの文字での保存は絶対にしない」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>passlib と bcrypt が定番だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「トークンは <code>Authorization: Bearer ...</code> で運ぶ。JWT はデータベースを探さずに済むが、取り消しの検出は難しい」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>良い点と困る点を意識して使う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「認可は はい／いいえ → 1つずつ並べる → 役割で管理する、と段階を上げる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最初は単純に、必要に応じて段階を上げる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>6つ目、「CORS の設定で、信頼できる画面側の場所を指定する」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>画面と裏側が分かれた今のやり方では必須の設定だ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>認証と認可</div>
+      <p style="font-size:14px;margin:0">「認証」と「認可」の違いを、自分の言葉で説明してください。それぞれの典型的な実装例も挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">認証は「あなたは誰か」を確かめること。実装例は名前とパスワードでのログイン、トークン、OAuth2 など。認可は「あなたは何ができるか」を制御すること。実装例は「管理者だけが削除の窓口を使える」という はい／いいえ の判定、役割による制御、権限を1つずつ並べる方式など。認証は身元の確認、認可は権限の確認、と覚えると区別しやすい。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 認証 = 誰、認可 = 何 の枠組みで説明している<br>□ 認証の実装例（パスワード／トークン）を挙げている<br>□ 認可の実装例（役割／権限）を挙げている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>パスワードの保存の原則</div>
+      <p style="font-size:14px;margin:0">利用者のパスワードを保存する際の原則を説明してください。なぜハッシュ化するのか、そのままの文字で保存してはいけない理由を含めてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">パスワードは bcrypt などの方式でハッシュ化してから保存する。理由は、データベースの中身が外に出てしまった場合でも、ハッシュから元のパスワードを復元できないため、被害を小さくできるから。変換は一方向で、逆向きに戻せない。ログインのときは「入力されたパスワードを同じ方式で変換」して、保存済みのものと比べる。そのままの文字での保存は避ける（多くの人が複数のサイトで同じパスワードを使うため、被害が連鎖する）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ハッシュ化（元に戻せない）に触れている<br>□ 情報が外に出たときの被害を小さくすることを理由として述べている<br>□ ログインのときの照合の方法を説明している<br>□ そのままの保存の危険性に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>JWT の仕組み</div>
+      <p style="font-size:14px;margin:0">JWT の構造と、確認の流れでの使われ方を説明してください。良い点と注意点も含めてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">JWT はドットで区切られた3つの部分（先頭部・中身・署名）でできた文字列。各部分は、住所でも使える文字だけに変換された JSON。流れとしては、ログインに成功するとサーバが JWT を発行し、以降の問い合わせで <code>Authorization: Bearer &lt;jwt&gt;</code> という形で添える。サーバは読み取って利用者の情報を取り出す（データベースを探す必要がない）。良い点は速いこと、状態を持たなくてよいこと。注意点は、取り消しをその場で検出できないこと（有効期限を短くして対応）、トークンが漏れると期限内は使われてしまうこと。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つの部分の構造に触れている<br>□ <code>Authorization: Bearer</code> で運ぶことを述べている<br>□ 良い点（データベースを探さない、状態を持たない）に触れている<br>□ 注意点（取り消しの検出が難しい）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>CORS とは</div>
+      <p style="font-size:14px;margin:0">CORS とは何ですか？ なぜ必要で、FastAPI ではどう設定しますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">CORS は、異なるオリジン（通信の方式 + ドメイン + 入口番号）の間でのやり取りを制御する仕組み。画面側が <code>https://ui.example.com</code>、窓口が <code>https://api.example.com</code> のように分かれている今のやり方では、窓口が「どの画面からの呼び出しを許可するか」を指定する必要がある。FastAPI では <code>CORSMiddleware</code> を <code>app.add_middleware()</code> で追加し、<code>allow_origins</code>、<code>allow_methods</code>、<code>allow_headers</code> で条件を指定する。これで意図しない場所からの呼び出しを防げる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ オリジン（方式 + ドメイン + 入口番号）の定義に触れている<br>□ 画面と裏側が分かれている場合に必要、と説明している<br>□ <code>CORSMiddleware</code> を <code>add_middleware</code> で設定する方法に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>認可の段階</div>
+      <p style="font-size:14px;margin:0">単純な はい／いいえ による認可から、より複雑な認可へ進む3段階を、自分の言葉で説明してください。それぞれ使う場面も示してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<b>はい／いいえ</b>：「管理者かどうか」だけを判定する単純な仕組み。小さなシステムや、権限が単純な場合に向く。②<b>1つずつ並べる方式</b>：権限の表と、利用者と権限の組み合わせの表で、利用者ごとに個別の権限を持たせる。読み取り専用の人、読み書きできる人、といった細かい制御が必要な場合に向く。③<b>役割による制御</b>：役割の表と、利用者と役割の組み合わせの表で、利用者を役割に結びつけ、役割に権限を結びつける。権限も利用者も多い、中規模以上のシステムに向く。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3段階を順序立てて挙げている<br>□ それぞれの仕組みを簡潔に説明している<br>□ 使う場面を具体的に挙げている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>公式の説明を読む</h4><p>FastAPI 公式ドキュメントの「Security」の項を通読する（特に OAuth2 とパスワードと JWT の部分）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>JWT を実際に読んでみる</h4><p>jwt.io で、トークンの中身がどう変換されているかを見る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>ハッシュ化を試す</h4><p>passlib を入れて、実際に変換してみる。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ハッシュ化の機能を取り込む。</span>
+<span class="kw">from</span> passlib.context <span class="kw">import</span> CryptContext
+
+<span class="cmt"># bcrypt という方式を使う設定を用意する。</span>
+pwd_context = <span class="fn">CryptContext</span>(schemes=[<span class="str">"bcrypt"</span>], deprecated=<span class="str">"auto"</span>)
+
+<span class="cmt"># 同じ文字を2回変換してみる。</span>
+h1 = pwd_context.<span class="fn">hash</span>(<span class="str">"mypassword"</span>)
+h2 = pwd_context.<span class="fn">hash</span>(<span class="str">"mypassword"</span>)
+<span class="fn">print</span>(h1)
+<span class="fn">print</span>(h2)
+<span class="cmt"># --- 実行結果（値は毎回変わる） ---</span>
+<span class="cmt"># $2b$12$KIXQ4.../7oS9v...</span>
+<span class="cmt"># $2b$12$9aBcD.../3xY1z...</span>
+<span class="cmt"># 同じ文字なのに違う値になる。毎回ちがう「混ぜもの」が加えられるため。</span>
+<span class="cmt"># だから、同じパスワードを使っている人同士でも、保存された値は一致しない。</span>
+
+<span class="cmt"># それでも、照合はできる。</span>
+<span class="fn">print</span>(pwd_context.<span class="fn">verify</span>(<span class="str">"mypassword"</span>, h1))
+<span class="fn">print</span>(pwd_context.<span class="fn">verify</span>(<span class="str">"wrongpass"</span>, h1))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># True</span>
+<span class="cmt"># False</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>自分の小さなアプリで試す</h4><p><code>OAuth2PasswordBearer</code> を使ったログインを実装してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「テスト」へ</h4><p>身分の確認が必要な窓口を、どうやって確かめるかを学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第11章「認証認可」の図解 ― 原文の全節（間奏曲：認証は必要か／認証メソッド／グローバル認証：共有シークレット／シンプルな個人認証／よりファンシーな個人認証（OAuth2・モデル・データ層・仮データ層・サービス層・Web層・テスト・トップレイヤー・認証ステップ・JWT・OIDC）／認可／ミドルウェア／CORS／サードパーティ・パッケージ）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

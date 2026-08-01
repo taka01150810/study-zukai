@@ -1,0 +1,1261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第2章 モダンPython ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第2章</div>
+  <h1>第2章　モダンPython</h1>
+  <p>Python も昔の Python ではありません。pip・venv・Poetry・Black といった道具立てから、変数の正体（値ではなく名前）、そして本書の主役の一つになる<b>型ヒント</b>まで。最後に「Django/Flask/FastAPI、なぜいま FastAPI なのか」を見て、次章への助走を作ります。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">用語集つき</span>
+    <span class="badge">全16節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① ツール</a>
+  <a href="#s2">② はじめに（実行の2通り）</a>
+  <a href="#s3">③ Pythonそのもの（バージョン）</a>
+  <a href="#s4">④ パッケージ管理（pip）</a>
+  <a href="#s5">⑤ 仮想環境（venv）</a>
+  <a href="#s6">⑥ Poetry（詩）</a>
+  <a href="#s7">⑦ ソースの形式（Black）</a>
+  <a href="#s8">⑧ テスト（pytest）</a>
+  <a href="#s9">⑨ ソース管理と継続的インテグレーション</a>
+  <a href="#s10">⑩ ウェブツール</a>
+  <a href="#s11">⑪ APIとサービス</a>
+  <a href="#s12">⑫ 変数は名前付けである</a>
+  <a class="sub" href="#s12-obj">└ オブジェクトとは</a>
+  <a class="sub" href="#s12-diff">└ 他の言語との違い</a>
+  <a class="sub" href="#s12-scope">└ スコープと命名</a>
+  <a href="#s13">⑬ タイプヒント（型ヒント）</a>
+  <a href="#s14">⑭ データ構造</a>
+  <a href="#s15">⑮ ウェブ・フレームワーク（WSGI / ASGI）</a>
+  <a href="#s16">⑯ Django</a>
+  <a href="#s17">⑰ Flask</a>
+  <a href="#s18">⑱ FastAPI</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。プログラムを書いたことがなくてもそのまま読めます。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">パッケージ <span>package</span></div><p>他の人が作って公開している、そのまま使える機能のかたまり。取り込めば自分で書かずに済みます。</p></div>
+    <div class="item"><div class="w">pip</div><p>公開されているパッケージを取ってきて、自分のパソコンに入れるためのコマンド。<code>pip install 名前</code> で使います。</p></div>
+    <div class="item"><div class="w">仮想環境 <span>venv</span></div><p>プロジェクトごとに用意する、パッケージの専用インストール先フォルダ。そこを使うと決めておくと、他のプロジェクトに影響を与えずに済みます。</p></div>
+    <div class="item"><div class="w">有効化 <span>activate</span></div><p>「これから <code>python</code> や <code>pip</code> を打ったら、この仮想環境のものを使う」と切り替える操作のことです。</p></div>
+    <div class="item"><div class="w">Poetry <span>ポエトリー</span></div><p>パッケージの取得と仮想環境の管理をまとめて行う道具。設定ファイルに書いた通りの組み合わせを再現できます。</p></div>
+    <div class="item"><div class="w">依存関係 <span>dependency</span></div><p>あるパッケージが動くために必要な、別のパッケージのつながり。A が B を必要とし、B が C を必要とする、という連鎖になります。</p></div>
+    <div class="item"><div class="w">ピン留め <span>pinning</span></div><p>使うバージョンを1つに固定すること。「2.1.3 だけを使う」と決めれば、環境が変わっても同じものが入ります。</p></div>
+    <div class="item"><div class="w">Black</div><p>Python のコードの見た目（空白や改行の入れ方）を、決まった形に自動でそろえる道具です。</p></div>
+    <div class="item"><div class="w">pytest</div><p>「このコードは期待通りに動くか」を自動で確かめるプログラムを書くための道具。実務で最も広く使われています。</p></div>
+    <div class="item"><div class="w">Git</div><p>コードの変更履歴を記録し、いつでも過去に戻せるようにする道具。複数人での共同作業にも使います。</p></div>
+    <div class="item"><div class="w">リポジトリ <span>repository</span></div><p>コードとその変更履歴をまとめて置いておく保管場所のことです。</p></div>
+    <div class="item"><div class="w">pre-commit</div><p>変更を記録する直前に、決めておいた確認（整形やテスト）を自動で走らせる仕組み。通らなければ記録できません。</p></div>
+    <div class="item"><div class="w">CI <span>継続的インテグレーション</span></div><p>変更を共有の保管場所に送るたび、サーバー側で自動的にテストを実行する仕組みです。</p></div>
+    <div class="item"><div class="w">オブジェクト <span>object</span></div><p>Python がデータを持つときの入れ物。整数の 5 も、関数も、自分で作った型のデータも、すべてこの形で扱われます。</p></div>
+    <div class="item"><div class="w">強く型付けされている</div><p>データの種類（整数、文字列など）が勝手に別の種類に変わらない、ということ。数字と文字を混ぜて計算しようとするとエラーになります。</p></div>
+    <div class="item"><div class="w">mutable／immutable</div><p>mutable は中身を後から変えられるデータ（リストなど）。immutable は一度作ったら変えられないデータ（文字列やタプルなど）です。</p></div>
+    <div class="item"><div class="w">参照カウント</div><p>そのデータが今いくつの名前から使われているかを数えた数。0 になると、そのデータは自動的に片づけられます。</p></div>
+    <div class="item"><div class="w">スコープ <span>scope</span></div><p>ある名前が通用する範囲。関数の中で作った名前は、その関数の外からは見えません。</p></div>
+    <div class="item"><div class="w">型ヒント <span>type hint</span></div><p>「この値は整数」「ここは文字列を返す」とコードに書き添える表記。実行時に強制はされず、道具と読み手のための情報です。</p></div>
+    <div class="item"><div class="w">mypy</div><p>型ヒントの書き方と実際の使い方が食い違っていないかを、実行前に調べてくれる道具です。</p></div>
+    <div class="item"><div class="w">Pydantic</div><p>型ヒントを使ってデータの形を宣言し、受け取った値がその形に合っているかを実行時に確かめてくれるパッケージです。</p></div>
+    <div class="item"><div class="w">WSGI</div><p>Python のプログラムと Web サーバーをつなぐ、順番に1つずつ処理する方式の取り決めです。</p></div>
+    <div class="item"><div class="w">ASGI</div><p>WSGI の非同期版。返事待ちの間に別の処理を進められる方式の取り決めです。</p></div>
+    <div class="item"><div class="w">Starlette</div><p>ASGI に対応した軽量な土台。FastAPI はこの上に作られています。</p></div>
+    <div class="item"><div class="w">Uvicorn</div><p>ASGI 方式で動く Web サーバー。FastAPI で作ったプログラムを実際に動かすときに使います。</p></div>
+    <div class="item"><div class="w">モジュール／パッケージ（Python）</div><p>コードを機能ごとにファイル単位・フォルダ単位に分けたもの。取り込んで使います。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">モダンPythonの装備品を見せてもらう</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠は「Python も昔の Python じゃないんだよ」と笑いながら、ハルにモダン Python の装備品を見せていきます。pip や venv、Poetry、Black といった道具立てから、変数の正体（値ではなく名前）、そして本書の主役の一つになる<b>型ヒント</b>まで。最後に「Django/Flask/FastAPI、なぜいま FastAPI なのか」を語って、次章への助走を作ります。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧰</div><h4>前半：道具立て</h4><p>pip / venv / Poetry / Black / pytest / Git / CI。環境構築でハマらないための地図。</p></div>
+      <div class="mini"><div class="ic">🏷️</div><h4>中盤：変数と型ヒント</h4><p>Python の変数は「名前」。そして型ヒントが FastAPI の中核技術になる理由。</p></div>
+      <div class="mini"><div class="ic">🏛️</div><h4>後半：フレームワーク</h4><p>WSGI と ASGI、Django・Flask・FastAPI の歴史的な位置関係。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を3行で</span></h2></div>
+  <div class="card">
+    <p class="lead">モダン Python には、外部パッケージ管理（pip / Poetry）、<span class="term" data-tip="プロジェクトごとに用意する、パッケージの専用インストール先フォルダ。">仮想環境</span>（venv）、コード整形（Black）、テスト（pytest）、ソース管理（Git）、<span class="term" data-tip="変更を送るたびサーバー側で自動テストが走る仕組み。">継続的インテグレーション</span>（CI）といった成熟した道具立てがそろっています。さらに<b>型ヒント</b>という後から追加された機能が、FastAPI によって思いがけない使い方をされています。同期の Web を担う <b>WSGI</b> と、非同期の Web を担う <b>ASGI</b> という2つの標準があり、FastAPI は ASGI 側に立ちます。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>「Python の環境構築って毎回ハマる…」という人が、なぜハマるか・どう避けるかを理解できる</li>
+        <li>仮想環境、pip、Poetry の位置づけが分かり、自分のプロジェクトを安全に切り分けられる</li>
+        <li>「変数とは名前」という Python 独特の考え方が腹落ちし、参照が絡むバグを減らせる</li>
+        <li><b>型ヒント</b>が単なる「親切なメモ」ではなく、FastAPI の中核技術になっている理由を理解できる</li>
+        <li>Django/Flask/FastAPI の歴史的な位置関係を把握し、なぜ本書が FastAPI を選ぶかを説明できる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① ツール ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>ツール<span class="tag">言語に必要な4セット</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>言語には「コア／パッケージ追加方法／推奨パッケージ／開発環境」の4セットが必要で、Python はどれも進化中です。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Python って、もう完成された言語ですよね。何が新しくなってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>言語の世界も変化が早くてね。どんなプログラミング言語にも、次の4セットが必要だ。①<b>コア言語と組み込み標準パッケージ</b>、②<b>外部パッケージを追加する方法</b>、③<b>推奨される外部パッケージ</b>、④<b>開発ツールの環境</b>。Python はこれらすべてが世代交代している。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4セットなんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。これから本書で使う Python の道具を順に紹介していく。Python のパッケージまわりは移り変わりが早いから、よりよい解決策が出たら適宜乗り換えるのがふつうだよ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🐍</div><h4>① コア言語と標準パッケージ</h4><p>Python 本体と、最初から付いてくる機能一式。</p></div>
+      <div class="mini"><div class="ic">📥</div><h4>② 外部パッケージを追加する方法</h4><p>他の人が作った機能を取ってきて使う手段（pip、Poetry）。</p></div>
+      <div class="mini"><div class="ic">⭐</div><h4>③ 推奨される外部パッケージ</h4><p>その用途で定番になっているパッケージ（pytest、Black など）。</p></div>
+      <div class="mini"><div class="ic">🛠️</div><h4>④ 開発ツールの環境</h4><p>編集・整形・テスト・履歴管理など、書く作業を支える道具一式。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「Python が進化している」とはどの軸での進化かを説明できる</li>
+        <li>これから出てくる道具（pip, venv, Poetry など）の位置づけが見えやすくなる</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>言語の4要素: コア／追加方法／推奨パッケージ／開発環境</li>
+        <li>Python はどの軸でも進化が止まらない</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② はじめに ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>はじめに<span class="tag">実行の2通りとプロンプト表記</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python はファイルを実行する方法（<code>python file.py</code>）と、1行ずつ打ち込んで結果を見る対話モード（<code>python</code>）の2通りで使えます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Python って、書いて、すぐ実行できるんですよね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。たとえばこんなコード。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">下のコードは「文章を3行表示するだけ」のプログラムです。ファイルとして直接動かしたときにだけ動き出す形になっています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># main という名前の処理のかたまりを作る。まだ実行はされず、定義だけ。</span>
+<span class="kw">def</span> <span class="fn">main</span>():
+    <span class="cmt"># print は、かっこの中の文章を画面に出す命令。</span>
+    <span class="fn">print</span>(<span class="str">"これがプログラムです"</span>)
+    <span class="cmt"># 続けて2行目を画面に出す。</span>
+    <span class="fn">print</span>(<span class="str">"（この関数を呼ぶ！）"</span>)
+    <span class="cmt"># 3行目を画面に出す。ここで main の中身は終わり。</span>
+    <span class="fn">print</span>(<span class="str">"こうやって動く。"</span>)
+
+<span class="cmt"># 「このファイルが直接動かされたときだけ中を実行する」という決まり文句。</span>
+<span class="cmt"># 他のファイルから読み込まれたときは、ここは動かない。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="cmt"># 上で作っておいた main を、ここで実際に呼び出す。</span>
+    <span class="fn">main</span>()
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># これがプログラムです</span>
+<span class="cmt"># （この関数を呼ぶ！）</span>
+<span class="cmt"># こうやって動く。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書ではターミナルでの入力を <code>$</code> の記号のあとに書いて示す。<code>$</code> のあとの部分が、君が実際にタイプする部分だ。たとえば <code>this.py</code> という名前で保存したら…</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">保存したファイルを動かすコマンドです。<code>$</code> はターミナルが入力を待っている印なので、打ち込むのはそのあとの部分だけです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># python に this.py というファイルを渡して、中身を上から順に実行してもらう。</span>
+$ python this.py
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># これがプログラムです</span>
+<span class="cmt"># （この関数を呼ぶ！）</span>
+<span class="cmt"># こうやって動く。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1行ずつ打ち込んで結果を見るモードを起動するときは、<code>python</code> だけ叩く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>起動すると、入力を待つ印が出るんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。便利な機能として、変数名を入れるとその値を出してくれる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">ファイルを作らずに <code>python</code> だけ打つと、その場で入力を受け付ける状態になります。バージョン情報などが表示されたあと、入力待ちになります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ファイル名を付けずに python とだけ打つと、1行ずつ打ち込むモードが始まる。</span>
+$ python
+<span class="cmt"># --- 実行結果（起動時に表示される情報） ---</span>
+<span class="cmt"># Python 3.9.1 (v3.9.1:1e5d33e9b9, Dec  7 2020, 12:10:52)</span>
+<span class="cmt"># [Clang 6.0 (clang-600.0.57)] on darwin</span>
+<span class="cmt"># Type "help", "copyright", "credits" or "license" for more information.</span>
+<span class="cmt"># このあと入力待ちの状態になり、1行打つたびに結果が返る。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">値を入れておいて、それを表示する例です。名前を付けておくと、あとから何度でも呼び出せます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># wrong_answer という名前を用意して、43 という数と結びつける。</span>
+wrong_answer = <span class="num">43</span>
+<span class="cmt"># その名前が指している数を画面に出す。</span>
+<span class="fn">print</span>(wrong_answer)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 43</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">計算式も書けます。名前が指している 43 から 3 を引いた結果が表示されます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># もう一度 wrong_answer に 43 を結びつける。</span>
+wrong_answer = <span class="num">43</span>
+<span class="cmt"># 43 から 3 を引いた結果を計算して、その値を画面に出す。</span>
+<span class="cmt"># 43 - 3 なので 40 になる。wrong_answer 自体は 43 のまま変わらない。</span>
+<span class="fn">print</span>(wrong_answer - <span class="num">3</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 40</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：2つのモードの使い分け</h4>
+      <p>「文字列の中の空白を取り除く命令の名前を忘れた」というとき、ファイルを作って保存して実行する手順を踏むのは手間です。<code>python</code> と打って対話モードに入り、<code>"  abc  ".strip()</code> と1行入れれば、その場で <code>'abc'</code> という結果が返ります。一方、毎日動かす処理はファイルに保存しておき、<code>python 名前.py</code> で実行します。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>ちょっとした動作確認は対話モードで瞬時に試せる</li>
+        <li>本書のターミナル表記と、対話モードの表記の違いが分かる</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>$ python file.py</code> でファイルを実行</li>
+        <li><code>$ python</code> で1行ずつ打ち込むモード</li>
+        <li>そのモードでは変数名や式を入れるだけで結果が返る</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ Pythonそのもの ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>Pythonそのもの<span class="tag">どのバージョンを入れるか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI を使うなら Python 3.7 以上。推奨は 3.9 以上。入手元は python.org です。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バージョンってどれを入れればいいですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最低でも Python 3.7 だね。FastAPI の土台になっている型ヒントや asyncio はここから入っている。推奨はサポート期間が長い Python 3.9。公式の配布元は Python Software Foundation のサイト（python.org）だ。</div></div>
+    </div>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>区分</th><th>バージョン</th><th>理由</th></tr>
+      <tr><td>最低</td><td>Python 3.7</td><td>型ヒントと asyncio（非同期の仕組み）がこの版から入っている</td></tr>
+      <tr><td>推奨</td><td>Python 3.9 以上</td><td>サポート期間が長い</td></tr>
+      <tr><td>入手元</td><td>python.org</td><td>Python Software Foundation の公式サイト</td></tr>
+    </table>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>古すぎる Python では FastAPI が動かないと分かる</li><li>バージョン選びで迷わない</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>最低: Python 3.7</li><li>推奨: Python 3.9 以上</li><li>公式: python.org</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ パッケージ管理 ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>パッケージ管理<span class="tag">pip</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>外部のパッケージは <b>pip</b> で入れます。公式サイトから入れた Python なら、たいてい pip も一緒に入っています。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>外部のライブラリを入れたいときは？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>定番の道具が <b>pip</b>。Python Software Foundation 版の Python を入れてあれば、たいてい pip も付いてくる。なければ pip のサイトの手順で入れる。本書では新しいパッケージを紹介するたびに、それを入れる pip のコマンドも併記するよ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>pip だけでも結構なことができるけど、後で見るように仮想環境と組み合わせたり、Poetry のような別の道具を検討するのが今どきだね。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">パッケージを1つ入れるコマンドです。実行すると、公開されている場所からダウンロードされて使えるようになります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># pip に install（入れて）と指示し、そのあとに入れたいパッケージ名を書く。</span>
+<span class="cmt"># 下は Web の枠組みである fastapi を取ってきて使える状態にする例。</span>
+$ pip install fastapi
+<span class="cmt"># --- 実行結果（表示の一部） ---</span>
+<span class="cmt"># Collecting fastapi</span>
+<span class="cmt"># Successfully installed fastapi-0.104.1 ...</span>
+<span class="cmt"># Successfully と出れば、以後 import fastapi で使えるようになる。</span>
+</pre></details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li><code>pip install xxx</code> の意味と用途が分かる</li><li>公式から入れた Python ならすでに pip が入っていると安心できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>pip = Python の定番のパッケージ管理の道具</li><li>公式の Python に同梱されていることが多い</li><li>後で venv や Poetry と組み合わせる</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ 仮想環境 ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>仮想環境<span class="tag">プロジェクトごとの専用インストール先</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>仮想環境は、そのプロジェクト専用のパッケージ置き場（フォルダ）です。<code>python -m venv venv1</code> で作り、<code>source venv1/bin/activate</code> で「これから使う」と切り替えます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「仮想環境」って言葉、ハードルが高そうで…。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>怖がらなくていい。要するに「プロジェクトごとに、別々のインストール先フォルダを用意する」という考え方なんだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>pip はパッケージを入れる。じゃあ、どこに置く？ Python 本体と付属のライブラリは、OS が決めた場所にあるけど、そこに勝手にパッケージを足すと、システム全体が動かなくなることがある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>怖い…。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、それが理由で、pip の初期設定はシステム用とは別のフォルダを使うようになっている。設定で変えることもできるけど、詳細は OS ごとに違うので pip のサイトを見てくれ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ただし、複数のバージョンの Python を切り替えたり、プロジェクトごとに「どのパッケージのどのバージョンが入っているか」を完全に決めたい、ということは現場では頻繁にある。それを実現するのが<b>仮想環境</b>だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>仮想環境は、pip がパッケージを書き込むフォルダにすぎない。「<b>有効化</b>」すると、コマンドを受け付けるプログラムがまずそこを見るようになる。Python の標準には <code>venv</code> という機能が入っていて、これですぐ作れる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">仮想環境を作るコマンドです。実行すると、今いる場所に <code>venv1</code> という名前のフォルダができます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># python に -m を付けると、指定した機能を呼び出せる。ここでは venv を呼ぶ。</span>
+<span class="cmt"># 最後の venv1 が、これから作るフォルダの名前。好きな名前でよい。</span>
+$ python -m venv venv1
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 画面には何も出ない。かわりに venv1 というフォルダができている。</span>
+<span class="cmt"># その中に、このプロジェクト専用の python と pip が入っている。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">作った仮想環境を「これから使う」と切り替えるコマンドです（Linux / Mac の場合）。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># source は、指定したファイルの中身を今の画面の設定に読み込む命令。</span>
+<span class="cmt"># venv1/bin/activate には「これからは venv1 の中を優先して使う」という設定が書かれている。</span>
+$ source venv1/bin/activate
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># (venv1) $     ← 入力待ちの行の先頭に環境名が付き、切り替わったことが分かる。</span>
+<span class="cmt"># この状態で pip install をすると、すべて venv1 の中に入る。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これで <code>pip install ...</code> をやると、すべて <code>venv1</code> の下に入る。Python のプログラムも、その中の Python とモジュールを優先して使うようになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>元に戻したいときは？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Linux/Mac なら Ctrl-D、Windows なら <code>deactivate</code> と入力する。<code>venv2</code> のような別の環境を作って行き来することもできる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：バージョンの衝突が起きる場面</h4>
+      <p>プロジェクト A は pandas 1.5 でしか動かない古いコードを持ち、プロジェクト B は pandas 2.0 の新機能を使っているとします。仮想環境を使わずシステム全体に入れると、どちらか一方しか入れられません。B のために 2.0 に上げた瞬間、A が動かなくなります。</p>
+      <p>A 用に <code>venvA</code>、B 用に <code>venvB</code> を作れば、それぞれのフォルダに別のバージョンが入るので、切り替えるだけで両方動かせます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>システムの Python を壊さずにライブラリを試せる</li>
+        <li>プロジェクトごとに別のバージョンや組み合わせを管理できる</li>
+        <li>「A では pandas 1.5、B では pandas 2.0」が衝突せず共存する</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>仮想環境 = プロジェクト専用のパッケージ置き場</li>
+        <li>標準機能 <code>venv</code> で作成</li>
+        <li><code>source xxx/bin/activate</code> で有効化、<code>deactivate</code> で解除</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ Poetry ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>Poetry（詩）<span class="tag">pip + venv をまとめた道具</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Poetry は pip と venv をまとめた新しめの管理道具です。<code>pyproject.toml</code> という設定ファイルに、必要なパッケージとバージョンの条件を書いて管理します。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「Poetry」って詩の意味の英単語ですけど、道具の名前ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、Python のパッケージ管理の道具の名前。pip + venv の組み合わせがあまりに定番になったので、両方を一気に扱える道具がいくつか登場した。<b>Pipenv</b> がその一つ、もう一つが近年人気を集めている <b>Poetry</b> だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>タカさん的にはどちら派ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>私はいま Poetry 派。pip で入れる：<code>pip install poetry</code>。コマンドがたくさんあって、たとえば仮想環境にパッケージを追加するのが <code>poetry add</code>、実際にダウンロードして入れるのが <code>poetry install</code>。詳しくは Poetry の公式サイトか、<code>poetry</code> だけ叩いてヘルプを見るといい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1つずつ入れるだけでなく、<b>設定ファイルで複数のパッケージをまとめて管理</b>できるのがミソだ。pip は <code>requirements.txt</code>、Poetry は <code>pyproject.toml</code> を使う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>必要なパッケージが、さらに別のパッケージを必要とする場合も面倒を見てくれるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、それが大事なところ。パッケージ A が内部で B を必要とし、B がさらに C を必要として…という連鎖を<b>依存関係</b>と呼ぶ。Poetry も pip も、この連鎖をたどって必要なものを全部入れてくれる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>バージョンの指定方法も多彩で、「最小」「最大」「範囲」「正確に1つ（<b>ピン留め</b>）」が指定できる。プロジェクトが成長すると、これが効いてくる。たとえば「あるパッケージの最小バージョンは、自分が使い始めた機能が登場した版」「最大バージョンは、その機能が削除された版」みたいな指定が必要になる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Poetry を入れて、パッケージを追加するまでの流れです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># まず Poetry 自体を pip で入れる。ここは1回だけでよい。</span>
+$ pip install poetry
+<span class="cmt"># poetry add は「このパッケージを使うと設定ファイルに書き、実際に入れる」という指示。</span>
+<span class="cmt"># 下は fastapi を追加する例。pyproject.toml にも記録が残る。</span>
+$ poetry add fastapi
+<span class="cmt"># poetry install は「設定ファイルに書いてある分をまとめて入れる」という指示。</span>
+<span class="cmt"># 別のパソコンで同じ環境を作り直したいときは、これ1回で済む。</span>
+$ poetry install
+<span class="cmt"># --- 実行結果（表示の一部） ---</span>
+<span class="cmt"># Installing dependencies from lock file</span>
+<span class="cmt"># Installing fastapi (0.104.1)</span>
+</pre></details>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>指定のしかた</th><th>意味</th><th>使う場面</th></tr>
+      <tr><td>最小</td><td>この版以上ならよい</td><td>使い始めた機能が入った版より新しければ動く</td></tr>
+      <tr><td>最大</td><td>この版までならよい</td><td>使っている機能が削除された版より前に抑えたい</td></tr>
+      <tr><td>範囲</td><td>この版からこの版まで</td><td>上の2つを組み合わせる</td></tr>
+      <tr><td>ピン留め</td><td>この版だけ</td><td>環境をまったく同じに再現したい</td></tr>
+    </table>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：設定ファイルがあると何が助かるか</h4>
+      <p>新しく参加した人が同じ開発環境を用意するとき、設定ファイルがなければ「何を、どのバージョンで入れたか」を口頭やメモで伝えることになり、抜けが出ます。<code>pyproject.toml</code> があれば <code>poetry install</code> の1回で、記録された組み合わせがそのまま再現されます。「自分のパソコンでは動くのに、他の人の環境では動かない」という事態が減ります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「複数のパッケージを一斉に入れる」「必要なものの連鎖を自動でたどる」を一発でやれる</li>
+        <li>バージョン指定の幅が広がり、長く使い続けられる管理ができる</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Poetry = pip + venv をまとめた管理の道具</li>
+        <li>設定ファイル: pip は <code>requirements.txt</code>、Poetry は <code>pyproject.toml</code></li>
+        <li>バージョン指定: 最小／最大／範囲／ピン留め</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ ソースの形式 ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>ソースの形式<span class="tag">Black でスタイル議論をなくす</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Black はコードの見た目を自動でそろえる道具です。書き方の好みで議論する時間をなくすために使います。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コードを書くとき、書き方の流派でモメることってありますか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>あるある。字下げ、空白、かっこ、引用符…<b>コードの見た目</b>で揉めるのは時間の無駄なんだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それを避ける道具が<b>コードフォーマッタ</b>。Python での良い選択肢は <b>Black</b>。<code>pip install black</code> で入る。コードを Black に通せば、自分の好き嫌いに関係なく決まったスタイルに整形される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スタイルで議論しなくて済むんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、Black の決めたスタイルをそのまま受け入れることで、議論そのものをなくすのが Black の考え方だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">Black を入れて、ファイルを整形するまでの流れです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Black を入れる。1回だけでよい。</span>
+$ pip install black
+<span class="cmt"># black のあとに整形したいファイル名を書くと、その場で書き換えられる。</span>
+$ black this.py
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># reformatted this.py</span>
+<span class="cmt"># All done! 1 file reformatted.</span>
+<span class="cmt"># 例えば x = {  'a':1 } のような書き方が x = {"a": 1} にそろえられる。</span>
+<span class="cmt"># 動きは変わらず、見た目だけが決まった形になる。</span>
+</pre></details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>チーム内の書き方の統一が、機械的にできる</li><li>コードの確認作業が「内容」に集中できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>Black = Python の標準的な整形の道具</li><li><code>pip install black</code> で導入</li><li>スタイル議論をなくすことが目的</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ テスト ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>テスト<span class="tag">unittest と pytest</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python 標準のテストの道具は <code>unittest</code>、現場でほとんど使われているのは <code>pytest</code> です。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>テストってどんな道具を使うんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書の<b>第12章</b>でみっちりやるけど、Python 標準のテスト用パッケージは <code>unittest</code>。ただ、現場のほとんどが使っているのは <b>pytest</b> だ。<code>pip install pytest</code> で入る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>違いは？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>pytest は書き方がシンプルで、機能が豊富。Python の世界では事実上の標準と言っていい。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">pytest を入れて、テストを走らせるコマンドです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># テストの道具を入れる。1回だけでよい。</span>
+$ pip install pytest
+<span class="cmt"># pytest とだけ打つと、test_ で始まるファイルを自動で探して全部実行する。</span>
+$ pytest
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># collected 3 items</span>
+<span class="cmt"># test_sample.py ...                        [100%]</span>
+<span class="cmt"># 3 passed in 0.02s</span>
+<span class="cmt"># passed は「期待通りだった件数」。失敗すると failed と、どこが違ったかが表示される。</span>
+</pre></details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「テストを書くなら pytest が無難」と判断できる</li><li>第12章を読む準備ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>標準: <code>unittest</code></li><li>実務標準: <code>pytest</code>（<code>pip install pytest</code>）</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ ソース管理とCI ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>ソース管理と継続的インテグレーション<span class="tag">Git → pre-commit → CI</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Git で変更履歴を管理し、pre-commit で手元のチェックを走らせ、送信後にサーバー側で CI が自動テストする、という流れが現代の標準です。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Git、毎日使うって聞きますね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、いまやソース管理の事実上の標準が <b>Git</b>。GitHub、GitLab といった保管サービスに<span class="term" data-tip="コードとその変更履歴をまとめて置いておく保管場所。">リポジトリ</span>を置く。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Git は Python や FastAPI 専用ではないけど、開発時間のかなりの割合を Git の操作に使うことになる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>関連して、<b>pre-commit</b> という道具がある。Git に変更を記録する前に、自分のパソコン上で Black や pytest のような確認を自動で走らせるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それで通らないと記録できないんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。共有の保管場所に送ったあとは、サーバー側で<b>継続的インテグレーション（CI）</b>のテストが走るのが定番だ。詳細は第12章と、問題対応の章で見るよ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>コードを書く</h4><p>手元のパソコンで変更を加える。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>pre-commit が自動でチェック</h4><p>記録しようとした瞬間に、整形とテストが走る。<div class="branch ng">通らなければ、記録は中止される。直してからやり直す。</div><div class="branch ok">通れば、変更が履歴に記録される。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>共有の保管場所に送る</h4><p>GitHub や GitLab に変更を送る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>CI がサーバー側でテスト</h4><p>自分のパソコンとは別の環境で、もう一度全部のテストが自動で走る。<div class="branch ok">ここまで通れば、他の人のコードと合わせても壊れていないと確認できる。</div></p></div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：手元で通っても CI で落ちる理由</h4>
+      <p>自分のパソコンには以前入れたパッケージが残っていて、それに頼ったコードが動いてしまうことがあります。CI は毎回まっさらな環境を用意して、設定ファイルに書かれたものだけを入れてテストします。そのため「設定ファイルに書き忘れたパッケージ」があると、手元では通って CI で落ちます。この差が出ること自体が、書き忘れを見つける役に立ちます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「記録 → 送信 → CI」の流れがイメージできる</li><li>pre-commit の存在価値が分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>ソース管理: Git（保管先は GitHub / GitLab など）</li>
+        <li>pre-commit: 記録前の手元でのチェック</li>
+        <li>CI: 送信後のサーバー側の自動テスト</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ ウェブツール ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>ウェブツール<span class="tag">本書で使う5つ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>本書の主要な Web の道具は FastAPI / Uvicorn / HTTPie / Requests / HTTPX の5つです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書で使う主要な Python の Web 用の道具を先に並べておく。第3章で詳しく紹介するから、ここでは名前だけで OK。</div></div>
+    </div>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>名前</th><th>役割</th><th>ひとことで言うと</th></tr>
+      <tr><td><b>FastAPI</b></td><td>Web フレームワーク本体</td><td>窓口を作るための土台</td></tr>
+      <tr><td><b>Uvicorn</b></td><td>非同期 Web サーバ</td><td>作った窓口を実際に動かして待ち受ける</td></tr>
+      <tr><td><b>HTTPie</b></td><td>テキストの Web クライアント</td><td>コマンドで窓口に問い合わせて結果を見る</td></tr>
+      <tr><td><b>Requests</b></td><td>同期の Web クライアント</td><td>Python から順番に問い合わせる</td></tr>
+      <tr><td><b>HTTPX</b></td><td>同期／非同期 両対応の Web クライアント</td><td>返事待ちの間に別の問い合わせも進められる</td></tr>
+    </table>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>どの道具が何の役割かを最初に整理できる</li><li>第3章でセットアップに入る前の地図ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>FastAPI（フレームワーク）</li>
+        <li>Uvicorn（ASGI サーバ）</li>
+        <li>HTTPie（コマンドから使うクライアント）</li>
+        <li>Requests（同期クライアント）</li>
+        <li>HTTPX（同期／非同期クライアント）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑪ APIとサービス ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">11</div><h2>APIとサービス<span class="tag">モジュールとモデルで層を保つ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>モジュールとパッケージでコードを分けて層の構造を保ち、層と層の間のデータの受け渡しは「モデル」で行う、というのが本書の立場です。そのモデルは型ヒントに支えられています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の<b>モジュール</b>と<b>パッケージ</b>は、大規模なアプリを「<b>泥の大きなボール（Big Ball of Mud）</b>」と呼ばれる状態にしないために欠かせない道具立てだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>泥のボール…なんですかそれ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>コードがどこから手を付ければいいか分からないほど絡まり合った状態を指す呼び名だ。どの処理がどこから呼ばれているか追えず、1か所直すと別の場所が壊れる。プログラムが大きくなるほどそうなりやすい。Python ではモジュールと読み込みをうまく設計することで、<b>第1章で見た層構造</b>の分離を保てる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>組み込みのデータ構造（dict, list, tuple, set）は柔軟だから何にでも使いたくなる。でもこれからの章で見るように、<b>もっと上位のモデル</b>を定義することで、層と層のやり取りをより整った形にできる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そのモデルの定義は、Python では比較的最近の機能である<b>型ヒント</b>に頼っている。先にその話に入ろう。その前に、Python の<b>変数</b>の正体に軽く触れておこう。これは後で役立つ知識だ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：dict で受け渡すと何が起きるか</h4>
+      <p>層と層の間で <code>{"name": "ハル", "age": 22}</code> のような辞書をそのまま渡していると、受け取る側は「age は必ず入っているのか」「文字列で来ることはないのか」を確かめる術がありません。<code>age</code> が文字列 <code>"22"</code> で届いた場合、計算しようとした場所で初めてエラーになり、原因の特定に時間がかかります。</p>
+      <p>モデルとして「name は文字列、age は整数」と1か所に定義しておけば、受け取った時点で形が合っているかを確かめられ、間違いを入口で止められます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「Python でも設計への意識が大事」と納得できる</li><li>なぜ次の節で変数や型ヒントの話が始まるか、流れが分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>大規模化への対策にモジュール／パッケージ</li>
+        <li>組み込みのデータ構造の代わりに「モデル」で層と層をつなぐ</li>
+        <li>モデルは型ヒントに支えられている</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑫ 変数は名前付け ===== -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">12</div><h2>変数は名前付けである<span class="tag">Python 独特の考え方</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python の変数は「名前」であり、メモリ上の場所そのものではありません。値を代入することは「その名前を、あるデータに結びつけ直す」操作です。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Python の変数って、他の言語と違うって聞いたんですけど…。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここ重要。じっくり行こう。まず Python における<b>オブジェクト</b>という言葉から。</div></div>
+    </div>
+
+    <h3 class="blk" id="s12-obj">オブジェクトとは</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ソフトウェアの世界で「オブジェクト」にはたくさんの定義があるけど、Python ではこう。整数の <code>5</code> から関数、自分で定義した型のデータまで、プログラム内のあらゆるデータを包む入れ物のことだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>オブジェクトは内部に次の情報を持つ。①区別のための<b>ID</b>、②機械に対応する低いレベルの<b>型</b>、③具体的な<b>値</b>、④<b>参照カウント</b>（いくつの名前がそれを使っているか）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「強く型付けされている」って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python は<b>オブジェクトのレベルで強く型付け</b>されている。つまり、ある値が整数なら整数、文字列なら文字列。途中で型が勝手に変わったりしない（C 言語のような自動的な変換は基本ない）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>オブジェクトは、値が変えられるかどうかで2種類。<b>mutable</b>（変更可能）と <b>immutable</b>（変更不可）。たとえば list は mutable、tuple や str は immutable だ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🆔</div><h4>ID</h4><p>そのデータを他と区別するための番号。</p></div>
+      <div class="mini"><div class="ic">🔢</div><h4>型</h4><p>整数なのか、文字列なのか、といった種類。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>値</h4><p>実際の中身そのもの。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>参照カウント</h4><p>いくつの名前がそのデータを使っているかの個数。0 になると片づけられます。</p></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">✏️</div><h4>mutable（変更可能）</h4><p>作ったあとで中身を変えられます。例：list（一覧）。要素を後から足したり消したりできます。</p></div>
+      <div class="mini"><div class="ic">🔒</div><h4>immutable（変更不可）</h4><p>作ったら中身を変えられません。例：tuple、str（文字列）。変えたいときは新しく作り直します。</p></div>
+    </div>
+
+    <h3 class="blk" id="s12-diff">他の言語との大きな違い</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここからが<b>他の言語との大きな違い</b>だ。多くの言語では、<b>変数 = メモリ上の場所</b>を指していて、新しい値を代入するとそのメモリの中身が書き換わる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それが普通だと思ってました。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>C 言語が高速な理由の一つでもある。翻訳する側が「どの変数がどこにあるか」を全部把握しているから速い。代わりに、開発者は「各変数に正しい型の値しか入れない」よう注意する必要がある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ところが Python はそうじゃない。<b>Python の変数は「名前」に過ぎない</b>。メモリ上にあるデータ本体に、一時的に結びつけられた呼び名なんだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>変更できないデータを指している名前に新しい値を代入する場合、実際には「新しいデータを作って、その名前をそちらに結び直す」操作になる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そのとき、元のデータは（他の名前から使われていなければ）参照カウントが 0 になって、メモリから片づけられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>わ、メモリの管理が見えないところで動いてるんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。<code>a = 5</code> は「5 というデータを用意して、a という名前をそこに結びつける」。<code>a = 10</code> は「10 という新しいデータを作って、a の結びつけ先をそちらに変える。もう誰も 5 を使っていなければ、5 は片づけられる」ということだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">名前がどのデータに結びついているかを、番号で確かめる例です。<code>id()</code> はそのデータの区別用の番号を返す命令です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># a という名前を、5 というデータに結びつける。</span>
+a = <span class="num">5</span>
+<span class="cmt"># id は「そのデータの区別用の番号」を返す。番号は実行のたびに変わる。</span>
+<span class="fn">print</span>(<span class="fn">id</span>(a))
+<span class="cmt"># --- 実行結果（番号は環境により異なる） ---</span>
+<span class="cmt"># 4304123456</span>
+
+<span class="cmt"># a に 10 を代入する。5 の中身が書き換わるのではなく、</span>
+<span class="cmt"># 10 という別のデータが用意され、a の結びつけ先がそちらに変わる。</span>
+a = <span class="num">10</span>
+<span class="cmt"># もう一度番号を見ると、さっきと違う番号になっている。別のデータを指している証拠。</span>
+<span class="fn">print</span>(<span class="fn">id</span>(a))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 4304123616</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：リストが「連動して」変わる場面</h4>
+      <p><code>a = [1, 2, 3]</code> と書き、続けて <code>b = a</code> と書いたとします。ここで <code>b.append(4)</code> を実行すると、<code>a</code> を表示しても <code>[1, 2, 3, 4]</code> になります。<code>b = a</code> は中身をコピーしたのではなく、<b>同じデータに 2 つ目の名前を付けた</b>だけだからです。</p>
+      <p>一方 <code>a = 5</code> のあとに <code>b = a</code>、続けて <code>b = 6</code> とした場合、<code>a</code> は 5 のままです。数値は変更できないデータなので、<code>b = 6</code> は「b の結びつけ先を、新しく作った 6 に変える」操作になり、a には影響しません。この違いが、mutable と immutable の区別が実際に効いてくる場面です。</p>
+    </div>
+
+    <h3 class="blk" id="s12-scope">スコープと命名</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>変数の<b>スコープ</b>とは、ある名前が同じデータを指しているコードの範囲（関数の中など）のこと。違う範囲で同じ名前を使っても、別のデータを指すことになる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python では同じ名前が途中で違うデータを指すこともできるけど、それは必ずしも良いやり方じゃない。100行目の <code>x</code> と20行目の <code>x</code> が同じ範囲の同じものを指しているか、コードを追って判断するのは骨が折れる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ちなみに <code>x</code> という名前自体ひどい命名だ。<code>x</code> に意味を与えるような名前を選ぶべきだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>「<code>a = b</code> でリストが連動して変わる」という現象を、名前と実体の関係で説明できる</li>
+        <li>mutable と immutable の違いに敏感になり、関数に値を渡すときの落とし穴を避けられる</li>
+        <li>命名の重要性を再認識できる</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>オブジェクト = データの実体（ID、型、値、参照カウントを持つ）</li>
+        <li>変数 = そのデータに結びつけられた名前</li>
+        <li>Python は強く型付けされている（値は変わっても型は勝手に変わらない）</li>
+        <li>mutable と immutable の区別</li>
+        <li>スコープ = 名前が同じデータを指す範囲</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑬ 型ヒント ===== -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-num">13</div><h2>タイプヒント（型ヒント）<span class="tag">FastAPI の魔法の正体</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>型ヒントは Python 3.6 以降の機能です。実行時には強制されませんが、道具がこれを活用します。FastAPI は Pydantic を通じて、型ヒントを「実行時の検証」にまで応用しています。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここまで話してきたのは、次の伏線だ。<b>Python 3.6 で型ヒントが追加された</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>型ヒント…？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>変数や引数や戻り値の「型」を、コードに書き添えられる機能。たとえばこうだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">下は「名前と年齢を受け取って、あいさつの文章を返す処理」です。それぞれの値がどんな種類かを書き添えてあります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># greet という処理を作る。name のうしろの : str は「ここは文字列を受け取る想定」の書き添え。</span>
+<span class="cmt"># age のうしろの : int は「ここは整数を受け取る想定」。</span>
+<span class="cmt"># -&gt; str は「この処理は文字列を返す想定」という書き添え。</span>
+<span class="kw">def</span> <span class="fn">greet</span>(name: <span class="kw">str</span>, age: <span class="kw">int</span>) -&gt; <span class="kw">str</span>:
+    <span class="cmt"># 先頭の f を付けた文字列は、波かっこの中の名前を実際の値に置き換える。</span>
+    <span class="cmt"># return は「この値を呼び出し元に返す」という意味。</span>
+    <span class="kw">return</span> <span class="str">f"こんにちは {name} さん、{age} 歳ですね！"</span>
+
+<span class="cmt"># 変数にも書き添えられる。count は整数を入れる想定で、5 を結びつける。</span>
+count: <span class="kw">int</span> = <span class="num">5</span>
+
+<span class="cmt"># 実際に呼び出してみる。名前に「ハル」、年齢に 22 を渡す。</span>
+<span class="fn">print</span>(<span class="fn">greet</span>(<span class="str">"ハル"</span>, <span class="num">22</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># こんにちは ハル さん、22 歳ですね！</span>
+
+<span class="cmt"># 注意：書き添えに反する値を渡しても、Python 自体は止めない。</span>
+<span class="cmt"># 下は age に文字列を渡した例だが、そのまま動いてしまう。</span>
+<span class="fn">print</span>(<span class="fn">greet</span>(<span class="str">"ハル"</span>, <span class="str">"にじゅうに"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># こんにちは ハル さん、にじゅうに 歳ですね！</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これって、書いた通りに型が強制されるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いや、ここ大事。型ヒントは<b>実行時には強制されない</b>！ 書き添えのメモに過ぎない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、じゃあ何のため？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>①<b>人間が読みやすくなる</b>（コードの意図が分かる）、②<b>道具が活用できる</b>（型を調べる道具、入力補完、書き換え支援、説明書の自動生成）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>標準的な型チェックの道具は <b>mypy</b>。使い方は後で紹介する。型ヒントは「他のコード検査の道具と並ぶ、開発支援の機能の一つ」というのが普通の見方なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ふつうの見方じゃない使い方があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それが本書の主役！ FastAPI は <b>Pydantic というパッケージを介して型ヒントを巧妙に活用</b>している。たとえば「受け取るデータの形を Pydantic のモデルで宣言すれば、JSON を自動で読み取って中身を確かめてくれる」みたいなことができる。これは型ヒントが本来想定していなかった使い方だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>型ヒントってそんなことができたんですね…！</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>同じ流れが他の言語にもあって、たとえば JavaScript の世界では型のある <b>TypeScript</b> に乗り換える人が増えている。型は今、見直されているんだよ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">👀</div><h4>ふつうの使い方</h4><p>人が読んで意図が分かる。mypy が実行前に食い違いを指摘する。編集画面で候補が出る。説明書を自動で作れる。</p><span class="pill">実行時には何も起きない</span></div>
+      <div class="mini"><div class="ic">✨</div><h4>FastAPI の使い方</h4><p>型ヒントを Pydantic が読み取り、受け取ったデータが宣言どおりの形かを<b>実行時に確かめる</b>。合わなければ自動でエラーを返す。</p><span class="pill">実行時に効く</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：mypy が見つけてくれる間違い</h4>
+      <p>上の <code>greet("ハル", "にじゅうに")</code> は、Python では止まらずに動いてしまいます。ここで <code>mypy ファイル名.py</code> を実行すると、<code>Argument 2 to "greet" has incompatible type "str"; expected "int"</code> のように「2番目の引数が文字列だが整数を期待している」と指摘されます。動かす前に間違いを見つけられる、というのが型ヒントの価値です。</p>
+      <p>FastAPI ではさらに一歩進み、外から <code>{"age": "にじゅうに"}</code> というデータが送られてきた場合、処理に入る前に自動で 422 のエラーが返されます。自分でチェックのコードを書く必要がありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>型ヒントを書く意義が明確になる</li>
+        <li>FastAPI のコードに <code>name: str</code> のような書き方が出てきても怖くなくなる</li>
+        <li>型を調べる道具（mypy）を導入する動機が持てる</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Python 3.6 から型ヒントが導入</li>
+        <li>実行時には強制されない（あくまで書き添え）</li>
+        <li>標準的な型チェックの道具: mypy</li>
+        <li>FastAPI は Pydantic を通じて型ヒントを実行時の検証に応用</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑭ データ構造 ===== -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-num">14</div><h2>データ構造<span class="tag">詳しくは第5章で</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>詳しいデータ構造の話は第5章で扱います。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データ構造の話は…？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python のデータ構造の詳しい話は<b>第5章でじっくりやる</b>。ここでは「組み込みのデータ構造（dict, list, tuple, set）のほかに、Pydantic で定義する<b>モデル</b>を後で使う」ぐらいの認識でいい。</div></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「第5章でじっくりやる」と分かっていれば、ここで深掘りせずに読み進められる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>第5章で型ヒント、Pydantic、モデルをまとめて学ぶ予定</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑮ ウェブ・フレームワーク ===== -->
+<section id="s15">
+  <div class="sec-head"><div class="sec-num">15</div><h2>ウェブ・フレームワーク<span class="tag">WSGI と ASGI</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python には WSGI（同期）と ASGI（非同期）という2つの標準があります。FastAPI は ASGI 側です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いよいよ Web フレームワークの話。フレームワークは「HTTP で流れてくるデータと Python のデータ構造の変換」を引き受けてくれる道具で、自分で作る手間が省ける。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>便利な反面、デメリットも？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ある。フレームワークの一部が思い通りに動かないと、回り道の実装をしなきゃいけないこともある。「すでにあるものを作り直すな」とはいうけど、必要なものが手に入らなければ自作するしかないだろ？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そして Python の Web フレームワークを語る上で外せないのが、<b>WSGI と ASGI</b> の2つの標準だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>WSGI（Web Server Gateway Interface）</b>は、アプリケーションのコードと Web サーバをつなぐ<b>同期</b>の Python 標準仕様。PEP-3333 で規格化されている。従来の Python の Web フレームワークはすべて WSGI が土台だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同期だけだと、第1章で話してた並行性の問題に弱そうですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。同期のやり取りだと、ディスクやネットワークのような遅いものを、何もせずに待ち続けることになる。そこで生まれたのが <b>ASGI（Asynchronous Server Gateway Interface）</b>。非同期版の標準だ。詳細は<b>第4章</b>でやる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>同時に多くをさばくことが重視される現代では ASGI が選ばれることが増えている。FastAPI はこちら側だ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔗</div><h4>WSGI（同期）</h4><p>PEP-3333 で決められた古くからの標準。1つの依頼を処理し終えてから次に進みます。従来のフレームワークはすべてこちらです。</p><span class="pill">Django / Flask（従来）</span></div>
+      <div class="mini"><div class="ic">⚡</div><h4>ASGI（非同期）</h4><p>返事待ちの間に別の依頼を進められる新しい標準。同時に多くの接続をさばく用途に向きます。</p><span class="pill">FastAPI</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：同じ処理でさばける数が変わる</h4>
+      <p>外部サービスへの問い合わせに 0.5 秒かかる処理を、1つのプログラムで受け付けるとします。WSGI の同期のやり方では、1件を処理し終えるまで次を待たせるため、1秒あたりおよそ2件しかさばけません（1つの処理単位あたり）。ASGI では、0.5 秒の返事待ちの間に次の依頼の送信を始められるので、同じ待ち時間の中に何十件も重ねられます。処理そのものの速さは変わっていませんが、待ち時間を重ねられる分だけ全体の処理件数が増えます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>FastAPI が「速い」と言われる理由を、ASGI が土台だから、と説明できる</li><li>既存の Flask や Django との根本的な違いの一つを理解できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>WSGI: 同期型の Python Web 標準（従来）</li>
+        <li>ASGI: 非同期型の Python Web 標準（新しい）</li>
+        <li>FastAPI は ASGI 系</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑯ Django ===== -->
+<section id="s16">
+  <div class="sec-head"><div class="sec-num">16</div><h2>Django<span class="tag">2003年公開のフル機能型</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Django は機能が一通りそろった老舗の Python Web フレームワークです。データベースを持つ企業サイトで広く使われています。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Django って名前は聞いたことが…。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>機能が一通りそろった Web フレームワーク。「<b>締め切りに追われる完璧主義者のためのウェブフレームワーク</b>」という宣伝文句で有名だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>2003年に Adrian Holovaty と Simon Willison が公開。名前の由来は20世紀ベルギーのジャズギタリスト、Django Reinhardt から。データベースを裏に持つ企業サイトでよく使われる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>詳しくは？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第7章のフレームワーク比較で詳しくやるよ。</div></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「Python の Web 開発 ≠ FastAPI 一択」と認識できる</li><li>Django の歴史的な位置づけが分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>Django = 2003年公開、機能が一通りそろった型</li><li>由来: ジャズギタリスト Django Reinhardt</li><li>企業サイト用途に強い</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑰ Flask ===== -->
+<section id="s17">
+  <div class="sec-head"><div class="sec-num">17</div><h2>Flask<span class="tag">2010年公開のマイクロフレームワーク</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Flask は2010年公開の Python の Web マイクロフレームワークです。最小限の機能と、自由な拡張が特徴です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>一方、2010年に Armin Ronacher が公開した <b>Flask</b> は、対照的に<b>マイクロフレームワーク</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>マイクロって、小さい？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>必要最小限の機能だけを提供して、他は好みに合わせて足していく設計の考え方。Django ほど大きくない代わりに、自分で部品を組み立てる自由がある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第7章で Django、FastAPI と比較しながら詳しくやる。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏛️</div><h4>Django（フル機能型）</h4><p>データベース連携、管理画面、認証などが最初から入っています。決まった作り方に沿えば早く作れます。</p></div>
+      <div class="mini"><div class="ic">🧩</div><h4>Flask（マイクロ）</h4><p>最小限だけを提供し、必要な機能は自分で選んで足します。自由度が高い代わりに、選ぶ手間があります。</p></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「重量級 vs 軽量級」というフレームワークの見方が持てる</li><li>Flask 経験者がいるチームで会話が成立する</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>Flask = 2010年公開、マイクロフレームワーク</li><li>最小機能、自由な拡張</li><li>第7章で比較</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑱ FastAPI ===== -->
+<section id="s18">
+  <div class="sec-head"><div class="sec-num">18</div><h2>FastAPI<span class="tag">2018年公開、Starlette + Pydantic</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI は2018年公開。Starlette を土台にし、Pydantic でデータの形を定義する設計です。Python の Web フレームワークとして急成長しています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そしてついに本書の主役、<b>FastAPI</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>来ましたね！</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>2018年に Sebastián Ramírez が公開。Python の Web フレームワークの世界では Flask、Django に次ぐ第3位にすでに昇りつめて、まだ急成長中。2022年の比較では、近い将来追い越す可能性もあると言われている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>参考まで、2023年10月末時点の GitHub のスター数は: Django 約73.8k、Flask 約64.8k、FastAPI 約64k。ほぼ並んでいる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なぜそんなに人気が？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Ramírez は既存の選択肢を慎重に検討した上で、他の人が作った2つの強力なパッケージを土台にした設計を選んだ。①<b>Starlette</b>：軽量な ASGI のフレームワークと道具一式、②<b>Pydantic</b>：型ヒントを使ったデータの検証。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その上に、Ramírez 独自の工夫を加えて、最終的な FastAPI が完成した。どんな仕組みかは、次の章以降で見ていくよ。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>フレームワーク</th><th>公開年</th><th>作者</th><th>GitHub スター（2023年10月末）</th></tr>
+      <tr><td>Django</td><td>2003</td><td>Adrian Holovaty, Simon Willison</td><td>約 73.8k</td></tr>
+      <tr><td>Flask</td><td>2010</td><td>Armin Ronacher</td><td>約 64.8k</td></tr>
+      <tr><td>FastAPI</td><td>2018</td><td>Sebastián Ramírez</td><td>約 64k</td></tr>
+    </table>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏗️</div><h4>土台①：Starlette</h4><p>ASGI に対応した軽量な土台。受け付け、経路の振り分け、非同期の扱いを担当します。</p></div>
+      <div class="mini"><div class="ic">🛡️</div><h4>土台②：Pydantic</h4><p>型ヒントからデータの形を読み取り、受け取った値が合っているかを確かめます。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>FastAPI の位置づけと出自を説明できる</li><li>なぜ「Starlette + Pydantic」が選ばれているか、と問う準備ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>FastAPI = 2018年公開、Sebastián Ramírez 作</li>
+        <li>土台: Starlette（ASGI）+ Pydantic（検証）</li>
+        <li>Python の Web フレームワークとして急成長中（Django/Flask に並ぶ）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>では今日の振り返り。1つ目、「モダン Python には pip / venv / Poetry / Black / pytest / Git / pre-commit / CI といった成熟した道具立てがそろっている」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。1つずつ役割を覚えれば怖くない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「Python の変数は名前であって、メモリ位置そのものではない」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データ本体に名前を結びつけている、という関係だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「型ヒントは実行時には強制されないが、FastAPI は Pydantic を通じてこれを実行時の検証に応用している」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここが FastAPI の仕組みの中心の一つ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「Python の Web 標準には同期の WSGI と非同期の ASGI があり、FastAPI は ASGI 側」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第4章でじっくり見るよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「Django（フル機能）と Flask（マイクロ）の歴史の上に、FastAPI（Starlette + Pydantic）が登場した」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第7章で詳しく比較するから、また登場する言葉たちだ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問／答えを書いてから解答例を開きましょう</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>仮想環境</div>
+      <p style="font-size:14px;margin:0">「仮想環境」とは何か、なぜ必要なのか、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">仮想環境はプロジェクトごとに用意する、パッケージの専用インストール先フォルダ。pip で入れるライブラリを、システム全体ではなくこのフォルダの中だけに入れることで、別のプロジェクトと干渉しないようにできる。たとえば「A プロジェクトでは pandas 1.5、B プロジェクトでは pandas 2.0」を共存させたいときに必要。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ プロジェクト単位で分ける、という考え方に触れている<br>□ システム全体に影響を与えないための仕組みだと言及している<br>□ 異なるバージョンの共存例など、具体的な利点を挙げている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>変数とオブジェクト</div>
+      <p style="font-size:14px;margin:0">Python の「変数」と他言語（C言語など）の「変数」はどう違いますか？「名前」「オブジェクト」というキーワードを使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">C 言語などでは変数はメモリ上の場所そのもの。新しい値を代入するとメモリの中身が上書きされる。一方 Python の変数は「名前」に過ぎず、メモリ上のオブジェクト（実際のデータ）に結びつけられた呼び名。<code>a = 10</code> は「10 という新しいオブジェクトを作り、a という名前をそれに結び直す」操作。古いオブジェクトは誰も使わなくなれば自動で片づけられる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ C 言語などとの違い（メモリの直接書き換え vs 名前の結び直し）に触れている<br>□ 「変数 = 名前」「オブジェクトに名前を結びつける」という関係を説明している<br>□ 使われなくなったオブジェクトが片づけられる、というメモリ管理に言及している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>型ヒントの役割</div>
+      <p style="font-size:14px;margin:0">Python の型ヒントは何のためにあるのですか？「実行時には強制されない」のに、どんな価値があるのですか？ FastAPI における特殊な使い方も含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">型ヒントは変数・引数・戻り値の型を明示する書き添えで、実行時には確認されない。価値は「人間が読みやすい」「mypy などの型を調べる道具や編集画面の補完が活用できる」「説明書の代わりになる」など。FastAPI はこれをただのメモではなく、Pydantic を通じて「受け取ったデータを実行時に検証する」ための情報源として活用する。これが FastAPI の強力さの源になっている。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 「実行時には強制されない」点に触れている<br>□ 人間や型チェックの道具（mypy）にとっての価値を挙げている<br>□ FastAPI が Pydantic を通じて型ヒントを実行時の検証に応用している点を説明している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>WSGI と ASGI</div>
+      <p style="font-size:14px;margin:0">WSGI と ASGI の違いを自分の言葉で説明してください。なぜ ASGI が新しく登場したのですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">WSGI はアプリケーションと Web サーバをつなぐ古い同期の Python 標準。ASGI はその非同期版で、新しく登場した標準。同期だと返事待ちの間に処理装置が何もできず遅くなるため、現代の数百万同時接続を支えるには非同期処理が必要になり、ASGI が作られた。FastAPI は ASGI 側のフレームワーク。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ WSGI = 同期、ASGI = 非同期、という対比に触れている<br>□ 非同期が必要な理由（多くの接続、返事待ち）に言及している<br>□ FastAPI が ASGI 側であることに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>FastAPI の出自</div>
+      <p style="font-size:14px;margin:0">FastAPI はどのような背景で生まれたフレームワークですか？ 土台となっている2つのパッケージとともに説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">2018年に Sebastián Ramírez が公開した Python の Web フレームワーク。既存の選択肢を慎重に検討した結果、他の人が作った Starlette（軽量な ASGI のフレームワーク）と Pydantic（型ヒントを使ったデータ検証）を土台に据え、その上に Ramírez 独自の機能を載せて作られた。短期間で Django・Flask に並ぶ人気を獲得している。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 作者と公開年に触れている<br>□ 土台の2パッケージ（Starlette、Pydantic）を挙げている<br>□ Python の Web フレームワークとしての位置（Django/Flask に並ぶ）に言及している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>仮想環境を実際に作ってみる</h4><p>Python 3.9 以上を入れて、下のコマンドを試す。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># test_env という名前の、専用インストール先フォルダを作る。</span>
+$ python -m venv test_env
+<span class="cmt"># これから使う環境を test_env に切り替える。</span>
+$ source test_env/bin/activate
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># (test_env) $     ← 先頭に環境名が出れば成功。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>必要な道具を入れる</h4>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># fastapi（枠組み本体）と uvicorn（動かすためのサーバ）をまとめて入れる。</span>
+<span class="cmt"># 名前を空白で区切って並べると、一度に複数入れられる。</span>
+$ pip install fastapi uvicorn
+<span class="cmt"># --- 実行結果（表示の一部） ---</span>
+<span class="cmt"># Successfully installed fastapi-0.104.1 uvicorn-0.24.0 ...</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>pip と Poetry の説明書を見比べる</h4><p>公式の pip の説明（pip.pypa.io）と Poetry の説明（python-poetry.org）に目を通し、両者の違いを軽く確認する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>型ヒントを mypy で確かめる</h4><p>簡単な処理を書いて、実際に型の食い違いが指摘されるか試す。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 2つの整数を受け取り、足した結果（整数）を返す、という書き添え付きの処理。</span>
+<span class="kw">def</span> <span class="fn">add</span>(a: <span class="kw">int</span>, b: <span class="kw">int</span>) -&gt; <span class="kw">int</span>:
+    <span class="cmt"># 受け取った2つを足して、その結果を返す。</span>
+    <span class="kw">return</span> a + b
+
+<span class="cmt"># わざと文字列を渡してみる。Python 自体はこれを止めない。</span>
+<span class="fn">print</span>(<span class="fn">add</span>(<span class="num">1</span>, <span class="str">"2"</span>))
+<span class="cmt"># --- Python で実行した結果 ---</span>
+<span class="cmt"># TypeError: unsupported operand type(s) for +: 'int' and 'str'</span>
+<span class="cmt"># 実行して初めてエラーになる。書き添えは実行前には見られていない。</span>
+
+<span class="cmt"># --- mypy ファイル名.py を実行した結果 ---</span>
+<span class="cmt"># error: Argument 2 to "add" has incompatible type "str"; expected "int"</span>
+<span class="cmt"># mypy を使うと、動かす前に食い違いを指摘してくれる。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「FastAPIツアー」へ</h4><p>ここで紹介した道具を実際に使い始める。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第2章「モダンPython」の図解 ― 原文の全節（ツール／はじめに／Pythonそのもの／パッケージ管理／仮想環境／Poetry／ソースの形式／テスト／ソース管理とCI／ウェブツール／APIとサービス／変数は名前付けである／型ヒント／データ構造／ウェブ・フレームワーク／Django／Flask／FastAPI）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

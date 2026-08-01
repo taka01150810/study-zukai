@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第17章 データの発見と可視化 ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第17章</div>
+  <h1>第17章　データの発見と可視化</h1>
+  <p>区切り文字で区切られたファイルの読み込みから始めて、3段階の読み方（csv → tabulate → pandas）を見ます。続いて Plotly でグラフと国別の地図を作り、FastAPI の窓口から直接画像を返すところまで実演します。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全8節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① Pythonとデータ</a>
+  <a href="#s2">② PSVテキスト出力</a>
+  <a class="sub" href="#s2-csv">└ csv（標準の機能）</a>
+  <a class="sub" href="#s2-tab">└ python-tabulate（整った表示）</a>
+  <a class="sub" href="#s2-pandas">└ pandas（本格的な加工）</a>
+  <a href="#s3">③ SQLiteデータソースとウェブ出力</a>
+  <a href="#s4">④ チャート／グラフ・パッケージ</a>
+  <a href="#s5">⑤ チャート例1：テスト</a>
+  <a href="#s6">⑥ チャート例2：ヒストグラム</a>
+  <a href="#s7">⑦ マッピングパッケージ</a>
+  <a href="#s8">⑧ マッピング例（国別の地図）</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">CSV / TSV / PSV</div><p>1行1件のデータを、それぞれカンマ・タブ・縦棒で区切って並べたファイルの形式です。</p></div>
+    <div class="item"><div class="w">区切り文字 <span>delimiter</span></div><p>項目と項目の境目に使う文字。この本では縦棒を使っています。</p></div>
+    <div class="item"><div class="w">ヘッダ行</div><p>ファイルの1行目に置く、各列の名前を並べた行のことです。</p></div>
+    <div class="item"><div class="w">csv <span>標準の機能</span></div><p>区切られたファイルを読み書きするための、Python にもとから入っている機能です。</p></div>
+    <div class="item"><div class="w">tabulate</div><p>データを、線で囲まれた見やすい表の形で画面に出すためのパッケージです。</p></div>
+    <div class="item"><div class="w">pandas</div><p>表の形のデータを、絞り込んだり集計したり並べ替えたりするためのパッケージです。</p></div>
+    <div class="item"><div class="w">DataFrame</div><p>pandas で使う、表の形のデータの入れ物。行と列に名前を持ちます。</p></div>
+    <div class="item"><div class="w">ETL</div><p>データを取り出し、形を整え、保存先に入れる、という一連の流れのことです。</p></div>
+    <div class="item"><div class="w">Matplotlib</div><p>最も古くから使われている、グラフを描くためのパッケージです。</p></div>
+    <div class="item"><div class="w">Plotly</div><p>操作できるグラフを作れるパッケージ。この章で使います。</p></div>
+    <div class="item"><div class="w">Seaborn</div><p>Matplotlib の上に作られた、短い記述で見やすいグラフが作れるパッケージです。</p></div>
+    <div class="item"><div class="w">Bokeh</div><p>大量のデータでも操作できるグラフを作れるパッケージです。</p></div>
+    <div class="item"><div class="w">Dash</div><p>Plotly を土台にした、複数のグラフをまとめた画面を作るための道具です。</p></div>
+    <div class="item"><div class="w">kaleido</div><p>Plotly で作ったグラフを、画像のデータとして書き出すために必要なパッケージです。</p></div>
+    <div class="item"><div class="w">散布図</div><p>2つの数値の関係を、点の位置で表したグラフです。</p></div>
+    <div class="item"><div class="w">ヒストグラム</div><p>値をいくつかの区分に分け、それぞれの件数を棒の高さで表したグラフです。</p></div>
+    <div class="item"><div class="w">choropleth <span>塗り分け地図</span></div><p>地域ごとの数値の大きさを、色の濃さで塗り分けた地図です。</p></div>
+    <div class="item"><div class="w">ISO国コード</div><p>国を決まった文字数で表す取り決め。2文字の形と3文字の形があります。</p></div>
+    <div class="item"><div class="w">country_converter</div><p>国コードの形式を、別の形式に変換するためのパッケージです。</p></div>
+    <div class="item"><div class="w">Counter</div><p>同じ値が何回出てきたかを数える、Python の標準の機能です。</p></div>
+    <div class="item"><div class="w">PNG</div><p>画像のファイル形式の1つ。図やグラフによく使われます。</p></div>
+    <div class="item"><div class="w">GIS</div><p>地理に関するデータを扱う分野の呼び名です。</p></div>
+    <div class="item"><div class="w">GeoPandas / Folium / Cartopy</div><p>いずれも Python で地図を扱うためのパッケージです。</p></div>
+    <div class="item"><div class="w">sys.argv</div><p>コマンドで実行するときに、後ろに書いた文字を受け取るための仕組みです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">見せ方を変える</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠：「データは見せ方が大きい。表で並べるだけではもったいない」。本章では縦棒で区切られたファイルから始めて、3段階の読み方（csv → tabulate → pandas）を見ます。続いて Plotly でグラフと国別の地図を作り、FastAPI の窓口から直接画像を返す実演までやります。最後に、地図を扱うパッケージの選択肢を見わたします。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">データの加工は Python 標準の <code>csv</code>、整った表示のための <code>tabulate</code>、本格的な加工のための <code>pandas</code> の3段階です。グラフを描く道具には <code>Matplotlib</code>／<code>Plotly</code>／<code>Seaborn</code>／<code>Bokeh</code> などがあり、本書は Plotly を使います。FastAPI の窓口から直接画像を返す方法、Plotly の<span class="term" data-tip="地域ごとの数値の大きさを、色の濃さで塗り分けた地図。">塗り分け地図</span>で国別のデータを地図に表す方法などを実装します。地図の分野には GeoPandas、Folium、Cartopy などの選択肢があります。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>区切られたファイルからデータを読む3つの方法を使い分けられる</li>
+        <li>pandas の表の入れ物の基本が分かる</li>
+        <li>FastAPI から画像を直接返す書き方ができる</li>
+        <li>Plotly でグラフや地図を作れる</li>
+        <li>地図を扱うライブラリの選択肢が見える</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① Python とデータ ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>Pythonとデータ<span class="tag">人気の5つの理由</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python の強みは、学びやすさ、書き方の整理、豊富な機能、そしてデータの加工の得意さです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python がここ数年人気な理由は5つある。①学びやすい、②書き方が整理されている、③標準の機能が豊富、④外部の質の高いパッケージが膨大にある、⑤データの操作・変換・中身の確認に特化した部分がある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最後の点は、データを取り出して整えて入れる、という流れと関わる。<b>PyData</b> という非営利の集まりが、Python でのデータ分析に関する催しや道具の開発をしている。最近の AI の広がりも、AI に渡すデータを準備する道具の需要を生んでいる。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Python の強み: 学びやすさ、書き方、機能の豊富さ、データの加工</li>
+        <li>PyData が中心の集まり</li>
+        <li>AI の広がりで、データの道具の需要が増えている</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② PSV ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>PSVテキスト出力<span class="tag">3段階の読み方</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>読み込みは csv（標準）→ tabulate（整った表示）→ pandas（加工）の3段階です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書の例は付録のデータだ。公開されている置き場に、縦棒で区切ったファイルと、データベースのファイルがある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>カンマやタブで区切るのが一般的だけど、カンマはデータの中でも使われるし、タブは他の空白と見分けがつきにくい。縦棒は見分けやすく、普通の文章では珍しいので、区切りに向いている。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ファイルの1行目。各列の名前を、縦棒で区切って並べている。</span>
+<span class="cmt"># 名前｜国｜地域｜説明｜別名 という並び。</span>
+name|country|area|description|aka
+</pre></details>
+
+    <h3 class="blk" id="s2-csv">csv（標準の機能）</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">最初の数行だけを読んで表示する、いちばん単純な方法です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 区切られたファイルを読むための標準の機能を取り込む。</span>
+<span class="kw">import</span> csv
+<span class="cmt"># コマンドで渡された文字を受け取るための標準の機能を取り込む。</span>
+<span class="kw">import</span> sys
+
+<span class="cmt"># ファイル名を受け取って、中身の先頭を表示する処理。</span>
+<span class="kw">def</span> <span class="fn">load</span>(fname: <span class="kw">str</span>):
+    <span class="cmt"># ファイルを開く。encoding は文字の扱い方の指定。日本語も扱える形にしている。</span>
+    <span class="cmt"># with を使うと、抜けるときに自動で閉じられる。</span>
+    <span class="kw">with</span> <span class="fn">open</span>(fname, encoding=<span class="str">"utf-8"</span>) <span class="kw">as</span> fin:
+        <span class="cmt"># 縦棒を区切りとして読む、という指定で読み取り役を作る。</span>
+        reader = csv.<span class="fn">reader</span>(fin, delimiter=<span class="str">"|"</span>)
+        <span class="cmt"># enumerate は、何行目かの番号と中身をセットで取り出す。</span>
+        <span class="kw">for</span> i, row <span class="kw">in</span> <span class="fn">enumerate</span>(reader):
+            <span class="cmt"># 5行を超えたら、そこで繰り返しを終える。全部は表示しない。</span>
+            <span class="kw">if</span> i &gt; <span class="num">5</span>:
+                <span class="kw">break</span>
+            <span class="cmt"># 1行分を、そのまま並びとして表示する。</span>
+            <span class="fn">print</span>(row)
+
+<span class="cmt"># 直接動かされたときだけ、下を実行する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="cmt"># sys.argv[1] は、コマンドの後ろに書いた1つめの文字。ここではファイル名。</span>
+    <span class="fn">load</span>(sys.argv[<span class="num">1</span>])
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ファイル名を後ろに付けて実行する。</span>
+$ python load_csv.py cryptid.psv
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ['name', 'country', 'area', 'description', 'aka']</span>
+<span class="cmt">#   1行目は列の名前。データではない。</span>
+<span class="cmt"># ['Abaia', 'FJ', ' ', 'Lake eel', ' ']</span>
+<span class="cmt"># ['Afanc', 'UK', 'CYM', 'Welsh lake monster', ' ']</span>
+<span class="cmt"># ['Agropelter', 'US', 'ME', 'Forest twig flinger', ' ']</span>
+<span class="cmt"># ['Akkorokamui', 'JP', ' ', 'Giant Ainu octopus', ' ']</span>
+<span class="cmt"># ['Albatwitch', 'US', 'PA', 'Apple stealing mini Bigfoot', ' ']</span>
+<span class="cmt"># 角かっこと引用符が付いた、そのままの形で表示されている。</span>
+</pre></details>
+
+    <h3 class="blk" id="s2-tab">python-tabulate（整った表示）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表の形での表示に特化した公開されている道具が <b>python-tabulate</b> だ。<code>pip install tabulate</code> で入る。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じデータを、線で区切られた表として表示します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 表の形で表示する機能を取り込む。</span>
+<span class="kw">from</span> tabulate <span class="kw">import</span> tabulate
+<span class="cmt"># ファイルを読むための標準の機能を取り込む。</span>
+<span class="kw">import</span> csv
+<span class="kw">import</span> sys
+
+<span class="kw">def</span> <span class="fn">load</span>(fname: <span class="kw">str</span>):
+    <span class="kw">with</span> <span class="fn">open</span>(fname, encoding=<span class="str">"utf-8"</span>) <span class="kw">as</span> fin:
+        reader = csv.<span class="fn">reader</span>(fin, delimiter=<span class="str">"|"</span>)
+        <span class="cmt"># list() で、全部の行をまとめて一覧にする。</span>
+        rows = <span class="fn">list</span>(reader)
+    <span class="cmt"># 先頭の行は列の名前なので、別に取っておく。</span>
+    headers = rows[<span class="num">0</span>]
+    <span class="cmt"># 1番目から5番目までを取り出す。最初の5件分のデータ。</span>
+    data = rows[<span class="num">1</span>:<span class="num">6</span>]
+    <span class="cmt"># データと列の名前を渡すと、整った表として表示される。</span>
+    <span class="cmt"># title() は、単語の先頭を大文字にする指定。見出しを見やすくしている。</span>
+    <span class="fn">print</span>(<span class="fn">tabulate</span>(data, headers=[h.<span class="fn">title</span>() <span class="kw">for</span> h <span class="kw">in</span> headers]))
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="fn">load</span>(sys.argv[<span class="num">1</span>])
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 実行する。</span>
+$ python load_tabulate.py cryptid.psv
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># -----------  -------  ----  -------------------  ---</span>
+<span class="cmt"># Name         Country  Area  Description          AKA</span>
+<span class="cmt"># Abaia        FJ             Lake eel</span>
+<span class="cmt"># Afanc        UK       CYM   Welsh lake monster</span>
+<span class="cmt"># Agropelter   US       ME    Forest twig flinger</span>
+<span class="cmt"># Akkorokamui  JP             Giant Ainu octopus</span>
+<span class="cmt"># -----------  -------  ----  -------------------  ---</span>
+<span class="cmt"># 列がそろい、区切りの線も入って読みやすくなっている。</span>
+</pre></details>
+
+    <h3 class="blk" id="s2-pandas">pandas（本格的な加工）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>前の2つは、ほぼ表示の整え役だ。<b>pandas</b> はデータを切り分けたり組み替えたりする優れた道具だ。Python の標準のデータの形を超えて、<b>表の入れ物</b>（表と、項目名での取り出しと、並びを合わせたもの）のような高度な形を持つ。区切られたファイルも読める。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じファイルを、加工できる形として読み込みます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># pandas を取り込む。pd という短い名前で呼ぶのが慣習になっている。</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> sys
+
+<span class="kw">def</span> <span class="fn">load</span>(fname: <span class="kw">str</span>):
+    <span class="cmt"># ファイルを読み込む。sep で区切り文字を指定する。</span>
+    <span class="cmt"># 1行目は自動的に列の名前として扱われる。</span>
+    df = pd.<span class="fn">read_csv</span>(fname, sep=<span class="str">"|"</span>)
+    <span class="cmt"># head() は先頭の5行だけを取り出す。中身を確認するときによく使う。</span>
+    <span class="fn">print</span>(df.<span class="fn">head</span>())
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="fn">load</span>(sys.argv[<span class="num">1</span>])
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 実行する。</span>
+$ python load_pandas.py cryptid.psv
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt">#           name country area                  description aka</span>
+<span class="cmt"># 0        Abaia      FJ                          Lake eel</span>
+<span class="cmt"># 1        Afanc      UK  CYM           Welsh lake monster</span>
+<span class="cmt"># 2   Agropelter      US   ME          Forest twig flinger</span>
+<span class="cmt"># 3  Akkorokamui      JP                Giant Ainu octopus</span>
+<span class="cmt"># 4   Albatwitch      US   PA  Apple stealing mini Bigfoot</span>
+<span class="cmt"># 左端の 0〜4 は、自動で振られた行の番号。</span>
+<span class="cmt"># この形になると、絞り込みや集計がすぐできる。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>pandas には便利な処理が大量にある。</div></div>
+    </div>
+
+    <h3 class="blk">3つの使い分け</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>方法</th><th>できること</th><th>向いている場面</th></tr>
+      <tr><td><code>csv</code></td><td>1行ずつ読むだけ</td><td>単純な前処理。追加のパッケージが不要</td></tr>
+      <tr><td><code>tabulate</code></td><td>整った表として表示</td><td>画面や文章での確認、報告</td></tr>
+      <tr><td><code>pandas</code></td><td>絞り込み・集計・並べ替え・組み替え</td><td>分析、グラフの元データ作り</td></tr>
+    </table>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：pandas だと何が短くなるか</h4>
+      <p>「国が US のものだけを数える」処理を考えます。<code>csv</code> だけなら、1行ずつ読んで、国の列を確認して、数を足す、という数行の繰り返しを書きます。</p>
+      <p>pandas なら <code>len(df[df["country"] == "US"])</code> の1行です。「国別の件数」も <code>df["country"].value_counts()</code> の1行で出ます。データを見ながら試行錯誤するとき、この差が効いてきます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>csv: 標準の機能。最小限</li>
+        <li>tabulate: 整った表示に特化</li>
+        <li>pandas: 本格的なデータの加工</li>
+        <li>区切り文字: 縦棒はカンマやタブより扱いやすい</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ SQLite ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>SQLiteデータソースとウェブ出力<span class="tag">これまでの窓口をそのまま使う</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>この章の残りは、データベースからデータを読み、これまで作ってきた Web のコードを使います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>この章の残りは、データベースからデータを読んで、これまでの Web のコードを使う。文章ではなく、Web サイト上に各例を組み込んでいく。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>すべてを取得する窓口は、すでに持っている。最初の数行を見てみよう。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># すでに作ってある一覧の窓口に問い合わせる。</span>
+$ http -b localhost:8000/creature
+<span class="cmt"># --- 実行結果（一部） ---</span>
+<span class="cmt"># [</span>
+<span class="cmt">#     {</span>
+<span class="cmt">#         "aka": "AKA",</span>
+<span class="cmt">#         "area": "Area",</span>
+<span class="cmt">#         "country": "Country",</span>
+<span class="cmt">#         "description": "Description",</span>
+<span class="cmt">#         "name": "Name"</span>
+<span class="cmt">#     },</span>
+<span class="cmt">#       ↑ 1件目は、列の名前がそのままデータとして入ってしまっている。</span>
+<span class="cmt">#         読み込みのときにヘッダ行を飛ばしていないため。</span>
+<span class="cmt">#     {</span>
+<span class="cmt">#         "aka": " ",</span>
+<span class="cmt">#         "area": " ",</span>
+<span class="cmt">#         "country": "FJ",</span>
+<span class="cmt">#         "description": "Lake eel",</span>
+<span class="cmt">#         "name": "Abaia"</span>
+<span class="cmt">#     },</span>
+<span class="cmt"># ...</span>
+<span class="cmt"># ]</span>
+</pre></details>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>すでにある <code>/creature</code> の窓口がそのまま使える</li><li>データの取り出し元をデータベースに切り替える</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ グラフのパッケージ ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>チャート／グラフ・パッケージ<span class="tag">5つの選択肢</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>主な選択肢は Matplotlib / Plotly / Dash / Seaborn / Bokeh です。本書は Plotly を使います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>文章だけでなく、図として見せる時代だ。主なパッケージはこうなる。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>パッケージ</th><th>特徴</th><th>向いている場面</th></tr>
+      <tr><td><b>Matplotlib</b></td><td>扱える範囲が広い。見た目を整えるには細かい調整が必要</td><td>細かく制御したいとき、論文や報告書</td></tr>
+      <tr><td><b>Plotly</b></td><td>Matplotlib や Seaborn に似ているが、操作できるグラフが得意</td><td>Web との組み合わせ<span class="pill" style="margin-left:6px">本書はこれ</span></td></tr>
+      <tr><td><b>Dash</b></td><td>Plotly を土台にした、複数のグラフをまとめた画面</td><td>状況を一覧する画面</td></tr>
+      <tr><td><b>Seaborn</b></td><td>Matplotlib の上に作られ、短い記述で書ける。種類は少なめ</td><td>統計的なグラフを手早く</td></tr>
+      <tr><td><b>Bokeh</b></td><td>大量のデータでも操作できる</td><td>件数が非常に多い場合</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk">選ぶときの基準</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">📊</div><h4>グラフの種類</h4><p>点で表すもの、棒、線など、必要な種類があるか。</p></div>
+      <div class="mini"><div class="ic">🎨</div><h4>見た目の調整</h4><p>色や形をどこまで細かく変えられるか。</p></div>
+      <div class="mini"><div class="ic">🧑‍💻</div><h4>使いやすさ</h4><p>短い記述で目的のものが作れるか。</p></div>
+      <div class="mini"><div class="ic">⚡</div><h4>速さ</h4><p>データが多いときに、待たされないか。</p></div>
+      <div class="mini"><div class="ic">📏</div><h4>データの制限</h4><p>扱える件数に上限はないか。</p></div>
+      <div class="mini"><div class="ic">🎯</div><h4>結局の決め手</h4><p>最初に自分が十分に理解できたものを選ぶ、というのが実際的です。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>主な選択肢: Matplotlib / Plotly / Dash / Seaborn / Bokeh</li>
+        <li>用途と好みで選ぶ</li>
+        <li>本書は Plotly</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ チャート例1 ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>チャート例1：テスト<span class="tag">画像を直接返す</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Plotly と kaleido で画像のデータを作り、<code>Response</code> でそのまま返します。</p>
+
+    <h3 class="blk">Plotly の4つの段階</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">✨</div><h4>Plotly Express</h4><p>最小限の記述で使えるまとまり。この章で使います。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>Plotly</h4><p>本体。細かい指定ができます。</p></div>
+      <div class="mini"><div class="ic">🖥️</div><h4>Dash</h4><p>データを扱う画面を作るための道具です。</p></div>
+      <div class="mini"><div class="ic">💼</div><h4>Dash Enterprise</h4><p>有料の版です。</p></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># グラフを描くパッケージを入れる。</span>
+$ pip install plotly
+<span class="cmt"># 作ったグラフを画像として書き出すために必要なパッケージを入れる。</span>
+<span class="cmt"># これが無いと、画像にする段階で失敗する。</span>
+$ pip install kaleido
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Successfully installed plotly-5.18.0</span>
+<span class="cmt"># Successfully installed kaleido-0.2.1</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">試しに、付属の見本データで点のグラフを作って返す窓口です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># グラフを短い記述で描くためのまとまりを取り込む。px という短い名前で呼ぶ。</span>
+<span class="kw">import</span> plotly.express <span class="kw">as</span> px
+<span class="cmt"># 返す内容を自分で組み立てるための部品を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> Response
+
+<span class="cmt"># /test への GET を、この下の処理に結びつける。</span>
+<span class="fn">@router.get</span>(<span class="str">"/test"</span>)
+<span class="kw">def</span> <span class="fn">test_plot</span>():
+    <span class="cmt"># Plotly に付属している練習用のデータを読み込む。花の測定値の一覧。</span>
+    df = px.data.<span class="fn">iris</span>()
+    <span class="cmt"># 2つの列を、横軸と縦軸に指定して、点のグラフを作る。</span>
+    <span class="cmt"># この時点では、まだ画像にはなっていない。</span>
+    fig = px.<span class="fn">scatter</span>(df, x=<span class="str">"sepal_width"</span>, y=<span class="str">"sepal_length"</span>)
+    <span class="cmt"># 作ったグラフを、画像のデータに変換する。ここで kaleido が使われる。</span>
+    fig_bytes = fig.<span class="fn">to_image</span>(format=<span class="str">"png"</span>)
+    <span class="cmt"># 画像のデータと、その種類を指定して返す。</span>
+    <span class="cmt"># media_type を書かないと、ブラウザが画像として表示してくれない。</span>
+    <span class="kw">return</span> <span class="fn">Response</span>(content=fig_bytes, media_type=<span class="str">"image/png"</span>)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>説明の文書では画面に表示する方法が勧められているが、FastAPI のやり方に合わせる。まず画像のデータを取得し、次に自分で組み立てた返事を返す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>窓口を追加したら、サーバが自動で立ち上げ直され、<code>localhost:8000/creature/test</code> で点のグラフが見られる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>もし奇妙な失敗の知らせが出たら、Pydantic の不具合かもしれない。<code>pip install -U pydantic</code> で新しくしてみるといい。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① グラフを作る</h4><p>データを渡してグラフの形を作る。まだ画像ではない。</p><span class="when">px.scatter など</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 画像に変換</h4><p>画像のデータに変換する。ここで kaleido が使われる。</p><span class="when">fig.to_image</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ そのまま返す</h4><p>種類を指定して返す。ブラウザが画像として表示する。</p><span class="when">Response</span></div>
+    </div>
+    <div class="loopback">↺ この3段階は、この章のすべてのグラフで共通です。変わるのは①の部分だけです。</div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Plotly と kaleido で画像を作る</li>
+        <li><code>fig.to_image(format="png")</code> で画像のデータを取得</li>
+        <li><code>Response(content=..., media_type="image/png")</code> で返す</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ ヒストグラム ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>チャート例2：ヒストグラム<span class="tag">頭文字ごとの件数</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>データから並びを作り、Plotly に渡すだけで集計と描画をしてくれます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>名前の項目を使って、それぞれの文字で始まるものが何件あるかの棒のグラフを作る。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">実際のデータから作ります。集計は Plotly 側がやってくれます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># グラフを描くまとまりを取り込む。</span>
+<span class="kw">import</span> plotly.express <span class="kw">as</span> px
+<span class="cmt"># 返す内容を組み立てる部品を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> Response
+<span class="cmt"># データを取り出すサービス層を取り込む。</span>
+<span class="kw">import</span> service.creature <span class="kw">as</span> service
+
+<span class="cmt"># /plot への GET を、この下の処理に結びつける。</span>
+<span class="fn">@router.get</span>(<span class="str">"/plot"</span>)
+<span class="kw">def</span> <span class="fn">plot</span>():
+    <span class="cmt"># すべてのデータを取ってくる。</span>
+    creatures = service.<span class="fn">get_all</span>()
+    <span class="cmt"># 各件の名前の先頭1文字だけを取り出し、大文字にそろえて並べる。</span>
+    <span class="cmt"># c.name[0] は「名前の0番目の文字」、upper() は大文字にする指定。</span>
+    <span class="cmt"># sorted で並べ替えておくと、グラフの横軸がアルファベット順になる。</span>
+    letters = <span class="fn">sorted</span>([c.name[<span class="num">0</span>].<span class="fn">upper</span>() <span class="kw">for</span> c <span class="kw">in</span> creatures])
+    <span class="cmt"># 文字の並びを渡すだけで、同じ文字が何個あるかを数えて棒にしてくれる。</span>
+    <span class="cmt"># title は図の見出し、labels は軸の名前の指定。</span>
+    fig = px.<span class="fn">histogram</span>(x=letters,
+                       title=<span class="str">"Creatures by first letter"</span>,
+                       labels={<span class="str">"x"</span>: <span class="str">"First letter"</span>})
+    <span class="cmt"># 画像のデータに変換する。</span>
+    fig_bytes = fig.<span class="fn">to_image</span>(format=<span class="str">"png"</span>)
+    <span class="cmt"># 種類を指定して返す。</span>
+    <span class="kw">return</span> <span class="fn">Response</span>(content=fig_bytes, media_type=<span class="str">"image/png"</span>)
+<span class="cmt"># --- localhost:8000/creature/plot を開いた結果 ---</span>
+<span class="cmt"># A から Z までの横軸に、それぞれの件数の棒が並んだ画像が表示される。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>localhost:8000/creature/plot</code> で棒のグラフの画像が表示される。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：自分で数える必要がない</h4>
+      <p>「A が12件、B が8件…」という集計を自分で書くなら、<code>Counter</code> を使って数え、その結果を横軸と縦軸に分けて渡す、という手順が必要です。</p>
+      <p><code>px.histogram</code> は、<code>["A", "A", "B", ...]</code> のような並びをそのまま渡すだけで、数えて棒にしてくれます。集計の記述が要らない分、書き間違いも減ります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>px.histogram()</code> で件数の棒グラフ</li>
+        <li>データから並びを作れば、集計は Plotly がやる</li>
+        <li>返し方は前と同じ形</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ マッピングパッケージ ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>マッピングパッケージ<span class="tag">探すときの言葉と、主な選択肢</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>探すときは GIS、geo、cartography、spatial といった言葉を使います。主な選択肢は GeoPandas、Folium、Cartopy などです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>検索で <code>Python</code> と <code>maps</code> を組み合わせると、Python の項目名と値の組み合わせ（英語では同じ言葉を使う）に関する結果が多く出てしまう。<code>GIS</code>, <code>geo</code>, <code>cartography</code>, <code>spatial</code> といった言葉で探すといい。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>パッケージ</th><th>特徴</th></tr>
+      <tr><td><b>PyGIS</b></td><td>Python での地理データの扱いに関するまとまった参考資料</td></tr>
+      <tr><td><b>PySAL</b></td><td>地理的な分析のためのライブラリ</td></tr>
+      <tr><td><b>Cartopy</b></td><td>地理データの分析と地図の作成。投影のしかたの指定が豊富</td></tr>
+      <tr><td><b>Folium</b></td><td>ブラウザ上で操作できる地図を作れる</td></tr>
+      <tr><td><b>Google Maps Services for Python</b></td><td>Google の地図の窓口を使う</td></tr>
+      <tr><td><b>Geemap</b></td><td>Google Earth に対応</td></tr>
+      <tr><td><b>Geoplot</b></td><td>Cartopy と Matplotlib を拡張したもの</td></tr>
+      <tr><td><b>GeoPandas</b></td><td>pandas を拡張し、地理データを表として扱える</td></tr>
+      <tr><td><b>ArcGIS / ArcPy</b></td><td>Esri による公開された道具</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk">選ぶときの基準</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🗺️</div><h4>地図の種類</h4><p>塗り分け、線や点で表すもの、画像を重ねるもの、など。</p></div>
+      <div class="mini"><div class="ic">🎨</div><h4>見た目の調整</h4><p>色や線をどこまで細かく指定できるか。</p></div>
+      <div class="mini"><div class="ic">🧑‍💻</div><h4>使いやすさ</h4><p>短い記述で目的のものが作れるか。</p></div>
+      <div class="mini"><div class="ic">⚡</div><h4>速さとデータの制限</h4><p>広い範囲や多くの点でも扱えるか。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>探すときの言葉: GIS / geo / cartography / spatial</li>
+        <li>主な候補: GeoPandas, Folium, Cartopy など</li>
+        <li>本書は Plotly で簡単な実演をする</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ マッピング例 ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>マッピング例<span class="tag">国別の塗り分け地図</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>塗り分け地図で国別のデータを表します。2文字から3文字への国コードの変換が必要です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Plotly は基本的すぎず複雑すぎず、小さな地図を FastAPI と組み合わせるのに便利だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データは2文字の国コードで持っている。Plotly の<b>塗り分け地図</b>は3文字のコードを期待する。データを全部作り直すより、<code>pip install country_converter</code> で変換するほうが楽だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">国ごとの件数を数えて、世界地図に色で表します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># グラフを描くまとまりを取り込む。</span>
+<span class="kw">import</span> plotly.express <span class="kw">as</span> px
+<span class="cmt"># 国コードの形式を変換する道具を取り込む。coco という短い名前で呼ぶ。</span>
+<span class="kw">import</span> country_converter <span class="kw">as</span> coco
+<span class="cmt"># 返す内容を組み立てる部品を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> Response
+<span class="cmt"># 同じ値が何回出たかを数える標準の機能を取り込む。</span>
+<span class="kw">from</span> collections <span class="kw">import</span> Counter
+<span class="cmt"># データを取り出すサービス層を取り込む。</span>
+<span class="kw">import</span> service.creature <span class="kw">as</span> service
+
+<span class="cmt"># /map への GET を、この下の処理に結びつける。</span>
+<span class="fn">@router.get</span>(<span class="str">"/map"</span>)
+<span class="kw">def</span> <span class="fn">map_creatures</span>():
+    <span class="cmt"># すべてのデータを取ってくる。</span>
+    creatures = service.<span class="fn">get_all</span>()
+    <span class="cmt"># 各件から国コードだけを取り出す。</span>
+    <span class="cmt"># if 以降で、空のものと「どこにでもいる」を表す * を除いている。</span>
+    <span class="cmt"># これらは特定の国を指さないので、地図には描けない。</span>
+    iso2_codes = [c.country <span class="kw">for</span> c <span class="kw">in</span> creatures <span class="kw">if</span> c.country <span class="kw">and</span> c.country != <span class="str">"*"</span>]
+    <span class="cmt"># 2文字のコードを、地図が期待する3文字のコードにまとめて変換する。</span>
+    iso3_codes = coco.<span class="fn">convert</span>(names=iso2_codes, to=<span class="str">"ISO3"</span>)
+    <span class="cmt"># 同じ国コードが何回出たかを数える。国ごとの件数になる。</span>
+    counts = <span class="fn">Counter</span>(iso3_codes)
+    <span class="cmt"># 地図に渡す形に整える。keys が国コードの一覧、values がその件数の一覧。</span>
+    df_data = {<span class="str">"iso3"</span>: <span class="fn">list</span>(counts.<span class="fn">keys</span>()), <span class="str">"count"</span>: <span class="fn">list</span>(counts.<span class="fn">values</span>())}
+    <span class="cmt"># 塗り分け地図を作る。</span>
+    fig = px.<span class="fn">choropleth</span>(df_data,
+                        <span class="cmt"># どの列が場所を表すかの指定。</span>
+                        locations=<span class="str">"iso3"</span>,
+                        <span class="cmt"># どの列の値で色の濃さを決めるかの指定。</span>
+                        color=<span class="str">"count"</span>,
+                        <span class="cmt"># カーソルを乗せたときに表示する内容。</span>
+                        hover_name=<span class="str">"iso3"</span>,
+                        title=<span class="str">"Cryptids by country"</span>)
+    <span class="cmt"># 画像のデータに変換する。</span>
+    fig_bytes = fig.<span class="fn">to_image</span>(format=<span class="str">"png"</span>)
+    <span class="cmt"># 種類を指定して返す。</span>
+    <span class="kw">return</span> <span class="fn">Response</span>(content=fig_bytes, media_type=<span class="str">"image/png"</span>)
+<span class="cmt"># --- localhost:8000/creature/map を開いた結果 ---</span>
+<span class="cmt"># 世界地図が表示され、件数の多い国ほど濃い色で塗られている。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>localhost:8000/creature/map</code> で、世界地図に国別の件数が表示される。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>米国の州ごとに描きたい場合は、地域の項目を使い、国が米国の場合に2文字の州のコードを場所として渡し、州の単位で描く指定を加える。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>国コードを取り出す</h4><p>各件から国コードだけを集める。特定の国を指さないものは除く。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>2文字を3文字に変換</h4><p>地図が期待する形式に合わせる。<div class="branch ng">変換しないと、地図に何も表示されない。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>国ごとに数える</h4><p>同じコードが何回出たかを数える。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>地図を作って返す</h4><p>場所の列と、色を決める列を指定して描き、画像として返す。</p></div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：なぜ変換が必要か</h4>
+      <p>データには日本を <code>JP</code>、米国を <code>US</code> という2文字で持っています。しかし地図の側は <code>JPN</code>、<code>USA</code> という3文字を期待します。2文字のまま渡すと、地図はどの国か判断できず、色が付きません。</p>
+      <p>データを全部3文字に書き換えることもできますが、他の場所で2文字を使っている部分も直すことになります。表示の直前に変換すれば、元のデータには手を触れずに済みます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>px.choropleth()</code> で塗り分けの地図</li>
+        <li>2文字から3文字への変換に <code>country_converter</code></li>
+        <li>州の単位で描く指定もできる</li>
+        <li><code>Counter</code> で国ごとに数える</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「文章のデータの読み込みは csv（標準）→ tabulate（整った表示）→ pandas（加工）の3段階」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>用途で使い分ける。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「pandas の表の入れ物で、本格的なデータの操作ができる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>機械学習の前の準備にも欠かせない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「Plotly と kaleido で画像を作り、FastAPI の <code>Response</code> で返す」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ブラウザに直接画像を渡す形だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「塗り分け地図で国別に表す。2文字から3文字への変換は <code>country_converter</code> で」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>地理データを見える形にする入り口だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「地図の分野は GeoPandas / Folium / Cartopy など、多くの選択肢がある」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>用途に合わせて、深く学ぶ先を選ぶといい。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>3段階の読み込み</div>
+      <p style="font-size:14px;margin:0">縦棒で区切られたファイルからデータを読み込む3つの方法（csv、tabulate、pandas）を、それぞれの目的とともに説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>csv（標準の機能）</b>：ファイルを1行ずつの並びとして読み込むだけの単純な方法。区切り文字を指定して行を取得する。最小限の機能で、前の段階の処理に向く。<b>tabulate</b>：画面や文章での、整った表の表示に特化。データと列の名前を渡すと、見やすい表が出力される。確認や報告に向く。<b>pandas</b>：本格的なデータの加工のためのライブラリ。区切り文字を指定して読み込むと表の入れ物ができ、絞り込み、集計、並べ替え、まとめ直しなど豊富な操作ができる。機械学習の準備や、グラフの元データ作りの土台になる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つすべての方法に触れている<br>□ それぞれの目的・使い分けを述べている<br>□ pandas が表の入れ物を返すことに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>FastAPI で画像を返す</div>
+      <p style="font-size:14px;margin:0">FastAPI の窓口から、Plotly で作った画像を返す典型的な形を書いてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>import plotly.express as px</code> と <code>from fastapi import Response</code> を書き、窓口の中でグラフを作る。そのあと ①<code>fig.to_image(format="png")</code> で画像のデータを取得、②<code>Response(content=画像のデータ, media_type="image/png")</code> で返す。Plotly の説明では画面に表示する方法が勧められているが、これはサーバでの用途には向かない。<code>pip install kaleido</code> が必要。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>fig.to_image(format="png")</code> で画像のデータを取ることを述べている<br>□ <code>Response(content=..., media_type="image/png")</code> を使っている<br>□ kaleido が必要なことに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>塗り分け地図</div>
+      <p style="font-size:14px;margin:0">Plotly の塗り分け地図で国別のデータを見える形にする基本の手順を説明してください。国コードについても触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①各データに国コードを付ける（通常は2文字）、②地図の側は3文字を期待するため、<code>country_converter</code> で変換する、③国ごとの件数を数える（<code>Counter</code> など）、④場所を表す列と、色を決める列を指定して地図を作る、⑤画像のデータに変換し、FastAPI の <code>Response</code> で返す。米国の州ごとに描く場合は、州の単位で描く指定を加える。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 2文字と3文字の変換に触れている<br>□ <code>country_converter</code> の使用に触れている<br>□ 場所の列と色の列の指定に触れている<br>□ 国ごとの集計に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>グラフのライブラリの選択</div>
+      <p style="font-size:14px;margin:0">Python のグラフのライブラリ（Matplotlib, Plotly, Seaborn, Bokeh）はそれぞれどんな特徴があり、どう使い分けますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>Matplotlib</b>：最も古く、扱える範囲が広い。種類が豊富で細かく制御できるが、見た目を整えるには調整が必要。<b>Plotly</b>：操作できるグラフが強み。ブラウザ上で動かせるグラフや、まとめた画面の用途に向く。比較的短い記述で見やすい結果になる。<b>Seaborn</b>：Matplotlib の上に作られた、短く書ける仕組み。統計的なグラフが書きやすい。種類は少なめだが、初期状態で見やすい。<b>Bokeh</b>：大量のデータでも操作できる。まとめた画面の用途にも向く。選び方は、固定の報告なら Matplotlib や Seaborn、操作できるものや Web との組み合わせなら Plotly や Bokeh、単純さを重視するなら Seaborn、細かく制御したいなら Matplotlib。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 4つすべてに触れている<br>□ それぞれの特徴を区別して説明している<br>□ 使い分けの基準を述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>地図のライブラリ</div>
+      <p style="font-size:14px;margin:0">Python で地図を扱うライブラリには何がありますか？ 2つ以上挙げて、それぞれの特徴を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>GeoPandas</b>：pandas の拡張で、地理のデータを表として扱える。地図の形のデータを読み込み、重なりや範囲の計算などができる。<b>Folium</b>：ブラウザ上で操作できる地図を、Python から作れる。目印や範囲を置きやすい。<b>Cartopy</b>：地理データの分析と地図の作成。Matplotlib が土台。地図の投影のしかたの指定が豊富。<b>Plotly の塗り分け地図</b>：単純な色分けの地図。本書で使っている。Web との組み合わせがしやすい。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 2つ以上のライブラリを挙げている<br>□ それぞれの特徴を区別して述べている<br>□ 用途や強みを説明している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>pandas の入門を試す</h4><p>公式の短い入門を、実際に手を動かしながら進める。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># pandas を取り込む。</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="cmt"># ファイルを読み込んで、表の入れ物にする。</span>
+df = pd.<span class="fn">read_csv</span>(<span class="str">"cryptid.psv"</span>, sep=<span class="str">"|"</span>)
+
+<span class="cmt"># 国ごとの件数を数える。1行でできる。</span>
+<span class="fn">print</span>(df[<span class="str">"country"</span>].<span class="fn">value_counts</span>().<span class="fn">head</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># US    45</span>
+<span class="cmt"># UK    12</span>
+<span class="cmt"># JP     8</span>
+<span class="cmt"># CA     6</span>
+<span class="cmt"># AU     5</span>
+
+<span class="cmt"># 国が US のものだけを取り出す。角かっこの中が絞り込みの条件。</span>
+us_only = df[df[<span class="str">"country"</span>] == <span class="str">"US"</span>]
+<span class="fn">print</span>(<span class="fn">len</span>(us_only))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 45</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>いろいろなグラフを試す</h4><p>Plotly の説明で、線、棒、分布、色の濃淡など複数の種類を試す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>自分のデータで同じことをする</h4><p>興味のあるデータ（公開されているもの、自分の記録など）で、同じ形を実装してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>地図にデータを重ねる</h4><p>GeoPandas と Folium で、自分の地域の地図にデータを重ねる練習をする。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「ゲーム」へ</h4><p>FastAPI と、他の言語や HTML で作るものとの組み合わせを学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第17章「データの発見と可視化」の図解 ― 原文の全節（Pythonとデータ／PSVテキスト出力（csv・tabulate・pandas）／SQLiteデータソースとウェブ出力／チャート・グラフパッケージ／チャート例1・2／マッピングパッケージ／マッピング例）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

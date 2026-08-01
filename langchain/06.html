@@ -1,0 +1,784 @@
+<meta charset="utf-8">
+<title>6. エージェントアーキテクチャの基本 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第6章</span>
+  <h1>6. エージェントアーキテクチャの基本</h1>
+  <p>ルーターは道筋を選ぶだけでした。<b>エージェント</b>は「あと何回やるか」「いつ止めるか」まで自分で決めます。「計画する→実行する」を答えが出るまで繰り返す<b>Plan-Doループ（ReAct）</b>を、LangGraphで実装します。</p>
+  <p>コードはすべてPythonです。1行ずつ日本語の説明と、実行結果のコメントを付けました。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">🐍 コードはPythonのみ</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#intro">📖 導入 ― エージェントとは「行動するもの」</a>
+  <a href="#s61">6.1 Plan-Doループ</a>
+  <a href="#s62">6.2 LangGraphエージェントを構築する</a>
+  <a href="#s63">6.3 常に最初にツールを呼び出す</a>
+  <a href="#s64">6.4 多くのツールを扱う</a>
+  <a href="#s65">6.5 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のPythonコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。コードを飛ばしても流れがつかめます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際に何回ループしてどう止まるか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。</p>
+  <div class="gl">
+    <div class="item"><div class="w">エージェント</div><p>「行動するもの」。状況を見て、複数の選択肢の中から次にすることを自分で決めて動く仕組み。</p></div>
+    <div class="item"><div class="w">ツール</div><p>LLMの外側にある機能。検索・電卓・データベース照会など。LLMは「これを使いたい」と申告するだけで、実行はプログラム側が行います。</p></div>
+    <div class="item"><div class="w">ツール呼び出し</div><p>使える機能の一覧をLLMに見せ、使いたいものと入力を決まった形で答えさせること。</p></div>
+    <div class="item"><div class="w">CoT<span>思考の連鎖</span></div><p>「順を追って考えて」と促し、途中の考えを書かせてから答えさせる書き方。</p></div>
+    <div class="item"><div class="w">ループ</div><p>止める条件に当たるまで、同じ処理を繰り返すこと。</p></div>
+    <div class="item"><div class="w">停止条件</div><p>ループをやめる基準。エージェントでは、これをLLM自身が決めます。</p></div>
+    <div class="item"><div class="w">Plan-Doループ</div><p>「行動を計画する→実行する」を、答えが出るまで繰り返す流れ。</p></div>
+    <div class="item"><div class="w">ReAct</div><p>考えること（Reasoning）と行動すること（Acting）を交互に行う手法の名前。この章の中心。</p></div>
+    <div class="item"><div class="w">LLM駆動ループ</div><p>繰り返しの回数や終わりを、プログラムではなくLLMが決めるループ。</p></div>
+    <div class="item"><div class="w">bind_tools</div><p>「このツールたちが使えます」とモデルに教える設定。</p></div>
+    <div class="item"><div class="w">@tool</div><p>ふつうのPython関数を、LLMが使える機能として登録する印。</p></div>
+    <div class="item"><div class="w">ToolNode</div><p>モデルが「使いたい」と言った機能を実際に実行して、結果を返す処理。</p></div>
+    <div class="item"><div class="w">tools_condition</div><p>「使いたい機能があるか」を見て、あれば実行へ、なければ終了へ振り分ける判定。</p></div>
+    <div class="item"><div class="w">ToolMessage</div><p>機能を実行した結果を、会話の履歴に入れるための入れ物。</p></div>
+    <div class="item"><div class="w">AIMessage</div><p>モデルの返答を入れる入れ物。使いたい機能の申告もここに入ります。</p></div>
+    <div class="item"><div class="w">tool_calls</div><p>モデルが「この機能にこの入力を渡したい」と申告した内容。</p></div>
+    <div class="item"><div class="w">条件付きエッジ</div><p>関数の判定結果によって、次に進む先が変わるつながり。</p></div>
+    <div class="item"><div class="w">レイテンシー</div><p>質問してから答えが返るまでの待ち時間。</p></div>
+    <div class="item"><div class="w">プランニング性能</div><p>「次に何をすべきか」を正しく選べる力。選択肢が多すぎると落ちます。</p></div>
+    <div class="item"><div class="w">DuckDuckGo</div><p>検索サービスの1つ。この章では検索ツールとして使います。</p></div>
+    <div class="item"><div class="w">RAGステップ</div><p>本題の前に検索を1回はさむ手順。ここでは「使えそうな機能」を絞るのに使います。</p></div>
+    <div class="item"><div class="w">ベクトルストア</div><p>文章を数値にして保存し、意味が近いものを探せるようにした保管場所。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">止まるタイミングまでLLMが決める</span></div></div>
+  <div class="card">
+    <p class="lead">「ルーターよりもっと自律的なのが<b>エージェント</b>ですよね？」とソラ。リク先輩は「そう、エージェントは<b>いつ止まるか</b>さえ自分で決めるんだ」と答えます。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">この章では、今のLLMアーキテクチャで最も重要な「エージェントアーキテクチャ」を学びます。鍵は<b>Plan-Doループ</b>——「行動を計画する→実行する」を、LLMが「もう答えが出た」と判断するまで繰り返します。これが有名な<b>ReAct</b>です。LangGraphで基本のエージェントを実装し、さらに「常に最初にツールを呼ぶ」「多くのツールを扱う」という拡張も学びます。</p>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">エージェントとは「行動するもの」。行動するには、複数の選択肢から何をすべきかを決める力と、外の世界の情報が必要です。LLMのエージェントは「ツール呼び出し」と「CoT」を組み合わせて、計画→実行を繰り返します。最大の特徴は、<b>ループを止めるタイミングをLLM自身が決める</b>ことです。</p>
+    <div class="cycle">
+      <div class="node"><h4>計画する</h4><p>次にどの機能を、どんな入力で使うかを決めます。</p><span class="when">LLMの仕事</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>実行する</h4><p>その機能を実際に動かし、結果を受け取ります。</p><span class="when">プログラムの仕事</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>結果を見て考える</h4><p>もう答えられるか、まだ足りないかを判断します。</p><span class="when">LLMの仕事</span></div>
+    </div>
+    <div class="loopback">↻ 足りなければ「計画する」へ戻る／答えられるなら止める ― この判断をLLMがする</div>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>何段階も要る問題（調べて→計算して→答える）は、「何回必要か・いつ止まるか」をLLMに任せないと解けないから。</li>
+        <li>ルーターまでは道筋が固定だったが、エージェントは「踏む手順の数」自体をLLMが決める点で本質的に違うから。</li>
+        <li>使える機能が増えるとLLMが正しいものを選べなくなるので、その対処法を知る必要があるから。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li>Plan-Doループ（ReAct）の仕組みと、LLMが止めどきを決める意味を説明できる。</li>
+        <li>LangGraphで、モデルの処理とツールの処理をぐるぐる回す基本のエージェントを実装できる。</li>
+        <li>「常に最初に特定のツールを呼ぶ」拡張で、待ち時間を減らし動きを固定できる。</li>
+        <li>検索の手順を1つ挟んで、多くのツールから関係するものだけを絞り込める。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 導入 ============ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― エージェントとは「行動するもの」</h2><span class="tag">行動に必要な3つの条件</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>先生、5章でルーターまで来ました。エージェントはもっと自律的なんですよね？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。AIの分野では「エージェント」という言葉の歴史は長くて、最も簡単に言えば「<b>行動するもの</b>」だ。でもこの「行動する」には見た目以上の意味がある。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧭</div><h4>① 決める力</h4><p>行動するには「何をすべきか決める力」が要ります。</p></div>
+      <div class="mini"><div class="ic">🔱</div><h4>② 複数の選択肢</h4><p>決めるには選択肢が複数必要です。選ぶものが1つしかなければ、それは決断ではありません。</p></div>
+      <div class="mini"><div class="ic">🌐</div><h4>③ 外の世界の情報</h4><p>決めるには、自分の外側にある情報が要ります。検索結果や計算結果がそれです。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>決める・選択肢・情報、の3つですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。だから<b>エージェント型のLLMアプリ</b>は、今の状態と目指す状態を材料に、複数の行動から1つを選ぶ。これは2つのやり方の組み合わせで作る——<b>ツール呼び出し</b>（選べる行動の一覧を見せて、選んだものを決まった形で答えさせる）と<b>CoT</b>（順を追って考えさせる）だ。最新のLLMはこの用途向けに調整されているから、特別な指示を足さなくていい。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6.1 ============ -->
+<section id="s61">
+  <div class="sec-head"><div class="sec-num">6.1</div><div><h2>Plan-Doループ</h2><span class="tag">止めどきをLLMが決める</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：5章までと決定的に違うのは<span class="term" data-tip="繰り返しの回数や終わりを、プログラムではなくLLMが決めるループ。">LLM駆動ループ</span>です。ふつうのループは止める条件を人が書きますが、ここでは<b>LLMが止めどきを決めます</b>。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>エージェントアーキテクチャが5章と決定的に違うのは、まだ扱っていない考え方——<b>LLM駆動ループ</b>だ。プログラムを書く人なら<b>ループ</b>は知っているね。止める条件に当たるまで同じ処理を繰り返す。エージェントの鍵は、<b>止める条件をLLMに決めさせる</b>ことだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>ループの中で何をするんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>①<b>行動を計画する</b>→②<b>その行動を実行する</b>、の繰り返しだ。0章のクーリッジ大統領の年齢の問題で見てみよう。</div></div>
+    </div>
+
+    <h3 class="blk">ループに加える2つの要素</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏁</div><h4><code>output</code> ツール</h4><p>LLMが最終的な答えにたどり着いたときに使う機能。これが選ばれたら「もう終わり」という合図になります。</p></div>
+      <div class="mini"><div class="ic">📨</div><h4>前回の実行結果</h4><p>使った機能の名前とその出力を見せて、「結果が出た。次は何をしたい？」とLLMに伝えます。</p></div>
+    </div>
+
+    <h3 class="blk">実際のループの様子</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>計画：検索する</h4><p>LLMが「検索ツールに『30th president of the United States』と入力する」と決めます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>実行：検索結果が返る</h4><p>クーリッジの生年（1872年）と没年（1933年）が返ってきます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>計画：計算する</h4><p>結果を見たLLMが「電卓に <code>1933 - 1872</code> を入力する」と決めます。</p><div class="branch ng">ここで止まらない。まだ答えが出ていないとLLMが判断したため。</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>実行：61 が返る</h4><p>計算はプログラムが行うので、数は必ず正確です。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>終了：答えを出す</h4><p>十分な情報が揃ったとLLMが判断し、<code>output</code> を選んで答えを「61」とします。</p><div class="branch ok">ここで止まる。何回繰り返すかは、始める前には決まっていなかった。</div></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>何回必要か、いつ止まるかを、LLMが決めるんですね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこが核心だ。決める役をLLMに渡している。このやり方は<b>ReAct</b>（Reasoning ＋ Acting、考える＋行動する）と呼ばれて、Shunyu Yaoたちが最初に提案した。じゃあ、LangGraphで実装しよう。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th></th><th>チェーン（5.2）</th><th>ルーター（5.3）</th><th>エージェント（この章）</th></tr>
+      <tr><td>手順の数</td><td>固定（例：必ず2回）</td><td>固定（分岐しても回数は同じ）</td><td><b>可変</b>（問題ごとに変わる）</td></tr>
+      <tr><td>道筋</td><td>固定</td><td>LLMが分岐を選ぶ</td><td>LLMが毎回選ぶ</td></tr>
+      <tr><td>止めどき</td><td>最後の処理が終わったら</td><td>最後の処理が終わったら</td><td><b>LLMが決める</b></td></tr>
+      <tr><td>読みやすさ</td><td>高い</td><td>中くらい</td><td>低い（実行するまで分からない）</td></tr>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6.2 ============ -->
+<section id="s62">
+  <div class="sec-head"><div class="sec-num">6.2</div><div><h2>LangGraphエージェントを構築する</h2><span class="tag">2つの処理をぐるぐる回す</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：モデルの処理とツールの処理を用意して、その間をループさせます。抜けるかどうかを判定するのが <code>tools_condition</code> です。</p>
+
+    <div class="cycle">
+      <div class="node"><h4>model</h4><p>今の履歴を見て、「この機能を使いたい」か「もう答えられる」かを決めます。</p><span class="when">LLMを呼ぶ</span></div>
+      <div class="cycle-arrow">⇄</div>
+      <div class="node"><h4>tools</h4><p>モデルが申告した機能を実際に実行し、結果を履歴に足します。</p><span class="when">LLMは呼ばない</span></div>
+    </div>
+    <div class="loopback">↻ modelがツールを申告した限り、この2つを行き来し続ける。申告がなくなった時点で終了</div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 文字列を数式として安全に評価する道具と、型の道具を読み込む。</span>
+<span class="kw">import</span> ast
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+
+<span class="cmt"># 検索の機能、機能を登録する印、モデル、グラフの部品、便利な既製の部品を読み込む。</span>
+<span class="kw">from</span> langchain_community.tools.ddg_search.tool <span class="kw">import</span> DuckDuckGoSearchRun
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> START, StateGraph
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode, tools_condition
+
+<span class="cmt"># この印を付けると、ふつうの関数がLLMの使える機能になる。</span>
+<span class="kw">@tool</span>
+<span class="kw">def</span> <span class="fn">calculator</span>(query: <span class="kw">str</span>) -> <span class="kw">str</span>:
+    <span class="cmt"># この説明文は、そのままLLMに「何をする機能か」として伝わる。だから丁寧に書く。</span>
+    <span class="str">"""シンプルな電卓ツール。入力は数式。"""</span>
+    <span class="cmt"># 受け取った文字列を数式として計算する。計算はPythonがやるので必ず正確。</span>
+    <span class="kw">return</span> ast.<span class="fn">literal_eval</span>(query)
+
+<span class="cmt"># 検索の機能を1つ用意する。</span>
+search = <span class="fn">DuckDuckGoSearchRun</span>()
+
+<span class="cmt"># 使える機能を一覧にまとめる。ここに足すだけで機能を増やせる。</span>
+tools = [search, calculator]
+
+<span class="cmt"># モデルに「この2つが使えます」と教える。これで機能を申告できるようになる。</span>
+model = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0.1</span>).<span class="fn">bind_tools</span>(tools)
+
+<span class="cmt"># 持ち回るデータの形を決める。会話の履歴だけを持つ。</span>
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    messages: Annotated[<span class="fn">list</span>, add_messages]
+
+<span class="cmt"># モデルの処理：今の履歴を渡して、次に何をするかを決めさせる。</span>
+<span class="cmt"># 返答には「使いたい機能の申告」が入ることもあれば、最終の答えが入ることもある。</span>
+<span class="kw">def</span> <span class="fn">model_node</span>(state: State) -> State:
+    res = model.<span class="fn">invoke</span>(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: res}
+
+<span class="cmt"># 組み立て役を作る。</span>
+builder = <span class="fn">StateGraph</span>(State)
+
+<span class="cmt"># モデルの処理を登録する。</span>
+builder.<span class="fn">add_node</span>(<span class="str">"model"</span>, model_node)
+
+<span class="cmt"># ツールを実行する処理を登録する。既製の部品なので自分で書かなくてよい。</span>
+<span class="cmt"># 申告された機能を実行し、結果を履歴に足す。途中で失敗した場合は、</span>
+<span class="cmt"># エラーの内容を結果としてLLMに渡すので、LLMが立て直しを判断できる。</span>
+builder.<span class="fn">add_node</span>(<span class="str">"tools"</span>, <span class="fn">ToolNode</span>(tools))
+
+<span class="cmt"># 入口からは、まずモデルの処理へ進む。</span>
+builder.<span class="fn">add_edge</span>(START, <span class="str">"model"</span>)
+
+<span class="cmt"># モデルの処理のあと、使いたい機能の申告があれば tools へ、なければ終了する。</span>
+<span class="cmt"># この判定が「ループを続けるか止めるか」を決めている。</span>
+builder.<span class="fn">add_conditional_edges</span>(<span class="str">"model"</span>, tools_condition)
+
+<span class="cmt"># ツールを実行したら、必ずモデルの処理へ戻る。ここでループが閉じる。</span>
+builder.<span class="fn">add_edge</span>(<span class="str">"tools"</span>, <span class="str">"model"</span>)
+
+<span class="cmt"># 実行できる形に仕上げる。</span>
+graph = builder.<span class="fn">compile</span>()
+</pre></details>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧰</div><h4>ポイント① 機能は差し替え可能</h4><p>検索と電卓の2つを使っています。一覧に足したり入れ替えたりするだけで増減できます。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>ポイント② 既製の部品が使える</h4><p><code>ToolNode</code> は申告された機能を実行して結果を返します。失敗しても、その内容を結果としてLLMに渡します。<code>tools_condition</code> は続けるか止めるかを判定します。</p></div>
+      <div class="mini"><div class="ic">🔁</div><h4>ポイント③ 終わりを決めるのはモデル</h4><p>モデルとツールの間をぐるぐる回り、<b>終わるタイミングを決めるのはモデル自身</b>。これがエージェントの重要な性質です。</p></div>
+    </div>
+
+    <h3 class="blk">実行して、ループを目で追う</h3>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">#「これは利用者の発言」という札を付ける入れ物を読み込む。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+
+<span class="cmt"># 何段階か必要な質問を1つ用意する（調べる→計算する、の2段階が要る）。</span>
+user_input = {
+    <span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">"How old was the 30th president of the United States when he died?"</span>)]
+}
+
+<span class="cmt"># 動かしながら、処理が1つ終わるたびにその結果を表示する。</span>
+<span class="cmt"># model → tools → model と行き来している様子がそのまま見える。</span>
+<span class="kw">for</span> c <span class="kw">in</span> graph.<span class="fn">stream</span>(user_input):
+    <span class="fn">print</span>(c)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># { "model": { "messages": AIMessage(content="", tool_calls=[{"name": "duckduckgo_search",</span>
+<span class="cmt">#     "args": {"query": "30th president of the United States age at death"}, ...}]) } }</span>
+<span class="cmt"># { "tools": { "messages": [ToolMessage(content="Calvin Coolidge (born July 4, 1872 …</span>
+<span class="cmt">#     died January 5, 1933 …)", name="duckduckgo_search", ...)] } }</span>
+<span class="cmt"># { "model": { "messages": AIMessage(content="第30代大統領カルビン・クーリッジは、</span>
+<span class="cmt">#     1933年1月5日に60歳で亡くなりました。") } }</span>
+<span class="cmt"># ↑ 3行目には tool_calls がない＝これ以上ツールを使わない＝ここでループが終わる</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>流れはこうだ。①モデルの処理が検索を使うと判断→判定によりツールの処理へ→②ツールの処理が検索を実行して結果を受け取る→③モデルの処理がもう一度呼ばれ、検索結果を見て最終の答えを作る（追加の申告なし）→判定が終了を選ぶ。じゃあ、この基本に拡張を加えよう。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：質問によってループの回数が変わる</h4>
+      <p>「日本の首都は？」→ 調べる必要すらないので、モデルは1回で答えます。<b>ループ0周</b>。</p>
+      <p>「第30代大統領は死亡時に何歳？」→ 検索が1回必要。<b>ループ1周</b>。</p>
+      <p>「第30代大統領は、妻の母が亡くなったとき何歳？」→ 大統領の生年を調べ、義母の没年を調べ、引き算する。<b>ループ3周</b>。</p>
+      <p>この回数はコードのどこにも書かれていません。毎回LLMが決めています。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6.3 ============ -->
+<section id="s63">
+  <div class="sec-head"><div class="sec-num">6.3</div><div><h2>常に最初にツールを呼び出す</h2><span class="tag">1回目の判断を省く</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：「最初は必ず検索すべき」と分かっているなら、1回目のLLM呼び出しを省けます。<b>待ち時間が減り、誤った判断も防げます</b>。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>標準のエージェントは、LLMが常に「次にどの機能を使うか」を判断する。柔軟だけど、動きが読めないという代償がある。もし開発者が「検索の機能は必ず最初に呼ぶべき」と分かっているなら、固定する利点がある。ただし、そういうはっきりした決まりがないアプリにこれを入れると、かえって悪くなる。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">⚡</div><h4>利点① 待ち時間が減る</h4><p>1回目のLLM呼び出し（どの機能を使うか決める呼び出し）をまるごと省けます。</p></div>
+      <div class="mini"><div class="ic">🎯</div><h4>利点② 誤った判断を防げる</h4><p>LLMが「検索は不要」と誤って判断してしまうのを防げます。</p></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 数式の評価、型の道具、重複しないIDを作る道具を読み込む。</span>
+<span class="kw">import</span> ast
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+<span class="kw">from</span> uuid <span class="kw">import</span> uuid4
+
+<span class="cmt"># 検索の機能、メッセージの入れ物、機能を登録する印、モデル、グラフの部品を読み込む。</span>
+<span class="kw">from</span> langchain_community.tools <span class="kw">import</span> DuckDuckGoSearchRun
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> AIMessage, ToolCall
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> START, StateGraph
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode, tools_condition
+
+<span class="cmt"># 電卓の機能を用意する（前の例と同じ）。</span>
+<span class="kw">@tool</span>
+<span class="kw">def</span> <span class="fn">calculator</span>(query: <span class="kw">str</span>) -> <span class="kw">str</span>:
+    <span class="str">"""シンプルな電卓ツール。入力は数式。"""</span>
+    <span class="kw">return</span> ast.<span class="fn">literal_eval</span>(query)
+
+<span class="cmt"># 検索の機能と一覧、そして機能を教えたモデルを用意する（ここまで前の例と同じ）。</span>
+search = <span class="fn">DuckDuckGoSearchRun</span>()
+tools = [search, calculator]
+model = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0.1</span>).<span class="fn">bind_tools</span>(tools)
+
+<span class="cmt"># 持ち回るデータの形を決める。</span>
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    messages: Annotated[<span class="fn">list</span>, add_messages]
+
+<span class="cmt"># 通常のモデルの処理。2回目以降はこちらが使われる。</span>
+<span class="kw">def</span> <span class="fn">model_node</span>(state: State) -> State:
+    res = model.<span class="fn">invoke</span>(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: res}
+
+<span class="cmt"># 1回目だけ使う処理。ここが今回の主役で、LLMをまったく呼ばない。</span>
+<span class="kw">def</span> <span class="fn">first_model</span>(state: State) -> State:
+    <span class="cmt"># 履歴のいちばん最後、つまり利用者が今書いた文章をそのまま取り出す。</span>
+    query = state[<span class="str">"messages"</span>][-<span class="num">1</span>].content
+    <span class="cmt"># その文章を検索語として、「検索の機能を使いたい」という申告を自分で組み立てる。</span>
+    <span class="cmt"># 本来はLLMが作るこの申告を、人が決め打ちで作っている。</span>
+    search_tool_call = <span class="fn">ToolCall</span>(name=<span class="str">"duckduckgo_search"</span>, args={<span class="str">"query"</span>: query}, id=uuid4().hex)
+    <span class="cmt"># 申告だけを持つ「モデルの返答」の形にして返す。本文は空でよい。</span>
+    <span class="kw">return</span> {<span class="str">"messages"</span>: <span class="fn">AIMessage</span>(content=<span class="str">""</span>, tool_calls=[search_tool_call])}
+
+<span class="cmt"># 組み立て役を作り、3つの処理を登録する。</span>
+builder = <span class="fn">StateGraph</span>(State)
+builder.<span class="fn">add_node</span>(<span class="str">"first_model"</span>, first_model)
+builder.<span class="fn">add_node</span>(<span class="str">"model"</span>, model_node)
+builder.<span class="fn">add_node</span>(<span class="str">"tools"</span>, <span class="fn">ToolNode</span>(tools))
+
+<span class="cmt"># 入口からは、まず必ず first_model へ（ここではLLMを呼ばない）。</span>
+builder.<span class="fn">add_edge</span>(START, <span class="str">"first_model"</span>)
+
+<span class="cmt"># その次も判定を挟まず、必ずツールの処理へ。つまり検索は確実に1回行われる。</span>
+builder.<span class="fn">add_edge</span>(<span class="str">"first_model"</span>, <span class="str">"tools"</span>)
+
+<span class="cmt"># ここから先は通常のエージェントと同じ。申告があれば続き、なければ終了。</span>
+builder.<span class="fn">add_conditional_edges</span>(<span class="str">"model"</span>, tools_condition)
+builder.<span class="fn">add_edge</span>(<span class="str">"tools"</span>, <span class="str">"model"</span>)
+
+<span class="cmt"># 実行できる形に仕上げる。</span>
+graph = builder.<span class="fn">compile</span>()
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>違いは——最初に <code>first_model</code> を通るけど、これは<b>LLMをまったく呼ばない</b>。利用者の文章をそのまま検索語にして、検索の申告を作るだけ。そのあと <code>tools</code> に進んで、いつもの流れに戻る。これで1回目のLLM呼び出しを省けた。</div></div>
+    </div>
+
+    <div class="branch ng">注意：「必ず最初にこれを呼ぶ」というはっきりした決まりがないアプリでこれをやると、不要な検索が毎回走って、かえって遅く・高くなります。</div>
+  </div>
+</section>
+
+<!-- ============ 6.4 ============ -->
+<section id="s64">
+  <div class="sec-head"><div class="sec-num">6.4</div><div><h2>多くのツールを扱う</h2><span class="tag">選択肢が多すぎると選べなくなる</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：使える機能が10個を超えると、LLMは適切なものを選べなくなります。先に<b>関係しそうなものだけに絞って</b>から渡します。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LLMは、指示文に選択肢や情報が大量にあると処理が難しくなる。使える機能が10個以上になると、適切なものを選ぶ力が落ち始める。最も単純な解決策は、選べる機能を減らすこと。でも、質問に応じて多くの機能を使わせたいときは？</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>全部渡すと選べなくなるけど、減らすと使えない……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこで<b>検索の手順を1つ挟む</b>んだ。今の質問に最も関係する機能を先に絞り込んで、全部ではなく一部だけをLLMに渡す。呼び出しの費用も減る。ただしこの手順は待ち時間を足すから、機能を増やして性能が落ちた場合にだけ入れる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>各機能の説明文を保存しておく</h4><p>「シンプルな電卓ツール。入力は数式。」といった説明文を数値にして、名前と一緒に保管します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>質問に近い説明文を探す</h4><p>利用者の質問を数値にして、意味が近い説明文を持つ機能だけを取り出します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>絞った機能だけをモデルに渡す</h4><p>30個あっても、渡すのは関係する3〜4個だけ。あとは通常のエージェントと同じです。</p><div class="branch ok">選択肢が減るので、正しい機能を選びやすくなり、送るトークン数も減ります。</div></div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 数式の評価と型の道具を読み込む。</span>
+<span class="kw">import</span> ast
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+
+<span class="cmt"># 検索の機能、資料の入れ物、メッセージの入れ物、機能を登録する印を読み込む。</span>
+<span class="kw">from</span> langchain_community.tools <span class="kw">import</span> DuckDuckGoSearchRun
+<span class="kw">from</span> langchain_core.documents <span class="kw">import</span> Document
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="cmt"># メモリ上のベクトルストア、モデルと埋め込み、グラフの部品を読み込む。</span>
+<span class="kw">from</span> langchain_core.vectorstores.in_memory <span class="kw">import</span> InMemoryVectorStore
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI, OpenAIEmbeddings
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> START, StateGraph
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode, tools_condition
+
+<span class="cmt"># 電卓の機能を用意する。説明文が、あとで検索の対象になる。</span>
+<span class="kw">@tool</span>
+<span class="kw">def</span> <span class="fn">calculator</span>(query: <span class="kw">str</span>) -> <span class="kw">str</span>:
+    <span class="str">"""シンプルな電卓ツール。入力は数式。"""</span>
+    <span class="kw">return</span> ast.<span class="fn">literal_eval</span>(query)
+
+<span class="cmt"># 検索の機能と、機能の一覧を用意する。</span>
+search = <span class="fn">DuckDuckGoSearchRun</span>()
+tools = [search, calculator]
+
+<span class="cmt"># 埋め込みモデルと、モデルの呼び出し口を用意する。</span>
+<span class="cmt"># ここでは bind_tools をまだ呼ばない。渡す機能は毎回変わるため。</span>
+embeddings = <span class="fn">OpenAIEmbeddings</span>()
+model = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0.1</span>)
+
+<span class="cmt"># 各機能の「説明文」を本文にして保管する。名前は付随情報として持たせる。</span>
+<span class="cmt"># これで「質問に意味が近い説明文の機能」を探せるようになる。</span>
+tools_retriever = InMemoryVectorStore.<span class="fn">from_documents</span>(
+    [<span class="fn">Document</span>(tool.description, metadata={<span class="str">"name"</span>: tool.name}) <span class="kw">for</span> tool <span class="kw">in</span> tools],
+    embeddings,
+).<span class="fn">as_retriever</span>()
+
+<span class="cmt"># 持ち回るデータの形を決める。絞り込んだ機能の名前も持ち回る。</span>
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    messages: Annotated[<span class="fn">list</span>, add_messages]
+    selected_tools: <span class="fn">list</span>[<span class="kw">str</span>]
+
+<span class="cmt"># モデルの処理：絞り込まれた機能だけを渡してから呼ぶ。</span>
+<span class="kw">def</span> <span class="fn">model_node</span>(state: State) -> State:
+    <span class="cmt"># 名前が一致するものだけを、全機能の一覧から取り出す。</span>
+    selected_tools = [tool <span class="kw">for</span> tool <span class="kw">in</span> tools <span class="kw">if</span> tool.name <span class="kw">in</span> state[<span class="str">"selected_tools"</span>]]
+    <span class="cmt"># その場で「この機能たちが使えます」と教えてから呼ぶ。全部は渡さない。</span>
+    res = model.<span class="fn">bind_tools</span>(selected_tools).<span class="fn">invoke</span>(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: res}
+
+<span class="cmt"># 絞り込みの処理：質問に関係する機能を選ぶ。</span>
+<span class="kw">def</span> <span class="fn">select_tools</span>(state: State) -> State:
+    <span class="cmt"># 履歴のいちばん最後、つまり今の質問を取り出す。</span>
+    query = state[<span class="str">"messages"</span>][-<span class="num">1</span>].content
+    <span class="cmt"># 質問に意味が近い説明文を持つ機能を検索する。</span>
+    tool_docs = tools_retriever.<span class="fn">invoke</span>(query)
+    <span class="cmt"># 見つかった機能の名前だけを取り出して記録する。</span>
+    <span class="kw">return</span> {<span class="str">"selected_tools"</span>: [doc.metadata[<span class="str">"name"</span>] <span class="kw">for</span> doc <span class="kw">in</span> tool_docs]}
+
+<span class="cmt"># 組み立て役を作り、3つの処理を登録する。</span>
+builder = <span class="fn">StateGraph</span>(State)
+builder.<span class="fn">add_node</span>(<span class="str">"select_tools"</span>, select_tools)
+builder.<span class="fn">add_node</span>(<span class="str">"model"</span>, model_node)
+builder.<span class="fn">add_node</span>(<span class="str">"tools"</span>, <span class="fn">ToolNode</span>(tools))
+
+<span class="cmt"># 入口では、まず機能を絞り込む。ループに入る前の1回だけ行う。</span>
+builder.<span class="fn">add_edge</span>(START, <span class="str">"select_tools"</span>)
+
+<span class="cmt"># 絞り込みが終わったらモデルの処理へ。</span>
+builder.<span class="fn">add_edge</span>(<span class="str">"select_tools"</span>, <span class="str">"model"</span>)
+
+<span class="cmt"># ここから先は通常のエージェントと同じループ。</span>
+builder.<span class="fn">add_conditional_edges</span>(<span class="str">"model"</span>, tools_condition)
+builder.<span class="fn">add_edge</span>(<span class="str">"tools"</span>, <span class="str">"model"</span>)
+
+<span class="cmt"># 実行できる形に仕上げる。</span>
+graph = builder.<span class="fn">compile</span>()
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>通常のエージェントとほぼ同じで、ループに入る前に <code>select_tools</code> でいったん止まるだけだ。最初に取り出し係に質問を投げて、今の質問に最も関係する機能を取得して、そのあといつものエージェントの形に進む。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3章のセマンティックルーティングに似てますね。機能を意味で絞り込むんだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：30個の機能があるとき</h4>
+      <p>社内向けに、勤怠照会・経費申請・在庫確認・売上集計・会議室予約……と30個の機能を用意したとします。全部の説明文を毎回指示文に入れると、それだけで数千トークンになり、LLMは「勤怠照会」と「シフト確認」の区別がつかなくなります。</p>
+      <p>先に絞り込みを入れると、「昨日の残業時間は？」という質問には勤怠関連の3個だけが渡ります。選択肢が10分の1になるので選び間違いが減り、送るトークン数も大きく減ります。代わりに、絞り込みの検索1回ぶんの待ち時間が増えます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>エージェント＝行動するもの。行動には「何をすべきか決める力・複数の選択肢・外の世界の情報」が必要。</li>
+        <li>ツール呼び出し＋CoTでPlan-Doループ（ReAct）。最大の特徴は、止めどきをLLM自身が決めること。</li>
+        <li>LangGraphでの実装：<code>ToolNode</code>（ツールの実行）と <code>tools_condition</code>（続けるか止めるかの判定）で、モデルとツールの間をループ。</li>
+        <li>拡張1：常に最初に特定のツールを呼ぶ（1回目のLLM呼び出しを省いて待ち時間を削減、誤判断も防止）。はっきりした決まりがある場合のみ。</li>
+        <li>拡張2：絞り込みの手順（<code>select_tools</code>）で、多くの機能から質問に関係するものだけを選ぶ。待ち時間が増える点に注意。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6.5 ============ -->
+<section id="s65">
+  <div class="sec-head"><div class="sec-num">6.5</div><div><h2>まとめ</h2><span class="tag">基本と2つの拡張</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この章では<b>エージェント</b>を紹介した。LLMアプリをエージェントにするには、外の情報を使ってLLMに「複数の選択肢から決める力」を与える。LangGraphの標準的な形と、2つの拡張——常に特定の機能を最初に呼ぶ方法、多くの機能を扱う方法——を解説したね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>いつ止まるかをLLMが決める、というのが一番の発見でした。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこを掴んだのは大きい。次の7章は「エージェントアーキテクチャの拡張」だ。さらなる拡張を見ていくよ。</div></div>
+    </div>
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>エージェントにする＝外の情報を使い、LLMに複数の選択肢から決める力を与えること。</li>
+        <li>標準の形（モデルとツールのループ）を実装した。</li>
+        <li>拡張：常に特定の機能を最初に呼ぶ・多くの機能を扱う。次章はさらなる拡張へ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが4つのポイントを言葉にする</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>今日のポイントです。1つ目は「エージェント＝行動するもの。決める力・複数の選択肢・外の情報が必要」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ツール呼び出し＋CoTで作る、だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「Plan-Doループ（ReAct）。計画→実行を繰り返し、いつ止まるかをLLMが決める」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>これがエージェントの核心だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「LangGraphでは <code>ToolNode</code> と <code>tools_condition</code> で、モデルとツールの間をループさせる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>終わりを決めるのはモデル自身。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「拡張は2つ。常に最初にツールを呼ぶ（待ち時間の削減）、絞り込みで多くのツールを減らす」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>完璧だ。次はさらなる拡張へ進もう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>エージェントとは</div>
+      <p style="font-size:14px;margin:0">❓ 「エージェント（行動するもの）」であるために必要な3つの条件を挙げて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①何をすべきかを決める力が必要。②決めるには複数の選択肢が必要（選ぶものが1つしかなければ決断ではない）。③決めるには外の世界（自分の外側）の情報が必要。だからエージェント型のLLMアプリは、今の状態と目指す状態を材料に、1つ以上の行動から選ぶ。これはツール呼び出し（選べる行動を見せる）とCoT（順を追って考える）の組み合わせで作られる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 何をすべきか決める力、に触れている<br>□ 複数の選択肢が必要、に触れている<br>□ 外の世界の情報が必要、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>Plan-Doループ</div>
+      <p style="font-size:14px;margin:0">❓ エージェントアーキテクチャの核心である「Plan-Doループ」とは何ですか。5章のルーターと何が決定的に違いますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Plan-Doループは「行動を計画する→その行動を実行する」を、止める条件に当たるまで繰り返すLLM駆動のループ。たとえば「検索する→結果を見て計算する→答える」のように、何段階必要かが事前に決まっていない問題を解ける。ルーターとの決定的な違いは、ルーターは用意された道筋の中から選ぶだけで手順の数は固定だが、エージェントは「踏む手順の数」自体が変わり、<b>ループを止めるタイミングをLLM自身が決める</b>こと。決める役をLLMに渡している点が本質。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 計画→実行を止める条件まで繰り返すループ、に触れている<br>□ 手順の数が事前に決まっていない、に触れている<br>□ 止めるタイミングをLLM自身が決める、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>ToolNodeとtools_condition</div>
+      <p style="font-size:14px;margin:0">❓ LangGraphでエージェントを作るときの <code>ToolNode</code> と <code>tools_condition</code> は、それぞれ何をしますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>ToolNode</code> はグラフ上の処理で、履歴に入っている最新のモデルの返答が申告したツール呼び出しを実行し、それぞれの結果を <code>ToolMessage</code> として返す。ツールが失敗した場合は、エラーの内容で <code>ToolMessage</code> を作りLLMに渡す（LLMが立て直しを判断できる）。<code>tools_condition</code> は条件付きエッジの関数で、最新の返答を見て、実行すべきツールの申告があればツールの処理へ進ませ、なければグラフを終了させる。この2つで、モデルとツールの間のループと停止が実現する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ToolNode＝申告されたツールを実行し結果をToolMessageで返す、に触れている<br>□ tools_condition＝申告があればtoolsへ、なければ終了する判定、に触れている<br>□ この2つでループと停止を実現、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>最初にツールを呼ぶ拡張</div>
+      <p style="font-size:14px;margin:0">❓ 「常に最初に特定のツールを呼ぶ」拡張は、どんな利点があり、どんなときに導入すべきですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">利点は2つ。①1回目のLLM呼び出し（どのツールを呼ぶか判断する呼び出し）を省けるので、全体の待ち時間が減る。②LLMが「検索は不要」と誤って判断するのを防げる。<code>first_model</code> の処理でLLMを呼ばずに、利用者の文章をそのまま検索語にして検索ツールの申告を作る。ただし、導入すべきなのは「常に最初にこのツールを呼ぶべき」というはっきりした決まりがアプリにある場合だけ。そうでないアプリにこの制限を入れると、かえって悪くなる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 1回目のLLM呼び出しを省いて待ち時間を減らす、に触れている<br>□ LLMが誤って判断するのを防ぐ、に触れている<br>□ はっきりした決まりがある場合のみ導入すべき、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>多くのツールを扱う</div>
+      <p style="font-size:14px;margin:0">❓ ツールが多数（10個以上など）あるとどんな問題が起きますか。どう対処しますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ツールが多数になると、指示文に大量の選択肢が含まれ、LLMが適切なツールを選ぶ力が落ちる。対処は、絞り込みの手順（<code>select_tools</code>）を使うこと。各ツールの説明文をベクトルストアに入れておき、今の質問に最も関係するツールだけを検索で絞り込んで、全体ではなく一部だけをLLMに渡す。呼び出しの費用も減る。ただしこの手順は待ち時間を足すので、ツールを増やして性能が落ちた場合にだけ導入すべき。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ツールが多いとLLMの選択の力が落ちる、に触れている<br>□ 絞り込みの手順で関係するツールだけにする、に触れている<br>□ 待ち時間が増えるので必要なときだけ導入、に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして確かめる</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">▶️</div><h4>基本のエージェントを動かす</h4><p><code>duckduckgo-search</code> を入れて、この章のエージェントに「○○は××のとき何歳だった？」のような多段階の質問を投げ、検索→計算→回答のループを記録で観察しましょう。</p></div>
+      <div class="mini"><div class="ic">👀</div><h4>ループを目で追う</h4><p><code>graph.stream</code> の出力で、model→tools→model という移り変わりを1つずつ確認しましょう。「いつ止まるか」をLLMが決めている様子が見えます。</p></div>
+      <div class="mini"><div class="ic">🛠️</div><h4>自分のツールを作る</h4><p><code>@tool</code> で自分の機能（例：天気を返す仮のもの）を足し、エージェントが必要に応じて呼ぶか試しましょう。</p></div>
+      <div class="mini"><div class="ic">⚖️</div><h4>拡張を比べる</h4><p>「常に最初に検索」版と通常版で、同じ質問の待ち時間や動きの違いを観察しましょう。</p></div>
+      <div class="mini"><div class="ic">📄</div><h4>ReActの元の論文を眺める</h4><p>react-lm.github.io で、考えること（Reasoning）と行動すること（Acting）を交互に行う元の考え方を確認しましょう。</p></div>
+      <div class="mini"><div class="ic">📗</div><h4>LangGraph公式の既製エージェント</h4><p>langchain-ai.github.io/langgraph/agents/agents/ で、<code>create_react_agent</code> の使い方を見てみましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第6章 エージェントアーキテクチャの基本 ― 図解版<br>次章：<b>7. エージェントアーキテクチャの拡張</b></p>
+
+</div>

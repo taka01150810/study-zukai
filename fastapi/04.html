@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第4章 非同期、同時実行、スターレットツアー ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+
+  .note-box{border:1px solid #7fd4ff44; background:#7fd4ff0d; border-radius:14px; padding:14px 18px; margin:16px 0}
+  .note-box h4{margin:0 0 7px; color:#9fdcff; font-size:14px}
+  .note-box p{margin:0; font-size:13.5px; color:#cfe6f7}
+
+  .timeline{display:flex; flex-direction:column; gap:10px; margin:12px 0}
+  .tl{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .tl .lab{flex:0 0 96px; font-size:13px; color:var(--sub)}
+  .tl .bar{height:26px; border-radius:7px; display:grid; place-items:center; font-size:11.5px; color:#0c0f1e; font-weight:700}
+  .bar.work{background:linear-gradient(135deg,#5ee7a0,#42d6c3)}
+  .bar.wait{background:#3a4270; color:#aab2dd}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第4章</div>
+  <h1>第4章　非同期、同時実行、スターレットツアー</h1>
+  <p>「同時にたくさんやる」ための Python の手段を一周します。プロセス、スレッド、グリーンスレッド、コールバック、ジェネレーター、そして <code>async</code>/<code>await</code>。最後に FastAPI の心臓部 Starlette を直接のぞいて、ASGI の正体を見届けます。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全11節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① Starlette</a>
+  <a href="#s2">② 並行処理の種類</a>
+  <a href="#s3">③ 分散・並列コンピューティング</a>
+  <a href="#s4">④ オペレーティングシステムプロセス</a>
+  <a href="#s5">⑤ オペレーティングシステム・スレッド</a>
+  <a href="#s6">⑥ グリーンスレッド</a>
+  <a href="#s7">⑦ コールバック</a>
+  <a href="#s8">⑧ Pythonジェネレーター</a>
+  <a href="#s9">⑨ async、await、asyncio</a>
+  <a class="sub" href="#s9-sync">└ 同期版と非同期版の比較</a>
+  <a class="sub" href="#s9-rule">└ 感染するルール</a>
+  <a href="#s10">⑩ FastAPIと非同期</a>
+  <a class="sub" href="#s10-inner">└ 内部の二段構え</a>
+  <a href="#s11">⑪ Starlette を単体で使う</a>
+  <a href="#s12">⑫ 間奏曲：待ち時間のある段取り</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>原文には「屋敷の掃除の段取り」というたとえ話の節がありますが、ここでは<b>実際に待ち時間のある作業をどう並べるか</b>という段取りの話として、そのまま扱います。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">Starlette</div><p>FastAPI の土台になっている軽量な Web の部品。問い合わせの解析と返事の組み立てを担当します。</p></div>
+    <div class="item"><div class="w">ASGI</div><p>Python のプログラムと Web サーバをつなぐ、非同期に対応した取り決め。返事待ちの間に別の処理を進められます。</p></div>
+    <div class="item"><div class="w">WSGI</div><p>ASGI より前からある取り決め。1つの依頼を処理し終えてから次に進む方式です。</p></div>
+    <div class="item"><div class="w">ブロッキング</div><p>ある処理が終わるまで、次に進めず止まっている状態のこと。</p></div>
+    <div class="item"><div class="w">ビジーウェイト</div><p>返事が来るのを待つ間、処理装置が何の仕事もしていない状態。</p></div>
+    <div class="item"><div class="w">並列 <span>parallelism</span></div><p>複数の処理装置で、本当に同じ瞬間に複数の処理が動いていること。</p></div>
+    <div class="item"><div class="w">並行 <span>concurrency</span></div><p>1つの処理装置が複数の仕事を切り替えて進め、全体として同時に進んでいる状態を作ること。</p></div>
+    <div class="item"><div class="w">プロセス <span>process</span></div><p>OS が管理する、プログラムの実行のひとまとまり。それぞれが自分用のメモリを持ちます。</p></div>
+    <div class="item"><div class="w">プリエンプティブ</div><p>OS が自分の判断で処理を一時停止したり再開したりして、資源を公平に分ける方式のこと。</p></div>
+    <div class="item"><div class="w">multiprocessing</div><p>プロセスを複数立ち上げて、重い計算を分担させるための Python の標準機能です。</p></div>
+    <div class="item"><div class="w">スレッド <span>thread</span></div><p>1つのプロセスの中で並行して動く実行の単位。プロセスより軽い代わりに扱いが難しくなります。</p></div>
+    <div class="item"><div class="w">スレッドプール</div><p>あらかじめ用意しておいたスレッドの集まり。仕事が来たら空いているものに割り当てます。</p></div>
+    <div class="item"><div class="w">concurrent.futures</div><p>プロセスとスレッドの両方を、同じような書き方で使えるようにした Python の機能です。</p></div>
+    <div class="item"><div class="w">グリーンスレッド</div><p>OS ではなく、プログラム自身の側で管理する軽い実行の単位。切り替えは自分から譲る形で行われます。</p></div>
+    <div class="item"><div class="w">協調的 <span>cooperative</span></div><p>切り替えのタイミングを、実行中の側が自分で譲ることで決める方式。OS が強制的に止めるのとは逆です。</p></div>
+    <div class="item"><div class="w">モンキーパッチ</div><p>もとからある機能の中身を、動かしたまま別のものに差し替えること。</p></div>
+    <div class="item"><div class="w">コールバック</div><p>「この出来事が起きたら、この処理を呼ぶ」とあらかじめ登録しておくやり方です。</p></div>
+    <div class="item"><div class="w">ジェネレーター</div><p><code>yield</code> を使い、途中で止まって次に呼ばれたら続きから動く処理。全部を一度に用意しなくて済みます。</p></div>
+    <div class="item"><div class="w">yield</div><p>「ここで1つ値を返して、いったん止まる」という指示。次に呼ばれるとこの続きから動きます。</p></div>
+    <div class="item"><div class="w">asyncio</div><p>Python の標準の非同期の仕組み。<code>async</code> と <code>await</code> を使って書きます。</p></div>
+    <div class="item"><div class="w">async def</div><p>「この処理は途中で中断できる」と宣言する書き方です。</p></div>
+    <div class="item"><div class="w">await</div><p>「ここで待つ。ただし待っている間は他の処理を進めてよい」という指示です。</p></div>
+    <div class="item"><div class="w">イベントループ</div><p>「返事が届いたものはないか」を繰り返し確認し、届いたものから処理を再開する仕組みです。</p></div>
+    <div class="item"><div class="w">I/Oバウンド</div><p>処理時間の大半が、通信やファイルの返事待ちで占められている処理のこと。</p></div>
+    <div class="item"><div class="w">CPUバウンド</div><p>処理時間の大半が計算そのものに使われている処理のこと。待ち時間がありません。</p></div>
+    <div class="item"><div class="w">ディスパッチ</div><p>来た仕事を、適切な処理の担当に振り分けることです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">「同時にたくさん」の全体地図</span></h2></div>
+  <div class="card">
+    <p class="lead">カフェの一角でタカ師匠が段取りの話を始めます。一見 FastAPI と関係なさそうな脱線の中で、二人は同期と非同期、プロセスとスレッド、ジェネレーターから <code>async</code>/<code>await</code> まで、Python の「同時にたくさんやる」しくみを一周します。最後に FastAPI の心臓部 Starlette を直接のぞいて、ASGI の正体を見届けます。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🏗️</div><h4>前半：土台と選択肢</h4><p>Starlette と ASGI。そして並列・並行、プロセス・スレッド・グリーンスレッド。</p></div>
+      <div class="mini"><div class="ic">🔄</div><h4>中盤：async/await</h4><p>ジェネレーターの「中断と再開」から、<code>async def</code> と <code>await</code> へ。</p></div>
+      <div class="mini"><div class="ic">⚙️</div><h4>後半：FastAPI の中身</h4><p>イベントループとスレッドプールの二段構え。Starlette 単体の姿。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">Python には「同時にたくさん」を実現する手段が複数あります：複数プロセス、複数スレッド、<span class="term" data-tip="OS ではなくプログラム自身の側で管理する軽い実行の単位。">グリーンスレッド</span>、コールバック、ジェネレーター、そして <code>async</code>/<code>await</code> を使う asyncio。FastAPI の土台 Starlette は <span class="term" data-tip="Python のプログラムと Web サーバをつなぐ、非同期に対応した取り決め。">ASGI</span> を採用しており、これが「Python でも Go や Node.js 並に速い」理由です。パス関数を <code>async def</code> で書けばイベントループに乗り、<code>def</code> で書けば<span class="term" data-tip="あらかじめ用意しておいたスレッドの集まり。仕事が来たら空いているものに割り当てる。">スレッドプール</span>に振り分けられます。どちらを書いても FastAPI が自動で適切にさばきます。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>「非同期で速くなる」をふんわりした理解ではなく、仕組みとして説明できる</li>
+        <li><code>async</code>/<code>await</code> をどこに書くか、迷いがなくなる</li>
+        <li>計算中心の処理と返事待ち中心の処理を区別して、適切なやり方を選べる</li>
+        <li>スレッドプールとイベントループの存在を意識して、FastAPI の動きを予測できる</li>
+        <li>「Starlette と FastAPI の関係」を一言で答えられるようになる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① Starlette ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>Starlette<span class="tag">FastAPI の Web 処理の中核</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Starlette は ASGI に対応した軽量なフレームワークです。FastAPI の Web の仕組みの大部分を支えています。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>FastAPI の Web 部分って、ぜんぶ独自に作られているんですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いや、大部分は Tom Christie が作った <b>Starlette</b> というパッケージに基づいている。Starlette は単体でも Web フレームワークとして使えるし、FastAPI のような他のフレームワークの土台としても使える。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>通常の問い合わせの読み取りや返事の組み立ては、全部 Starlette が引き受けている。Flask の土台になっている Werkzeug と同じような立ち位置だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いちばんの特徴は？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最新の Python の非同期 Web 標準 <b>ASGI</b> に対応していること。これまでの Python の Web フレームワーク（Flask や Django など）は古い同期の標準 <b>WSGI</b> が土台だった。Web アプリは遅いもの（データベース、ファイル、ネットワーク）に接続することが多いから、ASGI はそうした「止まって待つ」時間を避けられる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>結果として、Starlette とそれを使うフレームワークは、Go や Node.js に匹敵する Python 最速級の Web パッケージになった。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏗️</div><h4>Starlette がやること</h4><p>問い合わせの読み取り、住所ごとの振り分け、返事の組み立て、非同期の扱い。</p><span class="pill">土台</span></div>
+      <div class="mini"><div class="ic">✨</div><h4>FastAPI が足すこと</h4><p>型ヒントによる自動確認、Pydantic のモデル、自動ドキュメント。</p><span class="pill">上乗せ</span></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「FastAPI が速い理由は Starlette + ASGI のおかげ」と説明できる</li><li>Starlette を直接使うこともできる、と知っておけば応用が利く</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Starlette = ASGI が土台の軽量な Web フレームワーク</li>
+        <li>作者: Tom Christie</li>
+        <li>FastAPI の Web 処理の中核を担う</li>
+        <li>Go や Node.js 並の速度を Python で実現</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② 並行処理の種類 ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>並行処理の種類<span class="tag">並列と並行の違い</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>「並列 = 複数の処理装置で本当に同時」、「並行 = 1つの処理装置で切り替えて同時に見せる」。Web は返事待ちが多いので、並行の効果が大きくなります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>非同期の中身に入る前に、「同時にたくさんやる」方法を一覧しておこう。並行と並列の違いはおさらいになるけど大事だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>並列コンピューティング</b>は、仕事を複数の専用の処理装置に同時に分散する。画像処理や機械学習の「大量に計算する」用途で多い。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>並行コンピューティング</b>は、1つの処理装置が複数の仕事を切り替えて実行する。仕事ごとに所要時間が違うので、全体の所要時間を縮めたい。ファイルやネットワークの読み書きは計算より千〜百万倍遅いから、待っている時間を別の仕事に充てたい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Web アプリって、まさにその「遅い処理」を大量にやるんですよね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。どうやって Web サーバを速くするか、複数の選択肢を見ていこう。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🧮</div><h4>並列</h4><p>複数の処理装置に仕事を分けて、本当に同じ瞬間に動かします。計算量そのものを分担したいときに使います。</p><span class="pill">画像処理・機械学習</span></div>
+      <div class="mini"><div class="ic">🔄</div><h4>並行</h4><p>1つの処理装置が、待ち時間の間に別の仕事を進めます。計算量は減りませんが、無駄な待ちが消えます。</p><span class="pill">Web サーバ</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：数字で見る待ち時間の大きさ</h4>
+      <p>処理装置が1回の計算をするのにかかる時間を1ナノ秒（10億分の1秒）とすると、ネットワークの向こうから返事が返るまでは 50 ミリ秒ほどかかることがあります。これは 5000 万倍の差です。返事を待つ 50 ミリ秒の間、その処理装置は 5000 万回分の計算ができたはずの時間を何もせずに過ごしていることになります。この時間を別の依頼の処理に充てるのが並行のねらいです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>並列と並行の区別が明確になる</li><li>Web の性能が頭打ちになる原因（返事待ち）が分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>並列: 複数の処理装置で同時に</li><li>並行: 1つの処理装置で切り替えて</li><li>Web は返事待ちが多いので並行が効く</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ 分散・並列 ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>分散・並列コンピューティング<span class="tag">本書のスコープ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>大規模な分散は本書の範囲外です。本書は1台のマシンで動く小〜中規模のアプリを扱います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本当に大きなアプリ、つまり1つの処理装置では追いつかないようなアプリは、複数の処理装置や複数のマシンに分割して走らせる。やり方は色々あって、もし君がそうしたアプリを持っているなら、すでにいくつか知っているはず。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ただし、分割されたアプリの管理は1台のサーバの管理より複雑でコストがかかる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書では、1台のマシンに収まる小〜中規模のアプリに焦点を当てる。これらは FastAPI が同期・非同期のコードをうまく混ぜて管理してくれる。</div></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>本書の範囲が明確になる</li><li>「FastAPI だけで何でもできる」と考えず、規模に応じた選択ができる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>分散・並列処理は管理の手間が大きい</li><li>本書: 1台のマシン、小〜中規模アプリ向け</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ プロセス ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>オペレーティングシステムプロセス<span class="tag">重い計算は複数プロセスで</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>プロセスは OS が管理する実行の単位です。計算中心の並列処理には複数プロセス（multiprocessing）が定石です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>OS はメモリ、処理装置、機器、ネットワークなどの資源を割り振っている。OS が動かすプログラムはすべて、1つまたは複数の<b>プロセス</b>でコードを実行する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>OS は各プロセスに、処理装置を使えるタイミングなど、資源への管理された安全な使用権を渡す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「プリエンプティブ」って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>プリエンプティブなプロセスの割り当て</b>は、どのプロセスにも処理装置やメモリを独占させない方式。OS が常にプロセスを一時停止したり再開したりして、資源を公平に分ける。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>開発者にとっては「考えなくてよい」のがありがたいところ。ありがたくないのは、「変えたくても、あまり変えられない」こと。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>計算の負荷が高い Python のアプリでは、<b>複数プロセス</b>で OS に管理させるのが普通の解決策。Python の標準の機能に <b>multiprocessing</b> がある。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：計算中心の処理を分担させる</h4>
+      <p>100万件のデータをそれぞれ複雑な式で計算する処理があり、1件あたり 0.01 秒かかるとします。1つのプロセスで順に処理すると約 2.8 時間です。この処理には返事待ちが一切ないので、非同期にしても短くなりません。処理装置が8個あるパソコンで multiprocessing を使い8つのプロセスに分けると、実際に8か所で同時に計算が進むので、約 21 分に短縮できます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「重い計算は multiprocessing で別プロセスにする」という定石を知れる</li><li>OS が割り振りを行っていることを意識できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>プロセス = OS が管理する実行の単位</li>
+        <li>プリエンプティブ = OS が自動で一時停止・再開する</li>
+        <li>重い計算は multiprocessing で分散</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ スレッド ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>オペレーティングシステム・スレッド<span class="tag">FastAPI が内部で使うもの</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>スレッドは返事待ちの多い処理に有効です。ただし扱いは難しく、FastAPI はスレッドプールを内部に持って、同期の処理を自動で振り分けてくれます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1つのプロセスの中で、複数の<b>スレッド</b>を走らせることもできる。Python の標準の機能に <code>threading</code> がある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>一般的な指針として、<b>返事待ち中心ならスレッド</b>、<b>計算中心なら複数プロセス</b>が推奨されることが多い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スレッドのほうが軽そうですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>確かに軽いけど、書くのが厄介で、見つけにくい不具合を引き起こす。複数のスレッドが同じデータを同時に書き換えると、結果が実行のたびに変わることがあって、原因の特定が難しい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔は Python のプロセス用の機能とスレッド用の機能が別々で、開発者はどちらかの難解な詳細を学ばないといけなかった。<b>concurrent.futures</b> という新しめのパッケージが、両方を同じような書き方で使いやすくしている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>あとで分かるけど、新しい非同期の書き方を使えばスレッドの利点をもっと簡単に得られる。FastAPI は<b>スレッドプール</b>を通じて、通常の同期の処理（<code>async def</code> ではなく <code>def</code>）も自動的にスレッドで動かしてくれる。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>処理の種類</th><th>向いている手段</th><th>理由</th></tr>
+      <tr><td>返事待ち中心（I/Oバウンド）</td><td>スレッド／非同期</td><td>待ち時間に別の仕事を進められる</td></tr>
+      <tr><td>計算中心（CPUバウンド）</td><td>複数プロセス</td><td>待ち時間がないので、処理装置の数を増やすしかない</td></tr>
+    </table>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「FastAPI で <code>def</code> のままでも非同期のサーバが回る」理由が分かる</li><li>返事待ちと計算の使い分けの基本がつかめる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>スレッド = 1つのプロセス内の並行実行の単位</li>
+        <li>返事待ち向け（計算中心は複数プロセス）</li>
+        <li>不具合が見つけにくい性質がある</li>
+        <li><code>concurrent.futures</code> で扱いやすい書き方ができる</li>
+        <li>FastAPI は内部のスレッドプールで同期の処理をさばく</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ グリーンスレッド ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>グリーンスレッド<span class="tag">ユーザ側で管理する軽い実行単位</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>グリーンスレッドは、OS ではなくプログラム自身の側で動く軽い並行の仕組みです。本書は標準の asyncio に絞ります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>もう少し分かりにくいのが、<b>greenlet</b>、<b>gevent</b>、<b>Eventlet</b> といったライブラリが提供する<b>グリーンスレッド</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これらは<b>協調的</b>で、OS が強制的に止める方式ではない。OS のスレッドに似ているけど、OS の中核ではなく<b>プログラム自身の側</b>で動く。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>やり方としては、Python の標準の機能を<b>モンキーパッチ</b>して、並行のコードを通常の順番どおりのコードのように見せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>軽さでいうと？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>OS のスレッドは OS のプロセスより軽い（メモリの使用が少ない）。グリーンスレッドは OS のスレッドよりさらに軽い。測定では、非同期の方法はおおむね同期の方法より速かった、という結果も出ている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>gevent と asyncio どちらが良いか？ 全部の用途で勝つ方はないと思う。グリーンスレッドの方が先に登場した（Eve Online というオンラインゲームの発想から）。本書は Python の標準である <b>asyncio</b> を使う。FastAPI が使うのもこっち。スレッドよりシンプルで性能も良い。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🏢</div><h4>プロセス</h4><p>いちばん重い。それぞれが自分用のメモリを持ちます。</p><span class="pill">重い</span></div>
+      <div class="mini"><div class="ic">🧵</div><h4>OS スレッド</h4><p>プロセスより軽い。メモリを共有します。</p><span class="pill">中くらい</span></div>
+      <div class="mini"><div class="ic">🌱</div><h4>グリーンスレッド</h4><p>さらに軽い。切り替えはプログラム自身の側で行います。</p><span class="pill">軽い</span></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「Python で並行といえば asyncio」と考えが整理できる</li><li>gevent や Eventlet を見かけても位置づけが分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>グリーンスレッド = プログラム側で動く軽い並行（協調的）</li>
+        <li>ライブラリ: greenlet / gevent / Eventlet</li>
+        <li>本書は asyncio に統一</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ コールバック ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>コールバック<span class="tag">出来事に処理を結びつける</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>コールバックは、出来事が起きたときに処理を呼ぶ方式で並行を実現します。書きやすさでは <code>async</code>/<code>await</code> に劣ることが多いです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ゲームや画面操作のような対話型のアプリの開発者は、<b>コールバック</b>をよく知っているはず。「マウスのクリック、キー入力、時間切れなどの出来事に、対応する処理を結びつける」やり方。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python では <b>Twisted</b> が代表的なコールバック用のフレームワーク。この方式のコードは、処理の順番が上から下に読めなくなるので追いにくい。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：読む順番が入れ替わる</h4>
+      <p>「データを取ってきて、加工して、保存する」という3段階をコールバックで書くと、「取ってくる処理に、加工する処理を渡し、その加工する処理の中に保存する処理を渡す」という入れ子になります。実際に動く順番は内側から外側なのに、コードの見た目は外側から内側です。段階が5つ、6つと増えるほど、どこで何が起きるのかを追うのが難しくなります。<code>async</code>/<code>await</code> はこれを、上から下に読める形に戻すために作られました。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>コールバックが深く入れ子になる問題の意味が分かる</li><li><code>async</code>/<code>await</code> が解こうとしている読みにくさの問題が見える</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>コールバック = 出来事が起きたときに処理を呼ぶ方式</li>
+        <li>代表: Twisted</li>
+        <li>コードが追いにくくなる傾向</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ ジェネレーター ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>Pythonジェネレーター<span class="tag">中断と再開ができる処理</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>ジェネレーターは <code>yield</code> で途中停止・再開できる処理です。メモリの使用が少なく、<code>async</code>/<code>await</code> の考え方の土台にもなっています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>普通の Python の処理は、頭から最後まで（あるいは <code>return</code> まで）一気に実行する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>でも <b>ジェネレーター</b>は、途中で止まって、戻って、また続きから実行できる。鍵は <code>yield</code> というキーワードだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まず、3つのセリフを全部まとめて返す普通の書き方です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># doh という処理を作る。呼ばれると中身を最後まで一気に実行する。</span>
+<span class="kw">def</span> <span class="fn">doh</span>():
+    <span class="cmt"># 3つの文字列を並べた一覧を作り、それをまとめて返す。</span>
+    <span class="cmt"># この時点で3つ全部がメモリの上に用意される。</span>
+    <span class="kw">return</span> [
+        <span class="str">"Oh!"</span>,
+        <span class="str">"A deer!"</span>,
+        <span class="str">"A female deer!"</span>,
+    ]
+
+<span class="cmt"># 返ってきた一覧を先頭から1つずつ取り出し、line という名前で扱う。</span>
+<span class="kw">for</span> line <span class="kw">in</span> <span class="fn">doh</span>():
+    <span class="cmt"># 取り出した1つを画面に出す。これを要素の数だけ繰り返す。</span>
+    <span class="fn">print</span>(line)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Oh!</span>
+<span class="cmt"># A deer!</span>
+<span class="cmt"># A female deer!</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>一覧が小さい時はこれで問題ない。でも何十万行ものセリフを全部一覧にするとなると、メモリを使い切ってしまう。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そこでジェネレーターだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じ3つのセリフを、1つずつ渡しては止まる書き方にしたものです。使う側の書き方は変わりません。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># doh2 という処理を作る。yield を含むので、呼んでもすぐには中身が動かない。</span>
+<span class="kw">def</span> <span class="fn">doh2</span>():
+    <span class="cmt"># yield は「1つ渡して、ここで止まる」という指示。次に呼ばれるとこの次の行から動く。</span>
+    <span class="kw">yield</span> <span class="str">"Oh!"</span>
+    <span class="cmt"># 2回目に呼ばれたとき、この行から動いて2つめを渡し、また止まる。</span>
+    <span class="kw">yield</span> <span class="str">"A deer!"</span>
+    <span class="cmt"># 3回目に呼ばれたとき、3つめを渡す。以降は渡すものがないので繰り返しが終わる。</span>
+    <span class="kw">yield</span> <span class="str">"A female deer!"</span>
+
+<span class="cmt"># 使う側の書き方は上の例とまったく同じ。違うのは、必要になった瞬間に1つずつ作られること。</span>
+<span class="kw">for</span> line <span class="kw">in</span> <span class="fn">doh2</span>():
+    <span class="cmt"># 受け取った1つを画面に出す。</span>
+    <span class="fn">print</span>(line)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Oh!</span>
+<span class="cmt"># A deer!</span>
+<span class="cmt"># A female deer!</span>
+<span class="cmt"># 表示は同じだが、3つ全部を同時にメモリに置いてはいない。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>繰り返しのコードは同じに見えるけど、<code>doh2()</code> は<b>ジェネレーターのオブジェクト</b>を返す。Python は最初の文字列を渡したあと、次の回のために止まった位置を記憶しておく。セリフを使い切るまでこれを繰り返す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>yield</code> を含む処理はすべてジェネレーターだ。途中で止まって再開できる、というこの仕組みは、次の <code>async</code>/<code>await</code> の自然な前段なんだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：巨大なログファイルを読む</h4>
+      <p>10GB のログファイルから、エラーを含む行だけを数えたいとします。全部を一覧としてメモリに読み込むと、10GB 分の空きが必要になり、多くのパソコンでは止まってしまいます。</p>
+      <p>ジェネレーターで1行ずつ渡す形にすれば、同時にメモリに置かれるのは1行分だけです。10GB のファイルでも、数百バイト程度のメモリで最後まで処理できます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>メモリを節約しながら大量のデータを処理できる</li><li><code>async</code>/<code>await</code> の「中断と再開」の考え方をつかめる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>通常の処理: 最後まで一気に実行</li>
+        <li>ジェネレーター: <code>yield</code> で中断・再開できる</li>
+        <li>大量データや少しずつ届くデータに適する</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ async/await/asyncio ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>Pythonのasync、await、asyncio<span class="tag">3秒の待ちが消える</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>async def</code> で定義した処理は <code>await</code> で呼びます。asyncio で並行に走らせます。FastAPI はこの仕組みの上に立っています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の <b>asyncio</b> の機能は複数のバージョンをかけて導入された。少なくとも Python 3.7 を使っていれば、<code>async</code> と <code>await</code> が予約された言葉になっている。</div></div>
+    </div>
+
+    <h3 class="blk" id="s9-sync">同期版と非同期版の比較</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まず同期版。質問を表示し、3秒止まってから答えを表示します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 時間に関する標準の機能を取り込む。</span>
+<span class="kw">import</span> time
+
+<span class="cmt"># 質問を表示する処理。</span>
+<span class="kw">def</span> <span class="fn">q</span>():
+    <span class="cmt"># 質問の文章を画面に出す。</span>
+    <span class="fn">print</span>(<span class="str">"ねえ、なんで Web エンジニアは劇場が好きなの？"</span>)
+    <span class="cmt"># 3秒間まるごと止まる。この間、このプログラムは他に何もできない。</span>
+    time.<span class="fn">sleep</span>(<span class="num">3</span>)
+
+<span class="cmt"># 答えを表示する処理。</span>
+<span class="kw">def</span> <span class="fn">a</span>():
+    <span class="cmt"># 答えの文章を画面に出す。</span>
+    <span class="fn">print</span>(<span class="str">"だってサーバとレスポンスのキャッチボールが見られるから！"</span>)
+
+<span class="cmt"># q を呼ぶ。中の3秒の停止が終わるまで、次の行には進まない。</span>
+<span class="fn">q</span>()
+<span class="cmt"># q が完全に終わってから、ようやく a が呼ばれる。</span>
+<span class="fn">a</span>()
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ねえ、なんで Web エンジニアは劇場が好きなの？</span>
+<span class="cmt"># （3秒の沈黙）</span>
+<span class="cmt"># だってサーバとレスポンスのキャッチボールが見られるから！</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>質問と答えの間に3秒の空白。間がもたないよね。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">次に非同期版。同じ3秒の待ちがありますが、待っている間に答えの表示が進みます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 非同期の仕組みを使うための標準の機能を取り込む。</span>
+<span class="kw">import</span> asyncio
+
+<span class="cmt"># async を付けると「この処理は途中で中断できる」という宣言になる。</span>
+<span class="kw">async def</span> <span class="fn">q</span>():
+    <span class="cmt"># 質問の文章を画面に出す。</span>
+    <span class="fn">print</span>(<span class="str">"ねえ、なんで Web エンジニアは劇場が好きなの？"</span>)
+    <span class="cmt"># await は「ここで3秒待つが、待っている間は他の処理を進めてよい」という指示。</span>
+    <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="num">3</span>)
+
+<span class="cmt"># こちらも中断できる処理として宣言する。</span>
+<span class="kw">async def</span> <span class="fn">a</span>():
+    <span class="cmt"># 答えの文章を画面に出す。待ちがないのですぐ終わる。</span>
+    <span class="fn">print</span>(<span class="str">"だってサーバとレスポンスのキャッチボールが見られるから！"</span>)
+
+<span class="cmt"># 全体をまとめて動かすための処理。</span>
+<span class="kw">async def</span> <span class="fn">main</span>():
+    <span class="cmt"># gather は「これらを同時に始めて、全部終わるまで待つ」という指示。</span>
+    <span class="cmt"># q が3秒の待ちに入った瞬間、a の実行に切り替わる。</span>
+    <span class="kw">await</span> asyncio.<span class="fn">gather</span>(<span class="fn">q</span>(), <span class="fn">a</span>())
+
+<span class="cmt"># run は、非同期の処理を動かすための入口。ここから全体が始まる。</span>
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># ねえ、なんで Web エンジニアは劇場が好きなの？</span>
+<span class="cmt"># だってサーバとレスポンスのキャッチボールが見られるから！</span>
+<span class="cmt"># （3秒の沈黙）</span>
+<span class="cmt"># 待ちの3秒が最後に回り、質問と答えが続けて表示される。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>質問の直後に答えが飛んでくる。テンポが良くなっただろう？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>補足。<code>asyncio.gather()</code> と <code>asyncio.run()</code> を使ったけど、非同期の処理の呼び方は他にもある。FastAPI を使う場合は、これらを自分で呼ぶ必要はない。</div></div>
+    </div>
+
+    <h3 class="blk">非同期版を動かしたときの Python の動き</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4><code>q()</code> を始める</h4><p>最初の行、つまり質問の表示を実行する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>3秒の待ちに入る</h4><p><code>q()</code> は中断できる処理。「3秒後に戻ってくる」と登録して、いったん手を離す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>その間に <code>a()</code> を実行</h4><p>待ちがないので、すぐに答えを表示して終わる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>他に待っているものを確認</h4><p>残っているのは <code>q()</code> の3秒の待ちだけ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>3秒間ここで待つ</h4><p>他にやることがないので、この時間は本当に待つしかない。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">6</div></div><div class="body"><h4>終了</h4><p><code>q()</code> の続きが再開し、全体が終わる。</p></div></div>
+    </div>
+
+    <h3 class="blk">かかった時間を並べて見る</h3>
+    <div class="timeline">
+      <div class="tl"><div class="lab">同期版</div><div class="bar work" style="width:60px">質問</div><div class="bar wait" style="width:260px">3秒 何もしない</div><div class="bar work" style="width:60px">答え</div></div>
+      <div class="tl"><div class="lab">非同期版</div><div class="bar work" style="width:60px">質問</div><div class="bar work" style="width:60px">答え</div><div class="bar wait" style="width:260px">3秒 待つ</div></div>
+    </div>
+    <p style="font-size:13px;color:var(--sub);margin:4px 0 0">全体の所要時間はどちらも約3秒です。変わったのは「待ちの間に別のことを進められた」という点です。処理が2つしかないので差は小さく見えますが、100件あれば、その99件分の処理を待ちの中に詰め込めます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>この例では <code>asyncio.sleep()</code> を「ファイルの読み取りや Web への問い合わせなど、時間のかかる処理」の代わりに使っている。<code>await</code> は、時間のかかる処理の前に置く。さらに、その処理の定義は <code>def</code> の前に <code>async</code> を付ける必要がある。</div></div>
+    </div>
+
+    <h3 class="blk" id="s9-rule">感染するルール</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>重要なルール：ある処理を <code>async def</code> で定義したら、呼ぶ側はその呼び出しの前に <code>await</code> を付けないといけない。そして呼ぶ側自身も <code>async def</code> で宣言する必要があり、さらにそれを呼ぶ側も…と続く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>連鎖するんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ちなみに、別の非同期の処理への <code>await</code> の呼び出しを含んでいなくても、処理を <code>async</code> として宣言することはできる。エラーにはならない。</div></div>
+    </div>
+
+    <div class="note-box">
+      <h4>🔗 連鎖の形</h4>
+      <p><code>async def C()</code> を呼びたい → 呼ぶ側 <code>B</code> は <code>await C()</code> と書く必要がある → そのためには <code>B</code> 自身も <code>async def</code> でなければならない → <code>B</code> を呼ぶ <code>A</code> も同じく <code>async def</code> と <code>await</code> が必要…と、上へ上へと広がっていきます。ただし FastAPI の中では、パス関数を呼ぶのは FastAPI 自身なので、そこから上を自分で書く必要はありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li><code>async</code>/<code>await</code> の連鎖のルールが頭に入る</li><li><code>time.sleep</code> と <code>asyncio.sleep</code> の使い分けが理解できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>async def</code> で中断できる処理を宣言</li>
+        <li><code>await</code> でその処理を呼ぶ</li>
+        <li><code>async</code>/<code>await</code> は連鎖する: 呼ぶ側も <code>async def</code> が必要</li>
+        <li><code>asyncio.run()</code>, <code>asyncio.gather()</code> で起動・同時実行</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ FastAPIと非同期 ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>FastAPIと非同期<span class="tag">def でも async def でもよい理由</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI のパス関数は <code>async def</code> でも <code>def</code> でも書けます。前者はイベントループ、後者はスレッドプールに、FastAPI が自動で振り分けます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>長い回り道が終わって、ようやく FastAPI に戻る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web サーバは多くの「待ち時間」を使っている。だから待ち時間を避けられれば性能が上がる。他の Web サーバはスレッドや gevent で対処している。FastAPI が Python の Web フレームワークの中で最速級なのは、<b>土台の Starlette が ASGI に対応し、いくつか独自の工夫を加えている</b>から。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>注意点。<code>async</code> と <code>await</code> だけでコードが速くなるわけじゃない。むしろ非同期の準備の分だけ少し遅くなることもある。<code>async</code> の主な用途は <b>返事待ちの長い時間を避けること</b>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>何でもかんでも <code>async</code> にすればいい、というわけじゃないんですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">返事の前に1秒待つ窓口を、非同期で書いた例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 非同期の仕組みを使うための標準の機能を取り込む。</span>
+<span class="kw">import</span> asyncio
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /hi への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># async を付けているので、この処理は途中で中断できる。</span>
+<span class="kw">async def</span> <span class="fn">greet</span>():
+    <span class="cmt"># 1秒待つ。待っている間、サーバは他の問い合わせを処理できる。</span>
+    <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="num">1</span>)
+    <span class="cmt"># 待ち終わってから、この文字を返す。</span>
+    <span class="kw">return</span> <span class="str">"Hello? World?"</span>
+<span class="cmt"># --- 問い合わせた結果（1秒後） ---</span>
+<span class="cmt"># "Hello? World?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">コマンドから起動します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># greet_async.py の中の app を動かす。コロンの前がファイル名、後ろが変数名。</span>
+$ uvicorn greet_async:app
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">プログラムの中から起動する書き方です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 非同期の仕組みを取り込む。</span>
+<span class="kw">import</span> asyncio
+<span class="cmt"># サーバを動かす道具も、プログラムの中から使えるように取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="cmt"># 枠組み本体を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /hi への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/hi"</span>)
+<span class="cmt"># 中断できる処理として宣言する。</span>
+<span class="kw">async def</span> <span class="fn">greet</span>():
+    <span class="cmt"># 1秒待つ。その間、他の問い合わせを処理できる。</span>
+    <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="num">1</span>)
+    <span class="cmt"># 待ち終わってから文字を返す。</span>
+    <span class="kw">return</span> <span class="str">"Hello? World?"</span>
+
+<span class="cmt"># このファイルが直接動かされたときだけ、下を実行する決まり文句。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="cmt"># このファイルの中の app を動かす。</span>
+    uvicorn.<span class="fn">run</span>(<span class="str">"greet_async_uvicorn:app"</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Uvicorn running on http://127.0.0.1:8000</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>if __name__ == "__main__":</code> は、ファイルが主のプログラムとして実行されたときだけ走る Python の定番の書き方。単体で動かすときに必要だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>このコードは挨拶を返す前に1秒休む。同期版（<code>time.sleep(1)</code>）との唯一の違いは、非同期版では待ち時間の間にサーバが<b>他の問い合わせを処理できる</b>こと。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>asyncio.sleep(1)</code> は、データベースへのアクセスや Web ページの取得のような「1秒かかる本物の処理」の代わりだ。後の章で、Web層 → サービス層 → データ層の呼び出しを実際にやって、待ち時間を実際の作業に充てる例を見るよ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI は <code>/hi</code> への GET を受け取ると、この <code>async</code> な <code>greet()</code> を自分で呼ぶ。<b><code>await</code> を君が書く必要はない</b>。ただし、他の <code>async def</code> の処理を呼ぶ場合は、呼び出しの前に <code>await</code> が要る。</div></div>
+    </div>
+
+    <h3 class="blk" id="s10-inner">内部の二段構え</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>内部の話。FastAPI は<b>非同期のパス関数のためのイベントループ</b>と、<b>同期のパス関数のためのスレッドプール</b>を並行して走らせている。開発者が細かい仕組みを知らなくていいのが、本当に大きな利点だ。<code>asyncio.gather()</code> や <code>asyncio.run()</code> を自分で呼ばなくて済む。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔄</div><h4><code>async def</code> のパス関数</h4><p>イベントループに乗ります。<code>await</code> のところで他の依頼に切り替わります。</p><span class="pill">非同期のライブラリを使うとき</span></div>
+      <div class="mini"><div class="ic">🧵</div><h4><code>def</code> のパス関数</h4><p>スレッドプールに振り分けられます。1つが止まっても、他のスレッドが別の依頼を処理します。</p><span class="pill">同期のライブラリしかないとき</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：<code>async def</code> の中で同期の待ちを書いてしまうと</h4>
+      <p><code>async def</code> のパス関数の中で、うっかり <code>time.sleep(1)</code>（同期の待ち）を書いたとします。これはイベントループそのものを1秒間止めてしまうため、その1秒の間、<b>他のすべての依頼も止まります</b>。100人が同時にアクセスしていれば、100人全員が待たされます。</p>
+      <p>同じ場所で <code>await asyncio.sleep(1)</code>（非同期の待ち）と書けば、その1秒の間に他の依頼が処理されます。逆に、同期の待ちしか使えないライブラリなら、パス関数を <code>def</code>（<code>async</code> なし）で書けば、スレッドプールに回されるので他の依頼は止まりません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「<code>def</code> と <code>async def</code>、どちらで書くべきか」を、返事待ちの有無で判断できる</li><li>FastAPI 内部の二段構え（イベントループ + スレッドプール）が見える</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>async def</code> のパス関数 → イベントループ</li>
+        <li><code>def</code> のパス関数 → スレッドプール</li>
+        <li>FastAPI が自動で振り分ける</li>
+        <li>返事待ちの有無を意識して使い分ける</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑪ Starlette 単体 ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">11</div><h2>Starlette を単体で使う<span class="tag">FastAPI が何を足しているか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Starlette は単体でも Web フレームワークとして使えますが、FastAPI を上に乗せたほうが API の開発はずっと楽になります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI は Pydantic に比べて Starlette を表に出さない。Starlette は主に、内部で静かに動いて全体を支えている部分だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>でも Starlette 単体でも使える。前章の例を Starlette だけで書くと、こうなる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">第3章と同じ内容を、Starlette だけで書いたものです。デコレータではなく、住所の一覧をまとめて渡す形になります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Starlette のアプリ本体を取り出す。</span>
+<span class="kw">from</span> starlette.applications <span class="kw">import</span> Starlette
+<span class="cmt"># JSON 形式で返すための部品を取り出す。FastAPI と違い、自分で指定する必要がある。</span>
+<span class="kw">from</span> starlette.responses <span class="kw">import</span> JSONResponse
+<span class="cmt"># 住所と処理を結びつけるための部品を取り出す。</span>
+<span class="kw">from</span> starlette.routing <span class="kw">import</span> Route
+
+<span class="cmt"># 問い合わせを受け取る処理。request（問い合わせの内容）を必ず引数で受け取る決まり。</span>
+<span class="kw">async def</span> <span class="fn">greeting</span>(request):
+    <span class="cmt"># 返す内容を JSON の形にして返す。ここも自分で指定している。</span>
+    <span class="kw">return</span> <span class="fn">JSONResponse</span>(<span class="str">'Hello? World?'</span>)
+
+<span class="cmt"># アプリ全体を作る。debug=True は開発中に詳しい情報を出すための指定。</span>
+<span class="cmt"># routes に「/hi に来たら greeting を呼ぶ」という対応を一覧で渡す。</span>
+app = <span class="fn">Starlette</span>(debug=<span class="kw">True</span>, routes=[
+    <span class="fn">Route</span>(<span class="str">'/hi'</span>, greeting),
+])
+<span class="cmt"># --- localhost:8000/hi を開いた結果 ---</span>
+<span class="cmt"># "Hello? World?"</span>
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># starlette_hello.py の中の app を動かす。起動のしかたは FastAPI と同じ。</span>
+$ uvicorn starlette_hello:app
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># INFO:     Uvicorn running on http://127.0.0.1:8000</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>個人的な意見だけど、FastAPI が上に乗ったことで、Web API の開発がずっと簡単になった。Starlette 単体は最低限の機能、FastAPI は型ヒントとモデルの統合という便利な機能を追加してくれる。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>項目</th><th>Starlette 単体</th><th>FastAPI</th></tr>
+      <tr><td>住所と処理の結びつけ</td><td>一覧としてまとめて渡す</td><td>デコレータ1行で書ける</td></tr>
+      <tr><td>返事の形式</td><td>自分で <code>JSONResponse</code> を指定</td><td>返した値が自動で JSON になる</td></tr>
+      <tr><td>入力の確認</td><td>自分で書く</td><td>型ヒントから自動で行われる</td></tr>
+      <tr><td>説明ページ</td><td>なし</td><td><code>/docs</code> に自動生成</td></tr>
+    </table>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>FastAPI が何を「足している」のかが見える</li><li>Starlette を直接使うという選択肢を知る</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Starlette は単体でも使える ASGI のフレームワーク</li>
+        <li>FastAPI はその上に型ヒント／Pydantic／自動ドキュメントを乗せる</li>
+        <li>普通は FastAPI 経由で使う</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑫ 間奏曲 ===== -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">12</div><h2>間奏曲：待ち時間のある段取り<span class="tag">原文「手がかりの家を掃除する」</span></h2></div>
+  <div class="card">
+    <div class="note-box">
+      <h4>📌 この節の扱いについて</h4>
+      <p>原文はこの節で、古い屋敷の清掃作業を題材に非同期の考え方を説明しています。この図解ではたとえ話としてではなく、<b>実際に「乾燥待ち」という待ち時間がある作業を、どう並べれば早く終わるか</b>という段取りそのものの問題として扱います。プログラムの待ち時間と同じ性質の問題が、実際の作業計画でも起きる、という話です。</p>
+    </div>
+
+    <p class="lead"><b>要するに：</b>待ち時間を別の作業に充てるかどうかで、全体の所要時間が変わります。「待ちがあるところに、詰め込む余地がある」というのがこの節の中身です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>清掃の仕事を考えよう。作業を最短で終わらせたい。理想は人手を増やすことだけど、作業するのは君ひとりだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>やり方の選択肢は2つ。①ある部屋ですべてを済ませてから次の部屋へ、②部屋をまたいで同じ作業をまとめてやる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>合計時間に差はあるか？ あるかもしれない。けど、もっと重要なのは「どの作業に長い待ち時間が含まれているか」だ。例えば床。ワックスを塗ったあと、家具を戻す前に何時間も乾燥を待つ必要がある。</div></div>
+    </div>
+
+    <h3 class="blk">1部屋あたりの作業手順</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>細かいほこりを取り除く</h4><p>静電気で付いている部分を先に処理する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>家具を全部ホールに移動</h4><p>床全体を作業できる状態にする。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>床の汚れを落としてワックスを塗る</h4><p>ここまでは手を動かし続ける作業。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>選択：乾燥を待つ間どうするか</h4>
+        <div class="branch ng">(A) その場で乾くのを待つ。手は空いているが何もしない。</div>
+        <div class="branch ok">(B) 次の部屋の作業を始める。最後の部屋まで終えたら、乾いた順に家具を戻す。</div>
+      </div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>(A) が同期、(B) が非同期…！</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。乾燥を待つのが同期のやり方で、時間に余裕があって休憩を取りたいときには向く。もう一方は非同期で、各部屋の待ち時間を別の部屋の作業に充てる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：数字で見る差</h4>
+      <p>部屋が4つ、1部屋あたり「手を動かす作業 30分」＋「乾燥待ち 2時間」だとします。</p>
+      <p>(A) その場で待つ場合：（30分 + 2時間）× 4部屋 = <b>10時間</b>。このうち8時間は何もしていません。</p>
+      <p>(B) 待ちの間に次へ進む場合：4部屋分の作業 30分 × 4 = 2時間を先に済ませ、最後の部屋の乾燥 2時間を待って終了。合計 <b>約4時間</b>。手を動かす時間は同じ2時間ですが、待ちが重なった分だけ短くなります。</p>
+      <p>これは Web サーバでも同じです。1件の外部問い合わせに 0.5 秒かかるとき、100件を順に処理すれば 50秒、待ちの間に次を送れば 1秒程度で済みます。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>この話の教訓は3つ。①要件は矛盾していたり、想定外だったりする、②時間と労力の見積もりは多くの要因に左右される、③作業の順番の決め方は、決まった正解がある話ではなく、状況を見て判断するものだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>非同期の本質を、コードを離れた段取りの問題として理解できる</li><li>「待ちがあるところに、詰め込む余地がある」と覚えられる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>同期: 待ちをそのまま受け入れる分かりやすい順番</li>
+        <li>非同期: 待ち時間を別の作業に充てる進め方</li>
+        <li>順番の設計は、決まった正解のある話ではない</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「Starlette は ASGI が土台の軽量な Web フレームワーク、FastAPI の心臓部」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>速さの理由はここ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「並行 = 1つの処理装置で切り替える、並列 = 複数の処理装置で同時。Web は返事待ちが多いので並行が効く」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>用途で使い分けるね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「Python の並行の手段はプロセス／スレッド／グリーンスレッド／コールバック／ジェネレーター／asyncio がある。本書は asyncio に統一」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>歴史を一通り見ておくのは大事。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「<code>async def</code> で中断できる処理、<code>await</code> で呼ぶ。この書き方は連鎖する」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。FastAPI の中では <code>await</code> を自分で書く必要はない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「FastAPI は <code>async def</code> のパス関数をイベントループ、<code>def</code> のパス関数をスレッドプールで自動的にさばく」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>君が選んだ書き方をそのまま受け入れてくれる、というのが本当に楽だ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>Starlette と FastAPI</div>
+      <p style="font-size:14px;margin:0">Starlette と FastAPI の関係を、初めて聞く人に説明してください。「ASGI」というキーワードを使ってください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Starlette は Tom Christie が作った軽量な ASGI（非同期の Python Web 標準）フレームワーク。FastAPI はその Starlette を土台にして、型ヒントによる自動の確認、Pydantic のモデル、自動ドキュメント生成などを上乗せした「使いやすさを足したフレームワーク」。FastAPI が速い理由のひとつは、土台の Starlette が ASGI に対応していて非同期に強いから。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Starlette が ASGI 基盤であることを述べている<br>□ FastAPI が Starlette を土台に使っていることに触れている<br>□ FastAPI が Starlette に加えた価値（型ヒント、Pydantic、自動ドキュメント）に言及</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>並行と並列の違い</div>
+      <p style="font-size:14px;margin:0">「並行（concurrency）」と「並列（parallelism）」の違いを、自分の言葉で説明してください。Web サーバの性能向上にどちらが効果的ですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">並列は本当に複数の処理装置で同じ瞬間に処理を走らせること。並行は1つの処理装置で複数の仕事を切り替えながら進めて、「同時に進んでいるように見せる」こと。Web サーバは返事待ち（データベース、ネットワーク、ファイル）が大半で、処理装置が暇な時間が多いので、待ち時間を埋める「並行」が効果的。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 並列＝複数の処理装置、並行＝1つで切り替え、という区別をしている<br>□ Web は返事待ちが中心だという認識を述べている<br>□ 並行が Web に効果的という結論</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>ジェネレーターと async/await</div>
+      <p style="font-size:14px;margin:0">Python のジェネレーターと <code>async</code>/<code>await</code> はどのように関連していますか？「中断と再開」というキーワードを使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">通常の処理は最初から最後まで一気に実行するが、ジェネレーターは <code>yield</code> で<b>途中で中断・再開</b>できる。<code>yield</code> で止まった位置を Python が記憶しておき、次に呼ばれたときに続きから走る。<code>async</code>/<code>await</code> も同じ発想で、<code>await</code> で処理が中断して別の処理に切り替わり、待っていた結果が来たら再開する。ジェネレーターの中断・再開の仕組みが、<code>async</code>/<code>await</code> の土台になっている。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ジェネレーターの「中断・再開」を説明している<br>□ <code>async</code>/<code>await</code> も同じ発想であると述べている<br>□ <code>yield</code> と <code>await</code> の役割の似ている点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>FastAPI における <code>def</code> と <code>async def</code></div>
+      <p style="font-size:14px;margin:0">FastAPI でパス関数を書くとき、<code>def</code> と <code>async def</code> のどちらを使うべきですか？ それぞれ FastAPI 内部でどう扱われますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">返事待ち（データベースや外部の窓口へのアクセス）があるパス関数は <code>async def</code> で書いて非同期のライブラリを使うと、待ち時間に別の依頼を処理できて効率が良い。逆に返事待ちがない、もしくは同期のライブラリしか使えない場合は <code>def</code> で良い。FastAPI は内部で、<code>async def</code> のパス関数を非同期のイベントループで動かし、<code>def</code> のパス関数をスレッドプールに振り分けるので、どちらでも適切に並行処理される。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>async def</code> は返事待ちがあるときに効果的、と述べている<br>□ <code>def</code> でも問題なく動く、と説明している<br>□ FastAPI 内部の「イベントループ + スレッドプール」の二段構えに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>async の連鎖する性質</div>
+      <p style="font-size:14px;margin:0"><code>async def</code> で処理を定義したときに、その呼び出し側に発生する制約を説明してください。「連鎖する」というニュアンスも含めてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>async def</code> で定義された処理を呼ぶ側は、その呼び出しの前に <code>await</code> を付ける必要がある。そして <code>await</code> を使うには、呼ぶ側自身も <code>async def</code> で宣言されていないといけない。さらにその呼ぶ側を呼ぶコードも…と連鎖していくので、「async は感染する」と言われる。FastAPI の中では FastAPI 自身がパス関数を呼ぶので、利用者が <code>await</code> を書く必要はないが、別の <code>async def</code> を自分で呼ぶときは <code>await</code> が必要。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>await</code> が必要になる、と述べている<br>□ 呼ぶ側自身も <code>async def</code> でなければならない連鎖に触れている<br>□ FastAPI の中では利用者が <code>await</code> を書かなくていい点に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>同期版と非同期版を実際に動かす</h4><p>上のコードを自分で書いて、表示のタイミングの差を体験する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4><code>asyncio.gather()</code> の例を自分で書く</h4><p>複数の待ちを同時に始めると、全体がどれだけ短くなるか確かめる。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 非同期の仕組みと、時間を測るための機能を取り込む。</span>
+<span class="kw">import</span> asyncio, time
+
+<span class="cmt"># 指定された秒数だけ待って、終わったことを知らせる処理。</span>
+<span class="kw">async def</span> <span class="fn">wait</span>(n):
+    <span class="cmt"># n 秒待つ。待っている間、他の処理を進めてよい。</span>
+    <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(n)
+    <span class="cmt"># 何秒待ったかを返す。</span>
+    <span class="kw">return</span> n
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    <span class="cmt"># 開始時刻を記録する。</span>
+    start = time.<span class="fn">time</span>()
+    <span class="cmt"># 1秒、2秒、3秒の待ちを同時に始める。順に足すと6秒だが…</span>
+    <span class="kw">await</span> asyncio.<span class="fn">gather</span>(<span class="fn">wait</span>(<span class="num">1</span>), <span class="fn">wait</span>(<span class="num">2</span>), <span class="fn">wait</span>(<span class="num">3</span>))
+    <span class="cmt"># 実際にかかった時間を計算して表示する。</span>
+    <span class="fn">print</span>(<span class="fn">round</span>(time.<span class="fn">time</span>() - start, <span class="num">1</span>))
+
+<span class="cmt"># 全体を動かす。</span>
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 3.0</span>
+<span class="cmt"># 6秒ではなく、いちばん長い3秒で終わる。待ちが重なったため。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>公式の手引きを読む</h4><p>FastAPI 公式ドキュメントの「Async / Await」のページを読む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>ASGI と WSGI の違いを調べる</h4><p>Wikipedia や公式の仕様書を斜め読みしておく。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章へ</h4><p>「Pydantic, タイプヒント, モデルツアー」で FastAPI のもう一方の土台を学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第4章「非同期、同時実行、スターレットツアー」の図解 ― 原文の全節（Starlette／並行処理の種類／分散・並列／プロセス／スレッド／グリーンスレッド／コールバック／ジェネレーター／async・await・asyncio／FastAPIと非同期／Starlette単体／間奏曲）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

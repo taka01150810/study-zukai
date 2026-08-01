@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第6章 依存関係 ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第6章</div>
+  <h1>第6章　依存関係</h1>
+  <p>「<code>Header()</code> や <code>Body()</code> は、なぜ引数の初期値の位置に書くのか？」― その答えが<b>依存性注入</b>です。窓口が必要とする情報を別の処理に任せ、FastAPI が自動で呼び出して結果を渡す仕組み。テストしやすく、重複が減り、説明ページにも反映されます。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全5節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① 依存とは何か？</a>
+  <a href="#s2">② 依存関係の問題</a>
+  <a href="#s3">③ 依存性の注入</a>
+  <a href="#s4">④ FastAPI の依存関係</a>
+  <a href="#s5">⑤ 依存関係を書く</a>
+  <a href="#s6">⑥ 依存の範囲（スコープ）</a>
+  <a class="sub" href="#s6-single">└ シングルパス</a>
+  <a class="sub" href="#s6-side">└ 副作用だけの依存関係</a>
+  <a class="sub" href="#s6-router">└ 複数のパス（ルーター）</a>
+  <a class="sub" href="#s6-global">└ グローバル</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">依存関係 <span>dependency</span></div><p>ある処理を実行するために、その時点で必要になる情報のこと。「誰がアクセスしているか」「データベースの中身」などです。</p></div>
+    <div class="item"><div class="w">依存性注入 <span>DI</span></div><p>必要な情報を処理の中で自分で取りに行かず、外から渡してもらう作り方のことです。</p></div>
+    <div class="item"><div class="w">依存関数</div><p>必要な情報を用意して返す、補助の処理。窓口の処理とは別に書きます。</p></div>
+    <div class="item"><div class="w">Depends()</div><p>「この処理を、定義したときではなく、問い合わせが来るたびに呼んでほしい」と FastAPI に伝えるための書き方です。</p></div>
+    <div class="item"><div class="w">Callable <span>呼び出せるもの</span></div><p>かっこを付けて実行できるもの。関数やクラスがこれにあたります。</p></div>
+    <div class="item"><div class="w">スコープ <span>適用範囲</span></div><p>その依存関係を、どこまでの範囲に効かせるか。1つの窓口だけか、まとまり単位か、アプリ全体かです。</p></div>
+    <div class="item"><div class="w">ルーター <span>APIRouter</span></div><p>関連する窓口をまとめて扱うための入れ物。まとめ単位で共通の設定をかけられます。</p></div>
+    <div class="item"><div class="w">prefix <span>接頭辞</span></div><p>そのまとまりの中の窓口すべてに、先頭に付ける住所の共通部分です。</p></div>
+    <div class="item"><div class="w">副作用 <span>side effect</span></div><p>値を返すのではなく、確認して止めたり、記録を残したりといった動作そのものが目的の処理です。</p></div>
+    <div class="item"><div class="w">HTTPException</div><p>「この番号のエラーで返してほしい」と FastAPI に伝えるための失敗の知らせです。</p></div>
+    <div class="item"><div class="w">認証 <span>authentication</span></div><p>「あなたは誰か」を確かめること。名前とパスワードの照合などがこれにあたります。</p></div>
+    <div class="item"><div class="w">認可 <span>authorization</span></div><p>「その人に、この操作をする権限があるか」を確かめることです。</p></div>
+    <div class="item"><div class="w">モック <span>mock</span></div><p>テストのときに、本物の代わりに使う「決まった値を返すだけの偽物」のことです。</p></div>
+    <div class="item"><div class="w">ページネーション</div><p>件数の多い一覧を、何ページかに分けて少しずつ返すことです。</p></div>
+    <div class="item"><div class="w">メトリック</div><p>処理の件数や所要時間など、動作の状況を数値で記録したものです。</p></div>
+    <div class="item"><div class="w">OpenAPI</div><p>API の仕様を決まった形式で書き表す取り決め。FastAPI はコードからこれを自動で作ります。</p></div>
+    <div class="item"><div class="w">dependency_overrides</div><p>テストのとき、依存関数を別のものに差し替えるための FastAPI の仕組みです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">引数の初期値の位置に書く理由</span></h2></div>
+  <div class="card">
+    <p class="lead">ハルは「<code>Header()</code> とか <code>Body()</code> って、なんで引数の初期値の位置に書くの？ 普通の Python と違うけど…」と疑問を持ちます。タカ師匠は「これが FastAPI の真骨頂、<b>依存性注入</b>だよ」と説明を始めます。窓口が必要とする情報を、外部の処理（依存関数）に任せて、FastAPI が自動的に呼び出して結果を渡してくれる仕組みです。テストもしやすく、コードの重複も減り、説明ページにも反映されます。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を3行で</span></h2></div>
+  <div class="card">
+    <p class="lead">FastAPI の<b>依存性注入</b>は、「パス関数が必要とする情報を、別の処理（<span class="term" data-tip="必要な情報を用意して返す補助の処理。窓口の処理とは別に書く。">依存関数</span>）に取らせ、FastAPI が呼び出して結果を渡す」仕組みです。<code>Depends()</code> を使って引数として宣言します。適用範囲は<b>1つの窓口</b>、<b>まとまり（ルーター）単位</b>、<b>アプリ全体</b>の3段階。テストのしやすさ、見えない依存の解消、コード重複の削減、自動ドキュメントとの連動に効きます。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>共通の前処理（身分の確認、利用者情報の取得、ページ分割の計算など）を1か所で書ける</li>
+        <li>パス関数が小さくなり、テストしやすくなる</li>
+        <li>必要な情報を差し替えやすくなる（テストのときに偽物を渡せる）</li>
+        <li>「<code>Header()</code> や <code>Body()</code> の正体」が、自作の依存関数と同じ仕組みだと理解できる</li>
+        <li>FastAPI の <code>/docs</code> が、この情報も反映してくれる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① 依存とは ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>依存とは何か？<span class="tag">「その時点で必要な情報」のこと</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>パス関数が「実行のために必要とする情報」を依存関係と呼びます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>まず「依存関係」という言葉の意味から。<b>依存関係</b>とは、<b>ある時点で必要となる特定の情報のこと</b>。普通は、必要になったときにそれを取りに行くコードを書く。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web サービスを書いていると、こんな情報を必要とする。①問い合わせから入力の値を集める、②入力が正しいか確かめる、③窓口を使う人が誰か、権限があるかを確かめる、④データの置き場（多くはデータベース）からデータを取ってくる、⑤動作の記録や状況の数値を出す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web フレームワークは、届いたデータをプログラムで扱える形に変換し、Web の層の処理の中で必要なものを取り出してくれる。</div></div>
+    </div>
+
+    <h3 class="blk">依存関係になりうるものの典型</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">📥</div><h4>入力の収集</h4><p>問い合わせの中から必要な値を取り出す。</p></div>
+      <div class="mini"><div class="ic">✅</div><h4>入力の確認</h4><p>取り出した値が条件を満たしているか確かめる。</p></div>
+      <div class="mini"><div class="ic">🔐</div><h4>認証・認可</h4><p>誰なのか、権限があるかを確かめる。</p></div>
+      <div class="mini"><div class="ic">🗄️</div><h4>データの取得</h4><p>データベースなどから必要な情報を取ってくる。</p></div>
+      <div class="mini"><div class="ic">📊</div><h4>記録・状況の数値</h4><p>いつ、誰が、どの窓口を使ったかを残す。</p></div>
+      <div class="mini"><div class="ic">📄</div><h4>ページ分割の計算</h4><p>何件目から何件分を返すかを決める。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「依存関係」という言葉が、抽象的ではなく具体的に見えるようになる</li><li>どんな処理が依存関係になりうるか、典型例を持てる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>依存関係 = ある時点で必要な情報</li>
+        <li>典型: 入力の収集／確認／認証／データ取得／記録／状況の数値</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② 問題 ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>依存関係の問題<span class="tag">中で取りに行くと何が困るか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>必要な情報を処理の中で直接取りに行くと、テストできない、見えない依存で壊れる、コードが重複する、説明ページに載らない、という4つの問題が起きます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>必要なときに必要なものを、外部から見えない形で取ってくる。一見合理的に見えるけど、いくつか問題が起きる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>①<b>テスト</b>：必要な情報を差し替えられないと、処理の色々な場合を試せない。②<b>見えない依存</b>：詳細を隠しているせいで、外部のコードが変わったとき処理が壊れる。③<b>コードの重複</b>：必要な情報がよくあるもの（利用者の検索、問い合わせからの値の取り出し）だと、複数の処理に同じコードが散らばる。④<b>説明ページへの反映</b>：FastAPI の自動の説明ページは、この仕組みからの情報を必要とする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部「後で直すのがしんどくなる」系の問題ですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。依存性注入はこれらを一気に解決する。</div></div>
+    </div>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">🧪</div><h4>問題1：テストできない</h4><p>中で本物のデータベースを呼んでいると、テストのたびにデータベースが必要になります。</p></div>
+      <div class="mini"><div class="ic">👻</div><h4>問題2：見えない依存</h4><p>外から見ると何が必要なのか分からないので、外部が変わったとき壊れます。</p></div>
+      <div class="mini"><div class="ic">📑</div><h4>問題3：コードの重複</h4><p>同じ「利用者を取ってくる」処理が、10か所にそのまま書かれます。</p></div>
+      <div class="mini"><div class="ic">📘</div><h4>問題4：説明に載らない</h4><p>自動生成の説明ページに、その窓口が何を必要とするかが出ません。</p></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：テストのときに何が起きるか</h4>
+      <p>窓口の処理の中で <code>db.get_user(name)</code> を直接呼んでいるとします。テストを動かすには本物のデータベースを起動し、テスト用の利用者を登録しておく必要があります。「該当する利用者がいない場合」を試したければ、データを消して実行し、また戻す作業が要ります。</p>
+      <p>この処理を外から渡す形にしておけば、テストでは「常に <code>None</code> を返すだけの偽物」を渡せば済みます。データベースを起動する必要すらありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「この仕組みが無いと何が困るか」が腹に落ちる</li><li>依存性注入を導入する動機が持てる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>問題1: テストが書きにくい</li>
+        <li>問題2: 見えない依存で壊れやすい</li>
+        <li>問題3: コードの重複</li>
+        <li>問題4: 自動の説明ページに反映されない</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ 依存性の注入 ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>依存性の注入<span class="tag">外から渡す、それだけ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>依存性注入とは、処理が必要とする情報を、処理の中で取りに行くのではなく、外から渡すことです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>依存性注入</b>という言葉は、響きほど難しくない。<b>処理が必要とする情報を、処理の外から渡す</b>ということだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>昔からのやり方は、補助の処理を引数として渡し、必要なデータを取得させる、というもの。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔒</div><h4>中で取りに行く</h4><p>処理の中に <code>db.get_user()</code> を直接書きます。外からは何が必要か分からず、差し替えもできません。</p><span class="pill">従来の書き方</span></div>
+      <div class="mini"><div class="ic">🔓</div><h4>外から渡す</h4><p>必要な情報を引数で受け取ります。外から見て必要なものが分かり、差し替えもできます。</p><span class="pill">依存性注入</span></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>依存性注入という言葉の、単純な本質をつかめる</li><li>「テストで偽物を渡せる」とは何かが理解できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>依存性注入 = 必要な情報を外から処理に渡す</li>
+        <li>昔からのやり方は、補助の処理を引数として渡すこと</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ FastAPI の依存関係 ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>FastAPI の依存関係<span class="tag">Header() の正体</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI では「引数として宣言すれば、FastAPI が依存関数を呼んで結果を渡してくれる」。<code>Path</code>, <code>Query</code>, <code>Body</code>, <code>Header</code> はすべて、この仕組みの組み込み版です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI はもう一歩進めている。<b>必要な情報を引数として定義すると、FastAPI が自動で呼び出し、戻り値をその引数に渡す</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>例：<code>user_dep</code> という依存関数が、問い合わせの中から名前とパスワードを取って、データベースで照合して、追跡用の文字列を返す。窓口の処理はこの <code>user_dep</code> を「直接呼ぶ」ことはなく、引数として宣言するだけ。FastAPI が呼び出しのときに処理する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、これ第3章の <code>Header()</code>, <code>Body()</code> と同じ感触ですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り！ <code>Path</code>, <code>Query</code>, <code>Body</code>, <code>Header</code> は、データの出どころを表す<b>組み込みの依存関係</b>だ。FastAPI が用意してくれている。これらは処理やクラスで、問い合わせのいろいろな部分から必要なデータを取り出してくれる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>自分で書くこともできる？ できる。でも自作だと、こういう機能は得られない。①データが正しいかの確認、②形式の変換、③自動の説明ページへの反映。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第7章で Flask や Django との比較で具体的な違いを見るよ。けれど FastAPI なら、自作の依存関数も組み込みと同じように扱われる。</div></div>
+    </div>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">📍</div><h4>Path</h4><p>住所の中から値を取り出す組み込みの依存関係。</p></div>
+      <div class="mini"><div class="ic">❓</div><h4>Query</h4><p>住所のうしろの条件から値を取り出す組み込みの依存関係。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>Body</h4><p>送られた本体から値を取り出す組み込みの依存関係。</p></div>
+      <div class="mini"><div class="ic">🏷️</div><h4>Header</h4><p>添えられた情報から値を取り出す組み込みの依存関係。</p></div>
+    </div>
+
+    <h3 class="blk">FastAPI が自動でやってくれること</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>問い合わせが届く</h4><p>外から <code>/user?name=ハル&amp;password=xxx</code> のような問い合わせが来る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>FastAPI が依存関数を呼ぶ</h4><p>パス関数の本体より先に、宣言された依存関数が実行される。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>結果を引数に渡す</h4><p>依存関数が返した値が、そのまま引数に入る。<div class="branch ng">依存関数の中で失敗の知らせが出たら、パス関数の本体は実行されずにエラーが返る。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>パス関数の本体が動く</h4><p>すでに必要な情報が揃った状態から始まる。</p></div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li><code>Header()</code> などの動きの正体が分かる</li><li>自作の依存関数も同じ仕組みで作れると知る</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>必要な情報を引数として宣言 → FastAPI が呼び出す</li>
+        <li><code>Path</code>/<code>Query</code>/<code>Body</code>/<code>Header</code> は組み込みの依存関係</li>
+        <li>自作も組み込みと同じように扱われる</li>
+        <li>データの確認・形式の変換・自動の説明ページが付いてくる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ 依存関係を書く ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>依存関係を書く<span class="tag">Depends() が必要な理由</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>依存関数を作り、パス関数の引数に <code>Depends(依存関数)</code> と書きます。<code>Depends()</code> が無いと、定義した時点で1回だけ呼ばれてしまいます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI の依存関係は「実行されるもの」だから、<b>かっこを付けて呼べるもの</b>でなければならない。処理（関数）とクラス、つまり <code>(</code> と <code>)</code> で呼べるものだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">名前とパスワードを受け取って確認する、依存関数の例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体、依存関係を宣言する道具、条件を取り出す道具を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends, Query
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 依存関数。上にパスデコレータが無いので、これ自体は窓口ではない。</span>
+<span class="cmt"># name と password を、住所のうしろの条件から受け取る。... は「必須」の意味。</span>
+<span class="cmt"># 返すのは正しいかどうかの真偽の値、という書き添え。</span>
+<span class="kw">def</span> <span class="fn">user_dep</span>(name: <span class="kw">str</span> = <span class="fn">Query</span>(...), password: <span class="kw">str</span> = <span class="fn">Query</span>(...)) -&gt; <span class="kw">bool</span>:
+    <span class="cmt"># 本来はここでデータベースと照合するが、この例では常に「正しい」を返す。</span>
+    <span class="kw">return</span> <span class="kw">True</span>
+
+<span class="cmt"># /user への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/user"</span>)
+<span class="cmt"># user という引数の値は、上の user_dep から得る、と宣言している。</span>
+<span class="cmt"># Depends で包むことで「今すぐではなく、問い合わせのたびに呼んで」と伝わる。</span>
+<span class="kw">def</span> <span class="fn">get_user</span>(user: <span class="kw">bool</span> = <span class="fn">Depends</span>(user_dep)) -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 受け取った結果を、項目名を付けて返す。</span>
+    <span class="kw">return</span> {<span class="str">"valid"</span>: user}
+<span class="cmt"># --- /user?name=ハル&amp;password=xxx に問い合わせた結果 ---</span>
+<span class="cmt"># {"valid": true}</span>
+<span class="cmt"># name か password を省くと、パス関数は動かず 422 のエラーが返る。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>user_dep()</code> は依存関数だ。FastAPI のパス関数のように <code>Query</code> などの組み込みの依存関係を知っているけど、上にパスデコレータが無い。これは補助であって、窓口の本体ではない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>パス関数 <code>get_user()</code> は、引数 <code>user</code> を期待していて、その値は依存関数 <code>user_dep()</code> から得る、と宣言している。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>重要な注意。<code>user_dep</code> は Python の関数そのものだから、引数で <code>user = user_dep</code> とは書けない。<code>user = user_dep()</code> でもダメだ。それだと <code>get_user()</code> が<b>定義されたとき</b>に <code>user_dep()</code> を呼んでしまう。<b>使われるときに呼びたい</b>んだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>だから FastAPI の <b><code>Depends()</code></b> が必要。<code>Depends(user_dep)</code> と書くことで、「定義のときには呼ばず、呼び出しのときに FastAPI が呼んで」と指示できる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>パス関数の引数には、複数の依存関係を並べられる。</div></div>
+    </div>
+
+    <h3 class="blk">3つの書き方の違い</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>書き方</th><th>何が起きるか</th><th>判定</th></tr>
+      <tr><td><code>user = user_dep</code></td><td>処理そのものを初期値として入れるだけ。FastAPI は呼んでくれない</td><td><span class="down">誤り</span></td></tr>
+      <tr><td><code>user = user_dep()</code></td><td>パス関数が定義された時点で1回だけ呼ばれる。問い合わせのたびには呼ばれない</td><td><span class="down">誤り</span></td></tr>
+      <tr><td><code>user = Depends(user_dep)</code></td><td>問い合わせが来るたびに FastAPI が呼んで、結果を渡す</td><td><span class="up">正しい</span></td></tr>
+    </table>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：<code>Depends()</code> を忘れるとどうなるか</h4>
+      <p>現在時刻を返す依存関数 <code>now()</code> を <code>t = now()</code> と書いたとします。サーバを起動した瞬間の時刻が1回だけ取得され、その値がずっと使われます。1時間後に問い合わせても、返るのは起動時の時刻です。</p>
+      <p><code>t = Depends(now)</code> と書けば、問い合わせが来るたびに <code>now()</code> が呼ばれ、そのときの時刻が入ります。この差は動かしてみるまで気づきにくいので、必ず <code>Depends()</code> で包みます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>依存関係の最小のコードが書ける</li><li><code>Depends()</code> がなぜ必要かを説明できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>依存関係は呼び出せるもの（処理またはクラス）</li>
+        <li>引数: <code>name: type = Depends(depfunc)</code></li>
+        <li><code>Depends()</code> が無いと定義のときに呼ばれてしまう</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ 依存の範囲 ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>依存の範囲（スコープ）<span class="tag">パス／ルーター／アプリ全体</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>適用範囲は「1つの窓口」「まとまり単位」「アプリ全体」の3段階です。確認だけなら <code>dependencies=[]</code> で、戻り値を使うなら引数として宣言します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>依存関係の適用範囲は3段階ある。①1つのパス関数、②ルーター（窓口のまとまり）、③アプリ全体。順に見ていこう。</div></div>
+    </div>
+
+    <h3 class="blk" id="s6-single">シングルパス（1つの窓口だけ）</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">引数に書く基本の形です。短く書ける形もあります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 基本の形：引数名、その種類、そして Depends で包んだ依存関数を書く。</span>
+<span class="kw">def</span> <span class="fn">pathfunc</span>(name: depfunc = <span class="fn">Depends</span>(depfunc)):
+    ...
+
+<span class="cmt"># 短い形：種類の指定から依存関数が分かる場合は、かっこの中を省略できる。</span>
+<span class="kw">def</span> <span class="fn">pathfunc</span>(name: depfunc = <span class="fn">Depends</span>()):
+    ...
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>name</code> が、<code>depfunc</code> の返す値を受け取る変数だ。さっきの例だと、pathfunc が <code>get_user()</code>、depfunc が <code>user_dep()</code>、name が <code>user</code> にあたる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">決まった利用者の情報を返し、それをそのまま返事にする例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、依存関係を宣言する道具を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 依存関数。名前を受け取るが、渡されなければ "anonymous"（名無し）を使う。</span>
+<span class="kw">def</span> <span class="fn">user_dep</span>(name: <span class="kw">str</span> = <span class="str">"anonymous"</span>) -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 名前と、正しいかどうかを組にして返す。</span>
+    <span class="kw">return</span> {<span class="str">"name"</span>: name, <span class="str">"valid"</span>: <span class="kw">True</span>}
+
+<span class="cmt"># /user への GET をこの下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/user"</span>)
+<span class="cmt"># user の値は user_dep から得る。返ってくるのは項目名と値の組。</span>
+<span class="kw">def</span> <span class="fn">get_user</span>(user: <span class="kw">dict</span> = <span class="fn">Depends</span>(user_dep)) -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 受け取った内容をそのまま返す。</span>
+    <span class="kw">return</span> user
+<span class="cmt"># --- /user?name=ハル に問い合わせた結果 ---</span>
+<span class="cmt"># {"name": "ハル", "valid": true}</span>
+<span class="cmt"># --- /user（名前なし）に問い合わせた結果 ---</span>
+<span class="cmt"># {"name": "anonymous", "valid": true}</span>
+</pre></details>
+
+    <h3 class="blk" id="s6-side">副作用だけの依存関係</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>依存関数が「何かを確かめるだけで、戻り値を使わない」場合、<b>パスデコレータのほうに依存関係を書く</b>こともできる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">デコレータ側に書く形です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># デコレータの中に dependencies= を書き、角かっこの中に Depends で包んだものを並べる。</span>
+<span class="cmt"># この書き方では、パス関数の引数には何も追加しなくてよい。</span>
+<span class="fn">@app.method</span>(url, dependencies=[<span class="fn">Depends</span>(depfunc)])
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">特定の名前を拒否する確認だけを行う例です。戻り値は使いません。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体、依存関係の道具、エラーを返すための道具を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends, HTTPException
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 確認だけを行う依存関数。何も返さないことに注目。</span>
+<span class="kw">def</span> <span class="fn">check_user</span>(name: <span class="kw">str</span> = <span class="str">"anonymous"</span>):
+    <span class="cmt"># 名前が "banned" だったときだけ、次の行に進む。</span>
+    <span class="kw">if</span> name == <span class="str">"banned"</span>:
+        <span class="cmt"># 403（権限が無い）というエラーを出す。ここでパス関数の本体は実行されない。</span>
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">403</span>, detail=<span class="str">"禁止ユーザー"</span>)
+
+<span class="cmt"># /private への GET を結びつける。dependencies に確認だけの処理を並べている。</span>
+<span class="fn">@app.get</span>(<span class="str">"/private"</span>, dependencies=[<span class="fn">Depends</span>(check_user)])
+<span class="cmt"># 引数に何も足していない点がポイント。確認は上ですでに済んでいる。</span>
+<span class="kw">def</span> <span class="fn">get_private</span>() -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 確認を通った場合だけ、この中身が返る。</span>
+    <span class="kw">return</span> {<span class="str">"data"</span>: <span class="str">"プライベート情報"</span>}
+<span class="cmt"># --- /private?name=ハル に問い合わせた結果 ---</span>
+<span class="cmt"># {"data": "プライベート情報"}</span>
+<span class="cmt"># --- /private?name=banned に問い合わせた結果 ---</span>
+<span class="cmt"># 403 Forbidden</span>
+<span class="cmt"># {"detail": "禁止ユーザー"}</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「戻り値を使わない／確認だけ」のときはデコレータ側、戻り値を使うときは引数側、ですね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📤</div><h4>戻り値を使う</h4><p>引数に <code>user: dict = Depends(user_dep)</code> と書きます。返ってきた値を処理の中で使えます。</p><span class="pill">利用者の取得など</span></div>
+      <div class="mini"><div class="ic">🛑</div><h4>確認だけ</h4><p>デコレータに <code>dependencies=[Depends(check_user)]</code> と書きます。引数は増やしません。</p><span class="pill">権限の確認、記録など</span></div>
+    </div>
+
+    <h3 class="blk" id="s6-router">複数のパス（ルーター単位）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第9章で詳しくやるけど、大きな FastAPI のアプリでは、すべての窓口を一番上に付けるんじゃなく、その下に複数の<b>ルーター</b>を定義する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ルーター単位で依存関係を宣言すれば、そのルーターの下の全部のパス関数に適用される。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">管理用の窓口をまとめ、その全部に確認をかける例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 窓口をまとめる入れ物と、依存関係の道具を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends
+
+<span class="cmt"># 身分を確かめる処理。この例では中身を書いていない（pass は何もしないという意味）。</span>
+<span class="kw">def</span> <span class="fn">check_auth</span>():
+    <span class="kw">pass</span>
+
+<span class="cmt"># まとまりを作る。prefix はこの中の窓口すべての住所の先頭に付く共通部分。</span>
+<span class="cmt"># dependencies に書いた処理は、この中のすべての窓口の前に実行される。</span>
+router = <span class="fn">APIRouter</span>(
+    prefix=<span class="str">"/admin"</span>,
+    dependencies=[<span class="fn">Depends</span>(check_auth)],
+)
+
+<span class="cmt"># app ではなく router に対して結びつける。実際の住所は /admin/users になる。</span>
+<span class="fn">@router.get</span>(<span class="str">"/users"</span>)
+<span class="kw">def</span> <span class="fn">get_users</span>():
+    <span class="cmt"># 利用者の名前の一覧を返す。</span>
+    <span class="kw">return</span> [<span class="str">"alice"</span>, <span class="str">"bob"</span>]
+
+<span class="cmt"># もう1つの窓口。こちらの実際の住所は /admin/logs になる。</span>
+<span class="fn">@router.get</span>(<span class="str">"/logs"</span>)
+<span class="kw">def</span> <span class="fn">get_logs</span>():
+    <span class="cmt"># 記録の一覧を返す。</span>
+    <span class="kw">return</span> [<span class="str">"log1"</span>, <span class="str">"log2"</span>]
+<span class="cmt"># --- この設定で起きること ---</span>
+<span class="cmt"># /admin/users と /admin/logs のどちらに来ても、先に check_auth が実行される。</span>
+<span class="cmt"># 窓口が10個に増えても、書き足す必要はない。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これで <code>router</code> の下の全部のパス関数の前に <code>check_auth()</code> が呼ばれる。</div></div>
+    </div>
+
+    <h3 class="blk" id="s6-global">グローバル（アプリ全体）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>一番上の FastAPI のアプリを定義するとき、すべてのパス関数に適用される依存関係を追加することもできる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">すべての窓口に記録を残す例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、依存関係の道具を取り出す。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends
+
+<span class="cmt"># 記録を残す処理。この例では中身を書いていない。</span>
+<span class="kw">def</span> <span class="fn">log_request</span>():
+    <span class="kw">pass</span>
+
+<span class="cmt"># アプリ全体を作るときに dependencies を渡すと、全部の窓口に適用される。</span>
+app = <span class="fn">FastAPI</span>(dependencies=[<span class="fn">Depends</span>(log_request)])
+
+<span class="cmt"># 一番上の住所への GET を結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">root</span>():
+    <span class="cmt"># 簡単な内容を返す。</span>
+    <span class="kw">return</span> {<span class="str">"hello"</span>: <span class="str">"world"</span>}
+<span class="cmt"># --- この設定で起きること ---</span>
+<span class="cmt"># どの窓口に問い合わせが来ても、必ず先に log_request が実行される。</span>
+<span class="cmt"># あとから窓口を増やしても、自動的に適用される。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これで <code>app</code> の下のすべてのパス関数の前に <code>log_request()</code> が呼ばれる。</div></div>
+    </div>
+
+    <h3 class="blk">3つの範囲の使い分け</h3>
+    <div class="cycle">
+      <div class="node"><h4>① パス単位</h4><p>その窓口だけで必要なもの。引数に <code>Depends()</code> を書く。</p><span class="when">例：この窓口だけの利用者取得</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② ルーター単位</h4><p>まとまりに共通のもの。<code>APIRouter(dependencies=[...])</code>。</p><span class="when">例：管理用の窓口だけ権限確認</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ アプリ全体</h4><p>全部に共通のもの。<code>FastAPI(dependencies=[...])</code>。</p><span class="when">例：すべての問い合わせの記録</span></div>
+    </div>
+    <div class="loopback">↺ 広い範囲にかけるほど書く量は減りますが、例外を作りにくくなります。「本当に全部に必要か」を考えて範囲を選びます。</div>
+
+    <div class="example">
+      <h4>🔎 具体例：範囲を間違えるとどうなるか</h4>
+      <p>ログイン用の窓口を含むアプリ全体に「ログイン済みであること」の確認をかけたとします。すると、ログインする前の人がログインの窓口を使おうとしても、「ログインしていない」という理由で弾かれます。誰もログインできなくなります。</p>
+      <p>この場合は、ログイン用の窓口を除いたまとまり（ルーター）に対して確認をかけるのが正しい選び方です。逆に、すべての問い合わせを記録する処理なら、アプリ全体にかけて問題ありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「身分の確認は全窓口共通だからアプリ全体、課金は管理用だけだからルーター単位」のように使い分けられる</li><li>コードの重複を最小にできる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>範囲は3段階: パス／ルーター／アプリ</li>
+        <li>戻り値を使う: 引数の <code>Depends()</code></li>
+        <li>確認だけ: <code>dependencies=[Depends(...)]</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「依存関係 = ある時点で必要な情報、それを処理の外から渡すのが依存性注入」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>テストのしやすさ、使い回し、コードの削減のための古くからの手法だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「FastAPI の <code>Header()</code>, <code>Body()</code>, <code>Path()</code>, <code>Query()</code> はすべて組み込みの依存関係」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>自作のものと同じ仕組みで動いている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「依存関数を <code>Depends()</code> で包んで引数に書く。<code>Depends()</code> が無いと定義のときに呼ばれてしまう」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここを間違えると原因が分かりにくい不具合になるので、必ず <code>Depends()</code> で包む。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「範囲は パス／ルーター／アプリ の3段階」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>必要な範囲だけに適用するのがコツだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「戻り値を使うなら引数の <code>Depends()</code>、確認だけなら <code>dependencies=[]</code>」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>記録や権限の確認は後者、利用者の取得は前者、と覚えるといい。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>依存性注入の意味</div>
+      <p style="font-size:14px;margin:0">「依存性注入」とは、ざっくり言って何のことですか？ 普通の関数呼び出しと比べて何が違うのか、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">依存性注入は「処理が必要とする情報を、処理の中で取りに行くのではなく、外部から引数として渡す」作り方のこと。普通だと処理の中で <code>db.get_user()</code> のように直接呼ぶが、この作り方だと「user」を引数として受け取り、誰がそれを用意するかは外側に任せる。これによりテストでは偽の利用者を渡したり、身分の確認の実装を差し替えたりできる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 「必要な情報を外から渡す」という発想を述べている<br>□ 通常の関数呼び出しとの違いに触れている<br>□ テストのしやすさや差し替えのしやすさに言及している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>Depends() が必要な理由</div>
+      <p style="font-size:14px;margin:0">なぜ <code>user = user_dep</code> や <code>user = user_dep()</code> ではなく、<code>user = Depends(user_dep)</code> と書く必要があるのですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>user = user_dep</code> だと処理そのものを初期値として入れるだけで、FastAPI に「これを呼んでくれ」と伝わらない。<code>user = user_dep()</code> だと、パス関数が定義される段階で <code>user_dep()</code> が一度だけ呼ばれてしまい、問い合わせのたびには呼ばれない。<code>Depends(user_dep)</code> は「その処理を覚えておいて、問い合わせごとに呼んで」と FastAPI に指示する仕組み。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>user_dep</code> だけだと FastAPI が呼んでくれない、という説明<br>□ <code>user_dep()</code> だと定義のときに1回だけ呼ばれてしまう、という指摘<br>□ <code>Depends()</code> が「呼び出しを後回しにする」役割であることを説明</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>依存関係の範囲</div>
+      <p style="font-size:14px;margin:0">FastAPI で依存関係を適用できる3つの範囲を挙げ、それぞれどんな用途に向いているか説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<b>1つの窓口</b>：その窓口だけで必要な情報（特定の利用者情報の取得など）に向く。引数で <code>Depends()</code> を使う。②<b>ルーター単位</b>：管理用の窓口だけ権限の確認を入れるなど、一部のまとまりに共通の処理に向く。<code>APIRouter(dependencies=[...])</code> で宣言。③<b>アプリ全体</b>：全部の窓口で走る記録や共通の身分確認など。<code>FastAPI(dependencies=[...])</code> で宣言。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ パス／ルーター／アプリの3段階を挙げている<br>□ それぞれの典型的な用途を例示している<br>□ 宣言の方法（引数 か <code>dependencies=[...]</code> か）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>戻り値を使う／使わない</div>
+      <p style="font-size:14px;margin:0">「戻り値を使わず確認だけしたい依存関係」と「戻り値をパス関数で利用したい依存関係」では、書き方が違います。それぞれどう書きますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">戻り値を使う場合は、パス関数の引数に <code>user: dict = Depends(user_dep)</code> のように書き、引数で戻り値を受け取る。戻り値を使わず確認（身分の確認や入力の確認など）だけしたい場合は、パスデコレータに <code>dependencies=[Depends(check_auth)]</code> のように書く。後者ではパス関数の引数に追加する必要がない。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 戻り値を使う場合は引数の <code>Depends()</code> を述べている<br>□ 確認だけは <code>dependencies=[Depends(...)]</code> を述べている<br>□ 両方の用途の違いを正しく説明している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>組み込みの依存関係の例</div>
+      <p style="font-size:14px;margin:0">FastAPI の <code>Header()</code>, <code>Query()</code>, <code>Path()</code>, <code>Body()</code> は、実は依存関係の組み込み版です。これらを「依存性注入の文脈」でどう理解できるか、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">これらはすべて「問い合わせの特定の場所からデータを取り出す依存関数」と捉えられる。たとえば <code>Header()</code> は「添えられた情報から値を取って、その値を引数として渡す」依存関係。<code>Query()</code> も <code>Body()</code> も同じ仕組みで、それぞれ住所のうしろの条件、本体から値を取り出す。自分で書く依存関数と本質は同じで、組み込みのものにはデータの確認・形式の変換・自動の説明ページ生成も付いてくる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 4つすべてが「依存関係」であると認識している<br>□ それぞれが「問い合わせの特定の場所から値を取る」役割と述べている<br>□ 自作の依存関数と同じ仕組み、という統一感に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>公式の手引きを読む</h4><p>FastAPI 公式ドキュメントの「Dependencies」の項（依存関係の入れ子、<code>yield</code> を使った後片付けなど）を読む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>身分の確認つきの API を書いてみる</h4><p><code>Depends</code> を使って書く。第11章でも詳しくやる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>テストで依存関係を差し替える</h4><p><code>app.dependency_overrides</code> を試す。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># テストのときだけ使う、偽物の依存関数を用意する。常に決まった値を返す。</span>
+<span class="kw">def</span> <span class="fn">fake_user_dep</span>():
+    <span class="kw">return</span> {<span class="str">"name"</span>: <span class="str">"テスト用"</span>, <span class="str">"valid"</span>: <span class="kw">True</span>}
+
+<span class="cmt"># 本物の user_dep が呼ばれるはずの場所を、偽物に置き換える指示。</span>
+<span class="cmt"># これ以降、この窓口を呼ぶと偽物のほうが使われる。</span>
+app.dependency_overrides[user_dep] = fake_user_dep
+<span class="cmt"># --- この設定で起きること ---</span>
+<span class="cmt"># データベースを起動しなくても、窓口のテストが実行できる。</span>
+<span class="cmt"># 元に戻すときは app.dependency_overrides.clear() を呼ぶ。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>ルーターに依存関係を付ける</h4><p><code>APIRouter</code> にまとめ単位の共通処理を実装してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「フレームワークの比較」へ</h4><p>Flask や Django との対比から、FastAPI のこの仕組みの利点を確かめる。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第6章「依存関係」の図解 ― 原文の全節（依存とは何か／依存関係の問題／依存性の注入／FastAPI の依存関係／依存関係を書く／依存の範囲：シングルパス・複数のパス・グローバル）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

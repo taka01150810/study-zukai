@@ -1,0 +1,1370 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第10章 データレイヤー ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第10章</div>
+  <h1>第10章　データレイヤー</h1>
+  <p>いよいよ仮のデータを卒業して、本物のデータベースにつなぎます。Python 標準の <code>sqlite3</code> で接続 → カーソル → SQL 実行の流れを学び、表を作って保存します。途中で「末尾のスラッシュ問題」「重複と欠落の扱い」といった実際の落とし穴に出会い、独自の失敗の知らせを作って解決します。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全7節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① DB-API</a>
+  <a class="sub" href="#s1-param">└ パラメータ指定の5スタイル</a>
+  <a class="sub" href="#s1-fetch">└ 取り出しの3つの方法</a>
+  <a href="#s2">② SQLite</a>
+  <a href="#s3">③ レイアウト（データの引っ越し）</a>
+  <a href="#s4">④ 仕事にする（設定の外出し）</a>
+  <a class="sub" href="#s4-init">└ data/init.py</a>
+  <a class="sub" href="#s4-use">└ init.py を使う版</a>
+  <a href="#s5">⑤ テストだ！（全体を通した確認）</a>
+  <a class="sub" href="#s5-slash">└ 末尾スラッシュ問題</a>
+  <a class="sub" href="#s5-create">└ 作成と入力の誤り</a>
+  <a class="sub" href="#s5-one">└ 1件だけ取得</a>
+  <a href="#s6">⑥ データの欠落と重複</a>
+  <a class="sub" href="#s6-errors">└ 独自の失敗の知らせ</a>
+  <a class="sub" href="#s6-web">└ Web層での変換</a>
+  <a href="#s7">⑦ 単体テスト（メモリDB）</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">DB-API</div><p>Python からデータベースを扱うときの、共通の呼び出し方の取り決めです。</p></div>
+    <div class="item"><div class="w">接続 <span>connection</span></div><p>データベースとやり取りするための、つながりを表すもの。<code>connect()</code> で作ります。</p></div>
+    <div class="item"><div class="w">カーソル <span>cursor</span></div><p>問い合わせを実行し、その結果を1件ずつ取り出すための取っ手のようなものです。</p></div>
+    <div class="item"><div class="w">SQL</div><p>データベースに「この条件のデータを取ってきて」「これを保存して」と伝えるための言語です。</p></div>
+    <div class="item"><div class="w">SQLite</div><p>専用のサーバを持たず、1つのファイルにデータを保存する小さなデータベースです。</p></div>
+    <div class="item"><div class="w">パラメータの結びつけ</div><p>SQL の中に値を直接書かず、別に渡すやり方。文字列を勝手に足されるのを防げます。</p></div>
+    <div class="item"><div class="w">SQLインジェクション</div><p>入力欄に SQL の一部を書き込んで、想定外の操作をさせる攻撃です。</p></div>
+    <div class="item"><div class="w">主キー <span>primary key</span></div><p>その表の中で1件を特定するための項目。重複できません。</p></div>
+    <div class="item"><div class="w">テーブルスキャン</div><p>表の全部の行を1行ずつ見ていくこと。件数が多いと遅くなります。</p></div>
+    <div class="item"><div class="w">環境変数</div><p>プログラムの外側から渡す設定。コードを変えずに動きを変えられます。</p></div>
+    <div class="item"><div class="w">Twelve-Factor App</div><p>Web アプリの作り方の指針をまとめたもの。設定をコードから分けることを勧めています。</p></div>
+    <div class="item"><div class="w">シングルトン</div><p>何度取り込んでも、実際に動くのは1回だけ、という性質のことです。</p></div>
+    <div class="item"><div class="w">末尾スラッシュ問題</div><p><code>/explorer</code> と <code>/explorer/</code> が別の住所として扱われるために起きる食い違いです。</p></div>
+    <div class="item"><div class="w">405 Method Not Allowed</div><p>「その住所は存在するが、その動詞では受け付けていない」という返事の番号です。</p></div>
+    <div class="item"><div class="w">422</div><p>送られた内容が、決めておいた形に合っていないときに返す番号です。</p></div>
+    <div class="item"><div class="w">201 Created</div><p>新しく作られたことを表す番号。作成の窓口で返すのが一般的です。</p></div>
+    <div class="item"><div class="w">204</div><p>成功したが返す中身は無い、という番号。削除の窓口でよく使われます。</p></div>
+    <div class="item"><div class="w">HTTPException</div><p>FastAPI に「この番号のエラーで返して」と伝えるための知らせです。</p></div>
+    <div class="item"><div class="w">IntegrityError</div><p>データベースの決まり（重複禁止など）に反したときに出る、SQLite からの知らせです。</p></div>
+    <div class="item"><div class="w">rowcount</div><p>直前の操作で、実際に何行が影響を受けたかの数です。</p></div>
+    <div class="item"><div class="w">:memory:</div><p>ファイルではなくメモリ上にデータベースを作る指定。終了すると消えます。</p></div>
+    <div class="item"><div class="w">fixture</div><p>テストで使う準備済みのデータや状態を、必要なテストに渡す pytest の仕組みです。</p></div>
+    <div class="item"><div class="w">スコープ <span>fixtureの</span></div><p>その準備をいつ作り直すか。1件ごとか、全体で1回かを決めます。</p></div>
+    <div class="item"><div class="w">pytest.raises</div><p>「この中で失敗が起きるはず」と書くための、テスト用の書き方です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">仮データを卒業する</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠は「いよいよ仮のものを卒業して、本物のデータベースにつなぐぞ」と <span class="term" data-tip="専用のサーバを持たず、1つのファイルにデータを保存する小さなデータベース。">SQLite</span> を持ち出します。Python 標準の <code>sqlite3</code> で「接続 → カーソル → 実行」の3点セットを学び、<code>creature</code> という表を作って保存します。途中で「<code>/explorer</code> と <code>/explorer/</code> のスラッシュ問題」「重複と欠落の扱い」といった実際の落とし穴に出会い、<code>Missing</code>／<code>Duplicate</code> という独自の失敗の知らせを作って解決します。最後にメモリ上のデータベースを使った pytest の単体テストで仕上げます。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">データ層は SQLite に対して Python の DB-API（<code>connect()</code>／<code>cursor()</code>／<code>execute()</code>／<code>fetch*()</code>）で操作します。表の定義は「無ければ作る」形にし、1件を特定する項目は name にします。データベースの場所は環境変数で外から渡し、<code>data/init.py</code> で接続を用意します（ファイルは何度取り込んでも1度しか動かないため、初期化も1回だけです）。「見つからない」と「重複」は独自の失敗の知らせ（<code>Missing</code>／<code>Duplicate</code>）で表し、Web層で 404 などに変換します。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>Python 標準で扱える SQLite を使った、最小の保存の仕組みが書ける</li>
+        <li>設定（データベースの場所など）を環境変数で外に出す書き方が身につく</li>
+        <li><code>Missing</code>／<code>Duplicate</code> のような独自の知らせで、層をまたぐ失敗の設計ができる</li>
+        <li>メモリ上のデータベースでテストを書くやり方を知る</li>
+        <li>末尾のスラッシュ問題（<code>/explorer</code> と <code>/explorer/</code>）の対処法が分かる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① DB-API ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>DB-API<span class="tag">接続 → カーソル → 実行 → 取り出し</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>DB-API は「接続 → カーソル → 実行 → 取り出し」の流れです。値の渡し方は名前付き（<code>:name</code>）がおすすめです。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python は20年以上前から、表形式のデータベースを扱うときの共通の呼び出し方として <b>DB-API</b>（PEP 249）を持っている。データベース用の Python の接続部品を書く人は、最低限これを用意することが期待されている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>主な処理は3つ。①<code>connect()</code> でつながりを作る、②<code>conn.cursor()</code> で取っ手を作る、③<code>curs.execute(stmt)</code> で SQL を実行する。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4><code>connect()</code></h4><p>データベースとのつながりを作ります。ここで場所（ファイル名など）を指定します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4><code>conn.cursor()</code></h4><p>問い合わせを実行し、結果を取り出すための取っ手を作ります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4><code>curs.execute(stmt, params)</code></h4><p>SQL を実行します。値は SQL の中に直接書かず、別に渡します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4><code>curs.fetch*()</code></h4><p>取得の場合は、結果の行をここで受け取ります。<div class="branch ok">保存・更新・削除の場合は、影響した行数などで結果を確かめます。</div></p></div></div>
+    </div>
+
+    <h3 class="blk" id="s1-param">パラメータ指定の5スタイル</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>種類</th><th>SQL の書き方</th><th>渡す値</th><th>形</th></tr>
+      <tr><td>疑問符</td><td><code>name=? or country=?</code></td><td><code>(name, country)</code></td><td>順番でそろえる</td></tr>
+      <tr><td>数値</td><td><code>name=:0 or country=:1</code></td><td><code>(name, country)</code></td><td>順番でそろえる</td></tr>
+      <tr><td>形式</td><td><code>name=%s or country=%s</code></td><td><code>(name, country)</code></td><td>順番でそろえる</td></tr>
+      <tr><td><b>名前付き</b></td><td><code>name=:name or country=:country</code></td><td><code>{"name": name, "country": country}</code></td><td><span class="up">名前でそろえる</span></td></tr>
+      <tr><td>名前付き（別記法）</td><td><code>name=%(name)s or country=%(country)s</code></td><td><code>{"name": name, "country": country}</code></td><td>名前でそろえる</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最初の3つは並び順でそろえる形、最後の2つは名前でそろえる形だ。すべての接続部品が全部の書き方に対応しているわけではない。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">名前でそろえる書き方の例です。SQL の中の <code>:name</code> と、渡す側の項目名が対応します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># SQL の文。値を直接書かず、コロン付きの目印を置いておく。</span>
+<span class="cmt"># select * は「全部の項目を選ぶ」、where 以降が絞り込みの条件。</span>
+stmt = <span class="str">"select * from creature where name=:name or country=:country"</span>
+<span class="cmt"># 目印に入れる値を、項目名と値の組み合わせで用意する。</span>
+params = {<span class="str">"name"</span>: <span class="str">"Yeti"</span>, <span class="str">"country"</span>: <span class="str">"US"</span>}
+<span class="cmt"># 文と値を別々に渡す。こう書くと、値に SQL の記号が含まれていても</span>
+<span class="cmt"># 「ただの文字」として扱われるので、意図しない操作をされる心配がない。</span>
+curs.<span class="fn">execute</span>(stmt, params)
+<span class="cmt"># --- この実行で起きること ---</span>
+<span class="cmt"># 名前が Yeti、または国が US の行が選ばれ、取り出せる状態になる。</span>
+</pre></details>
+
+    <h3 class="blk" id="s1-fetch">取り出しの3つの方法</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">1️⃣</div><h4><code>fetchone()</code></h4><p>1件分を返します。無ければ「無い」を表す値が返ります。</p></div>
+      <div class="mini"><div class="ic">🔢</div><h4><code>fetchall()</code></h4><p>該当するすべてを返します。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4><code>fetchmany(num)</code></h4><p>指定した件数を上限として返します。</p></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：値を直接つなげると何が起きるか</h4>
+      <p><code>"select * from creature where name='" + name + "'"</code> のように文字をつなげて SQL を作ったとします。ここで <code>name</code> に <code>x'; delete from creature; --</code> という文字が入力されると、SQL は「x を探す」＋「全部削除する」という2つの命令になります。表の中身が全部消えます。</p>
+      <p><code>execute(stmt, params)</code> の形で別に渡せば、この文字列は「そういう名前を探す」という条件として扱われるだけで、命令としては解釈されません。該当が無いので何も起きません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>入力から不正な操作をされないための基本（値を別に渡す）が身につく</li><li>Python からデータベースを操作する共通の型が分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>DB-API = Python 標準の、データベースの共通の呼び出し方</li>
+        <li>主な処理: connect / cursor / execute / fetch*</li>
+        <li>値の渡し方は5通り。名前でそろえる形が読みやすい</li>
+        <li>取得の結果: fetchone / fetchall / fetchmany</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② SQLite ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>SQLite<span class="tag">サーバのいらないデータベース</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>SQLite は専用のサーバを持たないデータベースです。Python 標準の <code>sqlite3</code> で扱えます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の標準のパッケージには <b><code>sqlite3</code></b> が含まれていて、<b>SQLite</b> に対応している。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>SQLite は特殊だ。<b>独立したデータベースのサーバを持たない</b>。処理はライブラリの中にあり、保存先は1つのファイルの中。他のデータベースは独立したサーバを動かして、通信でやり取りする。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書では SQLite をサイトの最初の保存先にする。第14章で表形式のもの・そうでないもの、SQLAlchemy、ORM などをやる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データの形をデータベース上でどう表すかを決める必要がある。これまで <code>Creature</code> と <code>Explorer</code> という単純で似た形を使ってきた。これからいろいろ考えていくと、形も変わっていく。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📁</div><h4>SQLite</h4><p>サーバを起動する必要がありません。1つのファイルがそのままデータベースです。学習や小さなアプリに向きます。</p></div>
+      <div class="mini"><div class="ic">🖥️</div><h4>他のデータベース</h4><p>独立したサーバを動かし、通信でやり取りします。多人数での同時利用に向きます。</p></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">最初の版です。接続、表の作成、変換の道具、そして6つの処理が並びます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># SQLite を扱うための標準の機能を取り込む。</span>
+<span class="kw">import</span> sqlite3
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+
+<span class="cmt"># cryptid.db というファイルにつなぐ。無ければ新しく作られる。</span>
+<span class="cmt"># check_same_thread=False は、複数の処理から同じつながりを使えるようにする指定。</span>
+conn = sqlite3.<span class="fn">connect</span>(<span class="str">"cryptid.db"</span>, check_same_thread=<span class="kw">False</span>)
+<span class="cmt"># 問い合わせを実行するための取っ手を作る。</span>
+curs = conn.<span class="fn">cursor</span>()
+
+<span class="cmt"># 表を用意する処理。</span>
+<span class="kw">def</span> <span class="fn">init</span>():
+    <span class="cmt"># create table は表を作る命令。if not exists は「すでにあれば何もしない」という指定。</span>
+    <span class="cmt"># これが無いと、2回目の起動で「すでにある」という失敗になる。</span>
+    <span class="cmt"># name text primary key は「name は文字で、1件を特定する項目。重複できない」という意味。</span>
+    curs.<span class="fn">execute</span>(<span class="str">"""create table if not exists creature(
+        name text primary key,
+        country text,
+        area text,
+        description text,
+        aka text)"""</span>)
+
+<span class="cmt"># データベースから返る「並び」を、プログラムで扱う形に変換する処理。</span>
+<span class="kw">def</span> <span class="fn">row_to_model</span>(row: <span class="kw">tuple</span>) -&gt; Creature:
+    <span class="cmt"># 並びの中身を、左から順に5つの名前に取り分ける。</span>
+    name, country, area, description, aka = row
+    <span class="cmt"># 取り分けた値で、決めておいた形のデータを組み立てて返す。</span>
+    <span class="kw">return</span> <span class="fn">Creature</span>(name=name, country=country, area=area,
+                    description=description, aka=aka)
+
+<span class="cmt"># 逆に、プログラムの形を、名前でそろえる渡し方に合う形へ変換する処理。</span>
+<span class="kw">def</span> <span class="fn">model_to_dict</span>(creature: Creature) -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 中身があれば項目名と値の組み合わせに変換し、無ければ None を返す。</span>
+    <span class="kw">return</span> creature.<span class="fn">dict</span>() <span class="kw">if</span> creature <span class="kw">else</span> <span class="kw">None</span>
+
+<span class="cmt"># 名前を指定して1件を取得する。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Creature:
+    <span class="cmt"># 名前が一致する行を選ぶ問い合わせ。値は目印にしておく。</span>
+    qry = <span class="str">"select * from creature where name=:name"</span>
+    <span class="cmt"># 目印に入れる値を用意する。</span>
+    params = {<span class="str">"name"</span>: name}
+    <span class="cmt"># 問い合わせを実行する。</span>
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 1件を取り出して、扱いやすい形に変換して返す。</span>
+    <span class="kw">return</span> <span class="fn">row_to_model</span>(curs.<span class="fn">fetchone</span>())
+
+<span class="cmt"># すべてを取得する。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="cmt"># 絞り込みの条件を書かないので、表の全部の行が対象になる。</span>
+    qry = <span class="str">"select * from creature"</span>
+    curs.<span class="fn">execute</span>(qry)
+    <span class="cmt"># 取り出した全部の行を、1件ずつ扱いやすい形に変換して並べ直す。</span>
+    <span class="kw">return</span> [<span class="fn">row_to_model</span>(row) <span class="kw">for</span> row <span class="kw">in</span> curs.<span class="fn">fetchall</span>()]
+
+<span class="cmt"># 新しく1件を保存する。</span>
+<span class="kw">def</span> <span class="fn">create</span>(creature: Creature) -&gt; Creature:
+    <span class="cmt"># insert into は「新しい行を入れる」命令。値は5つの目印にしておく。</span>
+    qry = <span class="str">"""insert into creature values
+        (:name, :country, :area, :description, :aka)"""</span>
+    <span class="cmt"># 受け取ったデータを、目印に対応する形に変換する。</span>
+    params = <span class="fn">model_to_dict</span>(creature)
+    <span class="cmt"># 保存を実行する。</span>
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 保存された結果を読み直して返す。実際に入った内容を返せる。</span>
+    <span class="kw">return</span> <span class="fn">get_one</span>(creature.name)
+
+<span class="cmt"># 既存の1件を書き換える。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="cmt"># update は「既にある行を書き換える」命令。set のあとに変える項目を並べる。</span>
+    <span class="cmt"># where で「どの行を書き換えるか」を指定する。これを忘れると全行が書き換わる。</span>
+    qry = <span class="str">"""update creature
+        set country=:country,
+            area=:area,
+            description=:description,
+            aka=:aka
+        where name=:name_orig"""</span>
+    <span class="cmt"># 新しい内容を、目印に対応する形に変換する。</span>
+    params = <span class="fn">model_to_dict</span>(creature)
+    <span class="cmt"># 「元の名前」を追加で入れる。名前そのものを変える場合に、どの行かを見失わないため。</span>
+    params[<span class="str">"name_orig"</span>] = name
+    <span class="cmt"># 書き換えを実行する。戻り値は使わないので _ という名前に捨てている。</span>
+    _ = curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 書き換わった結果を読み直して返す。</span>
+    <span class="kw">return</span> <span class="fn">get_one</span>(creature.name)
+
+<span class="cmt"># 全体を置き換える。今の段階では、書き換えと同じ処理でよい。</span>
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> <span class="fn">modify</span>(name, creature)
+
+<span class="cmt"># 1件を削除する。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="cmt"># delete from は「行を消す」命令。where で対象を指定する。</span>
+    qry = <span class="str">"delete from creature where name = :name"</span>
+    params = {<span class="str">"name"</span>: name}
+    res = curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 結果を真偽の値に変換して返す。</span>
+    <span class="kw">return</span> <span class="fn">bool</span>(res)
+
+<span class="cmt"># このファイルが読み込まれた時点で、表を用意しておく。</span>
+<span class="fn">init</span>()
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>解説すると、①先頭の <code>init()</code> が SQLite と <code>cryptid.db</code> へのつながりを作る。<code>conn</code> はこのファイルの中のどこからでも使える変数だ。②<code>curs</code> は SQL を実行して結果を1件ずつ扱うための取っ手。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>2つの補助の処理がある。①<code>row_to_model()</code>：取り出しの結果として返る「並び」を、決めておいた形に変換する、②<code>model_to_dict()</code>：決めておいた形を、名前でそろえる渡し方に合う形に変換する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>各層の仮の処理（Web → サービス → データ）は、これから素の SQL と DB-API の呼び出しで置き換えていく。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>最小のコードで、データを残せるようになる</li><li>DB-API の使い方が具体的に分かる</li><li>形と行を相互に変換する型が身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>SQLite = サーバのいらない、ファイル1つのデータベース</li>
+        <li>Python 標準の <code>sqlite3</code> で扱う</li>
+        <li>1件を特定する項目は name</li>
+        <li><code>row_to_model</code> / <code>model_to_dict</code> で相互に変換</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ レイアウト ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>レイアウト<span class="tag">データの引っ越しの歴史</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>データの置き場所は Web → サービス → データ と段階的に下へ降り、最後に SQLite のファイルに保存されます。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>第8章</h4><p>仮の生き物の一覧を <code>web/</code> に作成。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>第8章</h4><p>仮の探検家の一覧も <code>web/</code> に作成。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>第9章</h4><p>仮の生き物の一覧を <code>service/creature.py</code> へ移動。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>第9章</h4><p>仮の探検家の一覧を <code>service/explorer.py</code> へ移動。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>第10章（今）</h4><p><code>data/creature.py</code> へ移動。もう仮のものではなく、SQLite のファイル <code>cryptids.db</code> に保存される。<div class="branch ok">外から見える窓口の動きは、この間ずっと変わっていない。</div></p></div></div>
+    </div>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>新しい <code>data/creature.py</code> を保存すると、Uvicorn が <code>main.py</code> から立ち上げ直し、<code>web/creature.py</code> → <code>service/creature.py</code> → <code>data/creature.py</code> の順で呼ばれるようになる。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>章ごとに、データの置き場所が下の層へ移動する</li><li>第10章で実際のデータベースにつながる</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ 設定の外出し ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>仕事にする<span class="tag">データベースの場所を外から渡す</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>接続は <code>data/init.py</code> に切り出し、場所は環境変数で指定します。各リソースのファイルは、そこから <code>conn</code>／<code>curs</code> を取り込みます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1つ問題がある。このファイルは <code>init()</code> を呼ばないので、他の処理が使う <code>conn</code> や <code>curs</code> が無い。これは設定の問題だ。起動のときにデータベースの情報をどう渡すか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>選択肢は、①コードに直接書く（いちばん単純だが、層の分け方に反する）、②外から渡す（設定ファイル、環境変数）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>環境変数は単純で、<b>Twelve-Factor App</b> のような設計の指針でも勧められている。指定されなかった場合の初期値もコードに含められる。テストのときにテスト用のデータベースを指定するのにも使える。</div></div>
+    </div>
+
+    <h3 class="blk" id="s4-init">data/init.py</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">接続を用意する専用のファイルです。場所は環境変数から取り、無ければ決められた場所を使います。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">"""SQLite のデータベースを用意する"""</span>
+<span class="cmt"># 環境変数を読むための標準の機能を取り込む。</span>
+<span class="kw">import</span> os
+<span class="cmt"># ファイルの場所を組み立てるための標準の機能を取り込む。</span>
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="cmt"># SQLite を扱うための標準の機能を取り込む。</span>
+<span class="kw">import</span> sqlite3
+
+<span class="cmt"># つながりと取っ手を、このファイルのどこからでも使える名前として先に用意しておく。</span>
+<span class="cmt"># まだ中身は無いので、何も指していない状態にしておく。</span>
+conn = <span class="kw">None</span>
+curs = <span class="kw">None</span>
+
+<span class="kw">def</span> <span class="fn">get_db</span>(name: <span class="kw">str</span> | <span class="kw">None</span> = <span class="kw">None</span>, reset: <span class="kw">bool</span> = <span class="kw">False</span>):
+    <span class="cmt">"""SQLite のファイルにつなぐ"""</span>
+    <span class="cmt"># この処理の中から、上で用意した2つの名前を書き換える、という宣言。</span>
+    <span class="kw">global</span> conn, curs
+    <span class="cmt"># すでにつながっている場合の扱い。</span>
+    <span class="kw">if</span> conn:
+        <span class="cmt"># 作り直す指定が無ければ、何もせずに終わる。二重につなぐのを防ぐ。</span>
+        <span class="kw">if</span> <span class="kw">not</span> reset:
+            <span class="kw">return</span>
+        <span class="cmt"># 作り直す指定があれば、今のつながりを捨てる。</span>
+        conn = <span class="kw">None</span>
+    <span class="cmt"># 場所が指定されていない場合、既定の場所を組み立てる。</span>
+    <span class="kw">if</span> <span class="kw">not</span> name:
+        <span class="cmt"># 環境変数から場所を読む。設定されていなければ何も返らない。</span>
+        name = os.<span class="fn">getenv</span>(<span class="str">"CRYPTID_SQLITE_DB"</span>)
+        <span class="cmt"># このファイルの場所から2つ上の階層を求める。プロジェクトの一番上にあたる。</span>
+        top_dir = <span class="fn">Path</span>(__file__).<span class="fn">resolve</span>().parents[<span class="num">1</span>]
+        <span class="cmt"># その下の db というフォルダを指す。</span>
+        db_dir = top_dir / <span class="str">"db"</span>
+        <span class="cmt"># ファイルの名前を決める。</span>
+        db_name = <span class="str">"cryptid.db"</span>
+        <span class="cmt"># フォルダとファイル名をつなげて、完全な場所の文字列にする。</span>
+        db_path = <span class="fn">str</span>(db_dir / db_name)
+        <span class="cmt"># もう一度環境変数を読み、無ければ今組み立てた場所を使う。</span>
+        <span class="cmt"># 第2引数が「設定されていなかったときに使う値」になる。</span>
+        name = os.<span class="fn">getenv</span>(<span class="str">"CRYPTID_SQLITE_DB"</span>, db_path)
+    <span class="cmt"># 決まった場所につなぐ。</span>
+    conn = sqlite3.<span class="fn">connect</span>(name, check_same_thread=<span class="kw">False</span>)
+    <span class="cmt"># 問い合わせ用の取っ手を作る。</span>
+    curs = conn.<span class="fn">cursor</span>()
+
+<span class="cmt"># このファイルが読み込まれた時点で、1回だけ実行される。</span>
+<span class="fn">get_db</span>()
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python のファイルは<b>1度しか実行されない</b>。何回取り込まれても、中身が動くのは最初の1回だけだ。だから <code>init.py</code> の準備は、最初に取り込まれたときに1度だけ走る。</div></div>
+    </div>
+
+    <h3 class="blk" id="s4-use">init.py を使う版</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">接続の準備を外に出したので、こちらは <code>sqlite3</code> を直接扱いません。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 同じフォルダの init.py から、つながり・取っ手・準備の処理を取り込む。</span>
+<span class="cmt"># 先頭のドットは「同じフォルダの中」という意味。</span>
+<span class="kw">from</span> .init <span class="kw">import</span> conn, curs, get_db
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+
+<span class="cmt"># 表を用意する。処理でくるまず、読み込み時にそのまま実行する形にした。</span>
+<span class="cmt"># if not exists により、すでに表があれば何も起きない。</span>
+<span class="cmt"># text は文字を入れる項目という指定。SQLite の初期値でもあるが、明示して分かりやすくしている。</span>
+curs.<span class="fn">execute</span>(<span class="str">"""create table if not exists creature(
+    name text primary key,
+    country text,
+    area text,
+    description text,
+    aka text)"""</span>)
+
+<span class="cmt"># データベースから返る並びを、扱いやすい形に変換する。</span>
+<span class="kw">def</span> <span class="fn">row_to_model</span>(row: <span class="kw">tuple</span>) -&gt; Creature:
+    <span class="cmt"># 並びを左から順に5つの名前に取り分ける。</span>
+    name, country, area, description, aka = row
+    <span class="cmt"># 決めておいた形に組み立てて返す。</span>
+    <span class="kw">return</span> <span class="fn">Creature</span>(name=name, country=country, area=area,
+                    description=description, aka=aka)
+
+<span class="cmt"># 決めておいた形を、名前でそろえる渡し方に合う形へ変換する。</span>
+<span class="kw">def</span> <span class="fn">model_to_dict</span>(creature: Creature) -&gt; <span class="kw">dict</span>:
+    <span class="kw">return</span> creature.<span class="fn">dict</span>() <span class="kw">if</span> creature <span class="kw">else</span> <span class="kw">None</span>
+
+<span class="cmt"># 1件を取得する。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Creature:
+    qry = <span class="str">"select * from creature where name=:name"</span>
+    params = {<span class="str">"name"</span>: name}
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="kw">return</span> <span class="fn">row_to_model</span>(curs.<span class="fn">fetchone</span>())
+
+<span class="cmt"># すべてを取得する。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    qry = <span class="str">"select * from creature"</span>
+    curs.<span class="fn">execute</span>(qry)
+    <span class="kw">return</span> [<span class="fn">row_to_model</span>(row) <span class="kw">for</span> row <span class="kw">in</span> curs.<span class="fn">fetchall</span>()]
+
+<span class="cmt"># create, modify, replace, delete は前の版と同じ内容。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>直した点は、①前の版にあった <code>sqlite3</code> の取り込みと <code>init()</code> を削除、②<code>creature</code> の表を作成、③項目は文字の指定にした（SQLite の初期値だが、書いておくほうが丁寧）、④「無ければ作る」の指定で、既存の表を壊さないようにした、⑤<code>name</code> を明示的に「1件を特定する項目」にした。これで件数が増えても速く探せる。指定しないと<b>全部の行を1行ずつ見る</b>ことになり、遅くなる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>init.py</code> から <code>conn</code> と <code>curs</code> を取り込むことで、<code>data/creature.py</code> は <code>sqlite3</code> 自体を取り込む必要がなくなる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>同じことを探検家の側にもする。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">探検家の側です。項目が3つなので、少し短くなります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 同じフォルダの init.py から、つながりと取っ手を取り込む。</span>
+<span class="kw">from</span> .init <span class="kw">import</span> conn, curs, get_db
+<span class="cmt"># 探検家のデータの形を取り込む。</span>
+<span class="kw">from</span> model.explorer <span class="kw">import</span> Explorer
+
+<span class="cmt"># 探検家用の表を用意する。項目は3つ。</span>
+curs.<span class="fn">execute</span>(<span class="str">"""create table if not exists explorer(
+    name text primary key,
+    country text,
+    description text)"""</span>)
+
+<span class="cmt"># 並びを、扱いやすい形に変換する。</span>
+<span class="kw">def</span> <span class="fn">row_to_model</span>(row: <span class="kw">tuple</span>) -&gt; Explorer:
+    <span class="cmt"># 3つの項目を左から順に取り分ける。</span>
+    name, country, description = row
+    <span class="kw">return</span> <span class="fn">Explorer</span>(name=name, country=country, description=description)
+
+<span class="cmt"># 形を、渡し方に合う形へ変換する。</span>
+<span class="kw">def</span> <span class="fn">model_to_dict</span>(explorer: Explorer) -&gt; <span class="kw">dict</span>:
+    <span class="kw">return</span> explorer.<span class="fn">dict</span>() <span class="kw">if</span> explorer <span class="kw">else</span> <span class="kw">None</span>
+
+<span class="cmt"># 1件を取得する。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer:
+    qry = <span class="str">"select * from explorer where name=:name"</span>
+    params = {<span class="str">"name"</span>: name}
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="kw">return</span> <span class="fn">row_to_model</span>(curs.<span class="fn">fetchone</span>())
+
+<span class="cmt"># すべてを取得する。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Explorer]:
+    qry = <span class="str">"select * from explorer"</span>
+    curs.<span class="fn">execute</span>(qry)
+    <span class="kw">return</span> [<span class="fn">row_to_model</span>(row) <span class="kw">for</span> row <span class="kw">in</span> curs.<span class="fn">fetchall</span>()]
+
+<span class="cmt"># 新しく1件を保存する。目印は3つ。</span>
+<span class="kw">def</span> <span class="fn">create</span>(explorer: Explorer) -&gt; Explorer:
+    qry = <span class="str">"insert into explorer values (:name, :country, :description)"</span>
+    params = <span class="fn">model_to_dict</span>(explorer)
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="kw">return</span> <span class="fn">get_one</span>(explorer.name)
+
+<span class="cmt"># 既存の1件を書き換える。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    qry = <span class="str">"""update explorer
+        set country=:country, description=:description
+        where name=:name_orig"""</span>
+    params = <span class="fn">model_to_dict</span>(explorer)
+    <span class="cmt"># どの行かを見失わないよう、元の名前を追加で入れる。</span>
+    params[<span class="str">"name_orig"</span>] = name
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="kw">return</span> <span class="fn">get_one</span>(explorer.name)
+
+<span class="cmt"># 全体を置き換える。今は書き換えと同じ処理。</span>
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> <span class="fn">modify</span>(name, explorer)
+
+<span class="cmt"># 1件を削除する。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    qry = <span class="str">"delete from explorer where name = :name"</span>
+    params = {<span class="str">"name"</span>: name}
+    res = curs.<span class="fn">execute</span>(qry, params)
+    <span class="kw">return</span> <span class="fn">bool</span>(res)
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：環境変数で切り替えると何が便利か</h4>
+      <p>本番では <code>/var/lib/app/cryptid.db</code>、開発中の手元では <code>./db/cryptid.db</code>、テストではメモリ上、と3つの場所を使い分けたいとします。場所をコードに直接書いていると、3回書き換えることになり、書き換え忘れがそのまま事故になります。</p>
+      <p>環境変数にしておけば、コードは1つのままで、動かす前に <code>export CRYPTID_SQLITE_DB=...</code> を設定するだけで切り替わります。テストでは <code>:memory:</code> を指定すれば、本物のファイルに一切触れずに確認できます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>設定を外に出す書き方ができる</li><li>ファイルが1度しか実行されない性質を活かした準備の型が分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>環境変数 <code>CRYPTID_SQLITE_DB</code> で場所を指定</li>
+        <li><code>data/init.py</code> が接続の準備を担当</li>
+        <li>ファイルは1度だけ実行される</li>
+        <li>各リソースは <code>init.py</code> から <code>conn</code>／<code>curs</code> を取り込む</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ フルテスト ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>テストだ！<span class="tag">全体を通して確かめる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>手で確認 → 各層の確認 → 全体を通した確認、の順で進めます。ここで末尾のスラッシュ問題に出会います。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>テストのないコードがたくさんある。すべて動いているんだろうか？ 動いていないかもしれない。確認の仕組みを用意しよう。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>test/</code> の下に2つのフォルダ。①<code>unit/</code>：層の中だけ、②<code>full/</code>：全部の層をまたぐ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>おすすめの順序は、①最初にコードを書くときの手での確認、②書き方の誤りを直したあとの、層ごとの確認、③全部の層を通したデータの流れが完成したあとの、全体の確認。</div></div>
+    </div>
+
+    <h3 class="blk" id="s5-slash">末尾スラッシュ問題</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">末尾のスラッシュを付けずに問い合わせると、思わぬ返事が来ます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 末尾にスラッシュを付けずに問い合わせてみる。</span>
+$ http localhost:8000/explorer
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 405 Method Not Allowed</span>
+<span class="cmt">#   405 は「その住所はあるが、その動詞では受け付けていない」という意味。</span>
+<span class="cmt"># allow: POST</span>
+<span class="cmt">#   この住所で受け付けているのは POST だけ、と教えてくれている。</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt">#</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "detail": "Method Not Allowed"</span>
+<span class="cmt"># }</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ええっ、その動詞では受け付けていない？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>問い合わせているのは <code>/explorer/</code> ではなく <code>/explorer</code> だけど、<code>/explorer</code>（末尾のスラッシュ無し）に対する取得の処理が存在しないんだ。これがいわゆる<b>末尾スラッシュ問題</b>だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>web/explorer.py</code> を見ると、<code>router = APIRouter(prefix="/explorer")</code> で全部の住所が <code>/explorer</code> から始まり、<code>@router.get("/")</code> の <code>get_all()</code> が <code>/</code> を担当する。組み合わさって <code>/explorer/</code> になる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>解決法：1つの処理に複数のデコレータを付けられる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">両方の住所を受け付けるようにします。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 空の文字は「prefix のあとに何も付けない住所」、つまり /explorer を意味する。</span>
+<span class="fn">@router.get</span>(<span class="str">""</span>)
+<span class="cmt"># こちらは /explorer/ を意味する。2つ重ねて書くと、両方が同じ処理につながる。</span>
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="cmt"># 処理そのものは1つだけ。デコレータを重ねるだけで対応できる。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Explorer]:
+    <span class="kw">return</span> service.<span class="fn">get_all</span>()
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">両方の書き方で確認します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 末尾のスラッシュ無しで問い合わせる。</span>
+$ http localhost:8000/explorer
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 2</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt">#</span>
+<span class="cmt"># []</span>
+<span class="cmt"># 空の角かっこは「該当が0件」という意味。まだ何も保存していないため。</span>
+
+<span class="cmt"># 末尾のスラッシュ有りでも問い合わせる。</span>
+$ http localhost:8000/explorer/
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt"># content-length: 2</span>
+<span class="cmt"># content-type: application/json</span>
+<span class="cmt">#</span>
+<span class="cmt"># []</span>
+<span class="cmt"># どちらも同じ結果になった。</span>
+</pre></details>
+
+    <h3 class="blk" id="s5-create">作成と入力の誤り</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">項目名を打ち間違えてみます。処理に入る前に止められます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># country を contry と打ち間違えて送ってみる。</span>
+$ http post localhost:8000/explorer name=<span class="str">"Beau Buffette"</span>, contry=<span class="str">"US"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 422 Unprocessable Entity</span>
+<span class="cmt">#   422 は「送られた内容が、決めておいた形に合っていない」という意味。</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "detail": [</span>
+<span class="cmt">#         {</span>
+<span class="cmt">#             "loc": [ "body", "country" ],   ← 本体の country という場所で問題</span>
+<span class="cmt">#             "msg": "field required",        ← その項目が必要である</span>
+<span class="cmt">#             "type": "value_error.missing"   ← 値が無い、という種類の問題</span>
+<span class="cmt">#         }</span>
+<span class="cmt">#     ]</span>
+<span class="cmt"># }</span>
+<span class="cmt"># データベースには何も保存されていない。処理の中身が動く前に止まっている。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>country</code> を <code>contry</code> と打ち間違えている。Pydantic が見つけて 422 を返した。FastAPI が 422 を返すときは、この形の確認で引っかかった可能性が高い。<code>"loc"</code> で、どこで問題が起きたかが分かる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">正しく送り直します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 項目名を正しく書いて送る。</span>
+$ http post localhost:8000/explorer name=<span class="str">"Beau Buffette"</span> country=<span class="str">"US"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 201 Created</span>
+<span class="cmt">#   201 は「新しく作られた」という意味。作成の窓口で返すのが一般的。</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "name": "Beau Buffette",</span>
+<span class="cmt">#     "country": "US",</span>
+<span class="cmt">#     "description": ""      ← 送らなかった項目は空の文字になっている</span>
+<span class="cmt"># }</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">もう一度一覧を取ると、今度は1件返ります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 一覧を取得し直す。</span>
+$ http localhost:8000/explorer
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt">#</span>
+<span class="cmt"># [</span>
+<span class="cmt">#     {</span>
+<span class="cmt">#         "name": "Beau Buffette",</span>
+<span class="cmt">#         "country": "US",</span>
+<span class="cmt">#         "description": ""</span>
+<span class="cmt">#     }</span>
+<span class="cmt"># ]</span>
+<span class="cmt"># さきほど保存した1件が返っている。ファイルに残っているので、</span>
+<span class="cmt"># サーバを止めて起動し直しても消えない。</span>
+</pre></details>
+
+    <h3 class="blk" id="s5-one">1件だけ取得</h3>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 名前を住所の最後に付けて、1件だけを取得する。</span>
+<span class="cmt"># 名前に空白があるので、引用符で囲んでひとかたまりとして扱わせる。</span>
+$ http localhost:8000/explorer/<span class="str">"Beau Buffette"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 200 OK</span>
+<span class="cmt">#</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "name": "Beau Buffette",</span>
+<span class="cmt">#     "country": "US",</span>
+<span class="cmt">#     "description": ""</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 引用符の代わりに Beau%20Buffette と書いてもよい。%20 は空白を表す書き方。</span>
+</pre></details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>末尾のスラッシュの食い違いに気づいて対処できる</li><li>422 と 201 の意味が実際の返事で確認できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>確認の順序: 手で → 層ごと → 全体を通して</li>
+        <li>末尾のスラッシュ問題は、デコレータを重ねて解決</li>
+        <li>形に合わない入力は 422、作成の成功は 201</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ 欠落と重複 ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>データの欠落と重複<span class="tag">下の層の事情を上に漏らさない</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>欠落と重複は独自の失敗の知らせ（<code>Missing</code>／<code>Duplicate</code>）で表します。データ層で投げ、Web層で 404 などに変換します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここまで2種類の失敗を無視してきた。①<b>データが無い</b>：データベースに無い名前を取得・変更・削除しようとする、②<b>データが重複</b>：同じ名前で2回作ろうとする。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じ名前でもう一度作ってみます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># さきほど作ったのと同じ名前で、もう一度作ろうとする。</span>
+$ http post localhost:8000/explorer name=<span class="str">"Beau Buffette"</span> country=<span class="str">"US"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 500 Internal Server Error</span>
+<span class="cmt">#   500 は「サーバ側の処理が途中で失敗した」という意味。</span>
+<span class="cmt">#</span>
+<span class="cmt"># Traceback (most recent call last):   ← どこで失敗したかの経路</span>
+<span class="cmt">#   File ".../service/explorer.py", line 11, in create</span>
+<span class="cmt">#     return data.create(explorer)</span>
+<span class="cmt">#   File ".../data/explorer.py", line 37, in create</span>
+<span class="cmt">#     curs.execute(qry, params)</span>
+<span class="cmt"># sqlite3.IntegrityError: UNIQUE constraint failed: explorer.name</span>
+<span class="cmt">#   「name は重複できない決まりに反した」という SQLite からの知らせ。</span>
+<span class="cmt"># データベース固有の言葉が、そのまま外まで出てしまっている。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>500 のエラーで、SQLite の知らせが Web 層まで漏れている。これは層が混ざっている状態だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">無い名前を取得してみます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 保存されていない名前を指定して取得しようとする。</span>
+$ http localhost:8000/explorer/<span class="str">"Beau Buffalo"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 500 Internal Server Error</span>
+<span class="cmt">#</span>
+<span class="cmt"># Traceback (most recent call last):</span>
+<span class="cmt">#   File ".../data/explorer.py", line 11, in row_to_model</span>
+<span class="cmt">#     name, country, description = row</span>
+<span class="cmt"># TypeError: cannot unpack non-iterable NoneType object</span>
+<span class="cmt">#   「取り分けようとしたが、中身が無い」という知らせ。</span>
+<span class="cmt">#   1件も見つからず None が返ってきたのに、それを3つに取り分けようとしたため。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>fetchone()</code> が「無い」を返したのに、それを取り分けようとして失敗した。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これらを下の層で受け止めて、上に伝える方法はいくつかある。①SQLite の知らせをそのまま出して Web 層で処理する：<b>層が混ざる</b>、②全部の処理を「値か、無し」を返すように変える：失敗の理由が複数あり得るし、詳しく知りたい、直す量も多い、③<code>Missing</code>／<code>Duplicate</code> という独自の知らせを定義する：<b>これが最善</b>。アプリ固有であり、データベース固有ではない。層をまたいで流れていく。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🚫</div><h4>① そのまま出す</h4><p>データベース固有の言葉が Web 層まで届き、層の分け方が崩れます。</p><span class="pill">避けたい</span></div>
+      <div class="mini"><div class="ic">🕳️</div><h4>② 値か無しを返す</h4><p>「なぜ失敗したか」が表せず、全部の処理と呼び出し側を直すことになります。</p><span class="pill">手間が大きい</span></div>
+      <div class="mini"><div class="ic">✅</div><h4>③ 独自の知らせ</h4><p>アプリの言葉で表せて、層をまたいで自然に伝わります。</p><span class="pill">これを採用</span></div>
+    </div>
+
+    <h3 class="blk" id="s6-errors">独自の失敗の知らせ</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">2つの知らせを定義します。どちらもメッセージを持ちます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Exception を受け継ぐと、投げたり受け止めたりできる「失敗の知らせ」になる。</span>
+<span class="cmt"># Missing は「見つからない」を表す。</span>
+<span class="kw">class</span> <span class="fn">Missing</span>(<span class="kw">Exception</span>):
+    <span class="cmt"># 作られるときに、何が起きたかの文章を受け取る。</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, msg: <span class="kw">str</span>):
+        <span class="cmt"># 受け取った文章を自分に覚えさせる。上の層はこれを読める。</span>
+        self.msg = msg
+
+<span class="cmt"># Duplicate は「すでにある」を表す。</span>
+<span class="kw">class</span> <span class="fn">Duplicate</span>(<span class="kw">Exception</span>):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, msg: <span class="kw">str</span>):
+        self.msg = msg
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それぞれの知らせが <code>msg</code> という文章を持っていて、何が起こったかを上のコードに伝える。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">SQLite の重複の知らせを、init.py で取り込んでおきます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 決まりに反したときに SQLite が出す知らせを取り込む。</span>
+<span class="cmt"># これを init.py に置くことで、各リソースのファイルは sqlite3 を直接扱わずに済む。</span>
+<span class="kw">from</span> sqlite3 <span class="kw">import</span> IntegrityError
+<span class="cmt"># これまでのコードに、上の1行を追加する。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">データ層に、失敗の扱いを追加します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># つながり、取っ手、そして重複の知らせを取り込む。</span>
+<span class="kw">from</span> .init <span class="kw">import</span> conn, curs, IntegrityError
+<span class="cmt"># 自分で定義した2つの知らせを取り込む。</span>
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.explorer <span class="kw">import</span> Explorer
+
+<span class="cmt"># 表の作成、変換の処理は前と同じなので省略。</span>
+
+<span class="cmt"># 1件を取得する。見つからない場合の扱いを追加した。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer:
+    qry = <span class="str">"select * from explorer where name=:name"</span>
+    params = {<span class="str">"name"</span>: name}
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 1件を取り出す。見つからなければ「無い」が入る。</span>
+    row = curs.<span class="fn">fetchone</span>()
+    <span class="cmt"># 中身があるかどうかを先に確かめる。</span>
+    <span class="kw">if</span> row:
+        <span class="cmt"># あれば、扱いやすい形に変換して返す。</span>
+        <span class="kw">return</span> <span class="fn">row_to_model</span>(row)
+    <span class="kw">else</span>:
+        <span class="cmt"># 無ければ「見つからない」を投げる。文章に名前を含めて分かりやすくする。</span>
+        <span class="kw">raise</span> <span class="fn">Missing</span>(msg=<span class="str">f"Explorer {name} not found"</span>)
+
+<span class="cmt"># 新しく1件を保存する。重複の場合の扱いを追加した。</span>
+<span class="kw">def</span> <span class="fn">create</span>(explorer: Explorer) -&gt; Explorer:
+    qry = <span class="str">"insert into explorer values (:name, :country, :description)"</span>
+    params = <span class="fn">model_to_dict</span>(explorer)
+    <span class="cmt"># try は「この中で失敗が起きるかもしれない」という囲い。</span>
+    <span class="kw">try</span>:
+        curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 決まりに反した場合だけ、この下が動く。</span>
+    <span class="kw">except</span> IntegrityError:
+        <span class="cmt"># データベース固有の知らせを、アプリの言葉に置き換えて投げ直す。</span>
+        <span class="kw">raise</span> <span class="fn">Duplicate</span>(msg=<span class="str">f"Explorer {explorer.name} already exists"</span>)
+    <span class="cmt"># 問題なければ、保存された結果を読み直して返す。</span>
+    <span class="kw">return</span> <span class="fn">get_one</span>(explorer.name)
+
+<span class="cmt"># 既存の1件を書き換える。対象が無い場合の扱いを追加した。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    qry = <span class="str">"""update explorer
+        set country=:country, description=:description
+        where name=:name_orig"""</span>
+    params = <span class="fn">model_to_dict</span>(explorer)
+    params[<span class="str">"name_orig"</span>] = name
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># rowcount は「実際に何行が書き換わったか」の数。</span>
+    <span class="cmt"># 1 なら成功、0 なら対象が無かったということ。</span>
+    <span class="kw">if</span> curs.rowcount == <span class="num">1</span>:
+        <span class="kw">return</span> <span class="fn">get_one</span>(explorer.name)
+    <span class="kw">else</span>:
+        <span class="kw">raise</span> <span class="fn">Missing</span>(msg=<span class="str">f"Explorer {name} not found"</span>)
+
+<span class="cmt"># 全体を置き換える。書き換えと同じ処理を使う。</span>
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> <span class="fn">modify</span>(name, explorer)
+
+<span class="cmt"># 1件を削除する。返す値が無くなったので、戻り値の書き添えも外している。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>):
+    qry = <span class="str">"delete from explorer where name = :name"</span>
+    params = {<span class="str">"name"</span>: name}
+    res = curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 1行も消えていなければ、対象が無かったということ。</span>
+    <span class="kw">if</span> curs.rowcount != <span class="num">1</span>:
+        <span class="kw">raise</span> <span class="fn">Missing</span>(msg=<span class="str">f"Explorer {name} not found"</span>)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これで「値か、無し」のような戻り値の書き方は不要になる。知らせは誰かが受け止めるまで呼び出しの経路をさかのぼって流れていくので、サービス層は何も変えなくていい。</div></div>
+    </div>
+
+    <h3 class="blk" id="s6-web">Web層での変換</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">受け止めて、外向けの番号に変換します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 窓口をまとめる入れ物と、エラーを返すための知らせを取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, HTTPException
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.explorer <span class="kw">import</span> Explorer
+<span class="cmt"># サービス層を取り込む。</span>
+<span class="kw">import</span> service.explorer <span class="kw">as</span> service
+<span class="cmt"># 自分で定義した2つの知らせを取り込む。</span>
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+
+<span class="cmt"># この中の住所は /explorer から始まる。</span>
+router = <span class="fn">APIRouter</span>(prefix=<span class="str">"/explorer"</span>)
+
+<span class="cmt"># 一覧は失敗しないので、受け止める処理を書いていない。</span>
+<span class="fn">@router.get</span>(<span class="str">""</span>)
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Explorer]:
+    <span class="kw">return</span> service.<span class="fn">get_all</span>()
+
+<span class="cmt"># 1件の取得。見つからない場合に備える。</span>
+<span class="fn">@router.get</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">get_one</span>(name)
+    <span class="cmt"># Missing が流れてきたら、その内容を exc という名前で受け取る。</span>
+    <span class="kw">except</span> Missing <span class="kw">as</span> exc:
+        <span class="cmt"># 404（見つからない）に変換して返す。中の文章もそのまま伝える。</span>
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">404</span>, detail=exc.msg)
+
+<span class="cmt"># 作成。成功したときの番号を 201 に指定している。</span>
+<span class="fn">@router.post</span>(<span class="str">""</span>, status_code=<span class="num">201</span>)
+<span class="fn">@router.post</span>(<span class="str">"/"</span>, status_code=<span class="num">201</span>)
+<span class="kw">def</span> <span class="fn">create</span>(explorer: Explorer) -&gt; Explorer:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">create</span>(explorer)
+    <span class="cmt"># すでにある場合の知らせを受け止める。</span>
+    <span class="kw">except</span> Duplicate <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">404</span>, detail=exc.msg)
+
+<span class="cmt"># 一部の更新。対象が無い場合に備える。</span>
+<span class="fn">@router.patch</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">modify</span>(name, explorer)
+    <span class="kw">except</span> Missing <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">404</span>, detail=exc.msg)
+
+<span class="cmt"># 全体の置き換え。同じく対象が無い場合に備える。</span>
+<span class="fn">@router.put</span>(<span class="str">"/{name}"</span>)
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">replace</span>(name, explorer)
+    <span class="kw">except</span> Missing <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">404</span>, detail=exc.msg)
+
+<span class="cmt"># 削除。成功したときの番号を 204（成功したが返す中身は無い）にしている。</span>
+<span class="fn">@router.delete</span>(<span class="str">"/{name}"</span>, status_code=<span class="num">204</span>)
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>):
+    <span class="kw">try</span>:
+        <span class="kw">return</span> service.<span class="fn">delete</span>(name)
+    <span class="kw">except</span> Missing <span class="kw">as</span> exc:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">404</span>, detail=exc.msg)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">直したあと、もう一度確かめます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 無い名前を指定して取得してみる。</span>
+$ http localhost:8000/explorer/<span class="str">"Beau Buffalo"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 404 Not Found</span>
+<span class="cmt">#</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "detail": "Explorer Beau Buffalo not found"</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 内部の細かい経路は出ず、意味の分かる文章だけが返るようになった。</span>
+
+<span class="cmt"># 同じ名前で2回目の作成をしてみる。</span>
+$ http post localhost:8000/explorer name=<span class="str">"Beau Buffette"</span> country=<span class="str">"US"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># HTTP/1.1 404 Not Found</span>
+<span class="cmt">#</span>
+<span class="cmt"># {</span>
+<span class="cmt">#     "detail": "Explorer Beau Buffette already exists"</span>
+<span class="cmt"># }</span>
+<span class="cmt"># 実務では 409（衝突）のほうが適切だが、原書の例では 404 を使っている。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>重複のときの 404 は、実際には 409（衝突）のほうが適切だけど、原書の例では 404 を使っている。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>データ層</h4><p>データベース固有の知らせを受け止め、<code>Missing</code>／<code>Duplicate</code> に置き換えて投げる。</p><span class="when">アプリの言葉に変換</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>サービス層</h4><p>何もしない。知らせはそのまま通り抜ける。</p><span class="when">変更不要</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>Web層</h4><p>受け止めて、404 などの番号に変換して返す。</p><span class="when">外向けに変換</span></div>
+    </div>
+    <div class="loopback">↺ データベースを別の種類に替えても、変わるのはデータ層の受け止め方だけ。サービス層と Web 層はそのまま使えます。</div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「下の層の細部を上に漏らさない」失敗の設計が書ける</li><li>返す番号と失敗の対応を整理できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>独自の知らせ: <code>Missing</code>, <code>Duplicate</code></li>
+        <li>データ層で投げ、Web層で番号に変換する</li>
+        <li>知らせは呼び出しの経路を自由に流れる</li>
+        <li>戻り値の書き添えは、うまくいった場合だけでよい</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ 単体テスト ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>単体テスト<span class="tag">メモリ上のデータベースで確かめる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>メモリ上のデータベース（<code>:memory:</code>）で確認し、fixture で見本のデータを渡し、失敗が起きることも <code>pytest.raises</code> で確かめます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>単体の確認はデータ層だけを扱い、データベースの呼び出しと SQL の書き方を確かめる。<code>Missing</code>／<code>Duplicate</code> を定義したあとのほうが説明しやすいので、ここに置いた。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">データ層のテストです。1行目の順番が重要です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 環境変数を設定するための標準の機能を取り込む。</span>
+<span class="kw">import</span> os
+<span class="cmt"># テスト用の道具を取り込む。</span>
+<span class="kw">import</span> pytest
+
+<span class="cmt"># ここが最重要。data を取り込む「前に」場所をメモリ上に指定する。</span>
+<span class="cmt"># :memory: はファイルではなくメモリ上に作る指定で、終了すると消える。</span>
+<span class="cmt"># 順番を逆にすると、init.py が本物のファイルにつないでしまう。</span>
+os.environ[<span class="str">"CRYPTID_SQLITE_DB"</span>] = <span class="str">":memory:"</span>
+
+<span class="cmt"># ここから下で、ようやくデータ層を取り込む。この時点でメモリ上につながる。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="kw">from</span> errors <span class="kw">import</span> Missing, Duplicate
+<span class="kw">from</span> data <span class="kw">import</span> creature <span class="kw">as</span> code
+
+<span class="cmt"># この印を付けると、同じ名前を引数に書いたテストに、この結果が渡される。</span>
+<span class="fn">@pytest.fixture</span>
+<span class="kw">def</span> <span class="fn">sample</span>() -&gt; Creature:
+    <span class="cmt"># テストで使う見本のデータを作って返す。</span>
+    <span class="kw">return</span> <span class="fn">Creature</span>(
+        name=<span class="str">"Yeti"</span>,
+        country=<span class="str">"CN"</span>,
+        area=<span class="str">"Himalayas"</span>,
+        description=<span class="str">"Hirsute Himalayan"</span>,
+        aka=<span class="str">"Abominable Snowman"</span>,
+    )
+
+<span class="cmt"># 引数に sample と書くだけで、上の見本が渡ってくる。</span>
+<span class="kw">def</span> <span class="fn">test_create</span>(sample):
+    <span class="cmt"># 見本を保存する。</span>
+    resp = code.<span class="fn">create</span>(sample)
+    <span class="cmt"># 保存された結果が、渡したものと同じであることを確かめる。</span>
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 同じものを2回保存したときの動きを確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_create_duplicate</span>(sample):
+    <span class="cmt"># この中で Duplicate が起きることを期待する、という書き方。起きなければ失敗になる。</span>
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Duplicate):
+        <span class="cmt"># 戻り値は使わないので _ に捨てている。</span>
+        _ = code.<span class="fn">create</span>(sample)
+
+<span class="cmt"># 保存したものを取得できるか確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_get_one</span>(sample):
+    resp = code.<span class="fn">get_one</span>(sample.name)
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 無いものを取得したときの動きを確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_get_one_missing</span>():
+    <span class="cmt"># Missing が起きることを期待する。</span>
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Missing):
+        _ = code.<span class="fn">get_one</span>(<span class="str">"boxturtle"</span>)
+
+<span class="cmt"># 書き換えができるか確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_modify</span>(sample):
+    <span class="cmt"># 見本の国を JP に変えてみる。</span>
+    sample.country = <span class="str">"JP"</span>
+    <span class="cmt"># その内容で書き換える。</span>
+    resp = code.<span class="fn">modify</span>(sample.name, sample)
+    <span class="cmt"># 書き換えた内容が反映されていることを確かめる。</span>
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 無いものを書き換えようとしたときの動きを確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_modify_missing</span>():
+    <span class="cmt"># 保存されていない、でたらめなデータを用意する。</span>
+    bogus = <span class="fn">Creature</span>(name=<span class="str">"bogus"</span>, country=<span class="str">"CA"</span>, area=<span class="str">""</span>, description=<span class="str">""</span>, aka=<span class="str">""</span>)
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Missing):
+        _ = code.<span class="fn">modify</span>(bogus.name, bogus)
+
+<span class="cmt"># 削除ができるか確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_delete</span>(sample):
+    resp = code.<span class="fn">delete</span>(sample.name)
+    <span class="cmt"># 削除の処理は何も返さないので、返り値は「無い」になる。</span>
+    <span class="kw">assert</span> resp <span class="kw">is</span> <span class="kw">None</span>
+
+<span class="cmt"># すでに消したものを、もう一度消そうとしたときの動きを確かめる。</span>
+<span class="kw">def</span> <span class="fn">test_delete_missing</span>(sample):
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(Missing):
+        _ = code.<span class="fn">delete</span>(sample.name)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 8 passed</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ポイントは4つ。①<code>data</code> を取り込む<b>前に</b> 環境変数を <code>":memory:"</code> にする。これで SQLite は完全にメモリ上で動き、既存のファイルを壊さない。<code>data/init.py</code> は最初に取り込まれたときにこれを確認する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>②<code>sample</code> という名前の<b>準備の仕組み</b>が、<code>Creature</code> を必要とするテストに渡される。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>③テストは上から順に実行される。同じデータベースが立ち上がったままで、テストの間で作り直されない。前のテストの変更を残すためだ。準備の仕組みの作り直しの範囲は2種類ある。<b>テストごと</b>（初期値）：各テストの前に新しく作られる。<b>全体で1回</b>：最初の1回だけ作られる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>④いくつかのテストは <code>Missing</code> や <code>Duplicate</code> をわざと起こさせて、受け止められることを確かめている。つまり、各テストは <code>sample</code> という新しい <code>Creature</code> を受け取る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ヒント：<code>test/unit/data/test_explorer.py</code> の自作版も作れる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：取り込みの順番を間違えると</h4>
+      <p>環境変数の設定を <code>from data import creature</code> より<b>後に</b>書いたとします。すると <code>data/init.py</code> はすでに実行済みで、本物の <code>cryptid.db</code> につながっています。その後に環境変数を設定しても、つながりは作り直されません。</p>
+      <p>結果として、テストが本物のデータベースに書き込み、<code>test_delete</code> が実際のデータを消します。テストを1回動かすたびに、開発中のデータが変わっていきます。だから設定は必ず取り込みより前に書きます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>ファイルを汚さずにデータベースの確認ができる</li><li>準備の仕組みと、その作り直しの範囲の使い分けが分かる</li><li>失敗が起きることを確かめるテストが書ける</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>CRYPTID_SQLITE_DB=":memory:"</code> でメモリ上のデータベース</li>
+        <li>準備の仕組みで見本のデータを渡す</li>
+        <li>作り直しの範囲: テストごと（初期値）／全体で1回</li>
+        <li><code>pytest.raises(Missing)</code> で失敗の確認</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">6つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「DB-API は 接続 → カーソル → 実行 → 取り出し の流れ。値は名前でそろえる形（<code>:name</code> + 組み合わせ）が分かりやすい」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>不正な操作をされないための基本だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「SQLite はサーバがいらず、Python 標準の <code>sqlite3</code> で使える」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>練習に最適だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「接続は環境変数で外に出し、<code>data/init.py</code> で用意する。ファイルは1度しか実行されない」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>設定をコードから分ける、という指針に沿った作りだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「<code>/explorer</code> と <code>/explorer/</code> の末尾スラッシュ問題は、デコレータを重ねて対応」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>細かいけど、詰まりやすいところだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「欠落と重複は独自の知らせ（<code>Missing</code>／<code>Duplicate</code>）で表し、Web層で番号に変換する」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>層を越える失敗の設計の定番だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>6つ目、「テストはメモリ上のデータベースで、準備の仕組みとその範囲を使い分ける」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ファイルを汚さず、何度でも同じ結果になるテストが書ける。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>DB-API の基本</div>
+      <p style="font-size:14px;margin:0">Python の DB-API の基本的な流れを、4つの段階で説明してください。それぞれの段階で何を行うかも併せてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<code>connect()</code> でデータベースとのつながりを作る、②<code>conn.cursor()</code> で SQL を実行するための取っ手を作る、③<code>curs.execute(stmt, params)</code> で SQL を実行、④取得の場合は <code>curs.fetchone()</code> / <code>fetchall()</code> / <code>fetchmany(n)</code> で結果を取り出す。保存・更新・削除の場合は、実行の戻り値や <code>rowcount</code> で結果を確認する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ connect → cursor → execute → fetch* の流れを述べている<br>□ 実行に渡すもの（文と値）に触れている<br>□ 取得と、保存・更新・削除での結果の確かめ方の違いに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>環境変数による設定</div>
+      <p style="font-size:14px;margin:0">本書ではデータベースの場所をコードに直接書かず、環境変数から取得しています。なぜでしょうか？「Twelve-Factor App」という言葉も含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">設定をコードと分けることで、本番・開発・テストで違うデータベースを使い分けられるから。コードを変えずに動きを変えられるのは Twelve-Factor App の原則の一つ。また、テストでは <code>:memory:</code> を指定してメモリ上のデータベースにすることで、ファイルを汚さない確認も書ける。大事な情報を保管場所に入れずに済む、という安全上の利点もある。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 環境ごとの切り替えに触れている<br>□ Twelve-Factor App の設定の原則に言及<br>□ テストでの活用（<code>:memory:</code> など）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>末尾スラッシュ問題</div>
+      <p style="font-size:14px;margin:0"><code>/explorer</code> と <code>/explorer/</code> の両方で同じ返事を返すには、FastAPI でどう書きますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">1つの処理に複数のデコレータを付ける。たとえば <code>@router.get("")</code> と <code>@router.get("/")</code> を同じ処理 <code>get_all()</code> の上に両方書く。これで <code>APIRouter(prefix="/explorer")</code> と組み合わさり、<code>/explorer</code> と <code>/explorer/</code> の両方を受け付ける。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ デコレータを重ねる手法を述べている<br>□ <code>""</code> と <code>"/"</code> の両方を指定する例を示している<br>□ <code>APIRouter(prefix=...)</code> との組み合わせに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>独自の知らせで層を越える</div>
+      <p style="font-size:14px;margin:0">「データが見つからない」「データが重複している」という失敗を、データ層から Web層まで安全に伝える設計を説明してください。なぜ単に「値か、無し」を返すのではだめなのですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>Missing</code> と <code>Duplicate</code> という独自の知らせ（アプリ固有で、データベース固有ではない）を定義し、データ層で投げる。知らせは誰かが受け止めるまで呼び出しの経路を自由に流れるので、サービス層は変更が不要。Web層で受け止めて 404 などに変換する。「値か、無し」だと「なぜ失敗したか」が表せず（見つからない？ 権限が足りない？ つながらない？）、全部の処理の戻り値の書き添えを直す必要があり、各層で「無いかどうか」を確かめる行も増える。知らせを使えば、書き添えはうまくいった場合だけでよく、失敗の扱いを1か所にまとめられる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 独自の知らせを定義する設計を述べている<br>□ 知らせが経路を流れる利点に触れている<br>□ 「値か、無し」の問題点（理由が表せない、直す量が多い）を指摘</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>メモリ上のデータベースでのテスト</div>
+      <p style="font-size:14px;margin:0">pytest でデータベースを使った単体テストを書くとき、SQLite の <code>:memory:</code> をどう活用しますか？ テストが失敗しがちな落とし穴も含めてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">テストファイルの先頭で <code>os.environ["CRYPTID_SQLITE_DB"] = ":memory:"</code> を設定してから <code>data</code> を取り込むと、SQLite は完全にメモリ上で動き、既存のファイルを壊さない。落とし穴は「<code>data</code> を先に取り込んでしまうと、<code>init.py</code> が既存の場所でつながりを作ってしまう」こと。環境変数の設定は必ず取り込みの前に書く。また、準備の仕組みの作り直しの範囲は初期値がテストごとなので、状態が引き継がれない。順番に依存させたいなら全体で1回の範囲を使うか、状態の扱いを意識して設計する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>:memory:</code> の指定方法に触れている<br>□ 環境変数を設定するタイミング（取り込みの前）に言及している<br>□ 準備の仕組みの範囲の違い（テストごと と 全体で1回）に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>データベースの中身を直接見る</h4><p>DB Browser for SQLite を入れて、<code>cryptid.db</code> の中身を見てみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>検索の速さを確かめる</h4><p>自分のデータベースで、問い合わせの実行の仕方を調べる命令を試す。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># explain query plan を先頭に付けると、実際にどう探すかを教えてくれる。</span>
+<span class="cmt"># name は1件を特定する項目なので、専用の索引が使われる。</span>
+sqlite&gt; explain query plan select * from creature where name=<span class="str">'Yeti'</span>;
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># SEARCH creature USING INDEX sqlite_autoindex_creature_1 (name=?)</span>
+<span class="cmt">#   SEARCH は「索引を使ってまっすぐ探した」という意味。速い。</span>
+
+<span class="cmt"># 索引の無い項目で探すとどうなるかを見る。</span>
+sqlite&gt; explain query plan select * from creature where country=<span class="str">'CN'</span>;
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># SCAN creature</span>
+<span class="cmt">#   SCAN は「全部の行を1行ずつ見た」という意味。件数が増えるほど遅くなる。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>第14章を覗く</h4><p>SQLAlchemy / SQLModel に触れて、ORM の便利さを体感する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>第11章「認証認可」へ</h4><p>身分と権限に関する失敗の設計を学ぶ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>第12章「テスト」へ</h4><p>より進んだ確認のやり方（fixture, conftest, 代用品）を学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第10章「データレイヤー」の図解 ― 原文の全節（DB-API／SQLite／レイアウト／仕事にする／テストだ！（末尾スラッシュ・作成・入力エラー・単一取得）／データの欠落と重複／単体テスト）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

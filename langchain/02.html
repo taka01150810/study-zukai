@@ -1,0 +1,1249 @@
+<meta charset="utf-8">
+<title>2. RAGによるデータのインデックス化 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第2章</span>
+  <h1>2. RAGによるデータのインデックス化</h1>
+  <p>「うちの社外秘ドキュメントについて、AIに質問できますか？」——LLMはそれを学習していないので、そのままでは答えられません。この章では、自分のデータをLLMが使える形に整える<b>4つの手順</b>（テキスト化→分割→数値化→保存）を学びます。</p>
+  <p>コードはすべてPythonです。1行ずつ日本語の説明と、実行結果のコメントを付けました。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">🐍 コードはPythonのみ</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#intro">📖 導入 ― LLMが知らない2つのこと</a>
+  <a href="#s21">2.1 LLMに関連するコンテキストを渡す</a>
+  <a href="#s22">2.2 テキストを埋め込みに変換する</a>
+  <a class="sub" href="#s221">2.2.1 LLM登場以前の埋め込み</a>
+  <a class="sub" href="#s222">2.2.2/2.2.3 LLMベースの埋め込み</a>
+  <a href="#s23">2.3 ドキュメントをテキストに変換する</a>
+  <a class="sub" href="#s23b">コンテキストウィンドウの補足</a>
+  <a href="#s24">2.4 テキストを分割する</a>
+  <a href="#s25">2.5 テキストの埋め込みを生成する</a>
+  <a href="#s26">2.6 埋め込みをベクトルストアに保存する</a>
+  <a href="#s27">2.7 ドキュメントの変更を追跡する</a>
+  <a href="#s28">2.8 インデックス化を最適化する</a>
+  <a class="sub" href="#s281">2.8.1 MultiVectorRetriever</a>
+  <a class="sub" href="#s282">2.8.2 RAPTOR</a>
+  <a class="sub" href="#s283">2.8.3 ColBERT</a>
+  <a href="#s29">2.9 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のPythonコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。コードを飛ばしても流れがつかめます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな数値がどう変わるか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。</p>
+  <div class="gl">
+    <div class="item"><div class="w">RAG<span>検索拡張生成</span></div><p>答えさせる前に、手元の資料から関係する部分を検索して、それを質問と一緒にLLMへ渡す仕組み。</p></div>
+    <div class="item"><div class="w">インデックス化</div><p>資料を、あとから素早く検索できる形に前もって整えておく作業。この章のテーマ。</p></div>
+    <div class="item"><div class="w">取り込み<span>ingestion</span></div><p>資料を読み込み、分けて、数値にして、保存するまでの一連の前処理のこと。</p></div>
+    <div class="item"><div class="w">ナレッジカットオフ</div><p>LLMが学習した資料の締め切り日。その日より後の出来事は知りません。</p></div>
+    <div class="item"><div class="w">ハルシネーション</div><p>知らないことを聞かれたときに、もっともらしい嘘を自信たっぷりに答えてしまうこと。</p></div>
+    <div class="item"><div class="w">コンテキスト</div><p>質問と一緒にLLMへ渡す、答えの材料になる文章。</p></div>
+    <div class="item"><div class="w">コンテキストウィンドウ</div><p>1回のやり取りで扱えるトークン数の上限。入力と出力の合計に対してかかります。</p></div>
+    <div class="item"><div class="w">埋め込み<span>embedding</span></div><p>文章を、意味を表す長い数値の並びに変換したもの。数値なので計算で比べられます。</p></div>
+    <div class="item"><div class="w">疎な埋め込み</div><p>ほとんどの数値が0になる数値の並び。単語が出たか出ないかだけを記録した形。</p></div>
+    <div class="item"><div class="w">Bag-of-Words<span>BoW</span></div><p>文に各単語が何回出たかを数えて数値の並びにする、古くからある方法。意味は考えません。</p></div>
+    <div class="item"><div class="w">密な埋め込み</div><p>ほぼすべての数値が0以外になる数値の並び。意味を表しています。</p></div>
+    <div class="item"><div class="w">セマンティック</div><p>「意味の」という意味。見た目の文字ではなく、内容が近いかどうかを扱うこと。</p></div>
+    <div class="item"><div class="w">次元</div><p>数値の並びの長さ。1,536次元なら、1つの文章が1,536個の数値で表されます。</p></div>
+    <div class="item"><div class="w">コサイン類似度</div><p>2つの数値の並びがどれだけ近いかを、−1〜1の数で表す計算。1に近いほど意味が近い。</p></div>
+    <div class="item"><div class="w">ドキュメントローダー</div><p>PDF・Webページ・テキストファイルなどから中身の文字を取り出す部品。</p></div>
+    <div class="item"><div class="w">Document</div><p>取り出した文章本体（page_content）と、出所などの情報（metadata）を1組にした入れ物。</p></div>
+    <div class="item"><div class="w">メタデータ</div><p>文章そのものではなく、それに付随する情報。ファイル名・行番号・作成日など。</p></div>
+    <div class="item"><div class="w">チャンク</div><p>長い文章を扱いやすく切り分けた、ひとかたまりの文章。</p></div>
+    <div class="item"><div class="w">テキストスプリッター</div><p>長い文章をチャンクに切り分ける部品。</p></div>
+    <div class="item"><div class="w">chunk_overlap</div><p>隣り合うチャンクを何文字分だけ重ねるかの設定。切れ目で文脈が途切れるのを防ぎます。</p></div>
+    <div class="item"><div class="w">ベクトルストア</div><p>埋め込みを保存し、「意味が近いもの」を高速に探せるように作られたデータベース。</p></div>
+    <div class="item"><div class="w">PostgreSQL</div><p>広く使われているオープンソースのデータベース。</p></div>
+    <div class="item"><div class="w">pgvector / PGVector</div><p>PostgreSQLに埋め込みの保存と検索の機能を足す拡張。専用のDBを増やさずに済みます。</p></div>
+    <div class="item"><div class="w">CRUD</div><p>作成・読み取り・更新・削除という、データ操作の4つの基本。</p></div>
+    <div class="item"><div class="w">similarity_search</div><p>質問に意味が近いチャンクを、上位から指定した個数だけ取り出す操作。</p></div>
+    <div class="item"><div class="w">RecordManager</div><p>どの資料をいつ書き込んだかを記録し、変更があった分だけ更新するための管理役。</p></div>
+    <div class="item"><div class="w">MultiVectorRetriever</div><p>「検索に使う要約」と「答えに使う実物」を分けて持つ仕組み。</p></div>
+    <div class="item"><div class="w">RAPTOR</div><p>要約を作り、まとめ、さらに要約する、を繰り返して段階的なまとめを作る手法。</p></div>
+    <div class="item"><div class="w">ColBERT</div><p>文章全体を1つの数値の並びに縮めず、トークン1つ1つで比べて精度を上げる手法。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">自分のデータをLLMに使わせる準備</span></div></div>
+  <div class="card">
+    <p class="lead">「うちの社外秘ドキュメントについて、AIに質問できますか？」とソラが尋ねます。リク先輩は「LLMはそれを学習していないから、そのままだと知らないんだ」と答え、テスラの年次報告書を例に<b>RAG</b>を教え始めます。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">この章では、LLMに自分のデータを使わせる準備——ドキュメントをテキストにし、扱いやすいかたまりに分け、意味を数値に変え、専用のデータベースに保存する——という「インデックス化」の4手順を学びます。埋め込みとは何かを、LLM以前の単純な方法から順に理解し、最後にインデックス化の改良（MultiVectorRetriever・RAPTOR・ColBERT）まで覗きます。</p>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">LLMは「公開されていない社内のデータ」と「学習の締め切り日より後の出来事」を知りません。そこで<b>RAG</b>の出番です。この章はRAGの前半「<b>インデックス化</b>」——①テキスト化→②分割→③埋め込み→④保存——を学びます。</p>
+    <div class="cycle">
+      <div class="node"><h4>① テキスト化</h4><p>PDFやWebページから文字を取り出します。</p><span class="when">ドキュメントローダー</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 分割</h4><p>長すぎる文章を扱えるサイズに切り分けます。</p><span class="when">テキストスプリッター</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 埋め込み</h4><p>各かたまりを、意味を表す数値の並びに変えます。</p><span class="when">埋め込みモデル</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 保存</h4><p>数値の並びを、検索できる形で保存します。</p><span class="when">ベクトルストア</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>LLMは社内のデータや最新の情報を知らず、知らないことを聞くともっともらしい嘘を答えるから。</li>
+        <li>大量の資料は丸ごと指示文に入らない。質問に関係する部分だけを選ぶ仕組みが必要だから。</li>
+        <li>埋め込み（意味の数値化）を理解しないと、なぜ「意味の近さ」で検索できるのかが分からないから。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li>ドキュメントローダー・テキストスプリッター・埋め込みモデル・ベクトルストアで、自分のデータをインデックス化できる。</li>
+        <li>疎な埋め込み（Bag-of-Words）と密な埋め込み（意味）の違い、コサイン類似度を説明できる。</li>
+        <li>PGVectorにデータを保存・検索・更新・削除し、インデックス化の仕組みで変更を同期できる。</li>
+        <li>MultiVectorRetriever・RAPTOR・ColBERTといった改良の狙いを理解できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 導入 ============ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― LLMが知らない2つのこと</h2><span class="tag">非公開データと、締め切り後の出来事</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>リク先輩、1章でチャットボットができました。でも、うちの社外秘ドキュメントについて質問しても、AIは答えられないですよね？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>いいところに気づいたね。LLMの知識には2つの大きな制限がある。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔒</div><h4>① 非公開データ</h4><p>公開されていない情報は、そもそも学習の材料に入っていません。社内マニュアル、顧客データ、未発表の資料などです。</p></div>
+      <div class="mini"><div class="ic">📅</div><h4>② 時事情報</h4><p>LLMの学習には、資料集めから始まる長期間・高費用の工程がかかります。そのため「学習の材料が確定した日より後の出来事は知らない」という<span class="term" data-tip="LLMが学習した資料の締め切り日。それより後の出来事は知らない。">ナレッジカットオフ</span>が生じます。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>知らないことを聞いたら、どうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>高い確率で<b>ハルシネーション</b>——もっともらしい嘘の回答を返す。指示文を工夫しても、モデルが持つ知識自体が足りていなければ、根本的な解決にはならない。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：知らないことを聞いたときに何が起きるか</h4>
+      <p>社内規程に「有給休暇の申請は7営業日前まで」と書いてあるとします。この規程は社外に公開されていないので、LLMは読んでいません。</p>
+      <p>それでも「有給の申請は何日前まで？」と聞くと、LLMは「知りません」ではなく「<b>一般的には2週間前までです</b>」のような、いかにも正しそうな答えを返します。数字も文体も自然なので、間違いだと気づきにくいのが厄介な点です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2.1 ============ -->
+<section id="s21">
+  <div class="sec-head"><div class="sec-num">2.1</div><div><h2>LLMに関連するコンテキストを渡す</h2><span class="tag">全部渡せないから、関係する部分だけ選ぶ</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：渡したい情報が1〜2ページなら毎回全文を渡せます。しかし現実の資料は入り切りません。だから「質問に最も関係する部分をどう選ぶか」が課題になります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>もしLLMに渡したい情報がせいぜい1〜2ページなら簡単だ。全文を毎回指示文に含めればいい。でも現実には、指示文に入り切らないほど大量の情報を扱う。だから「質問に最も関連するテキストをどう選ぶか」が課題になる。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>これを2段階で解決する。①資料を<b>インデックス化</b>して、質問に最も関係が深いものを見つけやすい形に前処理する。②そのインデックスから関係するデータを取り出して、LLMの<b>コンテキスト</b>として与え、正確な答えを作らせる。これが<b>RAG（検索拡張生成）</b>だ。本章は①に集中する。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>たとえば、テスラの年次報告書から「2022年の主なリスクは？」と聞きたい、みたいな？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>まさにそれだ。それには4手順が要る。①資料からテキストを取り出す→②扱いやすいかたまりに分ける→③テキストをコンピューターが扱える<b>数値表現</b>に変える→④質問に関係する箇所を素早く取り出せるよう、数値表現を専用のデータベースに保存。この一連の前処理を<b>取り込み</b>と呼ぶ。数値表現が<b>埋め込み</b>、それを保存する特殊なデータベースが<b>ベクトルストア</b>だ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">前</div><div class="line"></div></div><div class="body"><h4>【この章】インデックス化（前処理）</h4><p>資料を、あとから素早く検索できる形に整えておきます。1回やっておけば、以後は何度でも使えます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">後</div><div class="line"></div></div><div class="body"><h4>【3章】検索と生成</h4><p>質問が来るたびに、インデックスから関係する部分を取り出し、質問と一緒にLLMへ渡して答えを作らせます。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2.2 ============ -->
+<section id="s22">
+  <div class="sec-head"><div class="sec-num">2.2</div><div><h2>テキストを埋め込み（数値表現）に変換する</h2><span class="tag">なぜ文章を数値にするのか</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：<span class="term" data-tip="文章を、意味を表す長い数値の並びに変換したもの。">埋め込み</span>は、文章を長い数値の並びで表したものです。数値にすると<b>文章どうしの近さを計算で比べられる</b>ようになります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><b>埋め込み</b>は、テキストを長い数値の並びで表現することだ。この変換は元に戻せない——数値の並びから元の文章は復元できない。だから普通は元のテキストと数値の並びの両方を保存する。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なんでわざわざ数値にするんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>数値にすれば「<b>単語に対して計算ができる</b>」という強力な利点が得られるんだ。順番に見ていこう。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>🟣 なぜ元のテキストも一緒に保存するのか</h4>
+      <ul>
+        <li>数値の並びからは元の文章に戻せないから。検索で見つけたあと、LLMに渡す文章が手元に無いと困ります。</li>
+        <li>利用者に「この答えはこの部分が根拠です」と示すのにも、元の文章が必要だから。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" id="s221">
+    <h3 class="blk" style="margin-top:4px">2.2.1 LLM登場以前の埋め込み ― 単語を数えるだけの方法</h3>
+    <p class="lead"><b>要するに</b>：LLM以前は「その単語が何回出たか」を数えて数値の並びを作っていました。単純ですが、<b>意味をまったく見ていない</b>のが弱点です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LLM以前から、コンピューター科学者は埋め込みを使っていた——全文検索や迷惑メールの選り分けなどでね。単純な例を見よう。3つの英文を使う（ここは英語の単語の数え方の説明なので、英文のまま示すよ）。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">☀️</div><h4>文A</h4><p>What a sunny day.<br><span style="color:#8b93bf">（なんていい天気だ）</span></p></div>
+      <div class="mini"><div class="ic">🌤️</div><h4>文B</h4><p>Such bright skies today.<br><span style="color:#8b93bf">（今日の空はとても明るい）</span></p></div>
+      <div class="mini"><div class="ic">🌧️</div><h4>文C</h4><p>I haven't seen a sunny day in weeks.<br><span style="color:#8b93bf">（ここ数週間、晴れた日を見ていない）</span></p></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">各文に出てくる単語を一覧にして、文ごとに「その単語が何回出るか」を数えます。出てこなければ0、1回なら1です。</p>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>単語</th><th>文A：What a sunny day.</th><th>文B：Such bright skies today.</th><th>文C：I haven't seen a sunny day in weeks.</th></tr>
+      <tr><td>what</td><td>1</td><td>0</td><td>0</td></tr>
+      <tr><td>a</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>sunny</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>day</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>such</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td>bright</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td>…</td><td>…</td><td>…</td><td>…</td></tr>
+    </table>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、この数え方をPythonでそのまま書いたものです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 比べたい3つの英文を用意する。</span>
+sentences = [
+    <span class="str">"What a sunny day."</span>,
+    <span class="str">"Such bright skies today."</span>,
+    <span class="str">"I haven't seen a sunny day in weeks."</span>,
+]
+
+<span class="cmt"># すべての文に出てくる単語を集めて、重複を除いた一覧を作る。</span>
+<span class="cmt"># 記号を取り除き、すべて小文字にそろえてから数える。</span>
+vocabulary = <span class="fn">sorted</span>({w.<span class="fn">strip</span>(<span class="str">".'"</span>).<span class="fn">lower</span>() <span class="kw">for</span> s <span class="kw">in</span> sentences <span class="kw">for</span> w <span class="kw">in</span> s.<span class="fn">split</span>()})
+
+<span class="cmt"># 文を1つ受け取り、単語一覧の順番どおりに「その単語が何回出たか」を並べる。</span>
+<span class="kw">def</span> <span class="fn">bag_of_words</span>(sentence):
+    <span class="cmt"># 文を単語に分け、記号を落として小文字にそろえる。</span>
+    words = [w.<span class="fn">strip</span>(<span class="str">".'"</span>).<span class="fn">lower</span>() <span class="kw">for</span> w <span class="kw">in</span> sentence.<span class="fn">split</span>()]
+    <span class="cmt"># 一覧の各単語について、この文の中に何回あるかを数えて並べる。</span>
+    <span class="kw">return</span> [words.<span class="fn">count</span>(v) <span class="kw">for</span> v <span class="kw">in</span> vocabulary]
+
+<span class="cmt"># 3つ目の文（晴れた日を見ていない）を数値の並びに変えて表示する。</span>
+<span class="cmt"># ほとんどの単語はこの文に出てこないので、0がずらりと並ぶ。</span>
+<span class="fn">print</span>(<span class="fn">bag_of_words</span>(sentences[<span class="num">2</span>]))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0]   ← 0だらけ＝これが「疎な埋め込み」</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>これが<b>Bag-of-Words（BoW）</b>だ。要素の多くが0だから<b>疎な埋め込み</b>とも呼ぶ。英語の文は、膨大な英単語のうちごく一部しか使わないからね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>これで何ができるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>キーワード検索（指定の単語を含む文書を探す）や、文書の分類（迷惑メールかどうかを平均と比べる）に使える。でも大きな欠点がある——<b>意味をまったく考えず、単語があるかないかだけで表現する</b>ことだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：意味を見ないとどうなるか</h4>
+      <p>「sunny day（晴れた日）」と「bright skies（明るい空）」は、人間には同じような内容に読めます。ところがBag-of-Wordsでは共通する単語が1つもないため、数値の並びはまったく別物になり、「関係なし」と判定されます。</p>
+      <p>迷惑メールの選り分けでも同じ問題が起きます。「無料」を検知するようにしていると、送り手が「０円」「タダ」と書き換えるだけで、数値の並びが変わってすり抜けてしまいます。</p>
+    </div>
+  </div>
+
+  <div class="card" id="s222">
+    <h3 class="blk" style="margin-top:4px">2.2.2／2.2.3 LLMベースの埋め込みとセマンティック埋め込み</h3>
+    <p class="lead"><b>要するに</b>：LLMが学んだ「文脈の中での意味」を数値として取り出したものが、意味の埋め込みです。ほぼすべての数値が0以外になるので<b>密な埋め込み</b>と呼びます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこで<b>LLMベースの埋め込み</b>だ。埋め込みモデルは、LLMの学習のしかたから派生した仕組みだと考えられる。LLMは膨大なテキストを学んで「文脈の中での単語や文の意味」を理解する。その意味を数値として取り出したものが埋め込みだ。実際には、埋め込みを作ることに特化して学習されたモデルが多い。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>埋め込みモデルは、テキストを入力に、その意味を100〜2,000次元くらいの小数の並びで出力する。さっきの疎な埋め込みと違って、ほぼすべての位置が0以外の値を取るから<b>密な埋め込み</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>「意味の近さ」って、どう測るんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><code>lion</code>（ライオン）・<code>pet</code>（ペット）・<code>dog</code>（犬）の3語を考えてみて。直感的に最も似ているのは <code>pet</code> と <code>dog</code> だ。でもコンピューターは直感を理解できないから、数値に置き換える。意味が近い語ほど数値の並びが近い位置に、遠い語は遠い位置に来るように。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th></th><th>疎な埋め込み（Bag-of-Words）</th><th>密な埋め込み（意味）</th></tr>
+      <tr><td>何を記録するか</td><td>単語が何回出たか</td><td>文章の意味</td></tr>
+      <tr><td>数値の中身</td><td>ほとんどが0</td><td>ほぼすべてが0以外の小数</td></tr>
+      <tr><td>長さ</td><td>登場しうる全単語の数（数万〜）</td><td>100〜2,000程度</td></tr>
+      <tr><td>類義語</td><td>まったく別物と判定される ❌</td><td>近いと判定される ✅</td></tr>
+      <tr><td>作り方</td><td>単語を数えるだけ</td><td>埋め込みモデルに通す</td></tr>
+    </table>
+    </div>
+
+    <h4 class="blk">コサイン類似度 ― 近さを数で表す</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>2つの数値の並びの近さを測る代表的な方法が<b>コサイン類似度</b>だ。2つの並びのかけ算の合計を、それぞれの大きさの積で割って、0から1（厳密には−1から1）の範囲で返す。1に近いほど似ていて、0は無関係、−1に近いほど正反対。たとえば <code>pet</code> と <code>dog</code> は0.75、<code>pet</code> と <code>lion</code> は0.1、という具合だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、コサイン類似度の計算そのものを書いたものです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 平方根を計算するための道具を読み込む。</span>
+<span class="kw">import</span> math
+
+<span class="cmt"># 2つの数値の並びが、どれだけ同じ向きを向いているかを 0〜1 の数で返す。</span>
+<span class="kw">def</span> <span class="fn">cosine_similarity</span>(a, b):
+    <span class="cmt"># 同じ位置どうしをかけ算して、その合計を出す（両方大きい位置が多いほど大きくなる）。</span>
+    dot = <span class="fn">sum</span>(x * y <span class="kw">for</span> x, y <span class="kw">in</span> <span class="fn">zip</span>(a, b))
+    <span class="cmt"># それぞれの並びの「大きさ」を出す。各値を2乗して合計し、平方根を取る。</span>
+    size_a = math.<span class="fn">sqrt</span>(<span class="fn">sum</span>(x * x <span class="kw">for</span> x <span class="kw">in</span> a))
+    size_b = math.<span class="fn">sqrt</span>(<span class="fn">sum</span>(y * y <span class="kw">for</span> y <span class="kw">in</span> b))
+    <span class="cmt"># 大きさで割ることで、並びの長さの違いを打ち消し、向きだけを比べられるようにする。</span>
+    <span class="kw">return</span> dot / (size_a * size_b)
+
+<span class="cmt"># 説明のために、3語をごく短い数値の並びで表したものを用意する。</span>
+<span class="cmt"># 実際の埋め込みは1,536個などの長さだが、考え方は同じ。</span>
+pet = [<span class="num">0.9</span>, <span class="num">0.8</span>, <span class="num">0.1</span>]
+dog = [<span class="num">0.85</span>, <span class="num">0.75</span>, <span class="num">0.2</span>]
+lion = [<span class="num">0.1</span>, <span class="num">0.2</span>, <span class="num">0.95</span>]
+
+<span class="cmt"># pet と dog は、3つの数値がどれも近い値なので、向きがほぼ同じになる。</span>
+<span class="fn">print</span>(<span class="fn">round</span>(<span class="fn">cosine_similarity</span>(pet, dog), <span class="num">2</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 1.0   ← 1に近い＝意味がとても近い</span>
+
+<span class="cmt"># pet と lion は、大きい位置と小さい位置が入れ替わっているので、向きが大きくずれる。</span>
+<span class="fn">print</span>(<span class="fn">round</span>(<span class="fn">cosine_similarity</span>(pet, lion), <span class="num">2</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 0.34  ← 0に近い＝意味が遠い</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>意味を数値にして、近さを計算できるんですね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。これで、テスラの年次報告書みたいな大量のテキストから「質問に最も関係する部分」を見つけられる。埋め込みには他にも面白い性質があるんだ。</div></div>
+    </div>
+
+    <h4 class="blk">埋め込みの面白い性質</h4>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🫧</div><h4>近い点の集まり＝同じ話題</h4><p>数値の並びが近いもの同士をまとめると、自然に同じ話題のグループができます。</p></div>
+      <div class="mini"><div class="ic">➗</div><h4>平均＝その集まり全体の意味</h4><p>複数の埋め込みの平均を取ると、その集まり全体を代表する意味になります。</p></div>
+      <div class="mini"><div class="ic">➕</div><h4>足し引きで意味が動く</h4><p><code>king − man + woman ≒ queen</code> のように、数値の足し引きが意味の移動になります。</p></div>
+      <div class="mini"><div class="ic">🖼️</div><h4>文章以外も数値にできる</h4><p>画像や音声を同じように数値の並びにできるモデルもあります。</p></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">用途は、検索・グループ分け・分類・おすすめ・異常の検知と多岐にわたります。</p>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>埋め込み＝テキストの数値表現（元に戻せないので元のテキストも保存する）。数値化で「文章に計算ができる」。</li>
+        <li>疎な埋め込み（Bag-of-Words）：単語の出現回数だけ。意味を無視するので類義語に弱い。</li>
+        <li>密な埋め込み（意味）：意味を100〜2,000個の数値で表す。意味が近いほど数値の並びも近い。</li>
+        <li>コサイン類似度：2つの並びの近さを測る（1に近いほど類似）。検索・グループ分け・分類・おすすめに使える。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2.3 ============ -->
+<section id="s23">
+  <div class="sec-head"><div class="sec-num">2.3</div><div><h2>ドキュメントをテキストに変換する</h2><span class="tag">手順①：中身の文字を取り出す</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：PDF・Webページ・テキストファイルなど、形式ごとの読み取りの面倒を肩代わりしてくれるのが<span class="term" data-tip="PDFやWebページなどから中身の文字を取り出す部品。">ドキュメントローダー</span>です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ではインデックス化の第1手順、テキスト化だ。LangChainには<b>ドキュメントローダー</b>があって、面倒な読み取り処理を肩代わりして、いろんな出所から「本文」と「付随情報」を持つ <code>Document</code> という入れ物にデータを読み込んでくれる。<code>.txt</code> ファイルなら <code>TextLoader</code> だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、テキストファイルを読み込んでいます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># テキストファイルを読み込むための部品を読み込む。</span>
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> TextLoader
+
+<span class="cmt"># 読み込みたいファイルの場所を指定して、読み取り役を1つ作る。この時点ではまだ読んでいない。</span>
+loader = <span class="fn">TextLoader</span>(<span class="str">"./test.txt"</span>)
+
+<span class="cmt"># load を呼ぶと実際にファイルを読んで、Document の一覧を返す。</span>
+<span class="cmt"># page_content に本文、metadata に出所などの付随情報が入る。</span>
+<span class="fn">print</span>(loader.<span class="fn">load</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [Document(page_content='text content \n', metadata={'line_number': 0, 'source': './test.txt'})]</span>
+</pre></details>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>形式に合ったローダーを選ぶ</h4><p>テキストなら <code>TextLoader</code>、Webページなら <code>WebBaseLoader</code>、PDFなら <code>PyPDFLoader</code>。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>ファイルの場所やURLを渡して作る</h4><p>読み取り役を1つ用意します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4><code>load()</code> で Document の一覧を得る</h4><p>本文と付随情報が1組になった入れ物が返ります。</p></div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6"><code>.txt</code> 以外にも <code>.csv</code>・<code>.json</code>・<code>.md</code> や、SlackやNotion向けの読み取り役があります。次はWebページの例です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># Webページを読み込むための部品を読み込む。事前に pip install beautifulsoup4 が必要。</span>
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> WebBaseLoader
+
+<span class="cmt"># 読みたいページのURLを渡して、読み取り役を作る。</span>
+loader = <span class="fn">WebBaseLoader</span>(<span class="str">"https://www.langchain.com/"</span>)
+
+<span class="cmt"># load を呼ぶとページを取りに行き、見た目の飾りを取り除いて文字だけにしてくれる。</span>
+<span class="fn">print</span>(loader.<span class="fn">load</span>())
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [Document(page_content='LangChain\n\nProducts\n\n…', metadata={'source': 'https://www.langchain.com/', 'title': 'LangChain'})]</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>PDFから抽出したら、すぐ使えますか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこが問題でね。読み込んだ資料は10万文字を超えることもあって、多くのLLMや埋め込みモデルの<b>コンテキストウィンドウ</b>（1回に扱えるトークン数の上限）に収まらない。だから、扱いやすいサイズに分ける必要がある。</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s23b">
+    <h3 class="blk" style="margin-top:4px">コンテキストウィンドウの補足</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>コンテキストウィンドウは、入力と出力の<b>合計</b>にかかる。たとえば上限が100で入力が90トークンなら、出力は最大10トークンに制限される。よくあるのは8,192トークンなどだ。英語では1トークンが約3〜4文字だったね。</div></div>
+    </div>
+    <div class="example">
+      <h4>🔎 具体例：入り切らないとはどういうことか</h4>
+      <p>上限が8,192トークンのモデルに、10万文字の年次報告書をそのまま渡そうとすると、英語で約2万5千トークン相当なので<b>3倍以上オーバー</b>し、エラーになります。</p>
+      <p>仮に上限が100トークンのモデルで、入力に90トークン使ってしまうと、返答に使えるのは残り10トークンだけ。文が途中で切れます。入力と出力は同じ枠を取り合っている、という点が重要です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2.4 ============ -->
+<section id="s24">
+  <div class="sec-head"><div class="sec-num">2.4</div><div><h2>テキストを分割する</h2><span class="tag">手順②：意味のまとまりを壊さずに切る</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：ただ文字数で切るのではなく、<b>段落 → 行 → 単語</b>という優先順で、意味のまとまりをできるだけ壊さずに切ります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>大きなテキストを分けるのは簡単そうで、実は複雑だ。「意味のうえで関係するテキストどうしを同じかたまりに保つ」のが難しい。LangChainは <code>RecursiveCharacterTextSplitter</code> を用意している。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>どうやって分割するんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>優先順に並べた区切り文字を使う。①段落の区切り <code>\n\n</code> → ②行の区切り <code>\n</code> → ③単語の区切り（スペース）。たとえば1かたまりを1,000文字にするなら、まず段落で分けて、それでも超える段落は行で、というふうに、すべてのかたまりが所定の長さ以下になるまで繰り返す。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>まず段落で切る</h4><p>空行のところで区切ります。ここで全部1,000文字以下になれば終わりです。</p><div class="branch ok">1,000文字以下になった段落は、そのまま1かたまりとして確定します。</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>まだ長い段落は行で切る</h4><p>改行のところで区切ります。</p><div class="branch ng">それでも1,000文字を超える行が残ったら、次へ進みます。</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>それでも長ければ単語で切る</h4><p>スペースのところで区切ります。ここまで来れば必ず収まります。</p></div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、資料を1,000文字ずつのかたまりに分けています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 長い文章をかたまりに切り分ける部品を読み込む。</span>
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+
+<span class="cmt"># まず対象のファイルを読み込んで、Document の一覧にする。</span>
+loader = <span class="fn">TextLoader</span>(<span class="str">"./test.txt"</span>)
+docs = loader.<span class="fn">load</span>()
+
+<span class="cmt"># 切り分け役を作る。1かたまりの上限を1,000文字、隣どうしを200文字重ねる設定にする。</span>
+<span class="cmt"># 重ねるのは、切れ目で文の意味がぶつ切りになるのを防ぐため。</span>
+splitter = <span class="fn">RecursiveCharacterTextSplitter</span>(
+    chunk_size=<span class="num">1000</span>,
+    chunk_overlap=<span class="num">200</span>,
+)
+
+<span class="cmt"># 実際に切り分ける。元の付随情報（ファイル名など）は各かたまりに引き継がれる。</span>
+splitted_docs = splitter.<span class="fn">split_documents</span>(docs)
+
+<span class="cmt"># いくつのかたまりに分かれたかを確認する。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(splitted_docs))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 12</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：200文字重ねると何が変わるか</h4>
+      <p>「…有給休暇の申請は7営業日前までに行うこと。」という一文が、ちょうど1,000文字目のところで切れてしまったとします。重ねが0だと、1つ目のかたまりは「有給休暇の申請は7営業」で終わり、2つ目は「日前までに行うこと」で始まります。どちらを検索で見つけても、答えとして意味をなしません。</p>
+      <p>200文字重ねておけば、2つ目のかたまりの先頭に「…有給休暇の申請は7営業日前までに行うこと。」が丸ごと含まれるので、文として読める状態で取り出せます。</p>
+    </div>
+
+    <h3 class="blk">コードやMarkdownを、構造を意識して分ける</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この <code>RecursiveCharacterTextSplitter</code> は、プログラムのコードやMarkdownを「意味の単位」で分けることもできる。<code>from_language</code> という呼び方で、その言語特有のキーワードを区切りに使えば、関数の中身が真っ二つに割れるのを防げる。プログラムの文章は普通の文章より構造がはっきりしているから、重ねは少なめでいい。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、Pythonのコードを、関数のかたまりを壊さないように分けています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 切り分け役と、対応言語の一覧を読み込む。</span>
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> (
+    Language,
+    RecursiveCharacterTextSplitter,
+)
+
+<span class="cmt"># 切り分ける対象として、短いPythonのコードを1つの文字列として用意する。</span>
+PYTHON_CODE = <span class="str">"""
+def hello_world():
+    print("Hello, World!")
+
+# 関数を呼び出す
+hello_world()
+"""</span>
+
+<span class="cmt"># 言語をPythonに指定して切り分け役を作る。def などの区切りを優先して切ってくれる。</span>
+<span class="cmt"># コードは構造がはっきりしているので、重ねは0でよい。</span>
+python_splitter = RecursiveCharacterTextSplitter.<span class="fn">from_language</span>(
+    language=Language.PYTHON, chunk_size=<span class="num">50</span>, chunk_overlap=<span class="num">0</span>
+)
+
+<span class="cmt"># 文字列の一覧を渡して、Document の一覧を作る。</span>
+python_docs = python_splitter.<span class="fn">create_documents</span>([PYTHON_CODE])
+
+<span class="cmt"># 結果を確認する。関数の定義と、その呼び出しが別々のかたまりに分かれている。</span>
+<span class="fn">print</span>(python_docs)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [Document(page_content='def hello_world():\n    print("Hello, World!")'),</span>
+<span class="cmt">#  Document(page_content='# 関数を呼び出す\nhello_world()')]</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><code>create_documents</code> は、Documentの一覧じゃなく文字列の一覧を受け取る。生の文章しか手元にないときに便利だ。2つ目の引数に、各文字列に対応する付随情報の一覧を渡すこともできる。Markdownの例だと、見出しは1つのかたまり、その下の本文は別のかたまり、というふうに自然な区切りで分かれて、渡した付随情報（<code>source</code> など）が各Documentに付く。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>メタデータを付けておけば、後で「これはどこから来た情報か」を追跡できるんですね。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2.5 ============ -->
+<section id="s25">
+  <div class="sec-head"><div class="sec-num">2.5</div><div><h2>テキストの埋め込みを生成する</h2><span class="tag">手順③：かたまりを数値に変える</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：分けたかたまりを、埋め込みモデルに通して数値の並びに変えます。まとめて渡せば1つずつより効率的です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>分けたら、次は埋め込みだ。LangChainの <code>Embeddings</code> は、OpenAI・Cohere・Hugging Faceなどの埋め込みモデルとつながる。2つの呼び方がある——資料を埋め込む（文字列の一覧を入力）と、質問を埋め込む（1本の文字列を入力）だ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、5つの文をまとめて数値の並びに変えています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># OpenAIの埋め込みモデルを使うための部品を読み込む。</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+
+<span class="cmt"># 埋め込みモデルの呼び出し口を1つ作る。</span>
+model = <span class="fn">OpenAIEmbeddings</span>()
+
+<span class="cmt"># 5つの文をまとめて渡す。1文ずつ5回呼ぶより、まとめて送るほうが速く安く済む。</span>
+embeddings = model.<span class="fn">embed_documents</span>([
+    <span class="str">"Hi there!"</span>,
+    <span class="str">"Oh, hello!"</span>,
+    <span class="str">"What's your name?"</span>,
+    <span class="str">"My friends call me World"</span>,
+    <span class="str">"Hello World!"</span>
+])
+
+<span class="cmt"># いくつ返ってきたかを確認する。渡した文の数と同じ5つになる。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(embeddings))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 5</span>
+
+<span class="cmt"># 1つ目の文が、いくつの数値で表されているかを確認する。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(embeddings[<span class="num">0</span>]))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 1536</span>
+
+<span class="cmt"># 中身の先頭3つだけを見てみる。0以外の小数がぎっしり並んでいる＝密な埋め込み。</span>
+<span class="fn">print</span>(embeddings[<span class="num">0</span>][:<span class="num">3</span>])
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># [-0.004845875, 0.004899438, -0.016358767]</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>複数の資料を同時に埋め込める点に注目。1つずつより効率的なんだ。3つの機能——ドキュメントローダー（テキスト化）・テキストスプリッター（分割）・埋め込みモデル（数値化）——を組み合わせると、「読み込む→分ける→数値にする」という流れになる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、その3つを1本につないだものです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 読み取り役・切り分け役・埋め込みモデル、3つの部品を読み込む。</span>
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> TextLoader
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+
+<span class="cmt"># 1) ファイルを読み込んで、Document の一覧にする。</span>
+loader = <span class="fn">TextLoader</span>(<span class="str">"./test.txt"</span>)
+doc = loader.<span class="fn">load</span>()
+
+<span class="cmt"># 2) 1,000文字ずつ、200文字重ねながら、かたまりに切り分ける。</span>
+text_splitter = <span class="fn">RecursiveCharacterTextSplitter</span>(chunk_size=<span class="num">1000</span>, chunk_overlap=<span class="num">200</span>)
+chunks = text_splitter.<span class="fn">split_documents</span>(doc)
+
+<span class="cmt"># 3) 埋め込みモデルの呼び出し口を作る。</span>
+embeddings_model = <span class="fn">OpenAIEmbeddings</span>()
+
+<span class="cmt"># 各かたまりから本文だけを取り出して並べ、まとめて数値の並びに変える。</span>
+embeddings = embeddings_model.<span class="fn">embed_documents</span>(
+    [chunk.page_content <span class="kw">for</span> chunk <span class="kw">in</span> chunks]
+)
+
+<span class="cmt"># かたまりの数と、できた数値の並びの数が一致していることを確認する。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(chunks), <span class="fn">len</span>(embeddings))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 12 12</span>
+</pre></details>
+  </div>
+</section>
+
+<!-- ============ 2.6 ============ -->
+<section id="s26">
+  <div class="sec-head"><div class="sec-num">2.6</div><div><h2>埋め込みをベクトルストアに保存する</h2><span class="tag">手順④：検索できる形で保存する</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：<span class="term" data-tip="埋め込みを保存し、意味が近いものを高速に探せるように作られたデータベース。">ベクトルストア</span>は、埋め込みを保存して、意味の近さの計算を高速に行えるように作られたデータベースです。本書では、既存のPostgreSQLに機能を足す<b>PGVector</b>を使います。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><b>ベクトルストア</b>は、埋め込みを保存して、コサイン類似度みたいな計算を効率よく高速に実行するよう作られたデータベースだ。整った形のデータ（表やJSON）に特化した従来型のデータベースと違って、テキストや画像みたいな決まった形を持たないデータを扱う。作成・読み取り・更新・削除と、検索ができる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>専用のDBを増やすのは大変そうですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>いい懸念だ。ベクトルストアには欠点もある。幸い、PostgreSQL（広く使われるオープンソースのデータベース）の <b><code>pgvector</code></b> という拡張で、ベクトルストアの機能が使える。使い慣れたデータベース1つで、<code>users</code> テーブルのような普通のテーブルと、ベクトル検索用のテーブルの両方を運用できるんだ。本書ではこのPGVectorを使う。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">⚠️</div><h4>専用ベクトルストアの欠点</h4><p>比較的新しく長期の運用実績が未知数。覚えることが多い。データベースが増えるほど仕組み全体が複雑になる。</p></div>
+      <div class="mini"><div class="ic">✅</div><h4>PGVectorの利点</h4><p>使い慣れたPostgreSQLをそのまま使える。普通のテーブルとベクトル検索を1つのデータベースで運用でき、増やさずに済む。</p></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">次は、PGVectorを手元で動かすための準備コマンドです。</p>
+    <details class="code"><summary>準備のコマンドを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># pgvector入りのPostgreSQLを、パソコンの中で1つ起動する。</span>
+docker run \
+    <span class="cmt"># この入れ物に名前を付けておく（あとで止めたり消したりするときに使う）。</span>
+    --name pgvector-container \
+    <span class="cmt"># 接続に使う利用者名を langchain にする。</span>
+    -e POSTGRES_USER=langchain \
+    <span class="cmt"># その利用者のパスワードを langchain にする（練習用の設定）。</span>
+    -e POSTGRES_PASSWORD=langchain \
+    <span class="cmt"># 作るデータベースの名前を langchain にする。</span>
+    -e POSTGRES_DB=langchain \
+    <span class="cmt"># パソコン側の6024番を、入れ物の中の5432番につなぐ。</span>
+    -p 6024:5432 \
+    <span class="cmt"># 画面を占有せず裏で動かす。使うのはpgvector付きのPostgreSQL 16。</span>
+    -d pgvector/pgvector:pg16
+
+<span class="cmt"># コードからつなぐときは、この1行を接続先として指定する。</span>
+<span class="cmt"># postgresql+psycopg://langchain:langchain@localhost:6024/langchain</span>
+</pre></details>
+
+    <h3 class="blk">読み込み→分割→埋め込み→保存を1本で</h3>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 重複しないIDを作る道具と、これまでの部品、そしてPGVectorを読み込む。</span>
+<span class="kw">import</span> uuid
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> TextLoader
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain_postgres.vectorstores <span class="kw">import</span> PGVector
+<span class="kw">from</span> langchain_core.documents <span class="kw">import</span> Document
+
+<span class="cmt"># ファイルを読み込んで、Document の一覧にする。</span>
+raw_documents = <span class="fn">TextLoader</span>(<span class="str">'./test.txt'</span>).<span class="fn">load</span>()
+
+<span class="cmt"># 1,000文字ずつ、200文字重ねながらかたまりに切り分ける。</span>
+text_splitter = <span class="fn">RecursiveCharacterTextSplitter</span>(chunk_size=<span class="num">1000</span>, chunk_overlap=<span class="num">200</span>)
+documents = text_splitter.<span class="fn">split_documents</span>(raw_documents)
+
+<span class="cmt"># 埋め込みモデルの呼び出し口を作る。</span>
+embeddings_model = <span class="fn">OpenAIEmbeddings</span>()
+
+<span class="cmt"># さきほど起動したデータベースへのつなぎ先を書いておく。</span>
+connection = <span class="str">'postgresql+psycopg://langchain:langchain@localhost:6024/langchain'</span>
+
+<span class="cmt"># この1行が、接続 → 初回はテーブル作成 → 各かたまりを数値に変換 → 保存、までを行う。</span>
+<span class="cmt"># 保存されるのは「数値の並び」「付随情報」「本文」の3点セット。</span>
+db = PGVector.<span class="fn">from_documents</span>(documents, embeddings_model, connection=connection)
+</pre></details>
+
+    <h3 class="blk">検索する</h3>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 質問の文字列を渡して、意味が近いかたまりを上位4件だけ取り出す。</span>
+<span class="cmt"># k=4 の 4 が、取り出す件数。多くすると関係の薄いものまで混ざる。</span>
+results = db.<span class="fn">similarity_search</span>(<span class="str">"query"</span>, k=<span class="num">4</span>)
+
+<span class="cmt"># 何件返ったかを確認する。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(results))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 4</span>
+
+<span class="cmt"># 先頭が最も意味の近いかたまり。その本文の先頭50文字だけを表示する。</span>
+<span class="fn">print</span>(results[<span class="num">0</span>].page_content[:<span class="num">50</span>])
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># （質問に最も近い内容のかたまりの先頭50文字が表示される）</span>
+</pre></details>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>質問を数値の並びに変える</h4><p>保存したかたまりと同じ埋め込みモデルを使います。同じ物差しで測るためです。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>近いものを上位N件探す</h4><p>保存済みの数値の並びの中から、質問に最も近いものを指定した件数だけ選びます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>本文と付随情報を取り出す</h4><p>数値の並びから文章は戻せないので、一緒に保存しておいた本文を取り出します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>近い順に並べて返す</h4><p>最も近いものが先頭に来ます。</p></div></div>
+    </div>
+
+    <h3 class="blk">追加と削除</h3>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 追加する2件それぞれに、重複しないIDを作っておく。あとで消したり更新したりするために使う。</span>
+ids = [<span class="fn">str</span>(uuid.<span class="fn">uuid4</span>()), <span class="fn">str</span>(uuid.<span class="fn">uuid4</span>())]
+
+<span class="cmt"># 本文と付随情報を持つ Document を2件作って、まとめて追加する。</span>
+<span class="cmt"># 追加のときも、内部では自動的に数値の並びへの変換が行われる。</span>
+db.<span class="fn">add_documents</span>(
+    [
+        <span class="fn">Document</span>(
+            page_content=<span class="str">"池には猫がいる"</span>,
+            metadata={<span class="str">"location"</span>: <span class="str">"pond"</span>, <span class="str">"topic"</span>: <span class="str">"animals"</span>},
+        ),
+        <span class="fn">Document</span>(
+            page_content=<span class="str">"池にはアヒルもいる"</span>,
+            metadata={<span class="str">"location"</span>: <span class="str">"pond"</span>, <span class="str">"topic"</span>: <span class="str">"animals"</span>},
+        ),
+    ],
+    ids=ids,
+)
+
+<span class="cmt"># 2件目のIDを指定して、そのデータだけを消す。IDを控えていないと個別に消せない。</span>
+db.<span class="fn">delete</span>(ids=[ids[<span class="num">1</span>]])
+</pre></details>
+  </div>
+</section>
+
+<!-- ============ 2.7 ============ -->
+<section id="s27">
+  <div class="sec-head"><div class="sec-num">2.7</div><div><h2>ドキュメントの変更を追跡する</h2><span class="tag">変わった分だけ更新する</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：資料が更新されるたびに全部を作り直すと、費用も時間もかかり、重複も出ます。<span class="term" data-tip="どの資料をいつ書き込んだかを記録し、変更があった分だけ更新する管理役。">RecordManager</span>が、何をいつ書き込んだかを覚えていて、差分だけを反映してくれます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ベクトルストアの大きな課題が「<b>頻繁に変わるデータへの対応</b>」だ。データが変わると作り直しが必要で、数値への変換をやり直す費用や重複が問題になる。LangChainには<b>インデックス化の仕組み</b>があって、資料とベクトルストアを簡単にそろえられる。<code>RecordManager</code> が、各資料の指紋・書き込み時刻・出所IDを保存して、書き込み状況を管理するんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>古いデータの削除はどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>後片づけの方式で決める。3つあるよ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🚫</div><h4>None モード</h4><p>自動の後片づけをしません。古いものは自分で消します。</p></div>
+      <div class="mini"><div class="ic">♻️</div><h4>Incremental（増分）モード</h4><p>元の資料の中身が変わったら、その資料の古い版だけを消します。</p></div>
+      <div class="mini"><div class="ic">🧹</div><h4>Full（完全）モード</h4><p>さらに、今回の対象に含まれていない資料も消します。手元と完全に一致させたいとき。</p></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">次のコードは、同じ資料を3回登録して、動きの違いを確かめています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 書き込み状況を管理する役と、同期を行う関数を読み込む。</span>
+<span class="kw">from</span> langchain.indexes <span class="kw">import</span> SQLRecordManager, index
+<span class="kw">from</span> langchain_postgres.vectorstores <span class="kw">import</span> PGVector
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+<span class="kw">from</span> langchain.docstore.document <span class="kw">import</span> Document
+
+<span class="cmt"># データベースへのつなぎ先を書いておく。</span>
+connection = <span class="str">"postgresql+psycopg://langchain:langchain@localhost:6024/langchain"</span>
+
+<span class="cmt"># 保存先のまとまりに名前を付ける。用途ごとに分けておける。</span>
+collection_name = <span class="str">"my_docs"</span>
+
+<span class="cmt"># 埋め込みモデルの呼び出し口を作る。小さめで安いモデルを指定している。</span>
+embeddings_model = <span class="fn">OpenAIEmbeddings</span>(model=<span class="str">"text-embedding-3-small"</span>)
+
+<span class="cmt"># 管理役が使う記録の置き場に名前を付ける。</span>
+namespace = <span class="str">"my_docs_namespace"</span>
+
+<span class="cmt"># ベクトルストアの呼び出し口を作る。</span>
+vectorstore = <span class="fn">PGVector</span>(
+    embeddings=embeddings_model,
+    collection_name=collection_name,
+    connection=connection,
+    use_jsonb=<span class="kw">True</span>,
+)
+
+<span class="cmt"># 「何をいつ書き込んだか」を覚えておく管理役を作る。</span>
+record_manager = <span class="fn">SQLRecordManager</span>(
+    namespace,
+    db_url=<span class="str">"postgresql+psycopg://langchain:langchain@localhost:6024/langchain"</span>,
+)
+
+<span class="cmt"># 記録を保存するための置き場をまだ作っていなければ、ここで作る。</span>
+record_manager.<span class="fn">create_schema</span>()
+
+<span class="cmt"># 登録したい資料を2件用意する。source が「どのファイル由来か」を表す。</span>
+docs = [
+    <span class="fn">Document</span>(page_content=<span class="str">'池には猫がいる'</span>, metadata={<span class="str">"id"</span>: <span class="num">1</span>, <span class="str">"source"</span>: <span class="str">"cats.txt"</span>}),
+    <span class="fn">Document</span>(page_content=<span class="str">'池にはアヒルもいる'</span>, metadata={<span class="str">"id"</span>: <span class="num">2</span>, <span class="str">"source"</span>: <span class="str">"ducks.txt"</span>}),
+]
+
+<span class="cmt"># 1回目：まだ何も入っていないので、2件とも新しく書き込まれる。</span>
+index_1 = <span class="fn">index</span>(docs, record_manager, vectorstore,
+                cleanup=<span class="str">"incremental"</span>, source_id_key=<span class="str">"source"</span>)
+<span class="fn">print</span>(<span class="str">"Index attempt 1:"</span>, index_1)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Index attempt 1: {'num_added': 2, 'num_updated': 0, 'num_skipped': 0, 'num_deleted': 0}</span>
+
+<span class="cmt"># 2回目：中身がまったく同じなので、管理役が「もう入っている」と判断して何もしない。</span>
+<span class="cmt"># これにより、同じ内容が二重に保存されるのを防げる。</span>
+index_2 = <span class="fn">index</span>(docs, record_manager, vectorstore,
+                cleanup=<span class="str">"incremental"</span>, source_id_key=<span class="str">"source"</span>)
+<span class="fn">print</span>(<span class="str">"Index attempt 2:"</span>, index_2)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Index attempt 2: {'num_added': 0, 'num_updated': 0, 'num_skipped': 2, 'num_deleted': 0}</span>
+
+<span class="cmt"># 1件目の本文を書き換える。出所（cats.txt）は同じまま。</span>
+docs[<span class="num">0</span>].page_content = <span class="str">"このドキュメントを更新しました！"</span>
+
+<span class="cmt"># 3回目：中身が変わった1件だけが書き込まれ、同じ出所の古い版は消される。</span>
+index_3 = <span class="fn">index</span>(docs, record_manager, vectorstore,
+                cleanup=<span class="str">"incremental"</span>, source_id_key=<span class="str">"source"</span>)
+<span class="fn">print</span>(<span class="str">"Index attempt 3:"</span>, index_3)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Index attempt 3: {'num_added': 1, 'num_updated': 0, 'num_skipped': 1, 'num_deleted': 1}</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：差分更新で何が節約できるか</h4>
+      <p>1万件のかたまりを持つ社内マニュアルがあり、毎晩そのうち10件だけが更新されるとします。</p>
+      <p>毎回全部を作り直すと、毎晩1万件分の埋め込み変換の費用と時間がかかります。差分更新なら、変わった10件だけを変換し、古い10件を消すだけ。<b>費用は約1,000分の1</b>になり、同じ内容が二重に保存されることもありません。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2.8 ============ -->
+<section id="s28">
+  <div class="sec-head"><div class="sec-num">2.8</div><div><h2>インデックス化を最適化する</h2><span class="tag">3つの改良のやり方</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：ただ切って数値にするだけだと、検索結果が安定せず、特に画像や表が混ざると嘘が増えます。3つの改良を見ます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>基本のRAGは、資料を単にかたまりに分けて数値にするだけ。でも、これだと検索結果に一貫性がなくて、特に画像や表が含まれると、嘘の回答が比較的多く起きる。改良のやり方を3つ紹介しよう。</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s281">
+    <h3 class="blk" style="margin-top:4px">2.8.1 MultiVectorRetriever ― 検索用と回答用を分ける</h3>
+    <p class="lead"><b>要するに</b>：<b>検索に使うのは要約、答えに使うのは実物</b>、というふうに2つを分けて持ちます。表が壊れるのを防げます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>文章と表が混ざった資料を、単に文章として切り分けると、表そのものが失われかねない。そこで、<b>答えを作るのに使う資料と、検索に使う情報を切り離す</b>。表なら——①表の内容を要約して数値にする（要約には元の表へのIDを持たせる）→②元の表は別の置き場に保管→③検索で表の要約が当たったら、そのIDが指す元の表をLLMに渡す。これで、答えに必要な情報を欠けのない形で渡せる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>「検索しやすい要約」と「実物の表」を分けて持つんですね。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>各かたまりをLLMに要約させる</h4><p>短くて意味がはっきりした文章になるので、検索で当たりやすくなります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>要約だけをベクトルストアに入れる</h4><p>要約には、元のかたまりを指すIDを付けておきます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>元のかたまりは別の置き場に保管する</h4><p>表や長い本文が、切られたり削られたりせずそのまま残ります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>要約が当たったら、IDで実物を取り出す</h4><p>LLMに渡すのは実物のほうです。</p><div class="branch ok">「検索しやすさ」と「情報の欠けなさ」を両立できます。</div></div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 重複しないIDを作る道具と、必要な部品をひととおり読み込む。</span>
+<span class="kw">import</span> uuid
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings, ChatOpenAI
+<span class="kw">from</span> langchain_postgres.vectorstores <span class="kw">import</span> PGVector
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.documents <span class="kw">import</span> Document
+<span class="kw">from</span> langchain.retrievers.multi_vector <span class="kw">import</span> MultiVectorRetriever
+<span class="kw">from</span> langchain.storage <span class="kw">import</span> InMemoryStore
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> TextLoader
+
+<span class="cmt"># データベースへのつなぎ先と、埋め込みモデルの呼び出し口を用意する。</span>
+connection = <span class="str">"postgresql+psycopg://langchain:langchain@localhost:6024/langchain"</span>
+embeddings_model = <span class="fn">OpenAIEmbeddings</span>()
+
+<span class="cmt"># 資料を読み込み、1,000文字ずつのかたまりに切り分ける。</span>
+docs = <span class="fn">TextLoader</span>(<span class="str">"./test.txt"</span>, encoding=<span class="str">"utf-8"</span>).<span class="fn">load</span>()
+chunks = <span class="fn">RecursiveCharacterTextSplitter</span>(chunk_size=<span class="num">1000</span>, chunk_overlap=<span class="num">200</span>).<span class="fn">split_documents</span>(docs)
+
+<span class="cmt"># 「要約して」という指示文の雛形を作る。{doc} に各かたまりの本文が入る。</span>
+prompt = ChatPromptTemplate.<span class="fn">from_template</span>(<span class="str">"以下のドキュメントを要約してください:\n\n{doc}"</span>)
+
+<span class="cmt"># 要約に使うモデルを用意する。毎回同じ要約になるよう temperature=0 にする。</span>
+llm = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0</span>, model=<span class="str">"gpt-4o-mini"</span>)
+
+<span class="cmt"># 「本文を取り出す → 雛形に入れる → モデルに渡す → 文字列だけ取り出す」を1本につなぐ。</span>
+summarize_chain = {<span class="str">"doc"</span>: <span class="kw">lambda</span> x: x.page_content} | prompt | llm | <span class="fn">StrOutputParser</span>()
+
+<span class="cmt"># 全かたまりをまとめて要約する。同時に5件まで並行して処理する設定。</span>
+summaries = summarize_chain.<span class="fn">batch</span>(chunks, {<span class="str">"max_concurrency"</span>: <span class="num">5</span>})
+
+<span class="cmt"># 要約を入れるベクトルストア（検索用）を用意する。</span>
+vectorstore = <span class="fn">PGVector</span>(embeddings=embeddings_model, collection_name=<span class="str">"summaries"</span>,
+                       connection=connection, use_jsonb=<span class="kw">True</span>)
+
+<span class="cmt"># 元のかたまりを入れる置き場（回答用）を用意する。ここでは動作確認用にメモリ上に置く。</span>
+store = <span class="fn">InMemoryStore</span>()
+
+<span class="cmt"># 要約と実物を結びつけるための、付随情報のキー名を決めておく。</span>
+id_key = <span class="str">"doc_id"</span>
+
+<span class="cmt"># 検索用と回答用の2つの置き場をまとめて扱う取り出し役を作る。</span>
+retriever = <span class="fn">MultiVectorRetriever</span>(vectorstore=vectorstore, docstore=store, id_key=id_key)
+
+<span class="cmt"># かたまりの数だけ、重複しないIDを作る。</span>
+doc_ids = [<span class="fn">str</span>(uuid.<span class="fn">uuid4</span>()) <span class="kw">for</span> _ <span class="kw">in</span> chunks]
+
+<span class="cmt"># 各要約に、対応する元のかたまりのIDを付けた Document を作る。</span>
+summary_docs = [<span class="fn">Document</span>(page_content=s, metadata={id_key: doc_ids[i]})
+                <span class="kw">for</span> i, s <span class="kw">in</span> <span class="fn">enumerate</span>(summaries)]
+
+<span class="cmt"># 要約のほうだけを、検索用のベクトルストアに入れる。</span>
+retriever.vectorstore.<span class="fn">add_documents</span>(summary_docs)
+
+<span class="cmt"># 元のかたまりは、IDと組にして回答用の置き場にしまう。</span>
+retriever.docstore.<span class="fn">mset</span>(<span class="fn">list</span>(<span class="fn">zip</span>(doc_ids, chunks)))
+
+<span class="cmt"># 質問すると、まず要約が検索され、そのIDが指す「元の大きなかたまり」が返ってくる。</span>
+retrieved_docs = retriever.<span class="fn">invoke</span>(<span class="str">"哲学の章"</span>)
+
+<span class="cmt"># 返ってきたのが要約ではなく元の本文であることを、長さで確かめる。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(retrieved_docs[<span class="num">0</span>].page_content))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 998   ← 要約（数十文字）ではなく、元の1,000文字近いかたまりが返っている</span>
+</pre></details>
+  </div>
+
+  <div class="card" id="s282">
+    <h3 class="blk" style="margin-top:4px">2.8.2 RAPTOR ― 要約を繰り返して段階を作る</h3>
+    <p class="lead"><b>要するに</b>：要約を作り、似たものをまとめ、そのまとまりをさらに要約する——を繰り返して、<b>細かい事実から全体の概念まで</b>を同時に検索できるようにします。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>RAGは「1つの文書の特定の事実を聞く細かい質問」と「多数の文書にまたがる考え方を抜き出す大きな質問」の両方に応えなきゃいけない。普通の近いもの探しだと、両方を同時に扱うのが難しい。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span><b>RAPTOR</b>は、より大きな考え方をとらえた要約を作って、それらを数値にして、似たもの同士をまとめて、さらに各まとまりを要約する——これを繰り返す。結果として「段階的なまとめの木」ができる。この要約群と元の資料を一緒にインデックス化すれば、細かい質問から大きな質問まで幅広くカバーできるんだ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>元のかたまりを数値にする</h4><p>ここまでは通常のインデックス化と同じです。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>似たもの同士をまとめる</h4><p>数値が近いかたまりを、同じ話題のグループとして集めます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>各グループを要約する</h4><p>そのグループ全体を代表する、1段上の文章ができます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>できた要約を材料に、2〜3を繰り返す</h4><p>段が上がるほど、より広い範囲をまとめた文章になります。</p><div class="branch ok">元のかたまりと、全段階の要約を一緒に保存しておけば、細かい質問にも大きな質問にも応えられます。</div></div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：段階があると何が変わるか</h4>
+      <p>年次報告書に対して<b>細かい質問</b>「2022年の研究開発費はいくら？」を投げると、その金額が書かれた元のかたまりが当たります。</p>
+      <p>一方<b>大きな質問</b>「この会社が今後3年で直面する主なリスクの傾向は？」は、1つのかたまりには書かれていません。段階的な要約があれば、複数の章をまとめた上段の要約が当たり、全体の傾向に答えられます。</p>
+    </div>
+  </div>
+
+  <div class="card" id="s283">
+    <h3 class="blk" style="margin-top:4px">2.8.3 ColBERT ― トークン単位で細かく比べる</h3>
+    <p class="lead"><b>要するに</b>：文章全体を1つの数値の並びに縮めると、細かい情報が失われます。ColBERTは<b>トークン1つ1つの数値</b>を持って比べることで、精度を上げます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>埋め込みモデルの課題の1つは、「テキストを決まった長さの数値の並びに縮める」こと。縮めるのは検索に有効だけど、関係のない部分や重複した内容まで一緒に縮めると、嘘の回答の原因になる。<b>ColBERT</b>は——①資料と質問の各トークンについて、前後の文脈を踏まえた数値を作る→②質問の各トークンと、資料の中の全トークンとの近さを計算→③最も近かった値を合計して、資料ごとの点数を出す。より細かい単位で比べるので、検索の精度が上がるんだ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📉</div><h4>普通の埋め込み</h4><p>1,000文字のかたまりを1本の数値の並びに縮めます。全体の雰囲気はつかめますが、その中の1文だけが答えの場合、埋もれてしまいます。</p></div>
+      <div class="mini"><div class="ic">🔬</div><h4>ColBERT</h4><p>トークンごとに数値を持ち、質問の各トークンに最も近いものを資料の中から探します。細かい一致を拾えますが、そのぶん保存量と計算量は増えます。</p></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ColBERTを手軽に使うための部品を読み込む。事前に pip install -U ragatouille が必要。</span>
+<span class="kw">from</span> ragatouille <span class="kw">import</span> RAGPretrainedModel
+
+<span class="cmt"># 学習済みのColBERTモデルを読み込む。</span>
+RAG = RAGPretrainedModel.<span class="fn">from_pretrained</span>(<span class="str">"colbert-ir/colbertv2.0"</span>)
+
+<span class="cmt"># 検索対象にしたいページの全文を取ってくる（取得する関数の中身はここでは省略）。</span>
+full_document = <span class="fn">get_wikipedia_page</span>(<span class="str">"Hayao_Miyazaki"</span>)
+
+<span class="cmt"># 取ってきた文章を、検索できる形に前処理する。</span>
+<span class="cmt"># 180語ごとに切り分けながら、トークン単位の数値を作って保存する。</span>
+RAG.<span class="fn">index</span>(collection=[full_document], index_name=<span class="str">"Miyazaki-123"</span>,
+          max_document_length=<span class="num">180</span>, split_documents=<span class="kw">True</span>)
+
+<span class="cmt"># 質問を投げて、近い順に3件取り出す（対象が英語のページなので質問も英語）。</span>
+results = RAG.<span class="fn">search</span>(query=<span class="str">"What animation studio did Miyazaki found?"</span>, k=<span class="num">3</span>)
+
+<span class="cmt"># 最も近かった1件の中身を確認する。</span>
+<span class="fn">print</span>(results[<span class="num">0</span>][<span class="str">"content"</span>][:<span class="num">60</span>])
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># In 1985, Miyazaki co-founded Studio Ghibli with Isao Takahata…</span>
+
+<span class="cmt"># LangChainの他の部品と同じ使い方ができる形に変換することもできる。</span>
+retriever = RAG.<span class="fn">as_langchain_retriever</span>(k=<span class="num">3</span>)
+
+<span class="cmt"># これで、他の取り出し役と同じように invoke で呼べる。</span>
+retriever.<span class="fn">invoke</span>(<span class="str">"What animation studio did Miyazaki found?"</span>)
+</pre></details>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>ドキュメントローダー：各形式（txt・PDF・Web・Slack等）から本文と付随情報を持つ <code>Document</code> を読み込む。</li>
+        <li>テキストスプリッター：段落→行→単語の優先順で意味を保って分ける。重ねで文脈を維持。コードは言語の構造で分ける。</li>
+        <li>埋め込みモデル：かたまりをまとめて密な数値の並びに変える。</li>
+        <li>ベクトルストア（PGVector）：数値の並びを保存し <code>similarity_search</code> で検索。追加・削除も可能。pgvector拡張で既存のPostgreSQLを活用できる。</li>
+        <li>インデックス化の仕組み（RecordManager）：None／Incremental／Fullの方式で変更をそろえ、重複を防ぐ。</li>
+        <li>改良：MultiVectorRetriever・RAPTOR・ColBERT。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2.9 ============ -->
+<section id="s29">
+  <div class="sec-head"><div class="sec-num">2.9</div><div><h2>まとめ</h2><span class="tag">前半が完成、次は後半へ</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この章では、資料をLLMアプリ向けに準備する方法を学んだ。ドキュメントローダーでテキストを取り出して、テキストスプリッターで意味のまとまりを保ったかたまりに分けて、埋め込みモデルで意味の数値に変えて、ベクトルストアに保存した。改良のやり方で、表などを含む資料も正確に検索できるようになる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>これで「インデックス化（前処理）」はできました。次は……？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次の3章は「RAGによるデータとのチャット」だ。質問に応じてベクトルストアから最も近いかたまりを取り出して、それをコンテキストとしてモデルに渡して、正確な答えを作る——RAGの後半「検索と生成」を学ぶよ。</div></div>
+    </div>
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>資料を「読み込み→分割→埋め込み→ベクトルストア保存」して検索できるようにした。</li>
+        <li>ベクトルストアは作成・読み取り・更新・削除と高速な類似検索ができ、改良で表を含む資料も正確に扱える。</li>
+        <li>次章は、検索したかたまりをコンテキストとして渡して答えを作るRAGの後半。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが5つのポイントを言葉にする</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>今日のポイントです。1つ目は「LLMは非公開データと最新情報を知らず、知らないことを聞くとハルシネーションを起こす。だからRAGで自分のデータを渡す」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そのRAGの前半がインデックス化、だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「埋め込みはテキストの数値表現。疎な埋め込み（単語の有無）と違い、密な意味の埋め込みは意味を数値にする。近さはコサイン類似度で測る」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>意味を計算できるのが大きな転換だった。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「インデックス化の4手順：テキスト化→分割→埋め込み→ベクトルストア保存」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ドキュメントローダー・スプリッター・埋め込みモデル・ベクトルストアだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「PGVectorで既存のPostgreSQLをベクトルストアにできる。インデックス化の仕組みで変更をそろえる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>データベースを増やさず済むのが嬉しい。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>5つ目は「改良のやり方——MultiVectorRetriever（検索用と回答用の分離）・RAPTOR（繰り返しの要約）・ColBERT（トークン単位の埋め込み）」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>完璧だ。次はいよいよ、このデータとチャットするよ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>なぜRAGが必要か</div>
+      <p style="font-size:14px;margin:0">❓ LLMは賢いのに、なぜRAGで外部データを渡す必要があるのですか。LLMの知識の2つの制限を挙げて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">LLMの知識には2つの制限があるから。①非公開データ：公開されていない社外秘の情報などは学習の材料に含まれない。②時事情報：LLMの学習には資料集めから始まる長期間の工程が必要で、学習の材料が確定した日より後の出来事は知らない（ナレッジカットオフ）。どちらの場合も、知らないことを聞くとハルシネーション（もっともらしい嘘）を起こしやすい。指示文を工夫しても知識自体の不足は補えないので、RAGで関係する正しいデータをコンテキストとして渡す。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 非公開データは学習に含まれない、に触れている<br>□ 時事情報（ナレッジカットオフ）に触れている<br>□ 知らないことを聞くとハルシネーションを起こす、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>疎な埋め込みと密な埋め込み</div>
+      <p style="font-size:14px;margin:0">❓ Bag-of-Words（疎な埋め込み）と意味の埋め込み（密な埋め込み）の違いを説明してください。前者の欠点も述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Bag-of-Wordsは、文に含まれる各単語の出現回数を数えて数値の並びにする方法で、ほとんどの要素が0になる疎な形。キーワード検索や分類に使えるが、単語があるかないかだけで意味を一切考えないのが欠点。「sunny day」と「bright skies」は意味が近いのに、共通する単語がないとまったく違う数値になり、類義語に置き換えられると検索や選り分けをすり抜ける。一方、密な意味の埋め込みは、LLMベースのモデルが意味を100〜2,000個の数値で表し、意味が近いほど数値の並びも近くなる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Bag-of-Words＝単語の出現回数、疎、意味を無視、に触れている<br>□ 類義語に弱いという欠点に触れている<br>□ 密な意味の埋め込み＝意味を数値化、意味が近いほど近い、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>インデックス化の4手順</div>
+      <p style="font-size:14px;margin:0">❓ 資料をLLMで使えるようにする「インデックス化」の4手順を、順を追って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①テキスト化：ドキュメントローダーで、PDFやWebなど各形式から本文と付随情報を持つDocumentを取り出す。②分割：テキストスプリッターで、段落→行→単語の優先順で意味を保ちながら、コンテキストウィンドウに収まる扱いやすいかたまりに分ける（重ねで文脈を維持）。③埋め込み：埋め込みモデルで、各かたまりを意味を表す密な数値の並びに変える。④保存：ベクトルストア（PGVectorなど）に数値の並び・本文・付随情報を保存し、質問に関係する箇所を素早く検索できるようにする。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ テキスト化→分割→埋め込み→保存の4手順を順に挙げている<br>□ 各手順で使う部品（ローダー・スプリッター・埋め込みモデル・ベクトルストア）に触れている<br>□ 分割の目的（コンテキストウィンドウに収める）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>ベクトルストアとPGVector</div>
+      <p style="font-size:14px;margin:0">❓ ベクトルストアとは何ですか。専用のベクトルストアではなくPGVectorを使う利点は何ですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ベクトルストアは、埋め込みを保存し、コサイン類似度のような計算を効率よく高速に実行できるよう作られた、決まった形を持たないデータ向けのデータベース。作成・読み取り・更新・削除と類似検索ができる。専用のベクトルストアは新しくて長期の運用実績が未知数、覚えることが多い、データベースが増えて複雑になる、という欠点がある。PGVectorは、広く使われるオープンソースのPostgreSQLのpgvector拡張なので、使い慣れたデータベース1つで、普通のテーブルとベクトル検索用のテーブルの両方を運用でき、追加のデータベースを増やさずに済むのが利点。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ベクトルストア＝埋め込みを保存し高速に類似検索するDB、に触れている<br>□ 専用ベクトルストアの欠点（新しい・覚えることが多い・複雑さ）に触れている<br>□ PGVectorは既存のPostgreSQLを活用でき、DBを増やさずに済む、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>MultiVectorRetriever</div>
+      <p style="font-size:14px;margin:0">❓ 表を含む資料をそのまま分割・埋め込みすると何が問題で、MultiVectorRetrieverはどう解決しますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">表を含む資料を単に文章として分けると、表の構造が壊れて情報が失われ、答えに必要な内容を欠けのない形で渡せない。MultiVectorRetrieverは「検索に使う情報」と「答えを作るのに使う資料」を切り離す。たとえば表の内容を要約して数値にし（要約に元の表へのIDを付ける）、元の表は別の置き場に保管する。検索で要約が当たったら、そのIDが指す元の表をコンテキストとしてLLMに渡す。これで、検索しやすさと、答えに必要な欠けのない情報を両立できる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 表を単純に分けると情報が失われる、に触れている<br>□ 検索用（要約）と回答用（元データ）を切り離す、に触れている<br>□ 要約で検索→IDが指す元データをコンテキストに渡す、に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして確かめる</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">👀</div><h4>埋め込みを目で見る</h4><p>OpenAIの埋め込みで2〜3個の文を数値に変え、コサイン類似度を計算して「意味が近い文ほど1に近い」ことを確かめましょう。</p></div>
+      <div class="mini"><div class="ic">🐘</div><h4>PGVectorを立てる</h4><p>この章のコマンドでPGVectorを起動し、<code>from_documents</code> で自分のテキストを保存して <code>similarity_search</code> してみましょう。</p></div>
+      <div class="mini"><div class="ic">✂️</div><h4>チャンクサイズを変えて観察</h4><p><code>chunk_size</code> や <code>chunk_overlap</code> を変えて、分割結果や検索の当たり具合がどう変わるかを見てみましょう。</p></div>
+      <div class="mini"><div class="ic">📄</div><h4>ドキュメントローダーを試す</h4><p>PDFやWebページを <code>PyPDFLoader</code>／<code>WebBaseLoader</code> で読み込み、<code>Document</code> の中身（本文と付随情報）を確認しましょう。</p></div>
+      <div class="mini"><div class="ic">📗</div><h4>公式のRAGチュートリアル</h4><p>python.langchain.com/docs/tutorials/rag/ で、インデックス化の流れを手を動かして確認しましょう。</p></div>
+      <div class="mini"><div class="ic">✏️</div><h4>Bag-of-Wordsを手で作る</h4><p>自分で3つの短い文を用意し、表のように単語の出現回数を数えて疎な数値の並びを作り、「意味を無視している」ことを体感しましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第2章 RAGによるデータのインデックス化 ― 図解版<br>次章：<b>3. RAGによるデータとのチャット</b></p>
+
+</div>

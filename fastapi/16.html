@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第16章 フォームとテンプレート ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  .tag2{color:#ff9db3}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+  .warn-box{border:1px solid #ff6b8b55; background:#ff6b8b0f; border-radius:14px; padding:14px 18px; margin:16px 0}
+  .warn-box h4{margin:0 0 7px; color:#ff9db3; font-size:14px}
+  .warn-box p{margin:0; font-size:13.5px; color:#f5d5dc}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第16章</div>
+  <h1>第16章　フォームとテンプレート</h1>
+  <p>FastAPI は API 専用ではありません。入力欄からの受け取りも、内容が変わる HTML の生成もできます。この章では <code>Form()</code> での受け取りと、Jinja による HTML の組み立てを扱い、途中で「ブラウザの入力欄は GET だと値が別の場所に移る」という落とし穴も体験します。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全2節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① フォーム</a>
+  <a class="sub" href="#s1-get">└ GET での受け取りと落とし穴</a>
+  <a class="sub" href="#s1-post">└ POST に変えて解決</a>
+  <a href="#s2">② テンプレート</a>
+  <a class="sub" href="#s2-html">└ template/list.html</a>
+  <a class="sub" href="#s2-use">└ テンプレートを使う</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">フォーム <span>form</span></div><p>ブラウザの画面上で、文字を入力したり選んだりして送信するための部分です。</p></div>
+    <div class="item"><div class="w">Form()</div><p>入力欄から送られた値を、FastAPI の処理で受け取るための書き方です。</p></div>
+    <div class="item"><div class="w">python-multipart</div><p>入力欄の形式で送られてきた内容を読み解くための Python のパッケージです。</p></div>
+    <div class="item"><div class="w">クエリパラメータ</div><p>住所のうしろに <code>?key=value</code> の形で付ける追加の指定です。</p></div>
+    <div class="item"><div class="w">ボディ <span>body</span></div><p>送るデータの本体。入力欄の値は、通常ここに入って送られます。</p></div>
+    <div class="item"><div class="w">multipart/form-data</div><p>入力欄の値やファイルを送るときの、決まった形式の名前です。</p></div>
+    <div class="item"><div class="w">422</div><p>送られた内容が、決めておいた形に合っていないときに返す番号です。</p></div>
+    <div class="item"><div class="w">テンプレート <span>template</span></div><p>あらかじめ形を作っておいた HTML に、そのときの値を差し込んで完成させる仕組みです。</p></div>
+    <div class="item"><div class="w">Jinja / Jinja2</div><p>最もよく使われるテンプレートの仕組み。Flask、Django、FastAPI のどれでも使えます。</p></div>
+    <div class="item"><div class="w">レンダリング</div><p>テンプレートに値を差し込んで、最終的な HTML を組み立てることです。</p></div>
+    <div class="item"><div class="w"><code>{{ }}</code></div><p>Jinja で「ここに値を差し込む」ことを表す書き方です。</p></div>
+    <div class="item"><div class="w"><code>{% %}</code></div><p>Jinja で「繰り返す」「条件で分ける」といった処理を書くための書き方です。</p></div>
+    <div class="item"><div class="w">Jinja2Templates</div><p>テンプレートの置き場所を指定して、使えるようにする FastAPI の部品です。</p></div>
+    <div class="item"><div class="w">TemplateResponse</div><p>テンプレートと値を渡して、組み立てた HTML を返すための書き方です。</p></div>
+    <div class="item"><div class="w">context <span>文脈</span></div><p>テンプレートに渡す値をまとめたもの。項目名と値の組み合わせで書きます。</p></div>
+    <div class="item"><div class="w">Request</div><p>届いた問い合わせの内容そのもの。テンプレートを使うときに必要になります。</p></div>
+    <div class="item"><div class="w">静的ファイル</div><p>内容が固定されていて、そのまま配信されるファイルのことです。</p></div>
+    <div class="item"><div class="w">動的 <span>dynamic</span></div><p>そのときの状況によって内容が変わることです。</p></div>
+    <div class="item"><div class="w">bgcolor</div><p>HTML で背景色を指定する、CSS が普及する前からの古い書き方です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">API 専用ではない</span></h2></div>
+  <div class="card">
+    <p class="lead">ハル：「FastAPI って API 専用ってわけじゃないんですよね？」タカ師匠：「もちろん。入力欄の受け取りも、テンプレートでの HTML の組み立てもできる」。本章では <code>Form()</code> で入力欄の値を受け取り、Jinja のテンプレートで内容が変わる HTML を作ります。途中で「ブラウザの GET の入力欄は、値をクエリパラメータに変えてしまう」という HTML の落とし穴も体験します。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を3行で</span></h2></div>
+  <div class="card">
+    <p class="lead">入力欄の値は <code>Form()</code> で受け取れます。<code>Path()</code> / <code>Query()</code> / <code>Body()</code> と同じ仲間です。ブラウザの入力欄は <code>GET</code> だと値がクエリパラメータに変わってしまうので、送信は通常 <code>POST</code> で行います。HTML の組み立てには <span class="term" data-tip="最もよく使われるテンプレートの仕組み。">Jinja2</span> が定番で、<code>{{ 変数 }}</code> で値を差し込み、<code>{% for %} {% endfor %}</code> で繰り返します。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>入力欄からの値を FastAPI で受け取れる</li>
+        <li>「GET の入力欄でデータが送れない」現象の理由が分かる</li>
+        <li>Jinja2 で内容が変わる HTML が書ける</li>
+        <li>API と、昔からの Web ページの両方を持つアプリが作れる</li>
+        <li>検索の結果のページや管理の画面など、HTML が必要な場面に対応できる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① フォーム ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>フォーム<span class="tag">Form() と、GET の落とし穴</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>Form()</code> で入力欄の値を受け取ります。ブラウザの仕様上、<code>POST</code> にしないと正しく送られません。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第15章でも触れたけど、FastAPI は主に API を作るために設計されていて、初期の入力の形式は JSON だ。だからといって、昔からの HTML や入力欄を扱えないわけじゃない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI は、住所や条件のときと同じように、<b><code>Form</code> という仕組み</b>で入力欄からのデータを扱える。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>必要なパッケージは <code>python-multipart</code>（入力欄の処理に必須）だ。確認用の置き場として、第15章の <code>static/</code> フォルダも使う。</div></div>
+    </div>
+
+    <h3 class="blk" id="s1-get">GET での受け取りと落とし穴</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まず、入力欄から名前を受け取る窓口を作ります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、入力欄の値を受け取る部品を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Form
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># /who2 への GET を、この下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/who2"</span>)
+<span class="cmt"># Path や Query の代わりに Form を使う。それ以外は同じ書き方。</span>
+<span class="kw">def</span> <span class="fn">greet2</span>(name: <span class="kw">str</span> = <span class="fn">Form</span>()):
+    <span class="cmt"># 受け取った名前を文章に埋め込んで返す。</span>
+    <span class="kw">return</span> <span class="str">f"Hello, {name}?"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>主な違いは、<code>Path</code> や <code>Query</code> の代わりに <code>Form</code> を使うことだけだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">HTTPie から試すと、うまく動きます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># -f は「JSON ではなく、入力欄の形式で送る」という指定。これが必要。</span>
+<span class="cmt"># -b は本体だけを表示する指定。</span>
+$ http -f -b GET localhost:8000/who2 name=<span class="str">"Bob Frapples"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "Hello, Bob Frapples?"</span>
+<span class="cmt"># HTTPie は GET でも、値を本体に入れて送ってくれるので、うまくいく。</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">次に、同じことをブラウザの入力欄から試します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">&lt;!-- form は入力欄のまとまりを表す。action が送り先、method が使う動詞。 --&gt;</span>
+&lt;<span class="tag2">form</span> action=<span class="str">"http://localhost:8000/who2"</span> method=<span class="str">"get"</span>&gt;
+<span class="cmt">&lt;!-- 画面に表示される案内の文章。 --&gt;</span>
+Say hello to my little friend:
+<span class="cmt">&lt;!-- 文字を入力する欄。name は、送るときの項目名になる。 --&gt;</span>
+<span class="cmt">&lt;!-- value は、最初から入っている値。 --&gt;</span>
+&lt;<span class="tag2">input</span> type=<span class="str">"text"</span> name=<span class="str">"name"</span> value=<span class="str">"Bob Frapples"</span>&gt;
+<span class="cmt">&lt;!-- 押すと送信されるボタン。 --&gt;</span>
+&lt;<span class="tag2">input</span> type=<span class="str">"submit"</span>&gt;
+&lt;/<span class="tag2">form</span>&gt;
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ブラウザで <code>http://localhost:8000/static/form1.html</code> を開いて送信すると、こんな結果が返る。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># --- ブラウザに表示された結果 ---</span>
+<span class="cmt"># {"detail":[{"loc":["body","name"],</span>
+<span class="cmt">#            "msg":"field required",</span>
+<span class="cmt">#            "type":"value_error.missing"}]}</span>
+<span class="cmt">#   loc が ["body","name"] なので、「本体の中の name が無い」という意味。</span>
+<span class="cmt">#   入力欄には値を入れたのに、本体には届いていない。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ？ エラーですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>サーバの記録を見ると <code>"GET /who2?name=... HTTP/1.1" 422</code> となっている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>入力欄には <code>name</code> があるのに、ブラウザはそれを<b>住所のうしろの条件として送った</b>。これは HTML の決まりで、仕様にも書かれている。住所にすでに条件があれば、それらは消されて入力欄の内容に置き換わる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで HTTPie は思ったとおりに動いたんでしょう？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>分からん。すべてが一貫していることを期待しないほうがいい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>公式に決まっている解決法は、<b>動詞を GET から POST に変える</b>ことだ。</div></div>
+    </div>
+
+    <div class="warn-box">
+      <h4>⚠️ 何が起きているか</h4>
+      <p><code>Form()</code> は「本体の中に入力欄の値がある」ことを期待します。しかしブラウザは、<code>method="get"</code> の場合、入力欄の値を住所のうしろに <code>?name=...</code> の形で付けて送り、本体は空にします。</p>
+      <p>結果として、FastAPI は「本体に <code>name</code> が無い」と判断し、422 を返します。値は届いているのに、置かれている場所が違う、という状態です。</p>
+    </div>
+
+    <h3 class="blk" id="s1-post">POST に変えて解決</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">窓口側の動詞を変えます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、入力欄の値を受け取る部品を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Form
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># get ではなく post に変える。これが解決の要点。</span>
+<span class="fn">@app.post</span>(<span class="str">"/who2"</span>)
+<span class="cmt"># 受け取り方は変わらない。Form() のままでよい。</span>
+<span class="kw">def</span> <span class="fn">greet2_post</span>(name: <span class="kw">str</span> = <span class="fn">Form</span>()):
+    <span class="kw">return</span> <span class="str">f"Hello, {name}?"</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">画面側も、動詞を合わせます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">&lt;!-- method を post に変えた。これで値は本体に入って送られる。 --&gt;</span>
+&lt;<span class="tag2">form</span> action=<span class="str">"http://localhost:8000/who2"</span> method=<span class="str">"post"</span>&gt;
+Say hello to my little friend:
+<span class="cmt">&lt;!-- 今回は最初の値を入れていないので、空の状態から入力する。 --&gt;</span>
+&lt;<span class="tag2">input</span> type=<span class="str">"text"</span> name=<span class="str">"name"</span>&gt;
+&lt;<span class="tag2">input</span> type=<span class="str">"submit"</span>&gt;
+&lt;/<span class="tag2">form</span>&gt;
+<span class="cmt">&lt;!-- --- ブラウザで名前を入れて送信した結果 --- --&gt;</span>
+<span class="cmt">&lt;!-- "Hello, Bob Frapples?" --&gt;</span>
+<span class="cmt">&lt;!-- HTTPie で試したときと同じ結果になった。 --&gt;</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ブラウザで取り直して名前を入力すると、HTTPie のときと同じ結果になる。結論は、<b>HTML のファイルから入力欄を送るときは POST を使う</b>、だ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">❌</div><h4><code>method="get"</code></h4><p>値は住所のうしろに付き、本体は空になります。<code>Form()</code> では受け取れず、422 が返ります。</p><span class="pill">避ける</span></div>
+      <div class="mini"><div class="ic">✅</div><h4><code>method="post"</code></h4><p>値は本体に入って送られます。<code>Form()</code> で正しく受け取れます。</p><span class="pill">こちらを使う</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：どうしても GET で受けたい場合</h4>
+      <p>検索の窓口のように「結果の住所をそのまま共有したい」場合は、GET のままにしたいことがあります。その場合は、受け取る側を <code>Form()</code> ではなく <code>Query()</code>（あるいは何も付けない）に変えます。</p>
+      <p>つまり「入力欄が値を住所のうしろに付けてくる」という動きに、受け取る側を合わせる、という解決の仕方です。どちらに合わせるかは、住所を共有したいかどうかで決まります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>入力欄を受け取る窓口が書ける</li>
+        <li>「ブラウザの入力欄が思ったとおりに動かない」ときの原因を見抜ける</li>
+        <li>GET と POST の使い分けが身につく</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>Form()</code> で入力欄の値を受け取る</li>
+        <li><code>python-multipart</code> が必要</li>
+        <li>HTML の入力欄は <code>method="post"</code> が基本</li>
+        <li>ブラウザの GET の入力欄は、値が住所のうしろに移される</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② テンプレート ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>テンプレート<span class="tag">内容が変わる HTML を作る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Jinja2 のテンプレートで、内容が変わる HTML を組み立てます。<code>{{ 変数 }}</code> で差し込み、<code>{% for %}</code> で繰り返します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>テンプレート</b>は、あらかじめ形を作っておいた文章の中に、サーバから値を差し込むための場所を用意しておくものだ。第15章の<b>内容が固定されたファイル</b>と違い、その都度内容が変わる HTML を作るのが目的だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Flask を使ってきた人は、関連する取り組みである <b>Jinja</b>（Jinja2 とも呼ぶ）を知っている。FastAPI は Jinja だけでなく、他の仕組みにも対応している。</div></div>
+    </div>
+
+    <h3 class="blk">準備の手順</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>フォルダを作る</h4><p><code>main.py</code> の隣に <code>template/</code> というフォルダを作る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div></div><div class="body"><h4>テンプレートを置く</h4><p>差し込みの場所を書いた HTML のファイルを、その中に置く。</p></div></div>
+    </div>
+
+    <h3 class="blk" id="s2-html">template/list.html</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">2つの表を作る HTML です。中に、繰り返しと差し込みの指示が入っています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">&lt;!-- HTML の全体の始まり。 --&gt;</span>
+&lt;<span class="tag2">html</span>&gt;
+<span class="cmt">&lt;!-- 1つめの表。bgcolor は背景色を指定する古い書き方。見た目を簡単に分けるために使っている。 --&gt;</span>
+&lt;<span class="tag2">table</span> bgcolor=<span class="str">"#eeeeee"</span>&gt;
+  &lt;<span class="tag2">tr</span>&gt;
+    <span class="cmt">&lt;!-- th は見出しのマス。colspan=3 は、横に3マス分をつなげる指定。 --&gt;</span>
+    &lt;<span class="tag2">th</span> colspan=3&gt;Creatures&lt;/<span class="tag2">th</span>&gt;
+  &lt;/<span class="tag2">tr</span>&gt;
+  &lt;<span class="tag2">tr</span>&gt;
+    <span class="cmt">&lt;!-- 各列の見出しを並べる。 --&gt;</span>
+    &lt;<span class="tag2">th</span>&gt;Name&lt;/<span class="tag2">th</span>&gt;
+    &lt;<span class="tag2">th</span>&gt;Description&lt;/<span class="tag2">th</span>&gt;
+    &lt;<span class="tag2">th</span>&gt;Country&lt;/<span class="tag2">th</span>&gt;
+    &lt;<span class="tag2">th</span>&gt;Area&lt;/<span class="tag2">th</span>&gt;
+    &lt;<span class="tag2">th</span>&gt;AKA&lt;/<span class="tag2">th</span>&gt;
+  &lt;/<span class="tag2">tr</span>&gt;
+<span class="cmt">&lt;!-- ここから繰り返し。creatures という一覧から1件ずつ取り出し、creature という名前で扱う。 --&gt;</span>
+{% <span class="kw">for</span> creature <span class="kw">in</span> creatures: %}
+  &lt;<span class="tag2">tr</span>&gt;
+    <span class="cmt">&lt;!-- 二重の波かっこは「ここに値を差し込む」という指示。td は普通のマス。 --&gt;</span>
+    &lt;<span class="tag2">td</span>&gt;{{ creature.name }}&lt;/<span class="tag2">td</span>&gt;
+    &lt;<span class="tag2">td</span>&gt;{{ creature.description }}&lt;/<span class="tag2">td</span>&gt;
+    &lt;<span class="tag2">td</span>&gt;{{ creature.country }}&lt;/<span class="tag2">td</span>&gt;
+    &lt;<span class="tag2">td</span>&gt;{{ creature.area }}&lt;/<span class="tag2">td</span>&gt;
+    &lt;<span class="tag2">td</span>&gt;{{ creature.aka }}&lt;/<span class="tag2">td</span>&gt;
+  &lt;/<span class="tag2">tr</span>&gt;
+<span class="cmt">&lt;!-- ここまでが1件分。件数の分だけ、この間が繰り返される。 --&gt;</span>
+{% <span class="kw">endfor</span> %}
+&lt;/<span class="tag2">table</span>&gt;
+
+<span class="cmt">&lt;!-- 表と表の間の改行。 --&gt;</span>
+&lt;<span class="tag2">br</span>&gt;
+
+<span class="cmt">&lt;!-- 2つめの表。背景色を変えて区別している。 --&gt;</span>
+&lt;<span class="tag2">table</span> bgcolor=<span class="str">"#dddddd"</span>&gt;
+  &lt;<span class="tag2">tr</span>&gt;
+    &lt;<span class="tag2">th</span> colspan=2&gt;Explorers&lt;/<span class="tag2">th</span>&gt;
+  &lt;/<span class="tag2">tr</span>&gt;
+  &lt;<span class="tag2">tr</span>&gt;
+    &lt;<span class="tag2">th</span>&gt;Name&lt;/<span class="tag2">th</span>&gt;
+    &lt;<span class="tag2">th</span>&gt;Country&lt;/<span class="tag2">th</span>&gt;
+    &lt;<span class="tag2">th</span>&gt;Description&lt;/<span class="tag2">th</span>&gt;
+  &lt;/<span class="tag2">tr</span>&gt;
+<span class="cmt">&lt;!-- こちらも同じ形で繰り返す。 --&gt;</span>
+{% <span class="kw">for</span> explorer <span class="kw">in</span> explorers: %}
+  &lt;<span class="tag2">tr</span>&gt;
+    &lt;<span class="tag2">td</span>&gt;{{ explorer.name }}&lt;/<span class="tag2">td</span>&gt;
+    &lt;<span class="tag2">td</span>&gt;{{ explorer.country }}&lt;/<span class="tag2">td</span>&gt;
+    &lt;<span class="tag2">td</span>&gt;{{ explorer.description }}&lt;/<span class="tag2">td</span>&gt;
+  &lt;/<span class="tag2">tr</span>&gt;
+{% <span class="kw">endfor</span> %}
+&lt;/<span class="tag2">table</span>&gt;
+&lt;/<span class="tag2">html</span>&gt;
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>見た目は気にしないので装飾は使わず、2つの表を区別するために、装飾が普及する前からある背景色の指定を使った。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>二重の波かっこ <code>{{ 変数 }}</code> は、差し込む Python の値を囲む。<code>{% if %}</code>, <code>{% for %}</code>, <code>{% endfor %}</code> は処理を書くための記号だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>このテンプレートは、<code>creatures</code> と <code>explorers</code> という2つの Python の値（それぞれのデータの一覧）を必要とする。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📥</div><h4><code>{{ }}</code> 二重の波かっこ</h4><p>「ここに値を差し込む」という意味。結果として、その値が文字になって埋め込まれます。</p></div>
+      <div class="mini"><div class="ic">🔁</div><h4><code>{% %}</code> 波かっことパーセント</h4><p>「繰り返す」「条件で分ける」といった処理を書きます。自分自身は出力されません。</p></div>
+    </div>
+
+    <h3 class="blk" id="s2-use">テンプレートを使う</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">テンプレートに値を渡して、組み立てた HTML を返す窓口です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体と、届いた問い合わせそのものを表す型を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Request
+<span class="cmt"># テンプレートを扱う部品を取り込む。</span>
+<span class="kw">from</span> fastapi.templating <span class="kw">import</span> Jinja2Templates
+<span class="cmt"># 表示するデータの取り出し元を取り込む。仮のデータを使う。</span>
+<span class="kw">import</span> fake.creature <span class="kw">as</span> creature_data
+<span class="kw">import</span> fake.explorer <span class="kw">as</span> explorer_data
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># テンプレートの置き場所を指定して、使えるようにする。</span>
+templates = <span class="fn">Jinja2Templates</span>(directory=<span class="str">"template"</span>)
+
+<span class="cmt"># /list への GET を、この下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/list"</span>)
+<span class="cmt"># request を引数に書くと、届いた問い合わせそのものが渡ってくる。</span>
+<span class="kw">def</span> <span class="fn">list_them</span>(request: Request):
+    <span class="cmt"># テンプレートの名前と、渡す値の組み合わせを指定して返す。</span>
+    <span class="kw">return</span> templates.<span class="fn">TemplateResponse</span>(
+        <span class="cmt"># 使うテンプレートのファイル名。上で指定したフォルダからの相対の名前。</span>
+        <span class="str">"list.html"</span>,
+        {
+            <span class="cmt"># request は必ず入れる。Jinja が内部で使うため、無いとエラーになる。</span>
+            <span class="str">"request"</span>: request,
+            <span class="cmt"># テンプレートの中の creatures に、この一覧が渡る。</span>
+            <span class="str">"creatures"</span>: creature_data.<span class="fn">get_all</span>(),
+            <span class="cmt"># 同じく explorers に、この一覧が渡る。</span>
+            <span class="str">"explorers"</span>: explorer_data.<span class="fn">get_all</span>(),
+        },
+    )
+<span class="cmt"># --- ブラウザで localhost:8000/list を開いた結果 ---</span>
+<span class="cmt"># 生き物の表と、探検家の表が並んだページが表示される。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>置き場所を指定して使えるようにし、テンプレートの名前と、渡す値の組み合わせを指定して返す。<code>request</code> は組み合わせの中に必ず入れる（Jinja が内部で使う）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>前の章の仮のデータを使っている。データベースが空でも、つながっていなくても動く。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ブラウザで <code>http://localhost:8000/list</code> を開くと、2つの表が組み立てられて表示される。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① テンプレート</h4><p>差し込みの場所を書いた HTML を用意する。</p><span class="when">template/list.html</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 値を渡す</h4><p>表示したいデータを、名前を付けて渡す。</p><span class="when">TemplateResponse</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ HTML が完成</h4><p>差し込みと繰り返しが処理され、完成した HTML が返る。</p><span class="when">ブラウザに表示</span></div>
+    </div>
+    <div class="loopback">↺ データが増えれば、テンプレートを変えなくても表の行が増えます。形と中身が分かれている、というのがこの仕組みの要点です。</div>
+
+    <div class="example">
+      <h4>🔎 具体例：テンプレートを使わないとどうなるか</h4>
+      <p>テンプレートを使わず、Python のコードの中で HTML の文字列を組み立てることもできます。しかし <code>"&lt;tr&gt;&lt;td&gt;" + name + "&lt;/td&gt;&lt;/tr&gt;"</code> のような書き方が並ぶと、どこが表の形で、どこが値なのかが読み取りにくくなります。見た目を1か所直したいときも、Python のコードの中を探すことになります。</p>
+      <p>テンプレートに分けておけば、表の形は HTML のファイルの中だけにあります。見た目の調整は HTML を触る人が、データの用意は Python を触る人が、それぞれ独立して進められます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>一覧の画面や管理の画面、状況をまとめた画面が作れる</li>
+        <li>画面と裏側が一体になった、小さな Web アプリが組める</li>
+        <li>Jinja2 の基本の書き方が身につく</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li><code>Jinja2Templates(directory="...")</code> で置き場所を指定</li>
+        <li><code>templates.TemplateResponse("file.html", 値の組み合わせ)</code> で返す</li>
+        <li>値の組み合わせには <code>request</code> が必須</li>
+        <li><code>{{ 変数 }}</code> で差し込み、<code>{% %}</code> で処理を書く</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「<code>Form()</code> で入力欄の値を受け取る。<code>python-multipart</code> が必要」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>入力欄も、依存性注入で受け取れる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「ブラウザの入力欄は GET だと値が住所のうしろに移る。POST が基本」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ここで詰まる人が多い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「Jinja2 で内容が変わる HTML、<code>{{ 変数 }}</code> で差し込み、<code>{% %}</code> で処理」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Flask を使ったことがある人には馴染みのある書き方だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「テンプレートを返すときは <code>request</code> が必須」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>忘れがちなので注意しよう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「API と HTML の両方を持つアプリが FastAPI でも作れる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>API 専用ではない、と覚えておこう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>Form() の使い方</div>
+      <p style="font-size:14px;margin:0">FastAPI で入力欄の <code>name</code> の値を受け取る処理を書いてください。必要なパッケージを入れるコマンドも併せて書いてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>pip install python-multipart</code> で必要なパッケージを入れる。そのうえで <code>from fastapi import FastAPI, Form</code> と書き、<code>@app.post("/greet")</code> の下に <code>def greet(name: str = Form()):</code> と書いて、受け取った値を使う。<code>python-multipart</code> が入力欄の処理に必須。<code>Form()</code> を引数の初期値の位置に書くと、送られた値が引数に入る。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>pip install python-multipart</code> を書いている<br>□ <code>Form</code> を取り込んでいる<br>□ 引数の初期値の位置に <code>= Form()</code> を使っている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>GET の入力欄の落とし穴</div>
+      <p style="font-size:14px;margin:0">ブラウザで入力欄の <code>method="get"</code> を使うと、なぜ FastAPI で受け取れない（422 になる）のですか？ 解決の方法は何ですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">HTML の決まりで、GET で送るときは入力欄の値が<b>住所のうしろの条件</b>として付けられる（もとからあった条件は消される）。<code>Form()</code> は本体の中に値があることを期待するが、GET では本体が空になるため「その項目が必要」という 422 が返る。解決の方法は <code>method="post"</code> に変えること。POST なら入力欄の値が決まった形式で本体に入り、<code>Form()</code> で正しく受け取れる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ GET では値が住所のうしろに移ることに触れている<br>□ <code>Form()</code> が本体を期待する仕組みに触れている<br>□ 解決の方法（POST に変える）を述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>Jinja2 の基本の書き方</div>
+      <p style="font-size:14px;margin:0">Jinja2 のテンプレートで「値の差し込み」と「一覧の繰り返し」を書く基本の形を、例とともに説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>値の差し込み</b>：<code>{{ 変数名 }}</code> のように二重の波かっこで囲む。例：<code>&lt;p&gt;Hello, {{ name }}!&lt;/p&gt;</code>。<b>一覧の繰り返し</b>：<code>{% for item in items: %}</code> … <code>{% endfor %}</code> で囲む。その中で <code>{{ item.field }}</code> などを使う。<code>{% %}</code> は処理を書くためのもの（条件、繰り返しなど）、<code>{{ }}</code> は値を差し込むためのもの、という違いがある。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>{{ 変数 }}</code> で差し込む書き方を示している<br>□ <code>{% for %} ... {% endfor %}</code> で繰り返す書き方を示している<br>□ 両者の役割の違い（差し込み と 処理）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>テンプレートを返すコード</div>
+      <p style="font-size:14px;margin:0">FastAPI で <code>template/list.html</code> を <code>creatures</code> という値とともに組み立てて返すコードを書いてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>from fastapi import FastAPI, Request</code> と <code>from fastapi.templating import Jinja2Templates</code> を書き、<code>templates = Jinja2Templates(directory="template")</code> で置き場所を指定する。窓口の処理は <code>def list_creatures(request: Request):</code> とし、<code>return templates.TemplateResponse("list.html", {"request": request, "creatures": creatures})</code> と書く。渡す値の組み合わせには <code>request</code> が必須（Jinja が内部で使う）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>Jinja2Templates</code> の取り込みと置き場所の指定に触れている<br>□ <code>TemplateResponse</code> の使い方を正しく書いている<br>□ <code>request</code> を渡す値に含めている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>静的ファイルとテンプレートの違い</div>
+      <p style="font-size:14px;margin:0">第15章の <code>StaticFiles</code> と、本章の <code>Jinja2Templates</code>、どう使い分けますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>StaticFiles</code> は内容が固定されたファイル（HTML、装飾、画像など）をそのまま配信する仕組み。サーバ側で内容を変えない。<code>Jinja2Templates</code> は、値の差し込み口を持つ HTML を、問い合わせのたびに組み立てる仕組み。データベースから取ったデータを表示するなど、内容が状況によって変わる場合に使う。両方を一緒に使うこともでき、テンプレートの中から <code>/static/style.css</code> のような固定のファイルを参照するのは一般的。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 前者が固定の内容、後者がその都度の組み立て、と述べている<br>□ 使い分けの基準（内容が変わるかどうか）に触れている<br>□ 一緒に使えることに触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>問い合わせの入力欄を作る</h4><p>簡単な入力欄と、それを受け取る窓口を自分で書いて試す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>Jinja の応用を学ぶ</h4><p>公式ドキュメント（jinja.palletsprojects.com）で、値の加工や、テンプレートの使い回しを学ぶ。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">&lt;!-- 縦棒のあとに書くと、値を加工できる。upper は大文字にする指定。 --&gt;</span>
+&lt;<span class="tag2">p</span>&gt;{{ name|upper }}&lt;/<span class="tag2">p</span>&gt;
+<span class="cmt">&lt;!-- 例：name が "haru" なら、HARU と表示される。 --&gt;</span>
+
+<span class="cmt">&lt;!-- 条件で表示を分ける書き方。 --&gt;</span>
+{% <span class="kw">if</span> creatures %}
+  &lt;<span class="tag2">p</span>&gt;{{ creatures|length }} 件あります&lt;/<span class="tag2">p</span>&gt;
+{% <span class="kw">else</span> %}
+  &lt;<span class="tag2">p</span>&gt;まだ登録されていません&lt;/<span class="tag2">p</span>&gt;
+{% <span class="kw">endif</span> %}
+<span class="cmt">&lt;!-- length は件数を数える指定。0件のときだけ別の文章を出せる。 --&gt;</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>同じデータを2通りで出す</h4><p>第8章の一覧を、JSON を返す版と HTML を返す版の両方で作ってみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>実際の送信を観察する</h4><p>ブラウザの開発者向けの道具で、送信時の形式の違いを見てみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「データの発見と可視化」へ</h4><p>データの加工や、見える形にする道具との組み合わせを学ぶ。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第16章「フォームとテンプレート」の図解 ― 原文の全節（フォーム（GET の落とし穴・POST での解決）／テンプレート（list.html・テンプレートを使う））＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

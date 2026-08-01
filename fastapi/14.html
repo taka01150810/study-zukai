@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第14章 データベース、データサイエンス、そして少しのAI ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:28px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:22px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+  .warn-box{border:1px solid #ff6b8b55; background:#ff6b8b0f; border-radius:14px; padding:14px 18px; margin:16px 0}
+  .warn-box h4{margin:0 0 7px; color:#ff9db3; font-size:14px}
+  .warn-box p{margin:0; font-size:13.5px; color:#f5d5dc}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第14章</div>
+  <h1>第14章　データベース、データサイエンス、そして少しのAI</h1>
+  <p>第10章で触れた SQLite から一歩進んで、主要なデータベースと接続部品、SQLAlchemy の3つの段階、SQLModel、表形式でないデータベース、JSON に対応した SQL、新しい EdgeDB、そして機械学習向けの道具まで。最後に、小さな言語モデルを FastAPI から呼ぶ実演もあります。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全11節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① データ・ストレージの選択肢</a>
+  <a href="#s2">② リレーショナルデータベースとSQL</a>
+  <a href="#s3">③ SQLAlchemy</a>
+  <a class="sub" href="#s3-core">└ コア</a>
+  <a class="sub" href="#s3-expr">└ 式言語</a>
+  <a class="sub" href="#s3-orm">└ ORM</a>
+  <a href="#s4">④ SQLModel</a>
+  <a href="#s5">⑤ SQLite</a>
+  <a href="#s6">⑥ PostgreSQL</a>
+  <a href="#s7">⑦ EdgeDB</a>
+  <a href="#s8">⑧ 非リレーショナル（NoSQL）</a>
+  <a class="sub" href="#s8-redis">└ Redis / MongoDB / Cassandra / Elasticsearch</a>
+  <a href="#s9">⑨ SQL における NoSQL 機能</a>
+  <a href="#s10">⑩ データベース負荷テスト（Faker）</a>
+  <a href="#s11">⑪ データサイエンスとAI</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">リレーショナルデータベース</div><p>行と列の表でデータを持つデータベース。SQL という言語で問い合わせます。</p></div>
+    <div class="item"><div class="w">NoSQL</div><p>表の形にしばられないデータベースの総称。「SQL を使わない」または「SQL だけではない」の意味です。</p></div>
+    <div class="item"><div class="w">ドライバ</div><p>Python から特定のデータベースにつなぐための、専用の接続部品です。</p></div>
+    <div class="item"><div class="w">DB-API</div><p>Python からデータベースを扱うときの、共通の呼び出し方の取り決めです。</p></div>
+    <div class="item"><div class="w">SQLAlchemy</div><p>Python でデータベースを扱う定番のパッケージ。3つの段階の使い方があります。</p></div>
+    <div class="item"><div class="w">ORM</div><p>データベースの表を、プログラムの中のデータとして扱う仕組み。SQL を自動で組み立てます。</p></div>
+    <div class="item"><div class="w">SQLModel</div><p>SQLAlchemy と Pydantic を組み合わせた、FastAPI の作者によるパッケージです。</p></div>
+    <div class="item"><div class="w">接続プール</div><p>データベースへのつながりを何本か用意しておき、使い回す仕組みです。</p></div>
+    <div class="item"><div class="w">トランザクション</div><p>ひとまとまりの操作を、全部確定するか全部取り消すかのどちらかにする仕組みです。</p></div>
+    <div class="item"><div class="w">方言 <span>dialect</span></div><p>データベースの種類ごとに少しずつ違う、SQL の書き方の差のことです。</p></div>
+    <div class="item"><div class="w">正規形</div><p>データの重複を減らすための、表の作り方の決まり。1つのマスに1つの値、などです。</p></div>
+    <div class="item"><div class="w">正規化／非正規化</div><p>重複を減らす形に整えることと、あえて重複を持たせて取り出しを速くすることです。</p></div>
+    <div class="item"><div class="w">結合 <span>join</span></div><p>複数の表を、共通の値でつなげて1つの結果にすることです。</p></div>
+    <div class="item"><div class="w">スカラー</div><p>1つの値。数や文字など、それ以上分けられないものを指します。</p></div>
+    <div class="item"><div class="w">コンポーザブル</div><p>小さなものを組み合わせて、大きなものを作れる性質のことです。</p></div>
+    <div class="item"><div class="w">EdgeDB / EdgeQL</div><p>SQL の書きにくさを避けることを目指した、新しいデータベースと、その問い合わせ言語です。</p></div>
+    <div class="item"><div class="w">Redis</div><p>すべてをメモリ上に置くデータの置き場。非常に速く読み書きできます。</p></div>
+    <div class="item"><div class="w">MongoDB</div><p>1件ごとに項目の構成が違ってもよい、文書の形でデータを持つデータベースです。</p></div>
+    <div class="item"><div class="w">コレクション／ドキュメント</div><p>MongoDB での、表にあたるものと、行にあたるものです。</p></div>
+    <div class="item"><div class="w">Cassandra</div><p>何百台にも分けて動かせる、大規模向けのデータベースです。</p></div>
+    <div class="item"><div class="w">Elasticsearch</div><p>データベースというより、文章の中を高速に探すための索引に近いものです。</p></div>
+    <div class="item"><div class="w">全文検索</div><p>文章の中身から、指定した言葉を含むものを探すことです。</p></div>
+    <div class="item"><div class="w">Faker</div><p>名前や住所など、それらしい仮のデータを大量に作る Python のパッケージです。</p></div>
+    <div class="item"><div class="w">pandas</div><p>表の形のデータを、プログラムで加工するための Python のパッケージです。</p></div>
+    <div class="item"><div class="w">PyTorch</div><p>機械学習でよく使われる、計算のための道具です。</p></div>
+    <div class="item"><div class="w">LLM <span>大規模言語モデル</span></div><p>大量の文章から学習して、文章を作り出す仕組みのことです。</p></div>
+    <div class="item"><div class="w">Hugging Face / transformers</div><p>学習済みの各種のモデルを配布している場所と、それを使うための Python のパッケージです。</p></div>
+    <div class="item"><div class="w">幻覚 <span>hallucination</span></div><p>もっともらしいが事実と異なる内容を、モデルが自信を持って答えてしまうことです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">データの世界は深い</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠は本棚から分厚い SQL の本と、隣に並ぶ AI の本を取り出して並べました。「データの世界は深いぞ」。第10章で軽く触れた SQLite から一歩進んで、PostgreSQL、MySQL、Oracle、IBM Db2 の接続部品、SQLAlchemy の3つの段階、SQLModel、表形式でないデータベース（Redis／MongoDB／Cassandra／Elasticsearch）、JSON に対応した SQL、新しい EdgeDB、機械学習向けの Chroma まで一気に見わたします。最後に、小さな言語モデルを FastAPI から呼ぶ実演も体験します。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を5行で</span></h2></div>
+  <div class="card">
+    <p class="lead">表形式のデータベースは SQLAlchemy（3つの段階）か SQLModel（SQLAlchemy + Pydantic）で扱います。表形式でないものは Redis／MongoDB／Cassandra／Elasticsearch が代表で、それぞれ Python の接続部品があります。最近の SQL は JSON も扱えます。大量のデータでの確認には <b>Faker</b> が便利です。AI との連携は Hugging Face の transformers で、FastAPI から簡単に呼べます。「データベース」という言葉は3つの意味（種類／動いているもの／表の集まり）を持つので、話の流れで判断します。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>表形式のデータベースと、そうでないものの選択肢を客観的に比べられる</li>
+        <li>SQLAlchemy の3つの段階（素の SQL → 組み立て → ORM）を使い分けられる</li>
+        <li>SQLModel という FastAPI 向けの選択肢を知る</li>
+        <li>データの生成（Faker）と、大量データでの確認の基本が分かる</li>
+        <li>FastAPI と Hugging Face で、小さな AI の窓口を作れる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① 選択肢 ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>データ・ストレージの選択肢<span class="tag">言葉の整理から</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>「データベース」という言葉には3つの意味があります。データベースが解決するのは、複数からの利用・素早い検索・内容の一貫性です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最初に注意点を。「データベース」という言葉は3つの意味で使われる。①<b>サーバの種類</b>（PostgreSQL, SQLite, MySQL）、②<b>そのサーバの、実際に動いているもの</b>、③<b>その中の、表の集まり</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>「PostgreSQL データベースのデータベース」のような混乱を避けるため、話の流れで別の言葉を添える。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web サイトとデータベースは、ほとんどの場合セットで使われる。他の保存の方法もあるけど、本書はデータベースに絞る。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データベースが解決してくれることは3つ。①複数の場所から同時に使えること、②素早く探せること、③内容が食い違わないこと。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きく分けると、①SQL という言語で問い合わせる表形式のもの、②いろいろな問い合わせ方をする、表形式でないもの、の2種類だ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🏷️</div><h4>意味1：種類</h4><p>PostgreSQL、SQLite、MySQL といった、製品としての種類。</p></div>
+      <div class="mini"><div class="ic">▶️</div><h4>意味2：動いているもの</h4><p>その製品が、実際に起動している1つの実体。</p></div>
+      <div class="mini"><div class="ic">📚</div><h4>意味3：表の集まり</h4><p>その中にある、関連する表のまとまり。</p></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">👥</div><h4>複数からの利用</h4><p>同時に複数の場所から読み書きしても、壊れないようにします。</p></div>
+      <div class="mini"><div class="ic">🔍</div><h4>素早い検索</h4><p>索引によって、大量のデータからでもすぐ見つけられます。</p></div>
+      <div class="mini"><div class="ic">✅</div><h4>内容の一貫性</h4><p>途中で止まっても、中途半端な状態が残らないようにします。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>「データベース」の3つの意味</li>
+        <li>解決すること: 複数からの利用／素早い検索／一貫性</li>
+        <li>大分類: 表形式 と 表形式でないもの</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② リレーショナル ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>リレーショナルデータベースとSQL<span class="tag">主要な種類と接続部品</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python には共通の呼び出し方の取り決めがあり、主要なデータベースの接続部品がそれに対応しています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python には <b>DB-API</b> という、表形式のデータベースを扱うときの共通の取り決めがあり、主要なものの接続部品がこれに対応している。</div></div>
+    </div>
+
+    <h3 class="blk">主要なデータベースと Python の接続部品</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>データベース</th><th>接続部品</th><th>区分</th></tr>
+      <tr><td>SQLite</td><td>sqlite3</td><td rowspan="3">誰でも使える（オープンソース）</td></tr>
+      <tr><td>PostgreSQL</td><td>psycopg2, asyncpg</td></tr>
+      <tr><td>MySQL</td><td>MySQLdb, PyMySQL</td></tr>
+      <tr><td>Oracle</td><td>python-oracledb</td><td rowspan="3">商用</td></tr>
+      <tr><td>SQL Server</td><td>pyodbc, pymssql</td></tr>
+      <tr><td>IBM Db2</td><td>ibm_db</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk">主要な Python のパッケージ</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧪</div><h4>SQLAlchemy</h4><p>機能がひととおりそろったライブラリ。3つの段階で使えます。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>SQLModel</h4><p>FastAPI の作者による、SQLAlchemy と Pydantic の組み合わせ。</p></div>
+      <div class="mini"><div class="ic">📄</div><h4>records</h4><p>Requests の作者による、単純な問い合わせのための道具。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>DB-API が Python 標準の共通の呼び出し方</li>
+        <li>主要なもの: SQLite/PostgreSQL/MySQL/Oracle/SQL Server/Db2</li>
+        <li>Python のパッケージ: SQLAlchemy/SQLModel/records</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ SQLAlchemy ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>SQLAlchemy<span class="tag">3つの段階</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>SQLAlchemy は「コア」「式言語」「ORM」の3段階です。素の SQL で足りるうちはそれで、複雑になったら上の段階へ移ります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python の SQL 用のパッケージで最も広く使われている。「SQLAlchemy といえば ORM」と説明されることが多いけど、実際は複数の段階からできている。</div></div>
+    </div>
+
+    <h3 class="blk" id="s3-core">コア</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>SQLAlchemy の土台は <b>コア</b>だ。中身は、①共通の呼び出し方を実装した接続の管理役、②種類と接続部品と対象を表す住所、③つながりを何本か用意しておく仕組み、④ひとまとまりの操作を確定・取り消しする仕組み、⑤種類ごとの書き方の差の吸収、⑥素の SQL による問い合わせ、⑦次に説明する組み立てによる問い合わせ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>書き方の差を吸収してくれるおかげで、SQLAlchemy はいろいろな種類のデータベースを扱える。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>私自身は素の接続部品を使ってきたし、これからも使うけど、大規模なサイトや、特定の種類の機能を活かしたいなら、SQLAlchemy を使う価値がある。</div></div>
+    </div>
+
+    <h3 class="blk" id="s3-expr">SQLAlchemy 式言語</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これは <b>ORM ではない</b>。表に対する問い合わせを、別のやり方で表すものだ。保存の構造を Python の型（表・列）に対応づけ、操作を Python の処理（選ぶ・入れる）に対応づける。これらは最終的に素の SQL の文字列に変換され、何が起きたかを確認できる。データベースの種類に依存しない。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">まず、これまで書いてきた素の SQL の書き方です（第10章の再掲）。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 名前を指定して1件を取得する処理。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer:
+    <span class="cmt"># SQL の文を、文字列としてそのまま書いている。</span>
+    qry = <span class="str">"select * from explorer where name=:name"</span>
+    <span class="cmt"># 目印に入れる値を用意する。</span>
+    params = {<span class="str">"name"</span>: name}
+    <span class="cmt"># 実行する。</span>
+    curs.<span class="fn">execute</span>(qry, params)
+    <span class="cmt"># 1件を取り出して、扱いやすい形に変換して返す。</span>
+    <span class="kw">return</span> <span class="fn">row_to_model</span>(curs.<span class="fn">fetchone</span>())
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">同じことを、Python のコードで組み立てる書き方です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 必要な部品をまとめて取り込む。</span>
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> create_engine, MetaData, Table, Column, String, select
+
+<span class="cmt"># 接続の管理役を作る。文字列の中に、種類と場所が含まれている。</span>
+<span class="cmt"># sqlite:/// のあとがファイル名。種類を変えるときは、ここを書き換えるだけでよい。</span>
+engine = <span class="fn">create_engine</span>(<span class="str">"sqlite:///cryptid.db"</span>)
+<span class="cmt"># 表の定義をまとめて持っておく入れ物を作る。</span>
+metadata = <span class="fn">MetaData</span>()
+
+<span class="cmt"># 表の形を Python のコードで定義する。SQL の create table にあたる。</span>
+explorer_table = <span class="fn">Table</span>(
+    <span class="str">"explorer"</span>, metadata,
+    <span class="cmt"># 名前の列。文字を入れ、1件を特定する項目にする。</span>
+    <span class="fn">Column</span>(<span class="str">"name"</span>, String, primary_key=<span class="kw">True</span>),
+    <span class="cmt"># 国コードの列。</span>
+    <span class="fn">Column</span>(<span class="str">"country"</span>, String),
+    <span class="cmt"># 説明の列。</span>
+    <span class="fn">Column</span>(<span class="str">"description"</span>, String),
+)
+
+<span class="cmt"># 定義した表を、実際のデータベースに作る。すでにあれば何もしない。</span>
+metadata.<span class="fn">create_all</span>(engine)
+
+<span class="cmt"># 名前を指定して1件を取得する処理。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer:
+    <span class="cmt"># SQL の文字列を書く代わりに、Python の処理を組み合わせて問い合わせを作る。</span>
+    <span class="cmt"># .c は「その表の列」を指す書き方。== で条件を表す。</span>
+    stmt = <span class="fn">select</span>(explorer_table).<span class="fn">where</span>(explorer_table.c.name == name)
+    <span class="cmt"># with を使うと、この範囲を抜けるときに、つながりが自動で閉じられる。</span>
+    <span class="kw">with</span> engine.<span class="fn">connect</span>() <span class="kw">as</span> conn:
+        <span class="cmt"># 組み立てた問い合わせを実行し、1件を取り出す。</span>
+        row = conn.<span class="fn">execute</span>(stmt).<span class="fn">fetchone</span>()
+    <span class="cmt"># 扱いやすい形に変換して返す。</span>
+    <span class="kw">return</span> <span class="fn">row_to_model</span>(row)
+<span class="cmt"># --- この書き方の利点 ---</span>
+<span class="cmt"># 列の名前を間違えると、実行前に気づける（文字列ではなく名前として書くため）。</span>
+<span class="cmt"># データベースの種類が変わっても、この書き方は変えなくてよい。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>SQL が難しいと感じるなら試す価値がある。公式より読みやすい解説もある。</div></div>
+    </div>
+
+    <h3 class="blk" id="s3-orm">ORM</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ORM は、表や SQL の考え方ではなく、<b>その分野のデータの形</b>で問い合わせを表す。式言語よりずっと複雑だ。完全に対象を中心に据えた書き方を好む開発者は、たいてい ORM を選ぶ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI 関連の多くの本は、データベースの説明ですぐ ORM に飛びつく。気持ちは分かるけど、問題が2つある。別の考え方を新しく学ぶ必要があること、そして SQLAlchemy は優れたパッケージだが、包み隠した部分が常に隠れたままとは限らないことだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いちばん単純な進め方は「まず SQL だけを使い、手に負えなくなったら式言語や ORM に移る」だと私は思う。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>コア（素の SQL）</h4><p>SQL の文字列を自分で書く。何が起きるか完全に見えます。</p><span class="when">まずここから</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>式言語</h4><p>Python の処理を組み合わせて問い合わせを作る。種類に依存しません。</p><span class="when">SQL が複雑になったら</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>ORM</h4><p>データの形そのもので操作する。対象を中心に据えた書き方です。</p><span class="when">全体を対象中心にしたいなら</span></div>
+    </div>
+    <div class="loopback">↺ 上の段階ほど書く量は減りますが、覚えることが増え、内部で何が起きているかが見えにくくなります。</div>
+
+    <div class="example">
+      <h4>🔎 具体例：「包み隠した部分が隠れたままとは限らない」とは</h4>
+      <p>ORM を使うと、<code>user.orders</code> と書くだけで注文の一覧が取れます。便利ですが、これが利用者100人分のループの中にあると、内部では101回の問い合わせが発行されます（1回で利用者を取り、100回それぞれの注文を取る）。1回で済むはずが101回になり、極端に遅くなります。</p>
+      <p>この問題に気づいて直すには、結局「内部でどんな SQL が出ているか」を理解する必要があります。SQL を隠したはずが、性能の問題を通じて表に出てくる、というのがここで言われている点です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>SQLAlchemy = コア + 式言語 + ORM の階層</li>
+        <li>コア: つながり・使い回し・書き方の差・素の SQL</li>
+        <li>式言語: Python のコードで組み立てる問い合わせ</li>
+        <li>ORM: データの形そのものでの問い合わせ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ SQLModel ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>SQLModel<span class="tag">FastAPI との相性が良い選択肢</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>SQLModel は SQLAlchemy の ORM と Pydantic を組み合わせたものです。FastAPI との組み合わせがなめらかになります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI の作者は、FastAPI / Pydantic / SQLAlchemy の良いところを取って <b>SQLModel</b> を作った。Web の世界の書き方を、データベースの側にも持ち込んでいる。SQLAlchemy の ORM と、Pydantic のデータの定義と確認を、1つに合わせている。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📄</div><h4>SQLAlchemy だけの場合</h4><p>データベースの表の形と、FastAPI が受け渡しに使う形を、別々に定義する必要があります。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>SQLModel の場合</h4><p>1つの定義で、両方を兼ねられます。書く量が減り、食い違いも起きません。</p><span class="pill">FastAPI 向け</span></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>SQLModel: FastAPI の作者による</li>
+        <li>SQLAlchemy の ORM と Pydantic を合わせたもの</li>
+        <li>FastAPI 向けの選択肢</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ SQLite ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>SQLite<span class="tag">世界でいちばん広く使われている</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>SQLite は誰でも自由に使えて、ブラウザやスマートフォンすべてに入っています。大規模な用途にも応用できます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第10章で紹介した SQLite。<b>誰のものでもない</b>形で公開されていて、これ以上に自由に使えるものはない。ブラウザやスマートフォンすべてに搭載されていて、世界で最も広く使われているソフトの1つだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表形式のデータベースを選ぶとき見落とされがちだけど、複数の SQLite を並べれば、PostgreSQL のような強力なサーバと同じように、大規模なサービスも支えられる。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>SQLite = 誰でも自由に使える</li>
+        <li>世界で最も広く使われているソフトの1つ</li>
+        <li>大規模な用途にも応用できる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ PostgreSQL ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>PostgreSQL<span class="tag">SQL が標準になった経緯</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>PostgreSQL は Ingres から発展したもので、今のオープンソースでの定番です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表形式のデータベースの初期は、IBM の System R が先駆けで、公開された Ingres と、商用の Oracle が新しい市場を奪い合った。Ingres は QUEL、System R は SQL という言語を使っていた。SQL が標準として採用された理由は、Oracle と IBM の影響力だった。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>数年後、Michael Stonebraker が Ingres を発展させて <b>PostgreSQL</b> を作った。今のオープンソースの開発者は PostgreSQL を選ぶ傾向にある。MySQL は数年前まで人気で、今も使われている。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>PostgreSQL = Ingres から発展したもの</li>
+        <li>今のオープンソースでの定番</li>
+        <li>他の選択肢: MySQL</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ EdgeDB ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>EdgeDB<span class="tag">SQL の書きにくさを避ける試み</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>SQL には、問い合わせを組み合わせにくいという弱点があります。EdgeDB はそれを避ける新しい言語を提案しています。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>SQL は成功したけど、問い合わせを書きにくくする設計上の弱点がある。SQL の土台にある数学の考え方と違って、SQL という言語自体は<b>組み合わせにくい</b>。大きな問い合わせの中に問い合わせを入れ子にするのが難しく、複雑で長いコードになる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>EdgeDB</b> は Python の非同期の仕組みの作者によって、Python で書かれたデータベースだ。「SQL の次」あるいは「つながりを扱う表形式」と説明される。内部では PostgreSQL を使っている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これが提供するのは <b>EdgeQL</b> だ。SQL の書きにくい部分を避けた新しい問い合わせの言語で、実際には PostgreSQL が実行する SQL に翻訳される。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これが EdgeDB を越えて広まるか、SQL の代わりになるかは、時間が経てば分かる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：「組み合わせにくい」とはどういうことか</h4>
+      <p>「各国の探検家のうち、その国でいちばん説明が長い1人」を取りたいとします。SQL では、まず国ごとの最大の長さを求める問い合わせを書き、それを別の問い合わせの中に埋め込み、さらに元の表と結合する、という書き方になります。3つの部分が入れ子と結合で絡み合い、1つのまとまりとして読みにくくなります。</p>
+      <p>「小さな問い合わせを部品として作り、それを組み合わせて大きな問い合わせにする」ということが、SQL では素直にできません。これが弱点として指摘されている点です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>SQL の弱点: 組み合わせにくい</li>
+        <li>EdgeDB = SQL の次を目指す。内部は PostgreSQL</li>
+        <li>EdgeQL = SQL の代わりを目指す問い合わせの言語</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ NoSQL ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>非リレーショナル（NoSQL）データベース<span class="tag">4つの代表</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>代表は Redis（メモリ上）、MongoDB（文書の形）、Cassandra（分散）、Elasticsearch（文章の検索）です。用途で選び分けます。</p>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>データベース</th><th>Python の接続部品</th><th>特徴</th></tr>
+      <tr><td>Redis</td><td>redis-py</td><td>すべてメモリ上。非常に速い</td></tr>
+      <tr><td>MongoDB</td><td>PyMongo, Motor</td><td>1件ごとに項目が違ってよい</td></tr>
+      <tr><td>Apache Cassandra</td><td>DataStax の接続部品</td><td>何百台にも分けられる</td></tr>
+      <tr><td>Elasticsearch</td><td>Python 用のクライアント</td><td>文章の中を高速に探せる</td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>NoSQL</b> は文字どおり「SQL を使わない」こともあるけど、「SQL だけではない」という意味のこともある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表形式のものはデータに構造を強制し、長方形の表（列の項目 + 行のデータ）として見られる。重複を減らして速さを上げるため、<b>決まった形</b>に整えられる（例：1つのマスに1つの値だけ）。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表形式でないものは、この決まりをゆるめる。1件ごとに項目の種類を変えられる場合もある。形は長方形の枠ではなく、JSON や Python で表せる、でこぼこした構造になる。</div></div>
+    </div>
+
+    <h3 class="blk" id="s8-redis">4つの代表</h3>
+    <div class="grid4">
+      <div class="mini"><div class="ic">⚡</div><h4>Redis</h4><p>完全にメモリ上で動くデータの置き場。保存と復元もできます。Python のデータの形とよく合うため、非常に人気です。</p><span class="pill">速さ重視</span></div>
+      <div class="mini"><div class="ic">📄</div><h4>MongoDB</h4><p>表形式でないものの定番。SQL の表にあたるものと行にあたるものがあります。使う主な理由は、<b>形をあらかじめ決めなくてよい</b>ことです。</p><span class="pill">形が定まらないとき</span></div>
+      <div class="mini"><div class="ic">🌐</div><h4>Cassandra</h4><p>何百台にも分けられる大規模向け。Java で作られています。代わりのものとして、C++ で作られ互換性のある ScyllaDB もあります。</p><span class="pill">大規模</span></div>
+      <div class="mini"><div class="ic">🔎</div><h4>Elasticsearch</h4><p>データベースそのものというより、<b>データベースの索引</b>に近いものです。文章の中を探す用途によく使われます。</p><span class="pill">文章の検索</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：形をあらかじめ決めなくてよい、とは</h4>
+      <p>商品を扱うとします。本には「著者」「ページ数」、服には「サイズ」「色」、食品には「賞味期限」「産地」と、種類ごとに必要な項目が違います。表形式では、すべての項目を持つ1つの表にして大半を空にするか、種類ごとに表を分けるかになります。</p>
+      <p>文書の形で持てば、本の1件は著者とページ数を、服の1件はサイズと色を持つ、という形で、1つのまとまりに混在させられます。ただし「必ずこの項目がある」という保証は無くなるので、読み取る側で確認する必要が出てきます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>主な4つ: Redis（メモリ）／MongoDB（文書）／Cassandra（分散）／Elasticsearch（文章の検索）</li>
+        <li>形をあらかじめ決めない、JSON に近い構造</li>
+        <li>用途ごとに選び分ける</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ SQL の NoSQL 機能 ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>SQLデータベースにおけるNoSQL機能<span class="tag">二択ではなくなった</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>最近の表形式のデータベースは JSON も扱えます。「SQL か、そうでないか」の二択ではなくなりました。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表形式のものは、昔から<b>決まった形</b>に従うよう制約されていた。基本の決まりの1つは「各マスの値は1つの値だけ」（並びなどは入れられない）だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表形式でないもの（あるいは<b>文書型</b>）は JSON をそのまま扱え、「でこぼこした」データの唯一の選択肢だった。よく<b>重複を許す形</b>にされ、1つの文書に必要な全部のデータが含まれる。SQL では、1つの完全な内容を組み立てるために、表と表を<b>つなげる</b>必要があった。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最近の SQL の取り決めの改定で、JSON のデータを表形式のものにも入れられるようになった。一部のものはマスの中に複雑なデータを持て、マスの中を検索したり索引を付けたりもできる。JSON を扱う機能は SQLite/PostgreSQL/MySQL/Oracle などで、それぞれのやり方で対応されている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>JSON と SQL の組み合わせは、両方の良いところを取れる。SQL は古くから存在し、他の表との結びつきや追加の索引など、便利な機能を持つ。SQL はある程度そろっているが、表形式でないものの問い合わせ方は、それぞれ全く違う。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>EdgeQL のような新しい設計も、両方の利点を合わせることを目指している。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データを長方形の枠に収められないときは、表形式でないもの、JSON に対応した表形式のもの、SQL の次を目指すもの、を検討するといい。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>ほぼ規則的なデータ</h4><p>表形式のデータベースをそのまま使う。結びつきや索引の機能が活きる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>ほぼ規則的だが、一部が柔軟</h4><p>JSON に対応した表形式のものを使う。柔軟な部分だけを JSON の列にする。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div></div><div class="body"><h4>ほとんどが不規則</h4><p>表形式でないもの、あるいは SQL の次を目指すものを検討する。</p></div></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>今の表形式のデータベースは JSON も扱える</li>
+        <li>SQL + JSON で両方の良いところを取れる</li>
+        <li>形にしにくいデータ → 表形式でないもの／JSON 対応／SQL の次</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ 負荷テスト ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>データベース負荷テスト<span class="tag">Faker で10万件作る</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>大量のデータを Faker で作って、書き込みと読み取りの時間を測ります。そこから、まとめて入れる窓口や、ページ分割の必要性が見えてきます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書のデータの例はごくわずかだ。データベースを本当に試すには、数百万件が欲しい。手で足すより、<b>Faker</b> のような Python のパッケージを使うほうが楽だ。名前・場所など、いろいろな種類のデータを素早く作れる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">10万件を作り、書き込みと読み取りの時間を測る確認用のコードです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 環境変数の設定と、時間の測定に使う標準の機能を取り込む。</span>
+<span class="kw">import</span> os
+<span class="kw">import</span> time
+<span class="cmt"># それらしい仮のデータを作る道具を取り込む。</span>
+<span class="kw">from</span> faker <span class="kw">import</span> Faker
+<span class="cmt"># すでにある場合の知らせを取り込む。</span>
+<span class="kw">from</span> errors <span class="kw">import</span> Duplicate
+
+<span class="cmt"># 取り込みより前に、確認専用のファイルを保存先に指定する。本物を汚さないため。</span>
+os.environ[<span class="str">"CRYPTID_SQLITE_DB"</span>] = <span class="str">"cryptid_load.db"</span>
+
+<span class="cmt"># ここから下で、データの形と各層を取り込む。</span>
+<span class="kw">from</span> model.explorer <span class="kw">import</span> Explorer
+<span class="kw">from</span> data <span class="kw">import</span> explorer <span class="kw">as</span> data
+<span class="kw">from</span> service <span class="kw">import</span> explorer <span class="kw">as</span> service
+<span class="kw">import</span> requests
+
+<span class="cmt"># 作る件数。アンダースコアは桁の読みやすさのためのもので、値には影響しない。</span>
+NUM = <span class="num">100_000</span>
+
+<span class="cmt"># データを大量に作って保存する処理。</span>
+<span class="kw">def</span> <span class="fn">load</span>():
+    <span class="cmt"># 仮のデータを作る道具を用意する。</span>
+    fake = <span class="fn">Faker</span>()
+    <span class="cmt"># 開始の時刻を記録する。monotonic は、途中で時計が変わっても影響を受けない測り方。</span>
+    start = time.<span class="fn">monotonic</span>()
+    <span class="cmt"># 実際に保存できた件数を数えるための変数。</span>
+    count = <span class="num">0</span>
+    <span class="cmt"># 指定した回数だけ繰り返す。_ は「値を使わない」という意味の名前。</span>
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(NUM):
+        <span class="cmt"># それらしい名前を作る。</span>
+        name = fake.<span class="fn">name</span>()
+        <span class="cmt"># それらしい国コードを作る。</span>
+        country = fake.<span class="fn">country_code</span>()
+        <span class="cmt"># それらしい1文を作る。</span>
+        description = fake.<span class="fn">sentence</span>()
+        <span class="kw">try</span>:
+            <span class="cmt"># 作ったデータを保存する。</span>
+            data.<span class="fn">create</span>(<span class="fn">Explorer</span>(name=name, country=country, description=description))
+            count += <span class="num">1</span>
+        <span class="cmt"># 同じ名前がすでにある場合は、何もせず次に進む。</span>
+        <span class="cmt"># Faker は限られた候補から名前を作るので、繰り返すと重複が出る。</span>
+        <span class="kw">except</span> Duplicate:
+            <span class="kw">pass</span>
+    <span class="cmt"># 終了の時刻を記録する。</span>
+    end = time.<span class="fn">monotonic</span>()
+    <span class="cmt"># 実際に保存できた件数を表示する。</span>
+    <span class="fn">print</span>(<span class="str">f"{count} rows"</span>)
+    <span class="cmt"># かかった時間を表示する。</span>
+    <span class="fn">print</span>(<span class="str">f"write time: {end - start}"</span>)
+
+<span class="cmt"># データ層から直接、全件を読む時間を測る。</span>
+<span class="kw">def</span> <span class="fn">read_db</span>():
+    start = time.<span class="fn">monotonic</span>()
+    <span class="cmt"># 結果は使わないので _ に捨てている。時間だけを測りたいため。</span>
+    _ = data.<span class="fn">get_all</span>()
+    end = time.<span class="fn">monotonic</span>()
+    <span class="fn">print</span>(<span class="str">f"db read time: {end - start}"</span>)
+
+<span class="cmt"># 窓口を経由して全件を読む時間を測る。</span>
+<span class="kw">def</span> <span class="fn">read_api</span>():
+    start = time.<span class="fn">monotonic</span>()
+    <span class="cmt"># 実際に通信して取得する。</span>
+    r = requests.<span class="fn">get</span>(<span class="str">"http://localhost:8000/explorer"</span>)
+    <span class="cmt"># 受け取った内容を Python の値に直すところまで含めて測る。</span>
+    _ = r.<span class="fn">json</span>()
+    end = time.<span class="fn">monotonic</span>()
+    <span class="fn">print</span>(<span class="str">f"api read time: {end - start}"</span>)
+
+<span class="cmt"># 直接動かされたときだけ、下を実行する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="fn">load</span>()
+    <span class="fn">read_db</span>()
+    <span class="cmt"># 2回呼ぶのは、1回目に含まれる準備の時間を除くため。</span>
+    <span class="cmt"># これで、窓口経由との比較が公平になる。</span>
+    <span class="fn">read_db</span>()
+    <span class="fn">read_api</span>()
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ポイントは2つ。①すでにある場合の知らせを受け止めて無視している。Faker は限られた候補から名前を作るので、繰り返すと重複が出る。結果として10万件に届かないこともある。②読み取りを2回呼んでいる。1回目に含まれる立ち上がりの時間を除いて、窓口経由との比較を公平にするためだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">実行してみた結果です。数字の差に注目してください。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 確認用のコードを実行する。</span>
+$ python test_load.py
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 100000 rows</span>
+<span class="cmt">#   10万件が保存できた。</span>
+<span class="cmt"># write time: 14.868232927983627</span>
+<span class="cmt">#   書き込みに約15秒。1件ずつ保存しているため、それなりにかかる。</span>
+<span class="cmt"># db read time: 0.4025074450764805</span>
+<span class="cmt">#   データ層から直接読むと約0.40秒。</span>
+<span class="cmt"># db read time: 0.39750714192632586</span>
+<span class="cmt">#   2回目もほぼ同じ。1回目に特別な準備の時間は含まれていなかった。</span>
+<span class="cmt"># api read time: 2.597553930943832</span>
+<span class="cmt">#   窓口経由だと約2.6秒。データ層の6倍以上かかっている。</span>
+<span class="cmt">#   差の多くは、JSON の形に変換する処理と、通信の分。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>全件を窓口から読む時間は、データ層から直接読むよりずっと遅い。一部は FastAPI が JSON に変換する分だ。書き込みも速くはない。データ層には1件ずつ保存する処理しかなく、まとめて保存する処理が無いので、1件ずつ書いた。読み取りも「1件」か「全件」しかない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>まとめて入れたい場合は、新しい読み込みの処理と、新しい窓口（権限を限定したもの）を追加するのがいい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>表が10万行になることを想定するなら、誰でも1回の呼び出しで全行を取得できるべきではないかもしれない。<b>ページ分割</b>があれば便利だし、表を1つのファイルとしてまとめて取得する方法もある。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：この数字から何が分かるか</h4>
+      <p>窓口経由の全件取得に2.6秒かかっています。利用者が10人同時にこの窓口を使えば、サーバはその間ずっと変換の処理に占有されます。また、10万件分の JSON は数十メガバイトになり、通信量としても大きすぎます。</p>
+      <p>ここから「全件を返す窓口は、そもそも公開すべきではない」「ページ分割を入れて、1回あたり100件までにする」という設計の判断が導かれます。データを大量に入れて測らなければ、この判断には至りません。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Faker で大量の仮データを作る</li>
+        <li>まとめて入れる窓口の必要性</li>
+        <li>ページ分割の必要性</li>
+        <li>データ層と窓口経由での読み取り時間の差</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑪ データサイエンスとAI ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">11</div><h2>データサイエンスとAI<span class="tag">小さなモデルを FastAPI から呼ぶ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python はこの分野の主要な言語です。Hugging Face の transformers を使えば、FastAPI から小さなモデルを簡単に呼べます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python はデータを扱う分野、特に機械学習で最もよく使われる言語だ。多くのデータの加工が必要で、Python はそれが得意だからだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>開発者は、SQL では扱いにくいデータの操作のために <b>pandas</b> のような外部の道具を使う。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>PyTorch</b> は最も人気のある機械学習の道具で、Python のデータ操作の強みを活かしている。土台の計算は速さのために C/C++ を使うが、Python や Go は「上位のデータをまとめる仕事」に向いている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><b>Chroma</b> という新しい Python の道具は SQLite に似ているが、機械学習、特に<b>大規模言語モデル</b>に合わせたデータの置き場だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>AI の開発は複雑で速く進むが、巨額の費用をかけなくても、自分の機械で Python の AI を試せる。小さなモデルに、小さな FastAPI の窓口を付けてみよう。</div></div>
+    </div>
+
+    <div class="warn-box">
+      <h4>⚠️ 「モデル」という言葉の使い分け</h4>
+      <p>AI の分野と、Pydantic / FastAPI では「モデル」の意味が違います。Pydantic での「モデル」は、関連するデータの項目をまとめた型の定義です。AI での「モデル」は、大量のデータから規則性を学び取った仕組み全体を指します。同じ文書の中に両方が出てくることがあるので、どちらの意味かを意識して読みます。</p>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">必要なパッケージを入れます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 機械学習の計算のための土台を入れる。容量が大きいので時間がかかる。</span>
+$ pip install torch torchvision
+<span class="cmt"># 学習済みのモデルを簡単に使うための道具を入れる。</span>
+$ pip install transformers
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Successfully installed torch-2.1.0 torchvision-0.16.0</span>
+<span class="cmt"># Successfully installed transformers-4.35.0</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">小さなモデルを呼ぶ窓口です。全体で10行ほどです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 枠組み本体を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># 学習済みのモデルを、種類を指定するだけで使えるようにする機能を取り込む。</span>
+<span class="kw">from</span> transformers <span class="kw">import</span> pipeline
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+
+<span class="cmt"># 使うモデルを用意する。1つめの指定は「文章を受け取って文章を作る」種類。</span>
+<span class="cmt"># model= のあとが、使う学習済みモデルの名前。小さいものを選んでいる。</span>
+<span class="cmt"># この行はファイルの読み込み時に1度だけ動く。初回はダウンロードが走る。</span>
+generator = <span class="fn">pipeline</span>(<span class="str">"text2text-generation"</span>, model=<span class="str">"google/flan-t5-small"</span>)
+
+<span class="cmt"># /ai への GET を、この下の処理に結びつける。</span>
+<span class="fn">@app.get</span>(<span class="str">"/ai"</span>)
+<span class="cmt"># line は住所のうしろの条件から受け取る。何も渡されなければ、既定の質問を使う。</span>
+<span class="kw">def</span> <span class="fn">ai</span>(line: <span class="kw">str</span> = <span class="str">"What is the meaning of life?"</span>):
+    <span class="cmt"># 受け取った文章をモデルに渡す。max_length は、返す文章の長さの上限。</span>
+    response = <span class="fn">generator</span>(line, max_length=<span class="num">50</span>)
+    <span class="cmt"># 結果は一覧の形で返るので、その先頭の、作られた文章の部分だけを返す。</span>
+    <span class="kw">return</span> response[<span class="num">0</span>][<span class="str">"generated_text"</span>]
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>これを <code>uvicorn ai:app</code> で動かす。他のサーバが同じ入口で動いていないか確認してからね。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 質問を渡して呼んでみる。イコール2つは、住所のうしろの条件として渡す書き方。</span>
+$ http -b localhost:8000/ai line==<span class="str">"What are you?"</span>
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># "a sailor"</span>
+<span class="cmt">#   「船乗り」という答えが返ってきた。質問への答えとしては適切ではない。</span>
+<span class="cmt">#   これはモデルが小さいため。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>条件の渡し方でイコールを2つ書く点に注意。これはかなり小さなモデルで、質問にはあまりうまく答えない。</div></div>
+    </div>
+
+    <h3 class="blk">実際に返ってきた答えの例</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>質問</th><th>返ってきた答え</th><th>評価</th></tr>
+      <tr><td>猫は犬より優れているのか？</td><td>ノー</td><td>答えにはなっている</td></tr>
+      <tr><td>ビッグフットは朝食に何を食べる？</td><td>イカ</td><td><span class="down">根拠のない内容</span></td></tr>
+      <tr><td>誰が煙突から降りてくる？</td><td>鳴く豚</td><td><span class="down">明らかに誤り</span></td></tr>
+      <tr><td>ジョン・クリーズが所属していたグループは？</td><td>ビートルズ</td><td><span class="down">事実と異なる</span></td></tr>
+      <tr><td>厄介なとがった歯を持っているのは？</td><td>テディベア</td><td><span class="down">事実と異なる</span></td></tr>
+    </table>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>かつて同じ窓口が「ビッグフットは朝食に砂を食べる」と答えたこともある。この分野では、こういう、もっともらしいが事実と異なる答えを<b>幻覚</b>と呼ぶ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>もっと大きなモデルを使えば、より良い答えが得られるが、ダウンロードにも処理にも時間がかかる。よく知られた大きなものは、大量の処理装置を使い、集められる限りのデータで学習しているので、優れた答えを出す。</div></div>
+    </div>
+
+    <div class="warn-box">
+      <h4>⚠️ 幻覚への注意</h4>
+      <p>モデルは「分からない」とは答えず、もっともらしい形で何かを返します。上の例では、明らかにおかしいので気づけますが、実際の業務では「もっともらしく、しかし間違っている」答えが返ることがあります。</p>
+      <p>そのため、この種の仕組みを窓口に組み込む場合は、返ってきた内容をそのまま事実として扱わない設計が必要です。特に、判断や金額に関わる場面では、人の確認を挟むことが前提になります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Python = この分野の主要な言語</li>
+        <li>道具: pandas / PyTorch / TensorFlow</li>
+        <li>大規模言語モデル向けのデータの置き場: Chroma</li>
+        <li>Hugging Face の transformers と FastAPI で、小さなモデルを簡単に呼べる</li>
+        <li>用語: AI の「モデル」と Pydantic の「モデル」は別のもの</li>
+        <li>幻覚に注意する</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「『データベース』は3つの意味（種類／動いているもの／表の集まり）。話の流れで判断する」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>会話では混乱しやすいので、意識しておく。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「Python 標準の共通の呼び出し方、SQLAlchemy は3段階、SQLModel は ORM と Pydantic の組み合わせ」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>小〜中規模なら素の SQL、複雑になったら上の段階へ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「表形式でないもの：Redis（メモリ）／MongoDB（文書）／Cassandra（分散）／Elasticsearch（検索）」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>用途で選ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「今の SQL は JSON も扱える。両方の良いところを取れる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>「どちらか」という二択の考え方は、もう古い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「大量データの確認は Faker、AI の連携は transformers と FastAPI で簡単」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>試してみるのに便利な道具がそろっている。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>SQLAlchemy の3段階</div>
+      <p style="font-size:14px;margin:0">SQLAlchemy の3つの段階（コア／式言語／ORM）について、それぞれ何を扱うか説明してください。どう使い分けますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>コア</b>：共通の呼び出し方を実装した接続の管理役、つながりの使い回し、ひとまとまりの操作の確定と取り消し、種類ごとの書き方の差の吸収、素の SQL の実行を担ういちばん下の段階。素の SQL を書くならここ。<b>式言語</b>：SQL を Python のコード（表・列・選ぶ処理など）で組み立てる中間の段階。ORM ではなく、表を直接扱うが、Python らしく書ける。<b>ORM</b>：その分野のデータの形で問い合わせを表すいちばん上の段階。型と対象でデータベースを操作する。使い分けは、単純なアプリなら素の SQL とコアで十分。SQL が複雑になったら式言語、全体を対象中心にしたければ ORM。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つの段階すべてに触れている<br>□ それぞれの抽象の度合いの違いを説明している<br>□ 使い分けの指針を述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>SQLModel</div>
+      <p style="font-size:14px;margin:0">SQLModel とは何ですか？ SQLAlchemy の ORM と Pydantic それぞれとの関係を含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">SQLModel は FastAPI の作者が作った Python のライブラリで、SQLAlchemy の ORM と、Pydantic のデータの定義・確認を組み合わせたもの。1つの定義で「データベースの表の形」と「FastAPI の受け渡しの形」の両方として使える。SQLAlchemy だけだと別に Pydantic の定義も書く必要があるが、SQLModel ならそれが不要。FastAPI との組み合わせを優先する場合の選択肢。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ SQLAlchemy の ORM と Pydantic の組み合わせ、と述べている<br>□ 1つの定義で両方を兼ねられる、という利点に触れている<br>□ FastAPI の作者による、という背景に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>SQL と NoSQL の選択</div>
+      <p style="font-size:14px;margin:0">表形式のデータベースと、そうでないもののどちらを選ぶか、どんな観点で判断しますか？「今の SQL は JSON も扱える」という事実を踏まえて答えてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">データが長方形の表に収まる規則的なものなら、表形式のもの（PostgreSQL、SQLite）が向く。理由は、そろった強力な機能（他の表との結びつき、追加の索引、結合）、ひとまとまりの操作の保証、内容の一貫性。データが「でこぼこ」で形が定まらないなら、表形式でないもの（MongoDB、Redis、Elasticsearch）。ただし今の表形式のものは JSON の列に対応していて、表の中に半分だけ構造化されたデータを持てる。「どちらか」の二択ではなく、「ほぼ規則的だが一部が柔軟」なら JSON に対応した表形式、「ほとんど柔軟」なら表形式でないもの、と段階的に判断するのが今どき。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 両方の強みに触れている<br>□ JSON に対応した表形式のものの存在に言及している<br>□ 二択ではなく段階的な選択、という考え方に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>Faker で確認用のデータを作る</div>
+      <p style="font-size:14px;margin:0">開発中にデータベースの性能を確かめる際、なぜ Faker のようなライブラリが便利ですか？ どんなことに使いますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">実際の運用ではデータベースに数万〜数百万件が入るが、開発の初期は手で数件入れる程度。それでは、詰まりの原因（問い合わせの遅さ、索引の不足、ページ分割の必要性など）が見えない。Faker は名前・住所・国コード・電話番号・文章など、それらしい仮のデータを素早く大量に作れる Python のライブラリ。これで確認用のデータベースに10万件入れて、全件取得の時間、書き込みの速さ、窓口経由の応答時間を測り、本番に出す前に詰まりを見つけられる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 実際の運用とのデータ量の差に触れている<br>□ Faker がそれらしいデータを作ることに触れている<br>□ 詰まりの発見・性能の確認という用途に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>FastAPI と AI のモデル</div>
+      <p style="font-size:14px;margin:0">FastAPI と Hugging Face の transformers を組み合わせて、AI の機能を持つ窓口を作る基本的な手順を説明してください。注意点（言葉の混同、幻覚など）も含めてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<code>pip install torch torchvision transformers</code> で用意する。②FastAPI のアプリの中で <code>pipeline()</code> を使って学習済みのモデルを読み込む（例：小さなもの）。③窓口（例：<code>/ai</code>）で、住所のうしろの条件として入力を受け取り、モデルに渡した結果を返す。注意点：AI の「モデル」と Pydantic の「モデル」は別のものなので混同しない。小さなモデルは品質が低く、もっともらしいが事実と異なる答えを返す<b>幻覚</b>が起きる。大きなものは品質が高いが、自分の機械で動かすには多くの計算の資源が必要。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 用意する手順とパッケージに触れている<br>□ <code>pipeline()</code> でモデルを読み込む方法を述べている<br>□ AI の「モデル」と Pydantic の「モデル」の違いに触れている<br>□ 幻覚に言及している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>SQLModel の入門を試す</h4><p>公式ドキュメント（sqlmodel.tiangolo.com）の手引きを試す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>PostgreSQL への移行を体験する</h4><p>手元に入れて、SQLite からの移行を試してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>大量データでの確認を書く</h4><p>Faker と pytest を組み合わせて、自分のアプリで測ってみる。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># それらしい仮のデータを作る道具を取り込む。</span>
+<span class="kw">from</span> faker <span class="kw">import</span> Faker
+
+<span class="cmt"># 道具を1つ用意する。日本語のデータが欲しい場合は Faker("ja_JP") と書く。</span>
+fake = <span class="fn">Faker</span>()
+
+<span class="cmt"># どんなデータが作れるかを確かめてみる。</span>
+<span class="fn">print</span>(fake.<span class="fn">name</span>())
+<span class="fn">print</span>(fake.<span class="fn">country_code</span>())
+<span class="fn">print</span>(fake.<span class="fn">sentence</span>())
+<span class="cmt"># --- 実行結果（毎回変わる） ---</span>
+<span class="cmt"># Michael Rodriguez</span>
+<span class="cmt"># NZ</span>
+<span class="cmt"># Attorney various hospital thousand.</span>
+<span class="cmt"># 意味の通らない文章だが、長さと形は現実に近いので、性能の確認には十分。</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>別のモデルを試す</h4><p>もう少し大きなモデルに変えて、大きさと答えの品質の関係を体感する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「ファイル」へ</h4><p>ファイルの受け取りと送り出しを扱う。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第14章「データベース、データサイエンス、そして少しのAI」の図解 ― 原文の全節（データ・ストレージの選択肢／リレーショナルとSQL／SQLAlchemy（コア・式言語・ORM）／SQLModel／SQLite／PostgreSQL／EdgeDB／非リレーショナル（Redis・MongoDB・Cassandra・Elasticsearch）／SQLにおけるNoSQL機能／データベース負荷テスト／データサイエンスとAI）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

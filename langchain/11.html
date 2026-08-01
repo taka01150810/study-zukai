@@ -1,0 +1,626 @@
+<meta charset="utf-8">
+<title>11. LLMを使って構築する ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+
+  .finale{margin-top:30px; border:1px solid #b78cff66; border-radius:18px; padding:26px 28px;
+    background:linear-gradient(135deg,#241a3a 0%, #191430 100%); box-shadow:var(--shadow)}
+  .finale h3{margin:0 0 10px; font-size:19px; color:#d9c4ff}
+  .finale p{margin:0; font-size:15px; color:#e2dbf6; line-height:1.85}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第11章（最終章）</span>
+  <h1>11. LLMを使って構築する</h1>
+  <p>最後の問いは「LLMを、どうやって<b>使う人の手に届けるか</b>」。技術の細部ではなく、LLMをアプリの中でどんな形で体験してもらうかという<b>使い心地の3つの型</b>——チャットボット・共同編集・アンビエントコンピューティング——を学びます。本書の締めくくりです。</p>
+  <p>この章は考え方が中心で、コードは登場しません。これまでの章で学んだ部品が、ここで1つの製品の形に組み上がります。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">💡 概念中心（コードなし）</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#intro">📖 導入 ― 最大の未解決問題</a>
+  <a href="#genkai">従来型インターフェースの限界</a>
+  <a href="#s111">11.1 インタラクティブなチャットボット</a>
+  <a href="#s112">11.2 LLMとの共同編集</a>
+  <a href="#s113">11.3 アンビエントコンピューティング</a>
+  <a href="#compare">📊 3つの型のくらべ表</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">💡</div><div><b>この章にコードは出てきません</b><p>「どう作るか」ではなく「<b>どんな形で使ってもらうか</b>」の話です。プログラムを書かない方でも、そのまま読み通せます。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。最終章なので、これまでの部品がどこで使われるかも振り返ります。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際のアプリで何が起きるか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。</p>
+  <div class="gl">
+    <div class="item"><div class="w">UX<span>使い心地</span></div><p>利用者がそのソフトを使ったときに感じる、分かりやすさ・快適さの全体。</p></div>
+    <div class="item"><div class="w">インターフェース</div><p>利用者とソフトが触れ合う部分。画面のボタンや入力欄など。</p></div>
+    <div class="item"><div class="w">パレット</div><p>あらかじめ用意された部品や道具の一覧。線・図形・表・見出しなど。</p></div>
+    <div class="item"><div class="w">キャンバス</div><p>利用者が部品を置いて組み立てる作業の場所。白紙のページなど。</p></div>
+    <div class="item"><div class="w">プリミティブ</div><p>それ以上分けられない、いちばん基本の部品。</p></div>
+    <div class="item"><div class="w">チャットボット</div><p>会話の形でやり取りする相手役のソフト。</p></div>
+    <div class="item"><div class="w">通信ポイント</div><p>アシスタントと本体のアプリが、情報をやり取りする接点。</p></div>
+    <div class="item"><div class="w">ストリーミング出力</div><p>全部できあがるのを待たず、できた部分から順に表示すること。</p></div>
+    <div class="item"><div class="w">ツール呼び出し</div><p>アプリ側の機能（選択部分を取る、文末に挿入する等）をLLMに使わせること。</p></div>
+    <div class="item"><div class="w">ヒューマンインザループ</div><p>処理の途中に人が入って、確認したり止めたり直したりできる作り。</p></div>
+    <div class="item"><div class="w">会話履歴</div><p>これまでのやり取りの記録。これがないと話が続きません。</p></div>
+    <div class="item"><div class="w">ダイアログチューニング</div><p>会話が続けられるように、モデルを追加で調整すること。</p></div>
+    <div class="item"><div class="w">レイテンシー</div><p>頼んでから答えが返るまでの待ち時間。</p></div>
+    <div class="item"><div class="w">共同編集</div><p>複数の人が同じ文書を一緒に作ること。</p></div>
+    <div class="item"><div class="w">バージョン管理</div><p>それぞれが別々に作業した変更を、あとから1つにまとめる仕組み。</p></div>
+    <div class="item"><div class="w">コパイロット型</div><p>常に横で動いていて、次の一文を提案してくれる働き方。</p></div>
+    <div class="item"><div class="w">ドラフター型</div><p>頼んだ調べ物を裏で進め、あとで組み込める下書きを持ってくる働き方。</p></div>
+    <div class="item"><div class="w">共有状態</div><p>人もLLMも同じように読み書きできる、今の文書の内容。</p></div>
+    <div class="item"><div class="w">タスクマネージャー</div><p>長くかかる処理を順番待ちに並べ、失敗しても立て直して回す仕組み。</p></div>
+    <div class="item"><div class="w">マージ</div><p>別々に加えられた変更を、1つにまとめること。</p></div>
+    <div class="item"><div class="w">コンフリクト</div><p>同じ場所を2人が同時に違う内容に変えてしまい、どちらを採るか決められない状態。</p></div>
+    <div class="item"><div class="w">CRDT</div><p>別々に進めた変更を、衝突なく自動でまとめられるようにしたデータの作り方。</p></div>
+    <div class="item"><div class="w">OT<span>操作変換</span></div><p>同時に来た編集操作を、順番を調整して矛盾なく反映する方法。</p></div>
+    <div class="item"><div class="w">並行性</div><p>複数の作業が同時に進むこと。割り込みや取り消しへの対応が必要になります。</p></div>
+    <div class="item"><div class="w">中間出力</div><p>全部できあがる前の、途中までの結果。少しずつ出すことで混ぜやすくなります。</p></div>
+    <div class="item"><div class="w">アンビエント</div><p>「周囲の、環境の」という意味。常に裏で動いていることを指します。</p></div>
+    <div class="item"><div class="w">トリガー</div><p>処理を始めるきっかけ。新しい情報が届く、または定期的に見に行くこと。</p></div>
+    <div class="item"><div class="w">ポーリング</div><p>一定の間隔でこちらから「新しい情報はないか」と見に行くこと。</p></div>
+    <div class="item"><div class="w">長期記憶</div><p>過去に受け取った情報をずっと保存しておく置き場。</p></div>
+    <div class="item"><div class="w">リフレクション</div><p>過去の出来事から「何が大事か」を学び直し、判断の基準を更新すること。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">最後の問い</span></div></div>
+  <div class="card">
+    <p class="lead">本書もいよいよ最終章。ソラはここまでで、LLMの使い方もRAGもエージェントも一通り学びました。でもリク先輩は最後に、もっと大きな問いを投げかけます——「<b>LLMを、どうやって使う人の手に届けるか？</b>」。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">今日は技術の細部ではなく、LLMをアプリの中でどんな形で体験してもらうかという、<b>使い心地の型</b>を3つ学びます。本書の締めくくりです。</p>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">LLMは「少しずれた入力」も受け取れる柔軟な窓口ですが、その代わり「少しずれた結果」も返します。これは「毎回きっちり同じ結果を返す」という従来のソフトウェアの大前提を崩します。だから、LLMを組み込むアプリでは<b>新しい使い心地の型</b>が必要になります。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">💬</div><h4>① チャットボット</h4><p>既存のアプリに、会話できる相談相手を足す。いちばん足しやすい型。</p><span class="pill">11.1</span></div>
+      <div class="mini"><div class="ic">🤝</div><h4>② 共同編集</h4><p>LLMを「もう一人の編集者」として、同じ文書に参加させる。</p><span class="pill">11.2</span></div>
+      <div class="mini"><div class="ic">🔔</div><h4>③ アンビエント</h4><p>裏で動き続けて、注目すべきことが起きたら知らせる。</p><span class="pill">11.3</span></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">既存のアプリに<b>足しやすい順</b>に並んでいます。</p>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>LLMは曖昧な入力に強い反面、結果も揺れる。従来の「部品の一覧と作業場所」だけの画面では、その性質に合わない。</li>
+        <li>これまで学んだ技術（会話・ツール呼び出し・記憶・エージェント）を、実際の製品でどう組み合わせるかが見えてくる。</li>
+        <li>「どんな使い心地でLLMを届けるか」は、まだ誰も正解を出していない最先端の未解決問題。考え方を知れば自分で設計できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li>既存のアプリにLLMを組み込むとき、どの型が合っているか判断できる。</li>
+        <li>各型に必要な部品（会話履歴、共有状態、きっかけなど）を洗い出せる。</li>
+        <li>LLMを前提にしたアプリを、ゼロから設計する発想が持てる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 導入 ============ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― 最大の未解決問題</h2><span class="tag">「毎回同じ結果」という前提が崩れる</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ソラ、ここまでよく頑張ったね。LLMの基礎、RAG、記憶、エージェント……一通り学んだ。でも最後に、一番大きな問いが残っている。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>「LLMを、どうやって使う人の手に届けるか」だ。これは今のLLMの世界で最大の未解決問題のひとつなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>届ける……？チャット画面を作ればいいんじゃないんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>それも一つの答えだけど、奥が深いんだ。考えてみてほしい。LLMは従来のソフトウェアより<b>直感的な窓口</b>だ。打ち間違いや言い間違い、人間特有の曖昧さにすごく寛容だよね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>確かに。「あれ、なんだっけ、あの……」みたいな雑な質問でも答えてくれます。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>でもその裏返しで、「少しずれた」入力を処理できるがゆえに、「少しずれた」結果を返す傾向もある。これは従来のコンピューターにはほとんど無かった性質なんだ。コンピューターは本来、同じ命令には毎回同じ結果を返すように作られてきた。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>あ……だから「信頼できる＝毎回同じ」っていう前提が崩れるんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。その「毎回同じ」という原則は、これまでの画面の作り方にまで染み込んでいる。だからLLMに大きく頼るアプリでは、従来型の画面の作り方では足りないことが多いんだ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 従来型の限界 ============ -->
+<section id="genkai">
+  <div class="sec-head"><div class="sec-num">📐</div><div><h2>従来型インターフェースの限界</h2><span class="tag">部品の一覧＋作業場所、という構図</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：FigmaやWordのような従来型アプリは「決められた<span class="term" data-tip="あらかじめ用意された部品や道具の一覧。">部品の一覧</span>＋<span class="term" data-tip="利用者が部品を置いて組み立てる作業の場所。">作業場所</span>」でできており、<b>機能が事前に全部分かっている</b>前提に立っています。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>従来型の画面って、具体的にどういうものですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>たとえばFigma。Webサイトやアプリのデザインを作るソフトだ。あとMicrosoft WordやGoogle Docsみたいな文書作成ソフトもそう。これらは共通して、2つの部分でできている。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🧰</div><h4>① 部品と道具の一覧</h4><p>あらかじめ用意された基本要素です。Figmaなら線・図形・選択の道具・塗りの道具。Wordなら表・箇条書き・見出し・画像の枠に、綴りの確認やコメントの機能。</p></div>
+      <div class="mini"><div class="ic">📄</div><h4>② 作業する場所</h4><p>利用者がそれらの要素を置いて組み立てる場所。Wordなら文字どおり白紙のページです。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>使える部品が先に全部そろっていて、それを並べる場所がある、という形ですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。でもね、この作り方は「ソフトの機能が<b>事前に完全に分かっている</b>」という前提の上に成り立っている。Figmaの要素や道具は全部、開発者があらかじめ作ってあって、設計の時点でその存在がはっきりしていた。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>……それって当たり前じゃないんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>言われてみると奇妙な指摘だよね。でもLLMを中心に据えたソフトでは、必ずしもそうとは限らないんだ。LLMは「事前に決められた要素」じゃなく、その場で新しい内容を作り出す。じゃあ、もしLLMを前提としたワープロを作るとしたら、この構図はどう変わるのか？——この章では、その問いに対する3つの答えを、既存のアプリに足しやすい順に見ていく。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：前提が崩れるとはどういうことか</h4>
+      <p>Wordで「表を挿入」を押すと、必ず表が出ます。何度押しても同じです。この動作は開発者が完全に決めており、利用者もそれを見越して操作できます。</p>
+      <p>ところがLLMに「この段落を要約して表にして」と頼むと、返ってくる表の行数も見出しの言い回しも、実行のたびに少しずつ変わります。<b>「押せば必ずこうなる」ボタンとしては置けない</b>のです。だから、結果を見て直せる場所や、途中で止められる仕組みが画面側に必要になります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>従来型アプリ（Figma、Wordなど）は「部品と道具の一覧＋作業する場所」の構成。</li>
+        <li>この構成は「機能が事前に完全に分かっている」という前提に立つ。</li>
+        <li>LLMはその場で内容を作り出すため、この前提が崩れ、新しい使い心地の型が必要になる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11.1 ============ -->
+<section id="s111">
+  <div class="sec-head"><div class="sec-num">11.1</div><div><h2>インタラクティブなチャットボット</h2><span class="tag">いちばん足しやすい型</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：既存のアプリに、会話できる相談相手を横に足します。代表例はコード編集画面の横で質問できるアシスタントです。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>最初は一番足しやすい型からですよね。何ですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>チャットボットだ。既存のアプリにAIアシスタントとして機能を足して、考えをまとめる相手にする。一番手軽な手段だね。代表例は、VSCodeの横で使えるGitHub Copilot Chatだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>あ、コード書いてるときに横で質問できるやつ！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。これをもう一歩進めると、アシスタントと本体のアプリの間に<b>やり取りの接点</b>をいくつか足せる。たとえばVSCodeでは、アシスタントが今編集中のファイルや、利用者が選んだコードを「見る」ことができる。逆に、アシスタントが編集画面に文章を差し込んだり書き換えたりもできる。これで利用者とLLMの基本的な共同作業が成り立つ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>見るだけじゃなく、書き込みもできるんですね。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>読む側の接点</h4><p>今開いているファイル、選択している範囲などをアシスタントが受け取ります。</p></div>
+      <div class="cycle-arrow">⇄</div>
+      <div class="node"><h4>書く側の接点</h4><p>アシスタントが作った文章を、編集画面に差し込んだり置き換えたりします。</p></div>
+    </div>
+    <div class="loopback">この2方向がそろって、はじめて「一緒に作業している」状態になります</div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ちなみに、こういう少しずつ文字が出てくる会話の形は、今のLLMアプリの代表例だ。開発者が最初に学ぶのも、企業が既存のアプリに最初に組み込むのも、たいていこの形。ただ将来は、これが「LLM時代の文字入力の窓口」——つまりプログラミングに最も近い、少し玄人向けの存在になる可能性もある、という見方もあるよ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>へえ、今の主流が将来は少数派になるかもって、面白い見方ですね。</div></div>
+    </div>
+
+    <h3 class="blk">必要な部品</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🤖</div><h4>土台① チャットモデル</h4><p>何度も往復する会話向けに調整されたモデル。</p><span class="pill">1章</span></div>
+      <div class="mini"><div class="ic">🧠</div><h4>土台② 会話履歴</h4><p>過去のやり取りを覚えていないと、意味のある会話が続きません。</p><span class="pill">4章</span></div>
+    </div>
+    <div class="grid3" style="margin-top:16px">
+      <div class="mini"><div class="ic">💧</div><h4>追加① 少しずつ出す</h4><p>文字のかたまりや文ごとに少しずつ出して、待ち時間を感じさせないようにします。</p><span class="pill">8章</span></div>
+      <div class="mini"><div class="ic">🔧</div><h4>追加② ツール呼び出し</h4><p>「選択中の文章を取る」「文末に差し込む」などの機能をモデルに使わせ、作業場所と連携させます。</p><span class="pill">6章</span></div>
+      <div class="mini"><div class="ic">✋</div><h4>追加③ 人の確認</h4><p>アプリに変更を加える前に、利用者に確認させたり手直しさせたりします。</p><span class="pill">8章</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>全部、これまでの章で学んだ部品ですね！少しずつ出すのも、ツール呼び出しも、人の確認も。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そうだろう。これまでの知識が、ここで一つの製品の形に組み上がるんだ。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>チャットボットは既存アプリに最も足しやすい型（例：コード編集画面の横のアシスタント）。</li>
+        <li>土台の部品：チャットモデル＋会話履歴。</li>
+        <li>追加でよく使う部品：少しずつ出す・ツール呼び出し・人の確認。</li>
+        <li>アプリとのやり取りの接点（見る／書き込む）を足すと、本格的な共同作業が成り立つ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11.2 ============ -->
+<section id="s112">
+  <div class="sec-head"><div class="sec-num">11.2</div><div><h2>LLMとの共同編集</h2><span class="tag">もう一人の編集者として扱う</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：LLMを「文書に貢献する<b>利用者の1人</b>」として扱います。人同士の共同編集に必要な仕組みが、そのまま必要になります。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>次の型は「共同編集」ですか。複数人で一緒に編集するやつですよね？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。ほとんどの仕事用ソフトには共同編集の機能があって、大きく3つに分けられる。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">📧</div><h4>① 保存して送る</h4><p>一度に1人が編集して、メールなどで他の人に渡します。Excel・Word・PowerPointがこれ。</p><span class="pill">同時性 低</span></div>
+      <div class="mini"><div class="ic">🔀</div><h4>② バージョン管理</h4><p>複数人が別々に作業して、あとから変更をまとめます。まとめ方や、ぶつかったときの解決の仕組みを備えます。GitやGitHubが代表。</p><span class="pill">同時性 中</span></div>
+      <div class="mini"><div class="ic">👥</div><h4>③ 同時に編集</h4><p>複数人が同時に同じ文書を編集し、互いの変更がその場で見えます。Google DocsやGoogle Sheetsがこれ。</p><span class="pill">同時性 高</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>段階的に「同時性」が高くなっていく感じですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>いいところに気づいた。で、この型では<b>LLMのエージェントを、文書に貢献する「利用者の1人」として扱う</b>んだ。いろんな形がある。常に動いている「横で提案する役」として次の文を出したり、裏で動く「下書きを作る役」として、特定の話題を調べて後で組み込める部分を持ち帰ったり。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>AIを「もう一人の編集者」とみなすんですね。じゃあ人同士の共同編集と同じ仕組みが要るのかな。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>まさにそう。実現には次の仕組みが必要になる。一つずついこう。</div></div>
+    </div>
+
+    <h3 class="blk">必要な6つの仕組み</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>共有状態</h4><p>LLMと人は、文書の内容に対して対等であるべきです。エージェントも今の内容を読み取り、同じ形で編集を加えられる必要があります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>タスクマネージャー</h4><p>文書に役立つ編集を加えるには、何段階もかかり、時間もかかり、途中で失敗することもあります。だから長く動く処理を、順番待ちの管理・失敗からの立て直し・実行の制御つきで回す仕組みが要ります。</p><div class="branch ng">「途中で失敗する」ことを前提に作ります。LLMは気まぐれだからです。</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>分かれた作業をまとめる</h4><p>利用者はエージェントに任せたあとも文書を編集し続けるかもしれません。だからLLMの出力を、利用者の作業と1つにまとめる必要があります。Gitのように手でやるか、Google Docsのように<b>CRDT</b>や<b>OT</b>という、ぶつかりを自動で解決するやり方を使います。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>同時に進む作業への対応</h4><p>人とエージェントが同時に同じ文書に取り組むので、割り込み・取り消し・「代わりにこれをやって」の振り替え・「これもやって」の追加といった対応が要ります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>元に戻す／やり直す</h4><p>利用者は考えを変えて過去の状態に戻したくなるので、LLMアプリもそれに対応する必要があります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">6</div><div class="line"></div></div><div class="body"><h4>途中まで出す</h4><p>出力を段階的に作り、できた端から少しずつ受け取れるようにすると、利用者の作業とまとめやすくなります。10段落の文章を、1文ずつ書いていくような進め方です。</p></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なるほど、全部出来上がってからまとめて出すより、少しずつ出した方が混ぜやすいんですね。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：まとめる仕組みがないとどうなるか</h4>
+      <p>利用者がエージェントに「第3章を書いて」と頼み、その間に自分で第1章の見出しを書き換えたとします。</p>
+      <p><b>まとめる仕組みがない場合</b>：エージェントが「文書全体」を上書きすると、利用者が直した見出しが消えてしまいます。</p>
+      <p><b>まとめる仕組みがある場合</b>：エージェントの変更は第3章の範囲だけ、利用者の変更は第1章の範囲だけと分けて記録され、両方が残ります。同じ行を両者が変えたときだけ、どちらを採るかを決めます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>共同編集の3つの形：保存して送る／バージョン管理／同時に編集（同時性が高くなる順）。</li>
+        <li>LLMを「文書に貢献する利用者の1人」として扱う（横で提案する役・下書きを作る役）。</li>
+        <li>必要な仕組み：共有状態、タスクマネージャー、分かれた作業をまとめる（CRDT／OT）、同時進行への対応、元に戻す／やり直す、途中まで出す。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11.3 ============ -->
+<section id="s113">
+  <div class="sec-head"><div class="sec-num">11.3</div><div><h2>アンビエントコンピューティング</h2><span class="tag">裏で動き続け、大事なときだけ知らせる</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：常に裏で動いていて、「注目すべき何か」が起きたら知らせてくれる形です。難しいのは「<b>何が注目すべきか</b>」をどう決めるかで、そこにLLMが効きます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>最後の型「アンビエントコンピューティング」って、聞き慣れない言葉ですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>アンビエントは「周囲の、環境の」という意味だ。<b>常に裏で動いていて、「注目すべき何か」が起きたら知らせてくれる</b>ソフトのことだよ。今でもいろんな場面で見られる。証券アプリで「この株価が下がったら通知」、検索で「この条件に新しい結果が出たら通知」、システムの見守りで「いつもと違う動きを検出したら通知」とかね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>あ、株価の通知とかですね。あれもこれだったのか。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。ただ、この形を広く行き渡らせる最大の壁は「『注目すべき』をどう事前に決めるか」なんだ。その決め方は2つを両立する必要がある。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🎯</div><h4>役に立つこと</h4><p>自分が知らせてほしいときに、ちゃんと知らせてくれること。</p></div>
+      <div class="mini"><div class="ic">🪶</div><h4>手間がかからないこと</h4><p>大量の通知の条件を、事前に自分で作り込まなくて済むこと。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>確かに、欲しい通知だけ来てほしいけど、設定が面倒なのは嫌ですね……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこでLLMの出番だ。LLMの<b>考える力</b>を使えば、より多くの「注目すべきこと」を見つけられて、しかも条件の手作りを大幅に減らせる。役に立つし、手間もかからなくなる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>「注目すべきこと」をAIが見分けてくれるんですね。さっきの「共同編集」とは何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最大の違いは<b>同時性</b>だ。共同編集は、利用者とLLMが同時に作業して、互いの結果を活かし合う。一方こちらは、<b>利用者がまったく別のことをしている間に、LLMが裏で延々と処理を続けている</b>。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>一緒に作業するか、裏で勝手にやっててくれるか、の違いなんですね。</div></div>
+    </div>
+
+    <h3 class="blk">必要な5つの構成要素</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>きっかけ（トリガー）</h4><p>外から新しい情報を受け取るか、定期的にこちらから見に行きます。この情報の流れが出発点です。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>長期の記憶</h4><p>過去に受け取った情報を保存しておく置き場です。</p><div class="branch ng">これが無いと「新しく注目すべきことが起きたか」を判定できません。過去を覚えていなければ、何が「新しい」のか分からないからです。</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>振り返り（学習）</h4><p>何が「人の関心に値するか」を理解するには、過去の出来事から学ぶ必要があります。LLMが記憶を更新したり、将来の検出の基準を直したりします。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>出力のまとめ</h4><p>裏で動くエージェントは、利用者が見たい以上の情報を作りがちです。結果をまとめて「新しい」「注目すべき」内容だけを見せる作りが要ります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>タスクマネージャー</h4><p>裏で動かし続けるには、仕事の管理・新しい実行の順番待ち・失敗の処理と立て直しの仕組みが必要です。</p><div class="branch ok">これは共同編集の型にも出てきました。「長く動く処理を確実に回す」という点が共通しています。</div></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>タスクマネージャーは共同編集にも出てきましたね。「長く動く処理を確実に回す」って共通なんですね。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：条件を手作りする場合と、LLMに任せる場合</h4>
+      <p>「自分の業界に関わる重要なニュースだけ知らせてほしい」としましょう。</p>
+      <p><b>条件を手作りする場合</b>：「この単語を含む」「この会社名が出る」といった条件を何十個も自分で書く必要があります。書き漏らせば見逃し、広く書きすぎれば通知だらけになります。</p>
+      <p><b>LLMに任せる場合</b>：過去に自分が「これは重要だった」と反応した記事を材料に、LLMが判断の基準を作ります。単語が一致していなくても内容として重要なものを拾え、条件を書く手間もほぼ要りません。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>アンビエントコンピューティング＝常に裏で動き、注目すべきことが起きたら知らせる形。</li>
+        <li>広まる上での壁は「注目すべき」の決め方。LLMの考える力が、これを賢く・手間なく実現する。</li>
+        <li>共同編集との違いは同時性（一緒に作業 vs 裏で継続して処理）。</li>
+        <li>必要な要素：きっかけ、長期の記憶、振り返り（学習）、出力のまとめ、タスクマネージャー。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ くらべ表 ============ -->
+<section id="compare">
+  <div class="sec-head"><div class="sec-num">📊</div><div><h2>3つの型のくらべ表</h2><span class="tag">どれを選ぶかの手がかり</span></div></div>
+  <div class="card">
+    <div class="tscroll">
+    <table class="t">
+      <tr><th></th><th>チャットボット</th><th>共同編集</th><th>アンビエント</th></tr>
+      <tr><td>導入のしやすさ</td><td>いちばん易しい</td><td>中くらい</td><td>難しい</td></tr>
+      <tr><td>利用者との関係</td><td>相談相手として横にいる</td><td>もう一人の編集者として参加する</td><td>裏で働き、必要なときだけ出てくる</td></tr>
+      <tr><td>同時性</td><td>利用者が話しかけたときだけ動く</td><td>同時に作業する</td><td>利用者が別のことをしている間も動く</td></tr>
+      <tr><td>必ず要る部品</td><td>チャットモデル、会話履歴</td><td>共有状態、タスクマネージャー</td><td>きっかけ、長期の記憶</td></tr>
+      <tr><td>よく足す部品</td><td>少しずつ出す、ツール呼び出し、人の確認</td><td>作業のまとめ、同時進行への対応、元に戻す、途中まで出す</td><td>振り返り、出力のまとめ、タスクマネージャー</td></tr>
+      <tr><td>代表例</td><td>コード編集画面の横のアシスタント</td><td>文書ソフトの提案・下書き機能</td><td>株価や検索結果の通知</td></tr>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">そして、本書の締めくくり</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>最終章のポイント、言ってみますね。1つ目は「LLMは曖昧な入力に強い反面、結果も揺れる。だから<b>従来の『部品の一覧＋作業場所』型の画面では足りず</b>、新しい使い心地の型が要る」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。「毎回同じ結果」という前提が崩れる、というのが出発点だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「<b>チャットボット</b>は一番足しやすい型。チャットモデルと会話履歴が土台で、少しずつ出す・ツール呼び出し・人の確認を足す」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>これまで学んだ部品が全部ここに集まるね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「<b>共同編集</b>は、LLMを『もう一人の編集者』として扱う。共有状態・タスクマネージャー・作業のまとめ・同時進行への対応・元に戻す／やり直す・途中まで出す、が必要」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>人同士の共同編集の仕組みを、AI相手にも当てはめるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「<b>アンビエントコンピューティング</b>は、裏で動き続けて『注目すべきこと』を知らせる。きっかけ・長期の記憶・振り返り・出力のまとめ・タスクマネージャーが必要」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>共同編集との違いは同時性、だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>そして……これで本書も終わりなんですね。なんだか感慨深いです。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ああ。最後に一番大事なことを言うよ。<b>ここに近道はない</b>。まずは粗削りでも何かを作って、使う人の声を聞いて、予想もしなかった価値が生まれるまで試し続けるんだ。LLMは、ソフトの作り方だけじゃなく、作るソフトそのものを変える力を秘めている。君がこれから、まだ誰も想像していない新しいものを作ってくれることを願っているよ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>はい！ここまで教えてくださって、本当にありがとうございました、先輩。作ってみます——粗削りでも、まずは何かを。</div></div>
+    </div>
+
+    <div class="finale">
+      <h3>📕 本書からの最後のメッセージ</h3>
+      <p><b>ここに近道はありません。</b>まずは粗削りでも何かを作り、使う人の声を聞き、予想もしなかった価値が生まれるまで試し続けること。LLMは、ソフトの作り方だけでなく、作るソフトそのものを変える力を秘めています。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>なぜ新しい使い心地が必要か</div>
+      <p style="font-size:14px;margin:0">❓ LLMを組み込んだアプリで、従来型の「部品の一覧＋作業場所」型の画面が足りなくなりやすいのはなぜですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">従来型の画面は「ソフトの機能が事前に完全に分かっている」という前提に立ち、用意された道具を組み合わせて使う。一方LLMは、曖昧な入力に寛容な代わりに「少しずれた」結果を返すことがあり、その場で新しい内容を作り出す。つまり「同じ命令には毎回同じ結果」という従来の前提が崩れる。事前に全機能を決め打ちする従来型では、この性質をうまく扱えないため、新しい使い心地の型が必要になる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 従来型は「機能が事前に分かっている」前提に立つ、に触れている<br>□ LLMは揺れる結果を返す／その場で作り出す、に触れている<br>□ 「毎回同じ結果」という前提が崩れる、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>チャットボットの構成要素</div>
+      <p style="font-size:14px;margin:0">❓ 基本的なチャットボットを作るのに必要な「土台の部品」2つと、よく追加される部品3つを挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">土台の部品は、何度も往復する会話向けに調整された「チャットモデル」と、過去のやり取りを覚えておく「会話履歴」の2つ。会話履歴がないと、意味のあるやり取りが続かない。よく追加される部品は、待ち時間を感じさせない「少しずつ出す仕組み」、アプリの作業場所と連携するための「ツール呼び出し」、アプリへの変更を利用者に確認・手直しさせる「人の確認」の3つ。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 土台＝チャットモデルと会話履歴、を挙げている<br>□ 追加部品として少しずつ出す仕組みに触れている<br>□ 追加部品としてツール呼び出しに触れている<br>□ 追加部品として人の確認に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>共同編集でのLLMの扱い</div>
+      <p style="font-size:14px;margin:0">❓ 「LLMとの共同編集」の型では、LLMをどう位置づけますか。また、必要になる仕組みを2つ以上挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">LLMを「共有する文書に貢献する利用者の1人」として扱う。常に動いて次の文を提案する「横で提案する役」や、裏で調べ物をして後で組み込む「下書きを作る役」がある。必要な仕組みには、エージェントも文書の内容を読み取って編集できる「共有状態」、長く動く処理を確実に回す「タスクマネージャー」、LLMの出力を利用者の作業とまとめる「分かれた作業のまとめ（CRDTやOTで自動解決）」、割り込みや取り消しへの「同時進行への対応」、「元に戻す／やり直す」、段階的に出す「途中まで出す仕組み」などがある。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ LLMを「文書に貢献する利用者の1人」として扱う、に触れている<br>□ 共有状態・タスクマネージャー・作業のまとめなどから2つ以上挙げている<br>□ 作業のまとめでCRDT／OTのような自動解決に触れている（あれば加点）</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>共同編集とアンビエントの違い</div>
+      <p style="font-size:14px;margin:0">❓ 「共同編集」と「アンビエントコンピューティング」の最大の違いは何ですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">最大の違いは「同時性」。共同編集は、利用者とLLMが（常に、またはときどき）同時に作業し、互いの結果を活かし合う。一方アンビエントは、利用者がまったく別のことをしている間に、LLMが裏で継続的に処理を行い、「注目すべきこと」が起きたら知らせる。一緒に作業するか、裏で働き続けるか、の違いである。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 違いは「同時性」だと明示している<br>□ 共同編集＝利用者とLLMが同時に作業、に触れている<br>□ アンビエント＝利用者が別のことをしている間に裏で処理、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>アンビエントに必要な要素</div>
+      <p style="font-size:14px;margin:0">❓ アンビエントコンピューティングを実現するのに必要な構成要素を3つ以上挙げ、そのうち1つを簡単に説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">必要な要素は、きっかけ（トリガー）、長期の記憶、振り返り（学習）、出力のまとめ、タスクマネージャーなど。たとえば「長期の記憶」は、過去に受け取った情報を保存しておく置き場で、これが無いと「新しく注目すべきことが起きたか」を判定できない。また「振り返り」は、過去の出来事から「何が注目すべきか」を学び、検出の基準を更新する段階である。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ きっかけ／長期の記憶／振り返り／出力のまとめ／タスクマネージャーから3つ以上挙げている<br>□ そのうち1つの役割を正しく説明している<br>□ 「過去を覚える／学ぶ」ことが検出に必要、という趣旨に触れている（あれば加点）</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">そして、作り始める</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔎</div><h4>身近なアプリで考える</h4><p>普段使っているアプリ（編集ソフト、文書ソフト、メールなど）を1つ選び、「チャットボット型」「共同編集型」「アンビエント型」のどれでLLMを足せそうか考えてみましょう。</p></div>
+      <div class="mini"><div class="ic">🗺️</div><h4>部品の地図を作る</h4><p>これまでの章で学んだ部品（少しずつ出す・ツール呼び出し・記憶・人の確認・振り返り）が、この3つの型のどこで使われるかを整理してみましょう。</p></div>
+      <div class="mini"><div class="ic">📄</div><h4>実例を読む</h4><p>アンビエントなエージェントの実例として、LangChainのブログ「Introducing Ambient Agents」を読んでみましょう。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>まとめる仕組みを調べる</h4><p>CRDTやOT（同時編集のぶつかりを解決するやり方）について軽く調べ、なぜLLMの出力をまとめるのに役立つのかを確かめましょう。</p></div>
+      <div class="mini"><div class="ic">🛠️</div><h4>小さく作ってみる</h4><p>何でもいいので、小さくて粗削りなものを実際に作ってみましょう。本書が最後に伝えるのは「近道はない、まず作って使う人の声を聞け」——これが最大の次の一歩です。</p></div>
+      <div class="mini"><div class="ic">🔁</div><h4>全11章を振り返る</h4><p>0章から順に「要するに」だけを読み返すと、LLM→RAG→記憶→エージェント→公開→改善→届け方、という本書全体の道筋が1本につながります。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第11章 LLMを使って構築する ― 図解版<br><b>全11章 完</b></p>
+
+</div>

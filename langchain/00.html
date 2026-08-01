@@ -1,0 +1,1020 @@
+<meta charset="utf-8">
+<title>0. はじめに ― 初めてのLangChain 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第0章</span>
+  <h1>0. はじめに ― LLMとは何か、なぜLangChainが要るのか</h1>
+  <p>文章を入れると続きを作る巨大なプログラム「LLM」。その中身と限界、そして指示文（プロンプト）だけで仕事をさせる5つのやり方、さらにそれらを部品としてまとめた道具「LangChain」までを、新人ソラと先輩リクの会話でゼロから追いかけます。</p>
+  <p>プログラミングをやったことがない方でも読めるように、専門用語はすべて日本語で言い直し、コードは1行ずつ日本語の説明を付けました。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">🐍 コードはPythonのみ</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#story">📖 本文のはじまり ― LangChain誕生のきっかけ</a>
+  <a href="#llm">1. LLMについて</a>
+  <a class="sub" href="#llm-kinds">1-1. LLMの種類</a>
+  <a href="#prompt">2. プロンプト入門</a>
+  <a class="sub" href="#zeroshot">2-1. Zero-shotプロンプト</a>
+  <a class="sub" href="#cot">2-2. CoT（思考の連鎖）</a>
+  <a class="sub" href="#rag">2-3. RAG（検索拡張生成）</a>
+  <a class="sub" href="#tool">2-4. ツール呼び出し</a>
+  <a class="sub" href="#fewshot">2-5. Few-shotプロンプト</a>
+  <a href="#langchain">3. LangChainとその重要性</a>
+  <a href="#book">4. 本書から得られるもの・本書の使い方</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のPythonコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行した結果も同じ枠の中にコメントで書いてあるので、そのまま読めます。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。むずかしい話も、ここを読めば流れがつかめます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面で、何を入れると、何が返るか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。分からない語が出たらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">LLM<span>大規模言語モデル</span></div><p>文章を入れると、そのあとに続きそうな文章を作って返すプログラム。インターネット上の膨大な文章を読み込んで作られています。</p></div>
+    <div class="item"><div class="w">生成AI<span>generative AI</span></div><p>学習に使った材料をもとに、今までになかった文章・絵などを新しく作り出すAIのこと。LLMはそのうち文章専門のもの。</p></div>
+    <div class="item"><div class="w">機械学習<span>ML</span></div><p>人が手順を書く代わりに、大量の例をコンピューターに見せて、そこから手順を自動で作らせるやり方。</p></div>
+    <div class="item"><div class="w">パラメータ<span>parameter</span></div><p>モデルの中に入っている数値の設定つまみ。学習でこの数値が調整されます。GPT-3では1,750億個あります。</p></div>
+    <div class="item"><div class="w">ニューラルネットワーク</div><p>小さな計算を大量につないで、全体で1つの答えを出す仕組み。LLMの土台になっています。</p></div>
+    <div class="item"><div class="w">トークン<span>token</span></div><p>文章を機械が扱うときの最小のかたまり。1文字のことも、1単語のことも、単語の一部のこともあります。料金もこの個数で決まります。</p></div>
+    <div class="item"><div class="w">トークナイザー</div><p>文章をトークンに切り分ける部品。よく出る単語は1個にまとめ、めずらしい単語は複数に割ります。</p></div>
+    <div class="item"><div class="w">トランスフォーマー</div><p>文の中の各語を「他のすべての語との関係」で見て、次に来そうな語を当てる計算の型。今のLLMのほとんどがこれ。</p></div>
+    <div class="item"><div class="w">プロンプト<span>prompt</span></div><p>LLMに渡す指示文・入力文のこと。この書き方しだいで返ってくる答えの質が大きく変わります。</p></div>
+    <div class="item"><div class="w">プロンプトエンジニアリング</div><p>指示文を工夫して、望む答えをLLMから引き出す作業。この本の中心テーマです。</p></div>
+    <div class="item"><div class="w">Temperature<span>テンパラチャー</span></div><p>答えのばらつき具合を決める数値。0にすると毎回ほぼ同じ答えが返り、大きくすると毎回違う答えが返ります。</p></div>
+    <div class="item"><div class="w">事前学習済みLLM</div><p>大量の文章を読ませただけの段階のモデル。質問形式には弱く、答えの書き出しを自分で用意してあげる必要があります。</p></div>
+    <div class="item"><div class="w">自己教師あり学習</div><p>「問題と正解のペア」を人が作らず、元の文章から自動で作り出して学習させるやり方。文の一部を隠して当てさせます。</p></div>
+    <div class="item"><div class="w">インストラクションチューニング</div><p>事前学習済みモデルに「指示された通りに答える」練習を追加でさせること。これで普通の質問文が通じるようになります。</p></div>
+    <div class="item"><div class="w">RLHF<span>人間のフィードバックからの強化学習</span></div><p>モデルの答えに人が「こちらが好ましい」と評価を付け、その好みを学習に混ぜる方法。</p></div>
+    <div class="item"><div class="w">ダイアログチューニング</div><p>会話専用にさらに調整すること。system・user・assistantという役割つきのやり取りができるようになります。</p></div>
+    <div class="item"><div class="w">system / user / assistant</div><p>会話モデルでの発言の役割。systemは前提の指示、userは利用者の質問、assistantはモデルの返答を表します。</p></div>
+    <div class="item"><div class="w">ジェイルブレイク</div><p>利用者の入力を使って、開発者が仕込んだ前提の指示をモデルに破らせたり、その中身を言わせたりする攻撃。</p></div>
+    <div class="item"><div class="w">ファインチューニング</div><p>手元のデータでモデルを追加学習させ、特定の仕事の精度を上げること。そのぶん他の仕事は苦手になります。</p></div>
+    <div class="item"><div class="w">Zero-shot</div><p>お手本を見せず、やってほしいことをそのまま指示する書き方。</p></div>
+    <div class="item"><div class="w">CoT<span>思考の連鎖</span></div><p>「順を追って考えて」と指示し、途中の考えを書かせてから答えさせる書き方。</p></div>
+    <div class="item"><div class="w">RAG<span>検索拡張生成</span></div><p>答えさせる前に正しい資料を探してきて、その文章を質問と一緒に渡すやり方。知識の間違いを減らせます。</p></div>
+    <div class="item"><div class="w">コンテキスト</div><p>質問と一緒に渡す、答えの材料になる文章のこと。</p></div>
+    <div class="item"><div class="w">ツール呼び出し</div><p>使える外部の機能（電卓・検索など）の一覧を先に見せて、「どれを何に使うか」をモデルに書かせ、実際の実行はプログラム側で行うやり方。</p></div>
+    <div class="item"><div class="w">Few-shot</div><p>質問と正解の見本をいくつか見せてから本番の質問をする書き方。</p></div>
+    <div class="item"><div class="w">抽象化<span>abstraction</span></div><p>やり方の考え方を、そのまま使い回せる関数やクラスの形に包んだもの。LangChainが提供しているのはこれです。</p></div>
+    <div class="item"><div class="w">エージェント</div><p>「考える→道具を使う→結果を受け取る」を仕事が終わるまで自分で繰り返す仕組み。</p></div>
+    <div class="item"><div class="w">LangSmith</div><p>作ったLLMアプリの動きを記録・確認し、テストや監視をするためのサービス。</p></div>
+    <div class="item"><div class="w">LangGraph Platform</div><p>エージェントを本番のサーバーに置いて動かし、利用者が増えても耐えられるようにするサービス。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">登場人物と、これから起きること</span></div></div>
+  <div class="card">
+    <p class="lead">Web開発チームに配属されたばかりの新人<b>ソラ</b>。先輩の<b>リク</b>が「これからLangChainでLLMアプリを作るよ」と言うと、ソラは「LLM……？ ChatGPTのことですか？」と首をかしげます。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">この章では、そもそもLLM（大規模言語モデル）とは何か、なぜ「プロンプト（指示文）」でプログラムするのか、そして「LLMを他の道具と組み合わせる」ためのライブラリLangChainがなぜ重要なのかを、二人の対話でゼロから学びます。Zero-shot・CoT・RAG・ツール呼び出し・Few-shotという代表的なプロンプトの書き方も、実例とともに体験します。</p>
+    <div class="grid2" style="margin-top:16px">
+      <div class="mini"><div class="ic">🧑‍💻</div><h4>ソラ（新人）</h4><p>配属されたばかり。LLMもLangChainも初めて。読者と同じ目線で素直に質問します。図の中では<b>寒色の吹き出し</b>。</p></div>
+      <div class="mini"><div class="ic">☕</div><h4>リク（先輩）</h4><p>ベテラン。歴史・仕組み・実例を順に見せながら教えます。図の中では<b>暖色の吹き出し</b>。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">LLMは「テキストを入れると、人間のように続きのテキストを予測して生成する」巨大な機械学習モデルです。エンジニアの仕事は、LLMをゼロから学習させることではなく、<b>プロンプト（指示文）を工夫して、既存のLLMに目的の仕事をやらせること</b>。そして、LLMを電卓や検索などの外部の道具・知識と組み合わせて本当に役立つアプリを作るための最初（かつ最大）のライブラリが<b>LangChain</b>です。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧠</div><h4>LLMとは</h4><p>文章の続きを確率で予測して作るモデル。計算は苦手で、事実を間違えることもある。</p><span class="pill">1章で扱う</span></div>
+      <div class="mini"><div class="ic">✍️</div><h4>プロンプト</h4><p>指示文の書き方でLLMの答えが激変する。5つの代表的な書き方がある。</p><span class="pill">2章で扱う</span></div>
+      <div class="mini"><div class="ic">🔗</div><h4>LangChain</h4><p>それらの書き方を部品にして、組み合わせてアプリを作れるようにした道具。</p><span class="pill">3章で扱う</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>LLMは「何でも文章で答える」ように見えて、計算が苦手だったり間違いを言ったりする。その仕組みと限界を知らないと、<b>信頼できないアプリ</b>を作ってしまうから。</li>
+        <li>指示文の工夫ひとつで出力が劇的に変わる。書き方を知らないと、LLMの力を引き出せないから。</li>
+        <li>LLM単体では「役に立つアプリ」にならない。外部の道具・知識と組み合わせる発想（＝LangChainの根っこ）が必要だから。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li>LLM・チャットモデル・トークン・プロンプトといった基本用語を、初めての人に説明できるようになる。</li>
+        <li>Zero-shot・CoT・RAG・ツール呼び出し・Few-shotという5つの書き方を使い分けられるようになる。</li>
+        <li>LangChainが「何をまとめて、何を組み合わせやすくしてくれるか」を理解し、本書全体の地図を持てるようになる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 本文のはじまり ============ -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>本文のはじまり ― LangChain誕生のきっかけ</h2><span class="tag">ChatGPTの登場から、LangChainの最初のコミットまで</span></div></div>
+
+  <div class="card">
+    <p class="lead">Web開発チームの開発室。新人のソラが、ノートPCの前で少し緊張しています。隣にはコーヒー片手のベテラン、リク先輩。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ（新人）</span>リク先輩、今日からLangChainでLLMアプリを作るって聞きました。……あの、LLMって、ChatGPTのことですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク（先輩）</span>いい質問だ、ソラ。半分正解だね。少し歴史から話そうか。2022年11月30日、OpenAIという会社がChatGPTを公開した。公開からわずか2か月で、月間1億人以上のユーザーを集めた——コンシューマ向けアプリとして史上最速だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>1億人！すごい……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そのChatGPTは、OpenAIの<b>LLM（大規模言語モデル）</b>を「命令・対話形式に調整したバージョン」を土台にしたチャットボットなんだ。3か月後にはChatGPT APIが公開されて、開発者がその力をプログラムから使えるようになった。これで生成AIを使った無数の新しいアプリが生まれ始めた。</div></div>
+    </div>
+
+    <h3 class="blk" id="ml">機械学習から生成モデルへ</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>その「生成AI」とか「LLM」って、結局なんなんでしょう？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>順番に説明しよう。まず<span class="term" data-tip="人が手順を書く代わりに、大量の例を見せて手順を自動で作らせるやり方。">機械学習（ML）</span>。コンピューターの手順——「トランプを順番に並べ替える」みたいな、決まった仕事を達成する段取り——には、エンジニアが直接書くものと、<b>膨大な例から学習して得られるもの</b>がある。後者では、エンジニアの仕事は「手順そのもの」を書くんじゃなく、「手順を作り出す学習の仕組み」を書くことになる。昔は、明日の天気やAmazonの最適配送ルートを<b>予測する</b>手順に注目が集まっていた。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこにLLMや生成モデルが登場した。同じ機械学習の技術を、「学習データをもとに、今までになかった新しい文章や絵を<b>生成する</b>」課題に当てはめたんだ。LLMは、その中でも文章生成に特化した生成モデルだよ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>予測から、生成へ、なんですね。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📈</div><h4>従来の機械学習：予測</h4><p>明日の気温、最適な配送ルートなど「すでにある選択肢の中から当てる」仕事。特定の仕事の専用モデルとして作られる。</p></div>
+      <div class="mini"><div class="ic">✨</div><h4>生成モデル：生成</h4><p>学習した材料をもとに、まだ存在しない文章や絵を新しく作る。LLMは文章専門。</p></div>
+    </div>
+
+    <h3 class="blk">LLMが従来の機械学習と違う2点</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">💰</div><h4>① 学習コストが莫大</h4><p>膨大なデータで学習されていて、ゼロから同じものを作るには途方もない費用がかかる。だから普通は「すでにあるものを借りて使う」。</p></div>
+      <div class="mini"><div class="ic">♻️</div><h4>② 汎用性が高い</h4><p>同じ1つの文章生成モデルを、要約にも翻訳にも分類にも使い回せる。従来のモデルは1つの仕事専用だった。</p></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">この2つの違いによって、ソフトウェアエンジニアの役割が変わりました。今の仕事は「<b>すでにあるLLMを、自分たちの用途にどう合わせるか</b>」を考えること。LangChainは、まさにそこを助けるために作られています。</p>
+
+    <h3 class="blk">きっかけ：LLMは計算ができない</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なるほど。LangChainはどういうきっかけで生まれたんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>2022年10月22日、Harrison Chaseという人がLangChainの最初のコミットをGitHubに公開した。きっかけは「<b>本当に有用なLLMアプリを作るには、LLMを他の計算リソースや知識ソースと組み合わせる必要がある</b>」という気づきだ。例を見せよう。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、LLMに割り算のあまりを直接たずねる指示文を用意し、そのまま渡したときに何が返るかを示しています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># LLMに計算をそのまま尋ねる文章を、変数 prompt に入れておく。</span>
+prompt = <span class="str">"1,234個のボールを123人で均等に分けたとき、ボールはいくつ余りますか？"</span>
+
+<span class="cmt"># 用意した文章をLLMに渡して、返ってきた答えを画面に出す。</span>
+<span class="cmt"># LLMは数を1つずつ数えているわけではなく「次に来そうな文字」を選んでいるだけなので、</span>
+<span class="cmt"># 計算の答えは高い確率でずれる。</span>
+<span class="fn">print</span>(llm.<span class="fn">invoke</span>(prompt))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 余りは 10 個です。   ← 正しくは 4。LLMは計算が苦手で、もっともらしい数を書いてしまう</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6">そこで発想を変えます。<b>LLMには「計算そのもの」ではなく「計算式に書き直すこと」だけをやらせて</b>、計算はPythonにさせます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># LLMには答えではなく「電卓が読める式に書き直したもの」だけを出してもらう指示文を用意する。</span>
+prompt = <span class="str">"次の質問を、余りを求める計算式だけに書き直してください: 1,234個のボールを123人で均等に分けたとき、余りは？"</span>
+
+<span class="cmt"># LLMに渡して、返ってきた式の文字列を受け取る。ここまでは文章を作る仕事なのでLLMが得意。</span>
+expression = llm.<span class="fn">invoke</span>(prompt)
+
+<span class="cmt"># 受け取った式を画面に出して、想定どおりの形になっているか確認する。</span>
+<span class="fn">print</span>(expression)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 1234 % 123</span>
+
+<span class="cmt"># 計算はLLMではなくPythonにやらせる。% は「割ったあまり」を求める記号。</span>
+<span class="cmt"># 1234 を 123 で割ると 10 回分けられて 4 個あまるので、答えは 4 になる。</span>
+<span class="fn">print</span>(<span class="num">1234</span> % <span class="num">123</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 4   ← こちらは必ず正しい</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：同じ質問で結果がどう変わるか</h4>
+      <p>「1,234個のボールを123人で均等に分けたときの余りは？」という質問を、LLMにそのまま聞くと 10 や 7 など毎回ちがう数が返ってきて、しかも正しくありません。一方、LLMには「<code>1234 % 123</code>」という式に書き直させるだけにして、その式をPythonに計算させると、答えは必ず <b>4</b> になります。</p>
+      <p>LLMがやったのは「日本語を式の形に直す」という文章の仕事だけ。数を正確に扱う仕事は、それが得意なプログラムに渡しています。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LangChainは、こういう「構成要素」と、それらを確実に組み合わせて大きなアプリを作る道具を提供した、最初（かつ執筆時点で最大）のライブラリなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>LLM単体じゃなく、道具と組み合わせる、と。だんだん見えてきました。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ちなみに、本書のコード例ではLLMの提供元として<b>OpenAI API</b>を使う（呼び出しごとに料金がかかる）。でもLangChainの利点の1つは、OpenAIだけじゃなく、他の商用やオープンソースのLLM提供元でも同じコードが動くことだ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 1. LLMについて ============ -->
+<section id="llm">
+  <div class="sec-head"><div class="sec-num">1</div><div><h2>LLMについて</h2><span class="tag">中で何が起きているのか</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：LLMは「文章を入れると、次に来そうな<span class="term" data-tip="文章を機械が扱うときの最小のかたまり。1文字のことも単語の一部のこともある。">トークン</span>を確率で選んで並べていく」プログラムです。魔法ではなく、確率の計算をものすごい規模でやっているだけです。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>平たく言えば、LLMは「<b>テキストを入力すると、人間のようにテキストを予測・生成するよう学習された手順</b>」だ。スマホで文字を打つと次の言葉の候補が出るよね。あれと同じ「次に来る言葉を当てる」仕組みを、けた違いの規模でやっているものだと考えていい。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>次の言葉を当てる仕組みの、すごく大きい版！イメージできます。</div></div>
+    </div>
+
+    <h3 class="blk">「大規模」＋「言語モデル」に分けて読む</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📦</div><h4>「大規模」の意味</h4><p>学習に使った文章の量と、モデルの中の<span class="term" data-tip="モデル内部の数値の設定つまみ。学習でこの値が調整される。">パラメータ</span>の数がとても多いこと。GPT-3は<b>1,750億個</b>のパラメータを持ち、<b>45TB</b>の文章で学習されています。パラメータは、各ニューロンの出力や、隣のニューロンとのつながりの強さを決める数値です。</p></div>
+      <div class="mini"><div class="ic">🔤</div><h4>「言語モデル」の意味</h4><p>文章を受け取って文章を返す手順のこと。<span class="term" data-tip="小さな計算を大量につないで全体で答えを出す仕組み。">ニューラルネットワーク</span>——単純な数学の関数（ニューロン）を無数につなぎ、その出力と結びつきの総和で最終出力を決める機械学習モデル——の一種です。</p></div>
+    </div>
+
+    <h3 class="blk">学習データに英語が多いことの影響</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>学習データって、英語が多いんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>鋭い。学習データに英語が多いから、ほとんどのモデルは英語が得意だ。ここで「得意」とは「英語で望む出力を得やすい」という意味。BLOOMみたいに多言語を狙ったモデルもある。面白いのは、主に英語で学習したLLMでも、言語ごとの性能差は思ったほど大きくないこと。覚えた意味の理解を、他の言語にも部分的に持ち込めると報告されている。</div></div>
+    </div>
+
+    <h3 class="blk">動きを見る：穴埋め</h3>
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、途中で切れた文をLLMに渡して、続きを埋めさせています。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 途中で切れている文を用意する。空欄の部分をLLMに埋めてもらう。</span>
+prompt = <span class="str">"イギリスの首都は _______ です。"</span>
+
+<span class="cmt"># LLMに渡す。LLMは「イギリス」「首都」という語のあとに来やすい語を確率で選ぶ。</span>
+<span class="cmt"># 学習に使った文章の中で、この並びのあとには「ロンドン」が圧倒的に多く出てきたので、それを選ぶ。</span>
+<span class="fn">print</span>(llm.<span class="fn">invoke</span>(prompt))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># イギリスの首都は ロンドン です。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>確率で次の単語を当ててるんですね。単語ごとに？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>厳密には、単語じゃなく<b>トークン</b>という単位で予測する。トークンは文章の最小のかたまりで、文字・単語・単語の一部など、方式によって異なるんだ。</div></div>
+    </div>
+
+    <h3 class="blk">トークン ― 処理と料金の単位</h3>
+    <p style="font-size:14px;color:#cdd4f6">次のコードは、英語の文が実際に何個のトークンに分かれるかを数えています（GPT-4o miniの切り分け方の例）。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 文章をトークンに切り分ける道具を読み込む。</span>
+<span class="kw">import</span> tiktoken
+
+<span class="cmt"># GPT-4o mini が使っている切り分け方を選ぶ。モデルごとに切り方が違う。</span>
+enc = tiktoken.<span class="fn">encoding_for_model</span>(<span class="str">"gpt-4o-mini"</span>)
+
+<span class="cmt"># 英語の文を用意する。ここは英語の切り分けを見せる例なので英語のままにする。</span>
+text = <span class="str">"Good morning dearest friend"</span>
+
+<span class="cmt"># 文章をトークンの番号（ID）の並びに変換する。番号1個が1トークン。</span>
+tokens = enc.<span class="fn">encode</span>(text)
+
+<span class="cmt"># 何個に分かれたかを数えて出す。よく出る語は1個に、めずらしい語は複数に分かれる。</span>
+<span class="fn">print</span>(<span class="fn">len</span>(tokens))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 5</span>
+
+<span class="cmt"># どの文字のかたまりが何番になったかを、1個ずつ並べて確認する。</span>
+<span class="cmt"># "dearest" はめずらしい語なので "de" と "arest" の2個に割られている。</span>
+<span class="kw">for</span> t <span class="kw">in</span> tokens:
+    <span class="fn">print</span>(enc.<span class="fn">decode</span>([t]), t)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># Good 30744</span>
+<span class="cmt">#  morning 8709</span>
+<span class="cmt">#  de 334</span>
+<span class="cmt"># arest 21325</span>
+<span class="cmt">#  friend 5168</span>
+</pre></details>
+
+    <div class="example">
+      <h4>🔎 具体例：トークンの数と料金</h4>
+      <p>英語では1トークンが平均4文字ほど、つまり単語のおよそ4分の3にあたります。「good morning dearest friend」（26文字）は5トークン。よく出てくる「morning」は1個にまとまり、めずらしい「dearest」は「de」＋「arest」の2個に割れます。</p>
+      <p>LLMの利用料は、この<b>トークンの個数</b>で決まります。長い文章を送るほど、返ってくる文章が長いほど、料金は増えます。</p>
+    </div>
+
+    <h3 class="blk">予測を支える技術：トランスフォーマー</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LLMの予測能力を支える中心技術が<b>トランスフォーマー型ニューラルネットワーク</b>だ。文中の各単語を「他のすべての単語との関係」で捉えることで前後のつながりを理解して、次に来る確率が高い単語を推測できる。だから「the capital of England is」を見ると、学習中に「England」と「France」が似た位置に、「capital」が「London」「Paris」とともによく出ていた——その繰り返しから、次を「London」と正しく予測できるんだ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>文章をトークンに切る</h4><p>「イギリスの首都は」を、機械が扱えるかたまりの並びに変換します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>各トークンを他のすべてと見比べる</h4><p>「首都」は「イギリス」と強く関係している、というつながりの強さを計算します。これがトランスフォーマーの働きです。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>次のトークンの確率を出す</h4><p>「ロンドン」80%、「パリ」3%、……のように、候補ごとの確率が並びます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>1個選んで、また1に戻る</h4><p>選んだトークンを文章の末尾に足して、また次のトークンを予測します。これを文章が終わるまで繰り返します。</p><div class="branch ok">Temperature＝0 だと、いつも確率が最も高い候補を選ぶので、毎回ほぼ同じ答えになります。</div><div class="branch ng">Temperature が大きいと、確率の低い候補も選ばれるので、毎回ちがう答えになります。</div></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そして、モデルに与える指示や入力テキストを<b>プロンプト</b>と呼ぶ。プロンプトはLLMの出力品質を大きく左右する。明確で簡潔な指示や、例を示すといった<b>プロンプト設計（プロンプトエンジニアリング）</b>にはうまいやり方があるんだ。</div></div>
+    </div>
+  </div>
+
+  <!-- 1-1 LLMの種類 -->
+  <div class="card" id="llm-kinds">
+    <h3 class="blk" style="margin-top:4px">1-1. LLMの種類</h3>
+    <p class="lead"><b>要するに</b>：LLMは1種類ではありません。文章を読ませただけの状態から、指示に従えるように、会話ができるように、特定の仕事に強くなるように、と<b>段階的に手が加えられて</b>います。</p>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">①</div><div class="line"></div></div><div class="body"><h4>事前学習済みLLM</h4><p>インターネット・書籍・新聞・コード・動画の書き起こしなど、大量の文章を<span class="term" data-tip="問題と正解のペアを人が作らず、元の文章から自動で作って学習させるやり方。">自己教師あり学習</span>で読ませた段階。ここが土台になります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">②</div><div class="line"></div></div><div class="body"><h4>インストラクションチューニング済み</h4><p>「指示された通りに答える」練習を追加でさせた段階。普通の質問文が通じるようになります。本書ではこれを<b>「LLM」</b>と呼びます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">③</div><div class="line"></div></div><div class="body"><h4>ダイアログチューニング済み</h4><p>会話専用にさらに調整した段階。system / user / assistant の役割が使えます。本書ではこれを<b>「チャットモデル」</b>と呼びます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">④</div><div class="line"></div></div><div class="body"><h4>ファインチューニング済み</h4><p>手元のデータで追加学習させ、特定の仕事の精度を上げた段階。そのぶん他の仕事は苦手になります。</p></div></div>
+    </div>
+
+    <h4 class="blk">① 事前学習済みLLM ― 自己教師あり学習</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>自己教師あり？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>教師あり学習だと、研究者が「入力と期待する出力」のペアを手で用意する。でも自己教師ありは、そのペアを<b>学習データ自体から自動で作る</b>んだ。莫大なデータを扱う現実的な方法はこれしかない。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">➡️</div><h4>手法1：次の単語を予測する</h4><p>「The capital of England is ___」を入力、「London」を期待する出力にする。文章の途中で切るだけで問題が作れます。</p></div>
+      <div class="mini"><div class="ic">🕳️</div><h4>手法2：欠落語を予測する</h4><p>「The ___ of England is London」を入力、「capital」を期待する出力にする。文の途中を隠すだけで問題が作れます。</p></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">ただし、事前学習済みモデルはそのまま使うのが難しいです。答えを引き出すために「書き出しの部分」を自分で用意する必要があります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 事前学習しかしていないモデルは「文章の続きを書く」ことしかできない。</span>
+<span class="cmt"># そのため、答えが自然に続くような書き出しを自分で用意してやる必要がある。</span>
+<span class="fn">print</span>(base_model.<span class="fn">invoke</span>(<span class="str">"The capital of England is"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt">#  London.   ← 書き出しを仕込んだので続きが出た</span>
+
+<span class="cmt"># 一方、人間にとって自然な質問の形にすると、続きとして答えが来るとは限らない。</span>
+<span class="cmt"># 質問のあとには「別の質問」が続く文章も学習データに大量にあったため、そちらを選んでしまう。</span>
+<span class="fn">print</span>(base_model.<span class="fn">invoke</span>(<span class="str">"What is the capital of England?"</span>))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># What is the capital of France? What is the capital of Spain?   ← 質問が並ぶだけで答えない</span>
+</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>それは使いにくい……。</div></div>
+    </div>
+
+    <h4 class="blk">② インストラクションチューニング</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこで<b>インストラクションチューニング</b>だ。OpenAIの研究者は、事前学習を終えたモデルにさらに「指示への従い方」を教えた。手法は2つある。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📝</div><h4>タスク固有のデータセット</h4><p>研究者が手で作った質問と回答のペアを見せて学習させます。例：「Q: イギリスの首都は？ A: ロンドン」。</p></div>
+      <div class="mini"><div class="ic">👍</div><h4>RLHF（人間のフィードバックからの強化学習）</h4><p>モデルの出力に対して、人が「こちらのほうが好ましい」と評価を付け、その好みを学習に足します。</p></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">これで「What is the capital of England?」のような<b>質問の形で指示できる</b>ようになり、アプリを作れる開発者の裾野が大きく広がりました。</p>
+
+    <h4 class="blk">③ ダイアログチューニング ― 3つの役割</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次に<b>ダイアログチューニング</b>。インストラクションチューニング済みのLLMをさらに強化して、会話に特化させる。<b>チャット形式</b>を導入して、入出力に「役割（ロール）」の層を付けるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>system・user・assistantの3つの役割……重要そうですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう、これは本書で何度も出てくる。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">⚙️</div><h4>system</h4><p>仕事の前提や枠組みを書くところ。「あなたは親切なアシスタントです」など、開発者が先に仕込みます。</p><span class="pill">開発者が書く</span></div>
+      <div class="mini"><div class="ic">🙋</div><h4>user</h4><p>実際の質問や依頼。アプリの利用者が入力した文章がここに入ります。</p><span class="pill">利用者が書く</span></div>
+      <div class="mini"><div class="ic">🤖</div><h4>assistant</h4><p>モデルが返した答え。前の返答を履歴として残すときも、この役割で入れます。</p><span class="pill">モデルが書く</span></div>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">役割を分けると出力を調整しやすくなり、さらに<span class="term" data-tip="利用者の入力を使って、開発者が仕込んだ前提の指示を破らせたり中身を言わせたりする攻撃。">ジェイルブレイク</span>——利用者の入力を事前の指示と混同させて、企業秘密のプロンプトを漏らさせる攻撃——が起きにくくなります。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 会話モデルには、1つの文章ではなく「役割つきの発言の一覧」を渡す。</span>
+messages = [
+    <span class="cmt"># system：前提の指示。開発者が先に仕込む部分で、利用者には見えない。</span>
+    {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"あなたは地理にくわしい親切なアシスタントです。1文で答えてください。"</span>},
+    <span class="cmt"># user：利用者が実際に入力した質問。</span>
+    {<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"イギリスの首都はどこですか？"</span>},
+]
+
+<span class="cmt"># 役割つきの一覧をそのままモデルに渡すと、system の指示に沿った答えが返る。</span>
+<span class="cmt"># 「1文で」と system に書いたので、長い説明ではなく短い1文になる。</span>
+<span class="fn">print</span>(chat_model.<span class="fn">invoke</span>(messages))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># イギリスの首都はロンドンです。</span>
+</pre></details>
+
+    <h4 class="blk">④ ファインチューニング</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最後に<b>ファインチューニング</b>。土台のLLMを用意して、特定の仕事向けの独自データで追加学習させる。たとえば「上場企業の年次報告書から、感情分析・リスク要因・主要な財務指標を高い精度で抜き出す」ようにできる。対象の仕事の性能は上がるけど、いろいろな仕事に使える汎用性は下がるんだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：段階ごとに何が変わるか（同じ質問を投げたとき）</h4>
+      <p>質問：「What is the capital of England?」</p>
+      <p><b>事前学習済み</b>→「What is the capital of France?」と別の質問を続けてしまう。<b>インストラクションチューニング済み</b>→「London.」と答える。<b>ダイアログチューニング済み（チャットモデル）</b>→systemに「1文で」と書いておけば「イギリスの首都はロンドンです。」と、指定した形で答える。<b>財務報告書向けにファインチューニング済み</b>→地理の質問はむしろ苦手になり、その代わり決算書からリスク要因を抜き出す精度が上がる。</p>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>段階</th><th>何をしたか</th><th>できること</th><th>本書での呼び方</th></tr>
+      <tr><td>事前学習済み</td><td>大量の文章を自己教師あり学習で読ませた</td><td>文章の続きを書く（質問形式は苦手）</td><td>—</td></tr>
+      <tr><td>インストラクションチューニング済み</td><td>質問と回答のペア＋RLHFで追加学習</td><td>指示に従って答える</td><td><b>LLM</b></td></tr>
+      <tr><td>ダイアログチューニング済み</td><td>会話形式と役割（system/user/assistant）を導入</td><td>会話ができる、出力を調整しやすい、ジェイルブレイクに強い</td><td><b>チャットモデル</b></td></tr>
+      <tr><td>ファインチューニング済み</td><td>特定の仕事向けの独自データで追加学習</td><td>その仕事の精度が高い（汎用性は下がる）</td><td>—</td></tr>
+    </table>
+    </div>
+    <p style="font-size:14px;color:#cdd4f6">新しいアプリを始めるときは、まず<b>LLM（インストラクションチューニング済み）</b>と<b>チャットモデル（ダイアログチューニング済み）</b>の2つを主力に使います。</p>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>LLM＝文章を入れると次のトークンを確率で予測・生成する巨大な言語モデル。中心技術はトランスフォーマー。</li>
+        <li>「大規模」＝学習データ・パラメータが膨大。トークンが処理と課金の単位（英語で1トークン≒4文字）。</li>
+        <li>段階：事前学習済み（書き出しの仕込みが必要）→インストラクションチューニング（指示に従える、RLHF）→ダイアログチューニング（チャットモデル、system/user/assistant）→ファインチューニング（特定の仕事に特化、汎用性は低下）。</li>
+        <li>本書では「LLM」＝インストラクションチューニング済み、「チャットモデル」＝ダイアログチューニング済みを指す。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. プロンプト入門 ============ -->
+<section id="prompt">
+  <div class="sec-head"><div class="sec-num">2</div><div><h2>プロンプト入門</h2><span class="tag">指示文の5つの書き方を、同じ問題で試す</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：エンジニアの主な仕事は、LLMを学習させることではなく「<b>すでにあるLLMに、目的の仕事をやらせる方法を編み出すこと</b>」。これを<span class="term" data-tip="指示文を工夫して、望む答えをLLMから引き出す作業。">プロンプトエンジニアリング</span>と呼びます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>実際に試せるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう、OpenAIのPlaygroundで試せる。アカウントを作って、支払い情報を登録して、Playgroundを開く。ポイントは、<b>Temperatureを0.00にする</b>こと——これはLLMの出力のばらつきを決める数値で、値を下げるほど毎回同じ答えが返るようになる。じゃあ始めよう。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 この章でずっと使う1つの問題</h4>
+      <p>「<b>アメリカ合衆国の第30代大統領は、妻の母が亡くなったとき何歳でしたか？</b>」</p>
+      <p>正解は<b>57歳</b>です。この同じ質問を、書き方を変えながら5回投げて、答えがどう変わるかを見ていきます。</p>
+    </div>
+  </div>
+
+  <!-- 2-1 Zero-shot -->
+  <div class="card" id="zeroshot">
+    <h3 class="blk" style="margin-top:4px">2-1. Zero-shotプロンプト ― そのまま聞く</h3>
+    <p class="lead"><b>要するに</b>：お手本も追加の指示もなく、やってほしいことをそのまま書く、いちばん単純な書き方です。まず最初に試すべき方法。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># お手本も追加の指示も付けず、聞きたいことをそのまま1文で書く。これが Zero-shot。</span>
+prompt = <span class="str">"アメリカ合衆国の第30代大統領は、妻の母が亡くなったとき何歳でしたか？"</span>
+
+<span class="cmt"># そのままモデルに渡す。答えが学習データにありそうな単純な質問なら、これで足りることが多い。</span>
+<span class="cmt"># ただしこの質問は「複数の年号を調べて引き算する」必要があるため、うまくいかない。</span>
+<span class="fn">print</span>(llm.<span class="fn">invoke</span>(prompt))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># アメリカ合衆国の第30代大統領カルビン・クーリッジは、</span>
+<span class="cmt"># 妻の母が1926年に亡くなったとき48歳でした。</span>
+<span class="cmt"># ↑ 大統領の名前は正しいが、没年も年齢も間違い（正しくは1929年・57歳）</span>
+</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>あれ、これ合ってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>それがね、大統領（カルビン・クーリッジ）は正しく特定したけど、回答自体は不正確なんだ。LLMはこういう間違いをする。信頼できるシステムを作るには、プロンプトとレスポンスを何度も繰り返して直していく必要がある。</div></div>
+    </div>
+    <div class="branch ng">結果：大統領名は当たり ✅／没年 ❌／年齢 ❌（48歳。正しくは57歳）</div>
+  </div>
+
+  <!-- 2-2 CoT -->
+  <div class="card" id="cot">
+    <h3 class="blk" style="margin-top:4px">2-2. CoT（思考の連鎖） ― 順を追って考えさせる</h3>
+    <p class="lead"><b>要するに</b>：指示文の冒頭に「どうやって答えに行き着くか説明して」と足すだけで、モデルが途中の手順を書き出すようになり、出力が大きく変わります。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 質問の前に「順を追って考えて」の1行を足すだけ。これが CoT（思考の連鎖）。</span>
+<span class="cmt"># この1行があると、モデルは答えを先に書かず、途中の手順を並べてから答えるようになる。</span>
+prompt = <span class="str">"""ステップバイステップで考えてください。
+アメリカ合衆国の第30代大統領は、妻の母が亡くなったとき何歳でしたか？"""</span>
+
+<span class="cmt"># モデルに渡す。手順が正しく並んでも、そこで使う年号が間違っていれば答えも間違う。</span>
+<span class="fn">print</span>(llm.<span class="fn">invoke</span>(prompt))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 1. 第30代大統領を特定する → カルビン・クーリッジ</span>
+<span class="cmt"># 2. 在任期間を調べる → 1923年〜1929年</span>
+<span class="cmt"># 3. 妻の母の没年を調べる → 1926年   ← ここが間違い（正しくは1929年）</span>
+<span class="cmt"># 4. クーリッジの生年から引き算する → 54歳</span>
+<span class="cmt"># ↑ 手順の立て方は良いが、3の知識が誤っているため答えも誤る</span>
+</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>考え方は良くなったけど、知識が間違ってると答えも間違うんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。ちなみに最近の論文では、「人間でも考え込むとかえって成績が落ちる種類の仕事」では、LLMにCoTを使わせると性能が下がることもある、と示されている。万能じゃないんだ。じゃあ、知識の間違いをどう直す？</div></div>
+    </div>
+    <div class="branch ng">結果：手順は筋が通っている ✅／使った年号が誤り ❌／答えはまだ不正確 ❌</div>
+  </div>
+
+  <!-- 2-3 RAG -->
+  <div class="card" id="rag">
+    <h3 class="blk" style="margin-top:4px">2-3. RAG（検索拡張生成） ― 正しい資料を一緒に渡す</h3>
+    <p class="lead"><b>要するに</b>：答えさせる前に、正しい事実が書かれた文章（<span class="term" data-tip="質問と一緒に渡す、答えの材料になる文章。">コンテキスト</span>）を探してきて、質問と一緒に渡します。知識の間違いを防ぐ方法です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 答えの材料になる正しい事実を、あらかじめ文章として用意しておく。</span>
+<span class="cmt"># 実際のアプリでは、この部分を検索で自動的に集めてくる。</span>
+context = <span class="str">"""- カルビン・クーリッジ（1872年7月4日 – 1933年1月5日）は、1923年から1929年まで第30代アメリカ合衆国大統領を務めた。
+- グレース・アンナ・クーリッジ（旧姓グッドヒュー、1879年1月3日 – 1957年7月8日）は、第30代大統領カルビン・クーリッジの妻。
+- グレースの母は、レミラ・A・グッドヒュー（旧姓バレット）：生年月日1849年4月26日、死去1929年10月24日。"""</span>
+
+<span class="cmt"># 用意した事実を「コンテキスト」として先に置き、そのあとに質問を書く。これが RAG。</span>
+<span class="cmt"># モデルは自分の記憶ではなく、渡された文章の中から年号を読み取るようになる。</span>
+prompt = <span class="str">f"""コンテキスト:
+{context}
+
+アメリカ合衆国の第30代大統領は、妻の母が亡くなったとき何歳でしたか？"""</span>
+
+<span class="cmt"># モデルに渡す。年号は正しく読み取れるが、引き算は相変わらず苦手なので数がずれる。</span>
+<span class="fn">print</span>(llm.<span class="fn">invoke</span>(prompt))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># アメリカ合衆国第30代大統領カルビン・クーリッジは、妻の母レミラ・A・グッドヒューが</span>
+<span class="cmt"># 1929年10月24日に亡くなったとき、54歳でした。</span>
+<span class="cmt"># ↑ 年号は正しく読めた。しかし 1929 - 1872 = 57 のはずが 54 と3年ずれている</span>
+</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>正しい情報を渡したのに、まだ間違ってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこなんだ。LLMは素の状態では<b>計算が苦手</b>だ。この場合、54歳は3年ずれている（正しくは57歳）。事実は正しく渡せたけど、引き算を間違えた。さあ、これをどう直す？</div></div>
+    </div>
+    <div class="branch ok">結果：知識（年号）は正しくなった ✅</div>
+    <div class="branch ng">結果：引き算を間違えた ❌（54歳。正しくは57歳）</div>
+  </div>
+
+  <!-- 2-4 ツール呼び出し -->
+  <div class="card" id="tool">
+    <h3 class="blk" style="margin-top:4px">2-4. ツール呼び出し ― 苦手な仕事は外の道具にやらせる</h3>
+    <p class="lead"><b>要するに</b>：使える外部の機能の一覧を先に見せて、「どれを何に使いたいか」だけをモデルに書かせます。実際にその機能を動かすのはプログラム側です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 使える道具の一覧と、その出力の形式を、質問より先に書いておく。</span>
+<span class="cmt"># モデルには「答え」ではなく「どの道具に何を渡すか」の一覧だけを書かせる。</span>
+prompt = <span class="str">"""ツール:
+- calculator: 数式を受け取り、その結果を返します。
+- search: 検索エンジンへのクエリを受け取り、最初の検索結果を返します。
+
+回答を得るためにツールを使う場合は、ヘッダー行 tool,input を持つCSV形式で
+ツールと入力内容の一覧を出力してください。
+
+アメリカ合衆国の第30代大統領は、妻の母が亡くなったとき何歳でしたか？"""</span>
+
+<span class="cmt"># モデルに渡す。指定した表の形は守ってくれるが、正しい年号を知らないため中身がずれる。</span>
+<span class="fn">print</span>(llm.<span class="fn">invoke</span>(prompt))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># tool,input</span>
+<span class="cmt"># calculator,2023-1892</span>
+<span class="cmt"># search,"What age was Calvin Coolidge when his mother-in-law died?"</span>
+<span class="cmt"># ↑ 形式は正しいが、2023 も 1892 もこの問題と関係のない数字</span>
+</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>フォーマットは合ってるけど、計算式が変ですね……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>その通り。ここで大事な教訓だ——<b>各プロンプトのやり方は、他のやり方と組み合わせてこそ真価を発揮する</b>。このケースなら、ツール呼び出し＋CoT＋RAGを組み合わせる。正しいコンテキストを渡して、電卓の道具を用意して、順を追って考えさせるんだ。</div></div>
+    </div>
+
+    <h4 class="blk">組み合わせる ― RAG ＋ CoT ＋ ツール呼び出し</h4>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># これまでの3つを1つの指示文にまとめる。</span>
+<span class="cmt"># ①RAG＝正しい事実を渡す ②ツール一覧＝計算は電卓に任せる ③CoT＝順を追って考えさせる</span>
+prompt = <span class="str">f"""ツール:
+- calculator: 数式を受け取り、その結果を返します。
+
+コンテキスト:
+{context}
+
+ステップバイステップで考えてから、使うツールをヘッダー行 tool,input のCSVで出力してください。
+
+アメリカ合衆国の第30代大統領は、妻の母が亡くなったとき何歳でしたか？"""</span>
+
+<span class="cmt"># モデルに渡す。渡した事実から正しい2つの年号を選び、電卓に渡す式として書き出してくれる。</span>
+answer = llm.<span class="fn">invoke</span>(prompt)
+
+<span class="cmt"># モデルが書き出した内容を確認する。</span>
+<span class="fn">print</span>(answer)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># tool,input</span>
+<span class="cmt"># calculator,1929 - 1872</span>
+
+<span class="cmt"># 計算そのものはモデルではなくPythonにやらせる。ここは必ず正確になる。</span>
+<span class="cmt"># 1872年生まれの人が1929年に迎えている年齢なので、答えは57。</span>
+<span class="fn">print</span>(<span class="num">1929</span> - <span class="num">1872</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># 57   ← 正解</span>
+</pre></details>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>RAG：正しい事実を渡す</h4><p>クーリッジの生年（1872年）と、義母の没年（1929年10月24日）を含む文章を質問と一緒に渡します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>CoT：順を追って考えさせる</h4><p>渡した文章のどこを見るべきかを、モデル自身に整理させます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>ツール呼び出し：計算式を書かせる</h4><p>モデルは答えではなく <code>calculator, 1929 - 1872</code> という指示だけを出力します。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>プログラムが計算する</h4><p>その式をPythonが計算し、<b>57</b> という正解を得ます。</p><div class="branch ok">3つを組み合わせて、ようやく正解にたどり着きました。</div></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>RAGで正しいデータを取ってきて、CoTで段階的に導いて、ツール呼び出しで正確に計算する——組み合わせの力だね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なるほど！1つずつだと足りないけど、合わせると強い。</div></div>
+    </div>
+  </div>
+
+  <!-- 2-5 Few-shot -->
+  <div class="card" id="fewshot">
+    <h3 class="blk" style="margin-top:4px">2-5. Few-shotプロンプト ― お手本を見せる</h3>
+    <p class="lead"><b>要するに</b>：他の質問とその正解をいくつか見せることで、追加学習なしで新しい仕事のこなし方を覚えさせる方法です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 本番の質問の前に、同じ形式の質問と正解の見本を並べる。これが Few-shot。</span>
+<span class="cmt"># モデルは見本の並び方をまねて、同じ形式で答えるようになる。</span>
+prompt = <span class="str">"""Q: 第16代大統領は、就任した年に何歳でしたか？
+A: エイブラハム・リンカーン（1809年生まれ）は1861年に就任したので、52歳。
+
+Q: 第26代大統領は、就任した年に何歳でしたか？
+A: セオドア・ルーズベルト（1858年生まれ）は1901年に就任したので、42歳。
+
+Q: 第30代大統領は、就任した年に何歳でしたか？
+A:"""</span>
+
+<span class="cmt"># モデルに渡す。見本と同じ「名前（生年）＋計算＋歳」という形をなぞって答えが返る。</span>
+<span class="fn">print</span>(llm.<span class="fn">invoke</span>(prompt))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># カルビン・クーリッジ（1872年生まれ）は1923年に就任したので、51歳。</span>
+<span class="cmt"># ↑ 追加学習をしていないのに、見本と同じ書き方をまねている</span>
+</pre></details>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📌</div><h4>静的なFew-shot</h4><p>プロンプトに入れる少数の見本を、あらかじめ固定の一覧として用意しておく最も基本的な方式。</p></div>
+      <div class="mini"><div class="ic">🎯</div><h4>動的なFew-shot</h4><p>たくさんの見本を用意しておき、質問ごとに最も関係の深い見本をその都度選んで入れる方式。</p></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin-top:14px">Few-shotはファインチューニング（追加学習）より柔軟で、実行中にその場で適用できます。効果はやや限定的ですが、ファインチューニングに進む前にまず試すのが定石です。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>先に見本を見せてから本番、という順番なんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>まさにそれ。さあ、これらのプロンプトのやり方を、LangChainでどう組み合わせてアプリにするか——いよいよ本題だ。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>やり方</th><th>何をする</th><th>いつ使う</th><th>クーリッジ問題での結果</th></tr>
+      <tr><td>Zero-shot</td><td>そのまま指示する</td><td>まず最初に。単純な質問</td><td>❌ 48歳（不正確）</td></tr>
+      <tr><td>CoT</td><td>「順を追って考えて」を足す</td><td>複数の手順が要る問題</td><td>❌ 手順は良いが知識が誤り</td></tr>
+      <tr><td>RAG</td><td>正しい事実を一緒に渡す</td><td>知識の間違いを防ぎたいとき</td><td>❌ 54歳（計算ミス）</td></tr>
+      <tr><td>ツール呼び出し</td><td>外部の機能を使わせる</td><td>計算・検索などLLMが苦手なとき</td><td>❌ 単体では入力がずれる</td></tr>
+      <tr><td>Few-shot</td><td>見本を見せる</td><td>出力の形式をそろえたいとき</td><td>形式をまねさせるのに有効</td></tr>
+      <tr><td><b>組み合わせ</b></td><td>RAG＋CoT＋ツール呼び出し</td><td>正確さが必要な実務</td><td>✅ <b>57歳（正解）</b></td></tr>
+    </table>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>Zero-shot：望む仕事をそのまま指示。単純な質問にはたいてい有効。</li>
+        <li>CoT：「ステップバイステップで考えて」で推論を促す。ただし万能ではない。</li>
+        <li>RAG：正しい事実をコンテキストとして添えて、知識の間違いを防ぐ。</li>
+        <li>ツール呼び出し：外部の機能（電卓・検索）を使わせ、苦手な計算などを補う。</li>
+        <li>Few-shot：見本（例＋正解）を見せて新しい仕事を覚えさせる（静的／動的）。</li>
+        <li>鍵：やり方は組み合わせてこそ強い（例：RAG＋CoT＋ツール呼び出しで正解57歳）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. LangChain ============ -->
+<section id="langchain">
+  <div class="sec-head"><div class="sec-num">3</div><div><h2>LangChainとその重要性</h2><span class="tag">やり方を部品にして、組み合わせられるようにする</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：LangChainは、ここまでの5つのやり方を「そのまま使い回せる関数やクラス」の形にまとめ、それらを組み合わせて大きなLLMアプリを作れるようにした、最初期かつ最大のライブラリです。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>ここまでで「プロンプトのやり方は組み合わせてこそ真価を発揮する」とわかったね。<b>LangChain</b>は、まさにこの考えを土台にしたオープンソースライブラリだ。執筆時点で、月間2,800万回以上ダウンロードされて、GitHubスター9万9,000件、生成AI分野で最大規模の開発者コミュニティ（7万2,000人超）を誇る。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>そんなに使われてるんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>機械学習の専門知識がなくても、ソフトウェアエンジニアがLLMの力を使ってアプリを作れるようにした立役者だ。LangChainは、主要なプロンプトのやり方ごとに、シンプルな<b>抽象化</b>を提供する。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>抽象化って？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>やり方の考え方を、Python／JavaScriptの関数やクラスとして包んで、使い回しやすくしたものだ。これらは互いに組み合わせやすく作られていて、つなげて大きなアプリを作れる。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：「共通インターフェース」だと何が違うか</h4>
+      <p>OpenAIのモデルを使ってアプリを書いたあとで、「料金が安いから別の会社のモデルに変えたい」となったとします。LangChainを使わずに書いていた場合、送信の書式も返答の受け取り方も会社ごとに違うため、アプリ全体を書き直すことになります。</p>
+      <p>LangChainを使っていれば、モデルを作る<b>1行だけ</b>を差し替えれば、残りのコードはそのまま動きます。これが「単一の提供元に縛られない（ロックインを避ける）」という利点です。</p>
+    </div>
+
+    <h3 class="blk">LangChainが提供するもの</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔌</div><h4>LLM提供元との統合</h4><p>OpenAI・Anthropic・Googleなどの商用、Llama・Gemmaなどのオープンソース。すべて共通の使い方なので、新しいLLMが出ても簡単に差し替えられ、1社に縛られるのを避けられます。</p><span class="pill">1章</span></div>
+      <div class="mini"><div class="ic">📝</div><h4>プロンプトテンプレート</h4><p>指示文の「毎回変わらない部分」と「送信ごとに差し替える部分」を分けて書けます。同じ指示文を何度も使い回せます。</p><span class="pill">1章</span></div>
+      <div class="mini"><div class="ic">🧰</div><h4>ツール</h4><p>Google Sheets・Wolfram Alpha・Zapierなど多数のサービスとのつなぎ込み。ツール呼び出しを共通の形で扱えます。</p><span class="pill">ツール呼び出し</span></div>
+      <div class="mini"><div class="ic">🔎</div><h4>埋め込みモデル・ベクトルストア・ベクトルインデックス</h4><p>RAG用の部品。文や段落の意味を数値の並びで表す埋め込みモデル、その数値を保存する専用のデータベースなど。</p><span class="pill">2章・3章</span></div>
+      <div class="mini"><div class="ic">🧠</div><h4>メモリ</h4><p>過去のやり取りを保持して、次の返答に活かします。</p><span class="pill">4章</span></div>
+      <div class="mini"><div class="ic">🤖</div><h4>エージェント</h4><p>ReAct論文で広まった「CoT推論＋ツール呼び出し」をまとめた部品。①手順を考える→②外部の道具の呼び出しに変換→③結果を受け取る→④仕事が終わるまで繰り返す。</p><span class="pill">5〜8章</span></div>
+    </div>
+
+    <div class="cycle" style="margin-top:18px">
+      <div class="node"><h4>① 推論</h4><p>次に何をすべきかを考えます。</p><span class="when">CoTの考え方</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② ツール呼び出しに変換</h4><p>「電卓に 1929 - 1872 を渡す」のような具体的な指示に直します。</p><span class="when">ツール呼び出し</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 出力を受け取る</h4><p>道具が返した結果を読み取ります。</p><span class="when">プログラム側の仕事</span></div>
+    </div>
+    <div class="loopback">↻ ④ 仕事が終わるまで ①〜③ を繰り返す ＝ これが「エージェント」</div>
+
+    <h3 class="blk">開発を支える2つのサービス</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔬</div><h4>LangSmith</h4><p>作ったアプリの動きを記録・確認し、不具合探し・テスト・本番公開・監視を支えます。</p><span class="pill">9章・10章</span></div>
+      <div class="mini"><div class="ic">🚀</div><h4>LangGraph Platform</h4><p>エージェントを本番のサーバーに置いて動かし、利用者が増えても耐えられるようにします。</p><span class="pill">9章・10章</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>なんだか、本書の地図が見えてきました！</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>LangChainは「プロンプトのやり方は組み合わせてこそ」を土台にしたオープンソースライブラリ。</li>
+        <li>主要なやり方を「抽象化」として提供し、互いに組み合わせやすい形で使える。</li>
+        <li>提供物：LLM統合（共通の使い方でロックイン回避）・プロンプトテンプレート・ツール・RAG部品・メモリ・エージェント。</li>
+        <li>LangSmith（不具合探し・テスト・監視）とLangGraph Platform（本番公開・規模拡大）も備える。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. 本書から得られるもの ============ -->
+<section id="book">
+  <div class="sec-head"><div class="sec-num">4</div><div><h2>本書から得られるもの・本書の使い方</h2><span class="tag">これから進む道のり</span></div></div>
+
+  <div class="card">
+    <p class="lead"><b>要するに</b>：本書は「簡単なチャットボット→RAGで自分の文書に詳しく→メモリで記憶→計画と実行（エージェント）→協調ツール→本番公開と監視」という順に進みます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最後に、この本でどんな旅をするか話しておこう。著者が伝えたいのは、LLMを道具箱に加える「ワクワク感」と「可能性」だ。1年前なら、自動応答アシスタントを作ろうとしても、あの迷路みたいな電話の音声案内がせいぜいだった。でも今は、LLMとLangChainで、利用者と自然に対話して意図を正確に理解する「快適なアシスタント」を実際に作れる。天と地ほどの違いだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>その違い、体験してみたいです！</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">①</div><div class="line"></div></div><div class="body"><h4>日本語だけでカスタマイズしたAIチャットボット</h4><p>コードを書かずに、指示文だけで振る舞いを決められる驚きを味わいます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">②</div><div class="line"></div></div><div class="body"><h4>自分のドキュメントへアクセスさせる（RAG）</h4><p>特定の分野に詳しいアシスタントに進化させます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">③</div><div class="line"></div></div><div class="body"><h4>過去の会話を記憶させる（メモリ）</h4><p>前に話したことを踏まえて答えられるようにします。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">④</div><div class="line"></div></div><div class="body"><h4>計画を立てて段階的に実行する力を与える</h4><p>CoTやツール呼び出しを組み合わせます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">⑤</div><div class="line"></div></div><div class="body"><h4>協調作業の仕組み</h4><p>途中で止めて人の承認を求めたり、足りない情報を聞き返したりできるようにします。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">⑥</div><div class="line"></div></div><div class="body"><h4>本番公開と、その後</h4><p>応答の速さ・信頼性・安全性、そして監視と継続的な改善を扱います。</p></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>補足だけど、本書の表記のきまり（新しい用語は太字、コードは等幅など）、サンプルコードのダウンロード先（GitHub）、動作確認したバージョン情報なんかは、本の「はじめに」に書いてある。サンプルコードは古くて動かないこともあるから、本書掲載のコードを見て直すといい。出力例は実際と多少違うこともあるよ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>わかりました。じゃあ、いよいよ第1章ですね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。次の1章は「LangChainによるLLMの基礎」だ。実際に手を動かしてLLMを呼び出していくよ。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>本書の旅：チャットボット→RAG→メモリ→エージェント（計画と実行）→協調ツール→本番公開・監視。</li>
+        <li>LLM＋LangChainで、自然に対話し意図を理解するアシスタントが実際に作れる。</li>
+        <li>サンプルコードはGitHubで配布。古いと動かないことがあるので本書掲載コードを参照する。出力例は実際と多少異なることがある。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ まとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが5つのポイントを言葉にする</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>今日のポイントを言ってみます。1つ目は「LLMは、テキストを入れると次のトークンを確率で予測・生成する巨大な機械学習モデル。中心技術はトランスフォーマー」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次に来る言葉を当てる仕組みの、けた違いの大きい版、だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「エンジニアの仕事はLLMを学習させることじゃなく、プロンプトで目的の仕事をやらせること（プロンプトエンジニアリング）」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう、それが本書の主題だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「プロンプトのやり方は5つ。Zero-shot・CoT・RAG・ツール呼び出し・Few-shot。組み合わせてこそ強い」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>クーリッジの年齢問題が、組み合わせで正解57歳になった例が分かりやすかったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「LLMは計算が苦手だったり間違いを言ったりする。だから外部の道具・知識と組み合わせる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>それがLangChain誕生の動機だった。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>5つ目は「LangChainは、やり方を抽象化として提供して、組み合わせて大規模アプリを作れるようにする最初で最大のライブラリ」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>完璧だ。次の章から、実際に手を動かしていこう。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この章の5行まとめ</h4>
+      <ul>
+        <li>LLM＝次のトークンを確率で予測して文章を作る巨大モデル。中心技術はトランスフォーマー。</li>
+        <li>エンジニアの仕事は学習ではなく、プロンプトの工夫（プロンプトエンジニアリング）。</li>
+        <li>プロンプトの書き方は5つ。Zero-shot・CoT・RAG・ツール呼び出し・Few-shot。</li>
+        <li>LLMは計算が苦手で事実も間違える。だから外部の道具・知識と組み合わせる。</li>
+        <li>LangChainは、それらを部品にして組み合わせられるようにしたライブラリ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 理解度チェック ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。答えを見る前に、まず自分で書いてみてください。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>LLMとは</div>
+      <p style="font-size:14px;margin:0">❓ LLM（大規模言語モデル）とは何ですか。初めて聞く人に説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">LLMは、テキストを入力すると、人間のように続きのテキストを予測して生成するよう、膨大なデータで学習された巨大な機械学習モデル。スマホの文字入力で次の言葉の候補が出るのと同じ「次に来る語を当てる」仕組みを、けた違いの規模でやっているもの。仕組みとしては、前の単語列を踏まえて、次に来るトークン（テキストの最小のかたまり）の確率を推定している。中心技術はトランスフォーマーで、文中の各単語を他のすべての単語との関係で捉えて前後のつながりを理解する。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ テキストを入れると続きを予測・生成する、に触れている<br>□ 次に来る語を当てる仕組みという説明ができている<br>□ トークン単位の確率予測やトランスフォーマーに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>チャットモデルの役割</div>
+      <p style="font-size:14px;margin:0">❓ チャットモデルで使われる system / user / assistant の3つの役割（ロール）は、それぞれ何を表しますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">systemは仕事の指示や枠組み（「あなたは親切なアシスタントです」など）、userは実際の質問や依頼（利用者の入力）、assistantはモデルの返答を表す。この役割分けによって、モデルの出力を調整しやすくなり、利用者の入力を事前の指示と混同しにくくなる（ジェイルブレイクを起きにくくする）効果もある。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ system＝指示・枠組み、user＝質問、assistant＝返答、を区別できている<br>□ 出力を調整しやすくする役割に触れている<br>□ ジェイルブレイクを防ぐ効果に触れている（できれば）</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>プロンプトの使い分け</div>
+      <p style="font-size:14px;margin:0">❓ Zero-shot・CoT・RAG・ツール呼び出しの4つを挙げ、クーリッジ大統領の年齢を求める例で、なぜ単体ではうまくいかず、組み合わせると正解できたのかを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Zero-shotはそのまま質問する方法で、単純な質問には効くが、この問題では不正確だった。CoTは「ステップバイステップで考えて」と促す方法で、考え方は良くなったが知識（義母の生没年）を誤った。RAGは正しい事実をコンテキストとして添える方法で、知識は正しくなったが、LLMは計算が苦手で引き算を3年間違えた。ツール呼び出しは電卓などの外部の機能を使わせる方法。これらを組み合わせ、RAGで正しい事実を渡し、CoTで段階的に考えさせ、ツール呼び出しで電卓に <code>1929 - 1872</code> を計算させることで、正解の57歳が得られた。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 4つのやり方をそれぞれ説明している<br>□ 単体での失敗（知識の誤り・計算の苦手さ）に触れている<br>□ 組み合わせ（RAG＋CoT＋ツール呼び出し）で正解した、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>なぜLLMを道具と組み合わせるのか</div>
+      <p style="font-size:14px;margin:0">❓ LangChainが生まれたきっかけである「LLMを他の計算リソースや知識ソースと組み合わせる」という考えを、ボールの計算や電卓の例で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">LLMは計算が苦手なので、「1,234個のボールを123人で均等に分けたときの余りは？」のような問題をそのまま聞くと、がっかりする答えしか返らない。でも電卓の機能と組み合わせれば、LLMに「質問を電卓が扱える式（<code>1234 % 123</code>）に書き換えて」と指示し、その出力を電卓の関数に渡すことで正確な答え（4）が得られる。このように、LLM単体ではなく外部の道具や知識と組み合わせてこそ本当に役立つアプリになる、という気づきがLangChain誕生の動機。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ LLMは計算が苦手という前提に触れている<br>□ 電卓など外部の道具に処理を渡す、に触れている<br>□ LLM単体でなく組み合わせてこそ役立つ、というLangChainの動機に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>LangChainの抽象化</div>
+      <p style="font-size:14px;margin:0">❓ LangChainが提供する「抽象化」とは何ですか。それがあると何が嬉しいのかを、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">抽象化とは、プロンプトのやり方の考え方を、Python／JavaScriptの関数やクラスとして包んで使い回しやすくしたもの。LangChainは、LLM統合・プロンプトテンプレート・ツール・RAG部品・メモリ・エージェントなどを抽象化として提供する。嬉しい点は、互いに組み合わせやすく大きなアプリを作れること、そしてLLMの提供元が共通の使い方なので新しいLLMが出ても簡単に差し替えられ、1社に縛られるのを避けられること。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 抽象化＝やり方を関数・クラスとして使い回しやすく包んだもの、に触れている<br>□ 組み合わせて大規模アプリを作れる、に触れている<br>□ 共通の使い方でLLMを差し替えやすい（ロックイン回避）に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして確かめる</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">🎛️</div><h4>OpenAI Playgroundでプロンプトを試す</h4><p>platform.openai.com/playground/prompts でアカウントを作り、Temperatureを0にして、この章のクーリッジ問題をZero-shot→CoT→RAGと変えながら出力の違いを観察しましょう。</p></div>
+      <div class="mini"><div class="ic">🔤</div><h4>トークナイザーを体験する</h4><p>platform.openai.com/tokenizer に自分の文章を入れて、何トークンに分かれるかを見てみましょう。料金の感覚もつかめます。</p></div>
+      <div class="mini"><div class="ic">📗</div><h4>LangChain公式を覗く</h4><p>python.langchain.com のトップを眺め、この章で出てきた「プロンプトテンプレート」「ツール」「エージェント」などの言葉を探してみましょう。</p></div>
+      <div class="mini"><div class="ic">⬇️</div><h4>サンプルコードを入手する</h4><p>本書のサンプルコード（github.com/langchain-ai/learning-langchain）をクローンし、1章を動かす準備をしておきましょう。</p></div>
+      <div class="mini"><div class="ic">🗂️</div><h4>5つのやり方を表にする</h4><p>Zero-shot・CoT・RAG・ツール呼び出し・Few-shotを、「何をする」「いつ使う」で表にまとめ、自分の言葉で整理してみましょう。</p></div>
+      <div class="mini"><div class="ic">⚖️</div><h4>ファインチューニングとの違いを考える</h4><p>「Few-shot（見本を見せる）」と「ファインチューニング（追加学習させる）」の違いと使い分けを、この章をもとに書き出してみましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第0章 はじめに ― 図解版<br>次章：<b>1. LangChainによるLLMの基礎</b></p>
+
+</div>

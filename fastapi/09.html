@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第9章 サービス層 ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+
+  .tree{background:#0c0f1e; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:12px 0;
+    font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; line-height:1.75; color:#cdd6f4; overflow-x:auto}
+  .tree .d{color:#7fd4ff} .tree .c{color:#6b7394} .tree .h{color:#ffb454}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第9章</div>
+  <h1>第9章　サービス層</h1>
+  <p>「受け取って下に渡すだけの中間層は本当に要るのか？」― その答えを、実際にコードを書きながら確かめます。まず素通しのサービス層を作り、続いて pytest で最初の自動テストを書き、最後に記録・数値・追跡といった運用の仕事を見わたします。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全9節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① サービスの定義</a>
+  <a href="#s2">② レイアウト</a>
+  <a href="#s3">③ プロテクション</a>
+  <a href="#s4">④ 関数（素通しのサービス層）</a>
+  <a href="#s5">⑤ テストだ！</a>
+  <a class="sub" href="#s5-dir">└ テストの置き場所</a>
+  <a class="sub" href="#s5-none">└ 見つからないときどうするか</a>
+  <a class="sub" href="#s5-run">└ 実際に書いて動かす</a>
+  <a href="#s6">⑥ その他のサービスレベルの仕事</a>
+  <a href="#s7">⑦ ロギング</a>
+  <a href="#s8">⑧ メトリック、モニタリング、可観測性</a>
+  <a href="#s9">⑨ トレース</a>
+  <a href="#s10">⑩ その他（ドメインの拡張）</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">サービス層</div><p>このサイトが提供する機能の本体。判断や組み合わせの処理を書く場所です。</p></div>
+    <div class="item"><div class="w">ビジネスロジック</div><p>その業務ならではの決まりごとや判断の処理。「在庫が0なら注文できない」といったものです。</p></div>
+    <div class="item"><div class="w">素通し <span>パススルー</span></div><p>受け取ったものを何も加工せず、そのまま次に渡すだけの処理のことです。</p></div>
+    <div class="item"><div class="w">リソース</div><p>アプリが扱うデータのひとかたまり。生き物、探検家などが1つずつのリソースです。</p></div>
+    <div class="item"><div class="w">None</div><p>Python で「値が無い」ことを表すもの。「見つからなかった」を伝えるのによく使われます。</p></div>
+    <div class="item"><div class="w">例外 <span>exception</span></div><p>処理を続けられない事態が起きたときに投げられる知らせ。受け止めなければ処理は止まります。</p></div>
+    <div class="item"><div class="w">TypeError / ValueError</div><p>それぞれ「種類が違う」「値が正しくない」ときに使われる、Python にもとから用意された失敗の知らせです。</p></div>
+    <div class="item"><div class="w">Optional</div><p>「その値でもよいし、無し（None）でもよい」という書き添え。Python 3.9 より前で使います。</p></div>
+    <div class="item"><div class="w">pytest</div><p>「このコードは期待どおりに動くか」を自動で確かめるプログラムを書くための道具です。</p></div>
+    <div class="item"><div class="w">単体テスト <span>unit test</span></div><p>1つの処理だけを取り出して、期待どおりに動くかを確かめることです。</p></div>
+    <div class="item"><div class="w">エンドツーエンドテスト</div><p>外からの問い合わせからデータベースまで、全部を通して確かめることです。</p></div>
+    <div class="item"><div class="w">契約テスト</div><p>層と層の間の取り決めが守られているかを確かめることです。</p></div>
+    <div class="item"><div class="w">assert</div><p>「ここはこうなっているはず」と書く行。違っていればその場でテストが失敗します。</p></div>
+    <div class="item"><div class="w">ロギング</div><p>いつ、何が起きたかを記録に残すことです。</p></div>
+    <div class="item"><div class="w">メトリック</div><p>件数や所要時間など、動作の状況を数値で表したものです。</p></div>
+    <div class="item"><div class="w">モニタリング／可観測性</div><p>その数値を継続して見張り、異常があれば知らせる仕組みです。</p></div>
+    <div class="item"><div class="w">Prometheus / Grafana</div><p>前者が数値を集める道具、後者がそれを見やすく表示する道具です。</p></div>
+    <div class="item"><div class="w">トレース</div><p>1回の問い合わせが、どの処理にどれだけ時間を使ったかを段階ごとに記録することです。</p></div>
+    <div class="item"><div class="w">OpenTelemetry</div><p>記録・数値・追跡のやり方をそろえるための、今の標準的な取り組みです。</p></div>
+    <div class="item"><div class="w">Jaeger</div><p>追跡の記録を集めて表示する、以前からある道具です。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">中間層は本当に必要か</span></h2></div>
+  <div class="card">
+    <p class="lead">ハル：「Web 層からデータ層へただ素通しするだけの中間層って、本当に要るんですか？」タカ師匠：「それはサービス層を軽く見すぎだ。層を飛ばすコードは、後からじわじわとアプリを傷めていくんだ」。本章では <code>service/</code> フォルダを埋め、まずは「素通し」のサービス層を作り、続いて pytest を使った最初の単体テストを書きます。最後に記録・数値・追跡といった「実際の運用で効いてくるサービス層の仕事」を見わたします。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">サービス層は「Webサイトの中心」です。Web層から受けた依頼をデータ層に橋渡しし、<span class="term" data-tip="その業務ならではの決まりごとや判断の処理。">業務上の決まりごと</span>を実装します。最初は素通しでも、後でその決まりごとが入る場所を確保するために、最初から層として作ります。<code>get_one()</code> のような「見つからない」場合に <code>None</code> を返すか失敗を投げるかは設計の判断です。本章ではテスト用のフォルダも整え、pytest によるサービス層の単体テストを書き始めます。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>サービス層の存在意義（単なる素通しではなく、業務上の決まりごとの居場所）を理解できる</li>
+        <li>「見つからないとき」の設計（<code>None</code> か 失敗を投げるか）の判断基準を持てる</li>
+        <li>pytest を使った単体テストの書き方が身につく</li>
+        <li>テスト用フォルダ（unit/web, unit/service, unit/data, full）の構造が分かる</li>
+        <li>記録・数値・追跡という運用面の言葉を整理できる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① サービスの定義 ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>サービスの定義<span class="tag">サイトの存在理由</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>サービス層は業務上の決まりごとの中心です。作成・取得・更新・削除 と「1件／複数件」の組み合わせが基本の型です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>サービス層は<b>Webサイトの中心であり、存在理由</b>だ。複数の場所から依頼を受け、サイトの核であるデータにアクセスし、返事を返す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>よくある組み合わせは、①<b>作成／検索／変更（一部または全部）／削除</b>、②<b>1件だけ／複数件</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>RESTful の層では名詞が<b>リソース</b>にあたる。本書では最初のリソースとして「クリプトイド（架空の生き物）」と「探検家（人間）」を使う。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>後で関連するリソースを定義することもできる。①<b>場所</b>、②<b>出来事</b>（遠征、目撃の記録など）。</div></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th></th><th>1件だけ</th><th>複数件</th></tr>
+      <tr><th>作成</th><td><code>create</code></td><td>まとめて作る（必要になれば）</td></tr>
+      <tr><th>検索</th><td><code>get_one</code></td><td><code>get_all</code></td></tr>
+      <tr><th>変更</th><td><code>modify</code> / <code>replace</code></td><td>まとめて変える（必要になれば）</td></tr>
+      <tr><th>削除</th><td><code>delete</code></td><td>まとめて消す（必要になれば）</td></tr>
+    </table>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>サービス層の存在意義が腹に落ちる</li><li>「単に素通しするだけでも、層として作る価値がある」と分かる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>サービス層 = Webサイトの存在理由</li>
+        <li>基本の型: 作成・取得・更新・削除 × 1件/複数件</li>
+        <li>リソースは名詞。関連するリソースを増やせる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② レイアウト ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>レイアウト<span class="tag">今章でいじる場所</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>第8章で作った構成のうち、今章は <code>service/</code> と、新しく作る <code>test/</code> を扱います。</p>
+    <div class="tree">
+<span class="d">src/</span>
+├── main.py
+├── <span class="d">web/</span>
+│   ├── __init__.py
+│   ├── creature.py
+│   ├── explorer.py
+├── <span class="h">service/</span>      <span class="c">← 今回いじる場所</span>
+│   ├── __init__.py
+│   ├── creature.py
+│   ├── explorer.py
+├── <span class="d">data/</span>
+│   ├── __init__.py
+│   ├── creature.py
+│   ├── explorer.py
+├── <span class="d">model/</span>
+│   ├── __init__.py
+│   ├── creature.py
+│   ├── explorer.py
+├── <span class="d">fake/</span>
+│   ├── __init__.py
+│   ├── creature.py
+│   ├── explorer.py
+└── <span class="h">test/</span>         <span class="c">← 今回新しく作る</span>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>今章の対象: <code>service/</code> フォルダ</li><li>新しく追加: <code>test/</code> フォルダ</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ プロテクション ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>プロテクション<span class="tag">認証はどこでやるか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>サービス層はデータの出入りに集中します。身分と権限の確認は上の層（本書では Web層）に任せます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>層に分けることのいいところは「全部を気にしなくていい」ことだ。サービス層はデータの出入りだけを気にすればいい。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>第11章で身分と権限の確認をやるけど、その面倒な部分は上の層（本書では Web層）が担当できる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>「作成・変更・削除」の処理は誰にでも開放すべきではないし、取得の処理ですら最終的に制限が必要になることがある。</div></div>
+    </div>
+    <div class="example">
+      <h4>🔎 具体例：取得にも制限が必要になる場面</h4>
+      <p>探検家の一覧を返す窓口は、最初は誰でも見られてよいかもしれません。しかし後から「連絡先」の項目が追加されると、話が変わります。誰でも一覧を取得できるままだと、全員分の連絡先が外に出ます。</p>
+      <p>このとき「ログインした人だけ」「本人と管理者だけ」といった制限を、Web層で確認するように追加します。サービス層はデータの出し入れに専念したままでいられます。</p>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>各層の役目を意識して切り分けられる</li><li>身分の確認は Web層、業務の決まりごとはサービス層、という分担が見える</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>サービス層はデータの出入りに集中</li>
+        <li>身分と権限の確認は Web層側</li>
+        <li>書き込みや削除の処理は、将来的に制限が必要</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ 関数 ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>関数<span class="tag">最初は素通しでよい</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>サービス層は最初は素通しですが、ファイルを分けて各リソースで作ります。<code>import fake.X as data</code> の形で下の層を切り離しておきます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>creature.py</code> と <code>explorer.py</code> はほとんど同じになる。1つのファイルにまとめたくなるけど、ほぼ必ずどこかで違いが出てくる。最初から2ファイルに分けておくのが正解だ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>今の時点では、サービス層のファイルはほぼ素通しだ。最初に少し余分な構造を持っておくことが、後で効いてくる典型例だね。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">生き物のサービス層です。6つの処理すべてが、下の層に渡して結果を返すだけです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 生き物のデータの形を取り込む。返す値の種類を書くために使う。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="cmt"># 仮データのファイルを、data という名前で呼べるようにする。</span>
+<span class="cmt"># 第10章で本物のデータ層に差し替えるとき、この1行を変えるだけで済む。</span>
+<span class="kw">import</span> fake.creature <span class="kw">as</span> data
+
+<span class="cmt"># すべてを返す。下の層に頼んで、返ってきたものをそのまま返す。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Creature]:
+    <span class="kw">return</span> data.<span class="fn">get_all</span>()
+
+<span class="cmt"># 名前を指定して1件を返す。見つからない場合は None が返る、という書き添え。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Creature | <span class="kw">None</span>:
+    <span class="kw">return</span> data.<span class="fn">get_one</span>(name)
+
+<span class="cmt"># 新しく作る。受け取った内容を下の層に渡す。</span>
+<span class="kw">def</span> <span class="fn">create</span>(creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> data.<span class="fn">create</span>(creature)
+
+<span class="cmt"># 一部を更新する。どれを、どう変えるかを下の層に渡す。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> data.<span class="fn">modify</span>(name, creature)
+
+<span class="cmt"># 全体を置き換える。</span>
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, creature: Creature) -&gt; Creature:
+    <span class="kw">return</span> data.<span class="fn">replace</span>(name, creature)
+
+<span class="cmt"># 削除する。うまくいったかどうかを真偽の値で返す。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="kw">return</span> data.<span class="fn">delete</span>(name)
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">探検家のほうも、まったく同じ形です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 探検家のデータの形を取り込む。</span>
+<span class="kw">from</span> model.explorer <span class="kw">import</span> Explorer
+<span class="cmt"># 仮データのファイルを data という名前で呼べるようにする。</span>
+<span class="kw">import</span> fake.explorer <span class="kw">as</span> data
+
+<span class="cmt"># すべてを返す。</span>
+<span class="kw">def</span> <span class="fn">get_all</span>() -&gt; <span class="kw">list</span>[Explorer]:
+    <span class="kw">return</span> data.<span class="fn">get_all</span>()
+
+<span class="cmt"># 名前を指定して1件を返す。見つからなければ None。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Explorer | <span class="kw">None</span>:
+    <span class="kw">return</span> data.<span class="fn">get_one</span>(name)
+
+<span class="cmt"># 新しく作る。</span>
+<span class="kw">def</span> <span class="fn">create</span>(explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> data.<span class="fn">create</span>(explorer)
+
+<span class="cmt"># 一部を更新する。</span>
+<span class="kw">def</span> <span class="fn">modify</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> data.<span class="fn">modify</span>(name, explorer)
+
+<span class="cmt"># 全体を置き換える。</span>
+<span class="kw">def</span> <span class="fn">replace</span>(name: <span class="kw">str</span>, explorer: Explorer) -&gt; Explorer:
+    <span class="kw">return</span> data.<span class="fn">replace</span>(name, explorer)
+
+<span class="cmt"># 削除する。</span>
+<span class="kw">def</span> <span class="fn">delete</span>(name: <span class="kw">str</span>) -&gt; <span class="kw">bool</span>:
+    <span class="kw">return</span> data.<span class="fn">delete</span>(name)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span><code>import fake.creature as data</code> がポイントだ。サービス層は「data」という名前で呼ぶが、実体は仮データのファイル。第10章で「仮のものを本物のデータ層に差し替える」と、サービス層のコードはそのまま動く。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ひとつ注意。<code>Creature | None</code> という書き方は Python 3.9 以上で動く。それより古いなら <code>Optional</code> を使う。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">古い Python での書き方です。意味はまったく同じです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 「その値でもよいし、無しでもよい」を表すための書き方を取り込む。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Optional
+<span class="cmt"># データの形を取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+
+<span class="cmt"># Optional[Creature] は「Creature か、または None」という意味。</span>
+<span class="cmt"># 新しい書き方の Creature | None とまったく同じ意味になる。</span>
+<span class="kw">def</span> <span class="fn">get_one</span>(name: <span class="kw">str</span>) -&gt; Optional[Creature]:
+    <span class="kw">return</span> data.<span class="fn">get_one</span>(name)
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>あわせて、Web層は <code>import fake.X as service</code> だったのを <code>import service.X as service</code> に変更する。これで Web → サービス → 仮データ、という流れになる。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>Web層</h4><p><code>import service.X as service</code></p><span class="when">この1行だけ変更</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>サービス層</h4><p><code>import fake.X as data</code></p><span class="when">今回追加</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>仮データ</h4><p>メモリ上の一覧を返す</p><span class="when">第10章で本物に差し替え</span></div>
+    </div>
+    <div class="loopback">↺ 各層は「service」「data」という共通の名前で下を呼ぶので、実体を差し替えても本文のコードは変わりません。</div>
+
+    <div class="example">
+      <h4>🔎 具体例：後から決まりごとが入る場所</h4>
+      <p>今の <code>create()</code> は受け取ったものをそのまま下に渡すだけです。しかし後から「同じ名前の生き物がすでにあれば作らない」という決まりが加わったとします。この判断は、Web の事情でもデータベースの事情でもなく、このサイトの決まりごとです。</p>
+      <p>サービス層があれば、<code>create()</code> の中に「先に <code>get_one()</code> で確認し、あれば失敗を返す」という数行を足すだけで済みます。層が無ければ、この判断を Web層に書くか、データ層に書くことになり、どちらでも後で場所が分からなくなります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「最初から層を作る」価値がコードで体感できる</li><li>下の層を差し替えやすい書き方が身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>service/creature.py, service/explorer.py を作成</li>
+        <li>最初は素通し</li>
+        <li><code>import fake.X as data</code> で下の層を切り離す</li>
+        <li>Web層は <code>import service.X as service</code> に書き換え</li>
+        <li>Python 3.9 より前なら <code>Optional</code> を使う</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ テスト ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>テストだ！<span class="tag">最初の自動テスト</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>pytest でサービス層の単体テストを書きます。「見つからない」をどう表すか（<code>None</code> か 失敗を投げるか）は設計の判断です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>コードが少し埋まってきたから、自動のテストを入れるいいタイミングだ。前の章までは手で確認していたね。</div></div>
+    </div>
+
+    <h3 class="blk" id="s5-dir">テストの置き場所</h3>
+    <div class="tree">
+<span class="d">test/</span>
+├── <span class="d">unit/</span>            <span class="c"># 1つの処理だけを確かめる。層をまたがない</span>
+│   ├── <span class="d">web/</span>         <span class="c"># Web層だけの確認</span>
+│   ├── <span class="d">service/</span>     <span class="c"># サービス層だけの確認</span>
+│   └── <span class="d">data/</span>        <span class="c"># データ層だけの確認</span>
+└── <span class="d">full/</span>            <span class="c"># 全部を通した確認（外からデータベースまで）</span>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>各フォルダの役割はこうだ。①<b><code>test/unit/</code></b>：1つの処理を確かめる。層の境界を越えない。②<b><code>test/unit/web/, /service/, /data/</code></b>：各層だけの確認。③<b><code>test/full/</code></b>：<b>全部を通した確認</b>、あるいは<b>層の間の取り決めの確認</b>で、すべての層を一度に確かめる。Web層の窓口から呼び出す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>pytest はファイル名の先頭が <code>test_</code>、または末尾が <code>_test</code> であることを目印にする。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔬</div><h4>単体テスト</h4><p>1つの処理だけを取り出して確かめます。速く、失敗した場所がすぐ分かります。</p><span class="pill">test/unit/</span></div>
+      <div class="mini"><div class="ic">🔗</div><h4>全体を通したテスト</h4><p>外からの問い合わせからデータベースまで、実際の流れ全体を確かめます。時間はかかりますが、つなぎ目の問題を見つけられます。</p><span class="pill">test/full/</span></div>
+    </div>
+
+    <h3 class="blk" id="s5-none">見つからないときどうするか</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>テストする前に、設計の判断が必要だ。<code>Creature</code> や <code>Explorer</code> が見つからない場合、<code>get_one()</code> は何を返すべきか？ ①<code>None</code> を返す、②失敗を投げる、のどちらかだ。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python にもとからある失敗の知らせで近いものは、①<b><code>TypeError</code></b>：<code>None</code> は <code>Creature</code> とは別の種類だから近いと言える、②<b><code>ValueError</code></b>：正しくない値に対する知らせで、<code>get_one(id)</code> に存在しない値を渡す場合に合っている、③<b>自作の知らせ</b>：自分で「見つからない」専用のものを作ることもできる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>どちらを選んでも、その影響は一番上の層まで波及する。今は失敗を投げるのではなく <code>None</code> でいこう。結局のところ、それが「<b>無い</b>」という意味なんだ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🕳️</div><h4><code>None</code> を返す</h4><p><b>長所：</b>単純で軽い。失敗を受け止める処理が要りません。<br><b>短所：</b>呼ぶ側が毎回「無いかどうか」を確かめる必要があります。</p><span class="pill">本章はこちら</span></div>
+      <div class="mini"><div class="ic">🚨</div><h4>失敗を投げる</h4><p><b>長所：</b>正常なときと、そうでないときをはっきり分けられます。まとめて受け止められます。<br><b>短所：</b>層をまたいで伝わるため、途中の処理も対応が必要です。</p><span class="pill">第10章はこちら</span></div>
+    </div>
+
+    <h3 class="blk" id="s5-run">実際に書いて動かす</h3>
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">サービス層の3つの動きを確かめるテストです。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 確認に使うデータの形を取り込む。</span>
+<span class="kw">from</span> model.creature <span class="kw">import</span> Creature
+<span class="cmt"># 確かめたい相手（サービス層）を code という名前で取り込む。</span>
+<span class="cmt"># 短い名前にしておくと、テストの中で何度も書くときに読みやすい。</span>
+<span class="kw">from</span> service <span class="kw">import</span> creature <span class="kw">as</span> code
+
+<span class="cmt"># テストで使う見本のデータを1件用意する。仮データの1件目と同じ内容にしてある。</span>
+sample = <span class="fn">Creature</span>(
+    name=<span class="str">"Yeti"</span>,
+    aka=<span class="str">"Abominable Snowman"</span>,
+    country=<span class="str">"CN"</span>,
+    area=<span class="str">"Himalayas"</span>,
+    description=<span class="str">"Hirsute Himalayan"</span>,
+)
+
+<span class="cmt"># 名前が test_ で始まる処理を、pytest が自動で見つけて実行する。</span>
+<span class="kw">def</span> <span class="fn">test_create</span>():
+    <span class="cmt"># 見本のデータを渡して、作成の処理を呼ぶ。</span>
+    resp = code.<span class="fn">create</span>(sample)
+    <span class="cmt"># assert は「ここはこうなっているはず」と書く行。</span>
+    <span class="cmt"># 返ってきたものが、渡したものと同じであることを確かめる。違えばここで失敗する。</span>
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 存在するものを取得できるかの確認。</span>
+<span class="kw">def</span> <span class="fn">test_get_exists</span>():
+    <span class="cmt"># 見本の名前を渡して、1件を取得する。</span>
+    resp = code.<span class="fn">get_one</span>(sample.name)
+    <span class="cmt"># 返ってきたものが見本と同じであることを確かめる。</span>
+    <span class="kw">assert</span> resp == sample
+
+<span class="cmt"># 存在しないものを指定したときの確認。</span>
+<span class="kw">def</span> <span class="fn">test_get_missing</span>():
+    <span class="cmt"># 仮データに無い名前を渡してみる。</span>
+    resp = code.<span class="fn">get_one</span>(<span class="str">"boxturtle"</span>)
+    <span class="cmt"># 「無い」を表す None が返ることを確かめる。</span>
+    <span class="cmt"># is None と書くのは、None かどうかを調べるときの決まった書き方。</span>
+    <span class="kw">assert</span> resp <span class="kw">is</span> <span class="kw">None</span>
+</pre></details>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">テストを動かします。<code>-v</code> を付けると1件ずつの結果が見えます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># pytest のあとに、確かめたいファイルの場所を書く。-v は1件ずつ詳しく表示する指定。</span>
+$ pytest -v test/unit/service/test_creature.py
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># test_creature.py::test_create PASSED                         [ 16%]</span>
+<span class="cmt"># test_creature.py::test_get_exists PASSED                     [ 50%]</span>
+<span class="cmt"># test_creature.py::test_get_missing PASSED                    [ 66%]</span>
+<span class="cmt">#</span>
+<span class="cmt"># ======================== 3 passed in 0.06s =========================</span>
+<span class="cmt"># PASSED は「期待どおりだった」、3 passed は「3件すべて通った」という意味。</span>
+<span class="cmt"># 失敗すると FAILED と表示され、どの行で、何が期待と違ったかが表示される。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>注意。第10章では <code>get_one()</code> は見つからない生き物に対して <code>None</code> を返さなくなる（失敗を投げるように設計を変える）ので、<code>test_get_missing()</code> のテストは失敗する。けど、それはその時点で直す。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：テストが先に壊れることの意味</h4>
+      <p>第10章で <code>get_one()</code> の設計を変えると、<code>test_get_missing()</code> が赤くなります。これは困ったことではなく、むしろ役に立ちます。「この変更は、見つからないときの動きに影響する」と、テストが自動的に教えてくれたからです。</p>
+      <p>テストが無ければ、この変更の影響に気づくのは、実際に利用者が「見つからないはずの検索でエラー画面が出た」と報告してきたときになります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>単体テストの最小の形が書けるようになる</li><li>「見つからないときどうするか」という設計の議論ができる</li><li><code>assert</code> を使った単純なテストの書き方が身につく</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>テストの置き場所: test/unit/{web,service,data}/, test/full/</li>
+        <li>pytest は <code>test_</code> という名前を目印にする</li>
+        <li>「見つからない」: <code>None</code> か 失敗を投げるか</li>
+        <li>本章は <code>None</code>、第10章で失敗を投げる形に切り替え</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ その他の仕事 ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>その他のサービスレベル・スタッフ<span class="tag">運用に関わる4つの仕事</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>サービス層には作成・取得・更新・削除以外にも、記録・数値・見張り・追跡といった運用に関わる仕事があります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>今は層の真ん中、サイトの目的を決める部分にいる。今のところ問い合わせをデータ層に渡すだけだけど、サービス層には他にも仕事がある。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>大きなサイト向けかもしれないけど、技術的な補助の考え方をいくつか紹介する。①<b>記録</b>、②<b>数値</b>、③<b>見張り</b>、④<b>追跡</b>。詳しくは第13章「トラブルシューティング」で扱う。</div></div>
+    </div>
+    <div class="grid4">
+      <div class="mini"><div class="ic">📝</div><h4>ロギング（記録）</h4><p>いつ、何が起きたかを残します。</p></div>
+      <div class="mini"><div class="ic">📊</div><h4>メトリック（数値）</h4><p>件数や所要時間を数値で表します。</p></div>
+      <div class="mini"><div class="ic">👁️</div><h4>モニタリング（見張り）</h4><p>その数値を継続して見て、異常を知らせます。</p></div>
+      <div class="mini"><div class="ic">🔍</div><h4>トレース（追跡）</h4><p>1回の問い合わせの内訳の時間を測ります。</p></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「サービス層は素通しだけ」というイメージから抜け出せる</li><li>運用面の言葉が増える</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>運用に関わる仕事: 記録／数値／見張り／追跡</li><li>これらの居場所は、おおむねサービス層</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ ロギング ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>ロギング<span class="tag">何が自動で残るか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>FastAPI は窓口への呼び出しの基本的な記録を自動で出しますが、送られた中身までは残しません。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI は窓口への呼び出しをそれぞれ記録する。時刻、動詞、住所を含む。ただし本体や添えられた情報で運ばれるデータは記録しない。</div></div>
+    </div>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># --- サーバを動かしている画面に自動で出る記録の例 ---</span>
+<span class="cmt"># INFO:     127.0.0.1:52375 - "GET /explorer/ HTTP/1.1" 200 OK</span>
+<span class="cmt">#   127.0.0.1:52375 → どこから来たか</span>
+<span class="cmt">#   GET             → どの動詞で</span>
+<span class="cmt">#   /explorer/      → どの住所に</span>
+<span class="cmt">#   200 OK          → どの番号で返したか</span>
+<span class="cmt"># 送った本体（たとえばパスワード）は、この記録には含まれない。</span>
+</pre></details>
+    <div class="example">
+      <h4>🔎 具体例：中身が記録されないことの意味</h4>
+      <p>ログイン用の窓口に <code>{"name":"ハル","password":"secret123"}</code> を送ったとします。記録に残るのは <code>POST /login 200 OK</code> だけで、パスワードは残りません。これは安全上ありがたい動きです。</p>
+      <p>逆に「どんな値が送られてきたか調べたい」場合は、自分で記録を追加することになります。そのとき、パスワードなど残してはいけない項目を除く配慮が必要です。</p>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>初期状態の記録で何が見えるかが分かる</li><li>大事なデータが記録に残る危険を意識できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>FastAPI の初期状態: 時刻／動詞／住所 を記録</li><li>本体や添えられた情報は記録しない</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ メトリック ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>メトリック、モニタリング、可観測性<span class="tag">Prometheus と Grafana</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>メトリックは数値の統計、モニタリングはそれを継続して見ることです。代表的な道具は Prometheus と Grafana です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web サイトを運営するなら、サイトの状態を知りたい。API のサイトなら「どの窓口にどれだけアクセスがあるか」など。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そういう統計を<b>メトリック</b>、その収集を<b>モニタリング</b>または<b>可観測性</b>と呼ぶ。よく使われる道具は <b>Prometheus</b>（集める）と <b>Grafana</b>（表示する）だ。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📥</div><h4>Prometheus</h4><p>各種の数値を定期的に集めて、時間の流れとともに保存します。</p></div>
+      <div class="mini"><div class="ic">📈</div><h4>Grafana</h4><p>集めた数値を、グラフや一覧として見やすく表示します。</p></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>「Prometheus」「Grafana」が出てきても位置づけが分かる</li><li>見張りの必要性を意識できる</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>メトリック: 統計の数値</li>
+        <li>モニタリング／可観測性: それを継続して見ること</li>
+        <li>定番: Prometheus（集める）+ Grafana（表示する）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ トレース ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>トレース<span class="tag">遅い場所を突き止める</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>トレースは、1回の呼び出しの内訳の時間を測る仕組みです。OpenTelemetry が今の標準です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>サイトの速さはどうか？ メトリックは全体の傾向には強いけど、「特定の場面だけ遅い」「ときどき遅れる」を見つけるには弱い。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>呼び出しの時間を端から端まで測る道具が<b>トレース</b>だ。途中の各段階の時間も測れるから、鎖の中で弱くなっている部分を見つけられる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>オープンソースの新しい統合の取り組みが <b>OpenTelemetry</b>。<b>Jaeger</b> などの以前からある追跡の製品をまとめている。Python 用の窓口があり、少なくとも1つは FastAPI と組み合わせられる。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Python での導入と設定は、OpenTelemetry の Python 向けドキュメントを参照してくれ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：メトリックでは見えないこと</h4>
+      <p>数値だけを見ると「平均の応答時間は 120 ミリ秒」と出ていて、問題なさそうに見えます。しかし利用者からは「ときどき5秒待たされる」と報告があります。100回に1回の遅れは、平均にはほとんど現れません。</p>
+      <p>追跡を入れると、その遅い1回の内訳が分かります。「Web層 2ミリ秒 → サービス層 3ミリ秒 → データ層 4980ミリ秒」と出れば、原因はデータベースへの問い合わせだと1回で特定できます。どの段階が遅いかを推測で探す必要がなくなります。</p>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📊</div><h4>メトリック</h4><p>全体の傾向を見るのに向きます。「1分あたり何件」「エラーは何%」など。</p><span class="pill">全体を見る</span></div>
+      <div class="mini"><div class="ic">🔍</div><h4>トレース</h4><p>1回ごとの内訳を見るのに向きます。「この1件は、どこで時間を使ったか」。</p><span class="pill">1件を掘る</span></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>メトリックとトレースの違いが分かる</li><li>速度の調査の手段が増える</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>トレース = 呼び出しの各段階の時間を測ること</li>
+        <li>OpenTelemetry が今の標準</li>
+        <li>Jaeger などがまとめられている</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ その他 ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>その他<span class="tag">扱う対象を広げる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>この本の題材は広げる余地が大きく、新しい案ごとにデータの形と各層のファイルを追加します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本番の運用の話は第13章で扱う。それに加えて、私たちが扱う対象（生き物とその関連）について、何を広げたい？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>案の例。①探検家と、彼らが探す生き物の関わり、②目撃の記録、③遠征（出来事）、④写真と動画、⑤関連する商品。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それぞれの案で、たいてい新しいデータの形の定義と、各層のファイルの追加が必要になる。一部はパートIV で追加する。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔗</div><h4>関わり</h4><p>誰がどの生き物を探しているか。</p></div>
+      <div class="mini"><div class="ic">👀</div><h4>目撃の記録</h4><p>いつ、どこで見たか。</p></div>
+      <div class="mini"><div class="ic">🧭</div><h4>遠征</h4><p>いつ、誰が、どこへ行ったか。</p></div>
+      <div class="mini"><div class="ic">📷</div><h4>写真と動画</h4><p>記録として残す画像や映像。</p></div>
+      <div class="mini"><div class="ic">🛍️</div><h4>関連商品</h4><p>マグカップやTシャツなど。</p></div>
+      <div class="mini"><div class="ic">➕</div><h4>追加に必要なもの</h4><p>どの案でも、データの形の定義 + 各層のファイルが要ります。</p></div>
+    </div>
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul><li>自分の扱う分野で「関連するリソース」をどう増やすか発想できる</li><li>パートIV の実例集への前置きが見える</li></ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>関連するリソースの案: 関わり／目撃／遠征／画像／商品</li>
+        <li>どの案でも、データの形 + 各層のファイルを追加する</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「サービス層は Web サイトの中心。最初は素通しでも、最初から層として作る」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>後で必ず決まりごとが入る場所だからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「サービス層は <code>import fake.X as data</code> で下の層を切り離し、Web層は <code>import service.X as service</code> に書き換える」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>差し替えに強いコードに育つ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「『見つからない』の表し方は <code>None</code> か失敗を投げるか、設計の判断。本章は <code>None</code>、第10章は失敗を投げる形」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>どちらにも良い点と困る点がある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「テストは test/unit/{web,service,data}/, test/full/ に整理。pytest は <code>test_</code> という名前を目印にする」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>1つの処理だけの確認と、全体を通した確認の区別をはっきりさせよう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「サービス層には運用の仕事もある：記録／数値（Prometheus・Grafana）／追跡（OpenTelemetry）」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本番の運用は第13章でじっくりやる。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>サービス層の役割</div>
+      <p style="font-size:14px;margin:0">サービス層は「素通しのコードしか書かないなら不要では？」という意見に、どう答えますか？ 自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">サービス層は最初は素通しに見えるが、必ず後で業務上の決まりごと（リソース同士の関係、権限を確認した後の処理、複雑な検索など）が入る。最初から層を作っておけば、Web層やデータ層に変更が波及せずに済む。後から層を追加するのは何倍も手間がかかる。また、層を分けておけば各層を独立して確認できるという利点もある。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 将来の決まりごとの居場所として必要、と述べている<br>□ 後から層を追加する手間の大きさに触れている<br>□ 独立して確認できる、という利点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>見つからない時の方針</div>
+      <p style="font-size:14px;margin:0"><code>get_one(name)</code> で対象が見つからない時、どんな方針がありますか？ それぞれの長所と短所を述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b><code>None</code> を返す</b>：単純で、返す種類は <code>Creature | None</code>。長所は失敗を受け止める処理が不要で軽いこと。短所は呼ぶ側で毎回 <code>if x is None:</code> を書く必要があること。<b>失敗を投げる</b>：<code>ValueError</code> や自作の「見つからない」を投げる。長所は正常なときとそうでないときをはっきり分けられ、まとめて受け止められること。短所は想定外のときの負荷と、複数の層をまたいで伝わることへの対応が必要な点。第10章では <code>None</code> から失敗を投げる形に切り替える、というのが本書の選択。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>None</code> の方針と失敗を投げる方針の両方を挙げている<br>□ それぞれの長所・短所を述べている<br>□ 本書が <code>None</code> → 失敗を投げる形 に切り替えることに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>テストの置き場所の設計</div>
+      <p style="font-size:14px;margin:0">本書ではテストのフォルダを <code>test/unit/web/</code>, <code>test/unit/service/</code>, <code>test/unit/data/</code>, <code>test/full/</code> のように分けています。それぞれの役割と、分ける意義を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><code>test/unit/</code> の下は1つの処理だけを確かめるもので、特定の層の処理だけを見て、層の境界を越えない。<code>unit/web/</code> は Web層のみ、<code>unit/service/</code> はサービス層のみ、<code>unit/data/</code> はデータ層のみを確かめる。<code>test/full/</code> は全部を通した確認で、Web層から実際のデータベースまですべての層を貫いて確かめる。分ける意義は、問題が起きたときにどの層が原因かを切り分けやすくし、確認する範囲・速さ・必要なものを制御できること。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 単体と全体の違いに触れている<br>□ 各層の確認が境界を越えない、と説明している<br>□ 問題の切り分け、実行の制御、という利点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>運用に関わる仕事</div>
+      <p style="font-size:14px;margin:0">サービス層には作成・取得・更新・削除以外に「記録・数値・見張り・追跡」といった運用に関わる仕事があります。それぞれの役割を簡潔に説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans"><b>記録</b>：何が起きたかを残す（時刻、動詞、住所、失敗の内容など）。<b>数値</b>：件数、応答時間の分布、失敗の割合などの統計。<b>見張り</b>：その数値を継続して見て、異常があれば知らせる仕組み。<b>追跡</b>：1回の問い合わせの内訳の時間を、層やサービスごとに記録して見えるようにする。遅れの原因を特定するのに使う。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 4つすべてに触れている<br>□ 各概念の役割を簡潔に説明している<br>□ 数値と追跡の違い（全体の傾向 と 1件ごとの内訳）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>取り込みの差し替え</div>
+      <p style="font-size:14px;margin:0">本書のサービス層では <code>import fake.creature as data</code> と書いています。なぜ <code>import fake.creature</code> ではなく、<code>as data</code> で別の名前を付けるのですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">サービス層の中では <code>data</code> という共通の名前で下の層を参照するため。これにより、後で仮のものを本物のデータ層のファイル（たとえば <code>data.creature</code>）に差し替えたとき、サービス層の本文（<code>data.get_all()</code> などの呼び出し）はそのまま動く。取り込みの1行だけ書き換えればよい。これは「実装を差し替えられること」を最初から仕込んでおく設計。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 「data」という共通の名前を使う意図に触れている<br>□ 後でファイルを差し替えやすくなる利点に触れている<br>□ 「取り込みの行だけ書き換えれば本文は変わらない」という具体的な利点に言及</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>実際に書いて動かす</h4><p>本章のサービス層のコードと単体テストを書き、<code>pytest -v</code> で実行してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>2つの方針を書き比べる</h4><p>「見つからないときに失敗を投げる版」と「<code>None</code> を返す版」を両方書き、テストも書き分けてみる。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 失敗を投げる版のテストの書き方。</span>
+<span class="cmt"># 「この中で失敗が起きるはず」と宣言するための道具を取り込む。</span>
+<span class="kw">import</span> pytest
+
+<span class="kw">def</span> <span class="fn">test_get_missing_raises</span>():
+    <span class="cmt"># この中で ValueError が起きることを期待する、という書き方。</span>
+    <span class="cmt"># 起きなければ、逆にテストが失敗する。</span>
+    <span class="kw">with</span> pytest.<span class="fn">raises</span>(<span class="kw">ValueError</span>):
+        <span class="cmt"># 存在しない名前を渡す。</span>
+        code.<span class="fn">get_one</span>(<span class="str">"boxturtle"</span>)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># test_get_missing_raises PASSED</span>
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>第12章を先に覗く</h4><p>より進んだ確認のやり方（fixture, mock, conftest）に触れておく。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>OpenTelemetry を試す</h4><p>Python 向けのドキュメントで、FastAPI に簡単な計測を入れてみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>次章「データ層」へ</h4><p>ついに実際のデータベースにつなぐ流れを見る。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第9章「サービス層」の図解 ― 原文の全節（サービスの定義／レイアウト／プロテクション／関数／テストだ！／その他のサービスレベル・スタッフ／ロギング／メトリック・モニタリング・可観測性／トレース／その他）＋章のまとめ・理解度チェック5問・次のステップを収録</p>
+
+</div>
+</body>
+</html>

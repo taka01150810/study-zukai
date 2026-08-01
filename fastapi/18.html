@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第18章 ゲーム ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  .tag2{color:#ff9db3}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2)}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+  .tiles{display:flex; gap:6px; flex-wrap:wrap; margin:12px 0}
+  .tiles .t{width:42px; height:42px; border-radius:8px; display:grid; place-items:center;
+    font-weight:800; font-size:18px; color:#0c0f1e}
+  .tiles .H{background:#90ee90} .tiles .C{background:#ffe066} .tiles .M{background:#c8c8c8}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin:10px 0; font-size:13px; color:var(--sub)}
+  .legend span b{display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第18章（最終章）</div>
+  <h1>第18章　ゲーム</h1>
+  <p>これまでの全部を組み合わせて、名前を当てる小さなゲームを作ります。画面側とサーバ側の状態の持ち方、画面を切り替えずにやり取りする通信、テンプレート、テスト。すべての章がここでつながります。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">コードは全行に説明つき</span>
+    <span class="badge">全10節＋クイズ5問 収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#whyneed">📌 なぜこれが必要か</a>
+  <a href="#s1">① Python ゲームパッケージ</a>
+  <a href="#s2">② ゲームロジックを分割する</a>
+  <a href="#s3">③ ゲームデザイン</a>
+  <a href="#s4">④ Webパート1：ゲーム初期化</a>
+  <a href="#s5">⑤ Webパート2：ゲームのステップ</a>
+  <a href="#s6">⑥ サービスその1：初期化</a>
+  <a href="#s7">⑦ サービスパート2：採点</a>
+  <a href="#s8">⑧ テストだ！</a>
+  <a href="#s9">⑨ データ初期化</a>
+  <a href="#s10">⑩ 実際にプレイする</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">ステートレス</div><p>1回のやり取りが独立していて、サーバが前回の続きを覚えていない状態のことです。</p></div>
+    <div class="item"><div class="w">ステート <span>状態</span></div><p>途中経過の情報。ゲームなら「何を当てたか」「今どこまで進んだか」です。</p></div>
+    <div class="item"><div class="w">クライアント</div><p>利用者の側。この章ではブラウザのことです。</p></div>
+    <div class="item"><div class="w">JavaScript</div><p>ブラウザの中で動くプログラムの言語。画面の操作や通信に使います。</p></div>
+    <div class="item"><div class="w">Vanilla JavaScript</div><p>追加のライブラリを使わない、素の JavaScript のことです。</p></div>
+    <div class="item"><div class="w">AJAX</div><p>画面全体を切り替えずに、裏で通信して一部だけを書き換えるやり方です。</p></div>
+    <div class="item"><div class="w">fetch()</div><p>JavaScript で、サーバに問い合わせるための命令です。</p></div>
+    <div class="item"><div class="w">SPA <span>1ページで完結する作り</span></div><p>ページを切り替えず、1つの画面の中で内容を書き換えていく作り方です。</p></div>
+    <div class="item"><div class="w">Wordle 風</div><p>隠された言葉を当てるゲーム。当たり具合が色で示されます。</p></div>
+    <div class="item"><div class="w">Jinja テンプレート</div><p>あらかじめ形を作っておいた HTML に、その都度の値を差し込む仕組みです。</p></div>
+    <div class="item"><div class="w">パスパラメータ</div><p>住所の一部を、値として受け取るための仕組みです。</p></div>
+    <div class="item"><div class="w">ルートマッチング</div><p>届いた住所を、どの処理に割り当てるかを決める仕組みです。</p></div>
+    <div class="item"><div class="w">H / C / M</div><p>この章の採点の記号。位置も文字も合っている／文字だけ合っている／含まれない、を表します。</p></div>
+    <div class="item"><div class="w">parametrize</div><p>1つのテストに、いくつもの入力を順に与えて確かめる pytest の書き方です。</p></div>
+    <div class="item"><div class="w">テーブル駆動テスト</div><p>入力と期待する結果を一覧にして並べ、まとめて確かめるやり方です。</p></div>
+    <div class="item"><div class="w">random()</div><p>SQLite で、行をでたらめな順に並べるための機能です。</p></div>
+    <div class="item"><div class="w">limit 1</div><p>結果を1件だけに絞る、SQL での指定です。</p></div>
+    <div class="item"><div class="w">DOM</div><p>ブラウザが持っている、画面の構造そのもの。JavaScript から書き換えられます。</p></div>
+    <div class="item"><div class="w">async / await（JavaScript）</div><p>通信の返事を待つ間、画面を止めないための書き方です。</p></div>
+    <div class="item"><div class="w">WebSocket</div><p>サーバとつながったまま、双方向にやり取りを続けられる仕組みです。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ<span class="tag">すべてがつながる最終章</span></h2></div>
+  <div class="card">
+    <p class="lead">タカ師匠は最後の章で、「これまでの全部の知識を組み合わせて、簡単なゲームを作ってみよう」と提案します。生き物の名前を使った、言葉を当てるゲームです。サーバ側と画面側の状態の持ち方、画面を切り替えない通信、テンプレート、テスト…これまでの章のすべてがつながります。「Web は前回を覚えていないから、ゲームの途中経過をどこに置くかが設計の中心だ」とタカ師匠は語ります。ハルは初めて、FastAPI と HTML と JavaScript の連携で動くアプリを動かして喜びます。</p>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="tldr">
+  <div class="sec-head"><div class="sec-num">🎯</div><h2>要するに<span class="tag">この章を4行で</span></h2></div>
+  <div class="card">
+    <p class="lead">ゲームのように複数の段階が必要なアプリは、Web が<span class="term" data-tip="1回のやり取りが独立していて、サーバが前回の続きを覚えていない状態。">前回を覚えていない</span>ため、途中経過をどこに置くかが課題になります。本書では「画面側は素の JavaScript で裏の通信を行い、サーバ側はテンプレートで最初の準備をして、送信された推測を採点する」という形を採ります。FastAPI で、窓口・固定のファイル・テンプレートをまとめて扱い、言葉を当てるゲームを実装します。採点の処理は、pytest でいくつもの入力をまとめて確かめます。</p>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="whyneed">
+  <div class="sec-head"><div class="sec-num">📌</div><h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2></div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 この章を読むと手に入るもの</h4>
+      <ul>
+        <li>「前回を覚えていない Web で、途中経過を持つアプリ」の設計の選択肢が分かる</li>
+        <li>窓口 + テンプレート + JavaScript を組み合わせたアプリの作り方が見える</li>
+        <li>テンプレートに JavaScript を埋め込む方法が学べる</li>
+        <li>pytest でいくつもの入力をまとめて確かめる書き方ができる</li>
+        <li>FastAPI で、本書の全部の機能をまとめる実例を体験できる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ① ゲームパッケージ ===== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">1</div><h2>Python ゲームパッケージ<span class="tag">この章では使わない</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python にはゲーム用のライブラリがありますが、この章では使わず、FastAPI 中心の小さなゲームを作ります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ゲームのための Python が欲しいなら便利な道具がある。①文章のもの：<b>AdventureLib</b>、②図を扱うもの：<b>PyGame</b> / <b>Pyglet</b> / <b>Python Arcade</b> / <b>Harfang</b> / <b>Panda3D</b>。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>でもこの章ではそれらを使わない。例が大きくなりすぎて、本書の目的（FastAPI で Web サイトを単純に作る）が見えなくなるからだ。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>Python のゲーム用ライブラリの選択肢を一覧</li><li>この章では使わず、FastAPI 中心の小さなゲーム</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ② 分割 ===== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2</div><h2>ゲームロジックを分割する<span class="tag">途中経過をどこに置くか</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Web は前回を覚えていないので、途中経過の置き場所が課題になります。選択肢は3つあり、本書は3つめを採ります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ゲームの設計の判断は、誰が何をやるか、何をどこに置くか、だ。画面側か、サーバ側か。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>Web は<b>前回を覚えていない</b>。画面側が呼ぶたびに、サーバは「あなたのことは知らない」という状態から始まる。だから<b>途中経過を保つ場所</b>が必要になる。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">💻</div><h4>① 画面側で完結</h4><p>すべての状態をブラウザ側で持つ。<br><b>良い点：</b>サーバへの負担が小さく、動きが速い。<br><b>困る点：</b>JavaScript の知識が要る。複雑な判断を書きにくい。記録が残らない。</p></div>
+      <div class="mini"><div class="ic">🗄️</div><h4>② サーバ側で持つ</h4><p>最初の呼び出しでゲームの番号を発行し、以降はその番号でサーバが状態を管理し、データベースに保存する。<br><b>良い点：</b>確実に記録が残る。複雑な判断も書ける。<br><b>困る点：</b>読み書きが増え、サーバの負担が大きい。</p></div>
+      <div class="mini"><div class="ic">🔄</div><h4>③ 両方で分担</h4><p>画面側とサーバ側で役割を分ける。画面は裏で通信して、一部だけを書き換える。<br><b>良い点：</b>釣り合いが良く、役割がはっきりする。<br><b>困る点：</b>両方の知識が必要。</p><span class="pill">本書はこれ</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>本書では3つめを採用する。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：どう分担しているか</h4>
+      <p>「隠された名前」はサーバが決めますが、それを画面側に渡してしまいます。「これまで何回推測したか」「どの行を表示しているか」は画面側だけが持ちます。サーバは、送られてきた推測と名前を比べて採点を返すだけで、前回のことは何も覚えていません。</p>
+      <p>この分け方だと、サーバ側にデータベースへの読み書きが発生しません。ただし、名前が画面側にあるので、その気になれば見えてしまいます。この本のゲームでは、それを承知のうえで単純さを取っています。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Web は前回を覚えていない → 途中経過の置き場所が課題</li>
+        <li>選択肢: 画面側で完結／サーバ側で持つ／両方で分担</li>
+        <li>本書は「両方で分担」</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ ゲームデザイン ===== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">3</div><h2>ゲームデザイン<span class="tag">7つの流れ</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>言葉を当てるゲームです。緑＝位置も文字も合っている、黄＝文字だけ合っている、灰＝含まれない、で示します。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>簡単な<b>言葉を当てるゲーム</b>を作る。データベースの中の名前だけを使う。本物より簡単だ（答えを見ようと思えば見られる）。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>画面側は素の JavaScript</h4><p>大きなライブラリは使わない。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>ゲームを始める</h4><p>でたらめに1つ名前を取り出し、テンプレートに埋め込んで返す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>画面を作る</h4><p>文字数と同じ数の入力欄を並べる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>推測を送る</h4><p>入力された文字と、隠された名前を、裏で通信して送る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>サーバが採点する</h4><p>1文字ずつ比べて、結果を返す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">6</div><div class="line"></div></div><div class="body"><h4>結果を表示する</h4><p>1行を追加し、色で結果を示す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">7</div></div><div class="body"><h4>正解か、次の推測か</h4><p>全部が緑なら正解。そうでなければ、次の推測へ。<div class="branch ok">回数の制限は設けていないので、当たるまで続けられる。</div></p></div></div>
+    </div>
+
+    <h3 class="blk">色の意味</h3>
+    <div class="tiles">
+      <div class="t H">Y</div><div class="t C">E</div><div class="t M">T</div><div class="t H">I</div>
+    </div>
+    <div class="legend">
+      <span><b style="background:#90ee90"></b>緑（H）＝ 文字も位置も合っている</span>
+      <span><b style="background:#ffe066"></b>黄（C）＝ 文字は含まれるが、位置が違う</span>
+      <span><b style="background:#c8c8c8"></b>灰（M）＝ その文字は含まれない</span>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📖</div><h4>本物との違い①</h4><p>5文字の辞書の言葉に限る、という制限がありません。名前の長さはさまざまです。</p></div>
+      <div class="mini"><div class="ic">🔁</div><h4>本物との違い②</h4><p>回数の制限がありません。当たるまで何度でも推測できます。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>緑／黄／灰 で採点する</li>
+        <li>流れ: 開始 → 推測の送信 の繰り返し</li>
+        <li>ゲームの中身は最小限</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ Web パート1 ===== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">4</div><h2>Webパート1：ゲーム初期化<span class="tag">住所の衝突を避ける</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>既存の住所と衝突しないよう、一番上の階層に <code>/game</code> を作ります。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>新しい窓口が2つ欲しい。生き物の名前を使うので <code>/creature/game</code> かな…と思うけど、既存の <code>/creature/{name}</code> と重なるので、FastAPI がそちらを先に選んでしまう可能性がある。だから一番上の階層に <code>/game</code> を作る。</div></div>
+    </div>
+
+    <div class="warn-box" style="border:1px solid #ff6b8b55; background:#ff6b8b0f; border-radius:14px; padding:14px 18px; margin:16px 0">
+      <h4 style="margin:0 0 7px; color:#ff9db3; font-size:14px">⚠️ なぜ衝突するのか</h4>
+      <p style="margin:0; font-size:13.5px; color:#f5d5dc"><code>/creature/{name}</code> は「<code>/creature/</code> の後ろにある文字を、すべて名前として受け取る」という指定です。ここに <code>/creature/game</code> を追加すると、<code>game</code> という文字も「名前」として解釈されうる、という状態になります。どちらが選ばれるかは並び順に左右されるので、意図しない動きを避けるために、別の住所にします。</p>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">ゲームを始める窓口です。名前を取り出して、テンプレートに渡します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 窓口のまとめと、届いた問い合わせを表す型を取り込む。</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Request
+<span class="cmt"># テンプレートを扱う部品を取り込む。</span>
+<span class="kw">from</span> fastapi.templating <span class="kw">import</span> Jinja2Templates
+<span class="cmt"># ゲームのためのサービス層を取り込む。</span>
+<span class="kw">import</span> service.game <span class="kw">as</span> service
+
+<span class="cmt"># この中の住所は /game から始まる。一番上の階層に置くので、他と重ならない。</span>
+router = <span class="fn">APIRouter</span>(prefix=<span class="str">"/game"</span>)
+<span class="cmt"># テンプレートの置き場所を指定する。</span>
+templates = <span class="fn">Jinja2Templates</span>(directory=<span class="str">"template"</span>)
+
+<span class="cmt"># 末尾のスラッシュの有無、どちらでも受け付けるようにデコレータを2つ重ねる。</span>
+<span class="fn">@router.get</span>(<span class="str">""</span>)
+<span class="fn">@router.get</span>(<span class="str">"/"</span>)
+<span class="cmt"># request を引数に書く。テンプレートに渡すために必要。</span>
+<span class="kw">def</span> <span class="fn">game_start</span>(request: Request):
+    <span class="cmt"># でたらめに1つ、名前を取り出す。これが今回の答えになる。</span>
+    name = service.<span class="fn">get_word</span>()
+    <span class="cmt"># テンプレートに、問い合わせそのものと、取り出した名前を渡す。</span>
+    <span class="cmt"># 組み立てられた HTML が、ブラウザに返る。</span>
+    <span class="kw">return</span> templates.<span class="fn">TemplateResponse</span>(
+        <span class="str">"game.html"</span>,
+        {<span class="str">"request"</span>: request, <span class="str">"name"</span>: name},
+    )
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>FastAPI は、この処理が <code>request</code> を引数に持ち、それをテンプレートに渡すことを求める。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">作ったまとまりを、アプリ本体に組み込みます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># サーバを動かす道具と、枠組み本体を取り込む。</span>
+<span class="kw">import</span> uvicorn
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="cmt"># 3つのまとまりを取り込む。game が新しく加わった。</span>
+<span class="kw">from</span> web <span class="kw">import</span> explorer, creature, game
+
+<span class="cmt"># アプリ全体を作る。</span>
+app = <span class="fn">FastAPI</span>()
+<span class="cmt"># これまでのまとまりを組み込む。</span>
+app.<span class="fn">include_router</span>(explorer.router)
+app.<span class="fn">include_router</span>(creature.router)
+<span class="cmt"># ゲームのまとまりを組み込む。これで /game が使えるようになる。</span>
+app.<span class="fn">include_router</span>(game.router)
+
+<span class="cmt"># 直接動かされたときだけサーバを起動する。</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(<span class="str">"main:app"</span>, reload=<span class="kw">True</span>)
+</pre></details>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>一番上の階層に <code>/game</code> のまとまりを作る</li>
+        <li>既存の <code>/creature/{name}</code> との衝突を避ける</li>
+        <li>テンプレートで HTML・装飾・JavaScript を1つのファイルにまとめる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ Web パート2 ===== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">5</div><h2>Webパート2：ゲームのステップ<span class="tag">1つのファイルに全部入り</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>1つのテンプレートに HTML・装飾・JavaScript をまとめます。裏の通信で推測を送り、結果を色で表示します。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">画面の全体です。長いので、上から順に説明を追ってください。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+&lt;<span class="tag2">html</span>&gt;
+&lt;<span class="tag2">head</span>&gt;
+<span class="cmt">&lt;!-- ここから見た目の指定。 --&gt;</span>
+&lt;<span class="tag2">style</span>&gt;
+<span class="cmt">/* 入力欄の見た目。幅を狭くし、文字を中央にそろえる。 */</span>
+.guess-input { width: 30px; margin: 2px; text-align: center; }
+<span class="cmt">/* 位置も文字も合っている場合の背景色（緑）。 */</span>
+.H { background-color: lightgreen; }
+<span class="cmt">/* 文字は含まれるが位置が違う場合の背景色（黄）。 */</span>
+.C { background-color: yellow; }
+<span class="cmt">/* 含まれない場合の背景色（灰）。 */</span>
+.M { background-color: lightgray; }
+&lt;/<span class="tag2">style</span>&gt;
+&lt;/<span class="tag2">head</span>&gt;
+&lt;<span class="tag2">body</span>&gt;
+&lt;<span class="tag2">h1</span>&gt;Cryptidの名前を当てよう&lt;/<span class="tag2">h1</span>&gt;
+
+&lt;<span class="tag2">div</span> id=<span class="str">"game"</span>&gt;
+  <span class="cmt">&lt;!-- Jinja の書き方で、名前の文字数を計算して表示している。 --&gt;</span>
+  &lt;<span class="tag2">p</span>&gt;文字数: &lt;<span class="tag2">span</span> id=<span class="str">"name-length"</span>&gt;{{ name | length }}&lt;/<span class="tag2">span</span>&gt;&lt;/<span class="tag2">p</span>&gt;
+  <span class="cmt">&lt;!-- 入力欄を置く場所。中身は JavaScript で作る。 --&gt;</span>
+  &lt;<span class="tag2">div</span> id=<span class="str">"guess-area"</span>&gt;&lt;/<span class="tag2">div</span>&gt;
+  <span class="cmt">&lt;!-- 送信のボタン。 --&gt;</span>
+  &lt;<span class="tag2">button</span> id=<span class="str">"submit-btn"</span>&gt;送信&lt;/<span class="tag2">button</span>&gt;
+  <span class="cmt">&lt;!-- これまでの推測の結果を並べる表。行は後から追加される。 --&gt;</span>
+  &lt;<span class="tag2">table</span> id=<span class="str">"results"</span>&gt;&lt;<span class="tag2">tbody</span>&gt;&lt;/<span class="tag2">tbody</span>&gt;&lt;/<span class="tag2">table</span>&gt;
+&lt;/<span class="tag2">div</span>&gt;
+
+&lt;<span class="tag2">script</span>&gt;
+<span class="cmt">// サーバが選んだ名前が、ここに文字として埋め込まれる。</span>
+<span class="cmt">// 二重の波かっこは Jinja の差し込みで、ブラウザに届く時点では実際の名前になっている。</span>
+<span class="kw">const</span> SECRET_NAME = <span class="str">"{{ name }}"</span>;
+<span class="cmt">// 名前の文字数を覚えておく。入力欄の数と、正解の判定に使う。</span>
+<span class="kw">const</span> nameLength = SECRET_NAME.length;
+
+<span class="cmt">// 文字数と同じ数の入力欄を作る処理。</span>
+<span class="kw">function</span> <span class="fn">createGuessInputs</span>() {
+  <span class="cmt">// 入力欄を置く場所を取得する。</span>
+  <span class="kw">const</span> area = document.<span class="fn">getElementById</span>(<span class="str">"guess-area"</span>);
+  <span class="cmt">// 中身を空にする。2回目以降の推測のために、毎回作り直す。</span>
+  area.innerHTML = <span class="str">""</span>;
+  <span class="cmt">// 文字数の分だけ繰り返す。</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; nameLength; i++) {
+    <span class="cmt">// 入力欄を1つ作る。</span>
+    <span class="kw">const</span> input = document.<span class="fn">createElement</span>(<span class="str">"input"</span>);
+    <span class="cmt">// 文字を入れる種類にする。</span>
+    input.type = <span class="str">"text"</span>;
+    <span class="cmt">// 1文字だけ入るように制限する。</span>
+    input.maxLength = <span class="num">1</span>;
+    <span class="cmt">// 見た目の指定を適用するための名前を付ける。</span>
+    input.className = <span class="str">"guess-input"</span>;
+    <span class="cmt">// 作った入力欄を、画面に追加する。</span>
+    area.<span class="fn">appendChild</span>(input);
+  }
+}
+
+<span class="cmt">// 推測を送信する処理。async を付けると、通信の返事を待てる。</span>
+<span class="kw">async function</span> <span class="fn">submitGuess</span>() {
+  <span class="cmt">// 画面上の入力欄をすべて取得する。</span>
+  <span class="kw">const</span> inputs = document.<span class="fn">querySelectorAll</span>(<span class="str">".guess-input"</span>);
+  <span class="cmt">// 各入力欄の値を取り出し、つなげて1つの文字列にする。</span>
+  <span class="kw">const</span> guess = Array.<span class="fn">from</span>(inputs).<span class="fn">map</span>(i =&gt; i.value).<span class="fn">join</span>(<span class="str">""</span>);
+  <span class="cmt">// 文字数が足りていなければ、知らせて中断する。</span>
+  <span class="kw">if</span> (guess.length !== nameLength) {
+    <span class="fn">alert</span>(<span class="str">"文字数が違います"</span>);
+    <span class="kw">return</span>;
+  }
+  <span class="cmt">// サーバに送る。await を付けているので、返事が来るまでここで待つ。</span>
+  <span class="cmt">// 画面全体は切り替わらず、この通信だけが裏で行われる。</span>
+  <span class="kw">const</span> resp = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">"/game"</span>, {
+    <span class="cmt">// データを送るので、動詞は POST。</span>
+    method: <span class="str">"POST"</span>,
+    <span class="cmt">// 中身が JSON であることを伝える。</span>
+    headers: {<span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>},
+    <span class="cmt">// 推測と、隠された名前の両方を送る。サーバは覚えていないので、毎回両方を送る。</span>
+    body: JSON.<span class="fn">stringify</span>({guess: guess, name: SECRET_NAME}),
+  });
+  <span class="cmt">// 返ってきた内容を、扱える形に直す。</span>
+  <span class="kw">const</span> data = <span class="kw">await</span> resp.<span class="fn">json</span>();
+  <span class="cmt">// 採点の結果の文字列を取り出す。HHCM のような形になっている。</span>
+  <span class="kw">const</span> score = data.score;
+  <span class="cmt">// 結果を並べる表の、中身の部分を取得する。</span>
+  <span class="kw">const</span> tbody = document.<span class="fn">querySelector</span>(<span class="str">"#results tbody"</span>);
+  <span class="cmt">// 新しい行を1つ作る。</span>
+  <span class="kw">const</span> tr = document.<span class="fn">createElement</span>(<span class="str">"tr"</span>);
+  <span class="cmt">// 推測の文字数の分だけ繰り返す。</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; guess.length; i++) {
+    <span class="cmt">// マスを1つ作る。</span>
+    <span class="kw">const</span> td = document.<span class="fn">createElement</span>(<span class="str">"td"</span>);
+    <span class="cmt">// そのマスに、推測した文字を入れる。</span>
+    td.textContent = guess[i];
+    <span class="cmt">// 採点の記号を、そのまま見た目の指定の名前として使う。</span>
+    <span class="cmt">// H なら緑、C なら黄、M なら灰になる。</span>
+    td.className = score[i];
+    <span class="cmt">// 行にマスを追加する。</span>
+    tr.<span class="fn">appendChild</span>(td);
+  }
+  <span class="cmt">// 完成した行を、表に追加する。これで1回分の結果が画面に残る。</span>
+  tbody.<span class="fn">appendChild</span>(tr);
+  <span class="cmt">// 全部が H なら、正解。repeat は同じ文字を指定回数つなげる命令。</span>
+  <span class="kw">if</span> (score === <span class="str">"H"</span>.<span class="fn">repeat</span>(nameLength)) {
+    <span class="fn">alert</span>(<span class="str">"正解！おめでとう！"</span>);
+  } <span class="kw">else</span> {
+    <span class="cmt">// まだなら、入力欄を作り直して次の推測に備える。</span>
+    <span class="fn">createGuessInputs</span>();
+  }
+}
+
+<span class="cmt">// 送信ボタンが押されたら、上の処理を呼ぶように設定する。</span>
+document.<span class="fn">getElementById</span>(<span class="str">"submit-btn"</span>).<span class="fn">addEventListener</span>(<span class="str">"click"</span>, submitGuess);
+<span class="cmt">// 画面が表示されたとき、最初の入力欄を作っておく。</span>
+<span class="fn">createGuessInputs</span>();
+&lt;/<span class="tag2">script</span>&gt;
+&lt;/<span class="tag2">body</span>&gt;
+&lt;/<span class="tag2">html</span>&gt;
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>解説すると、①見た目の指定で採点の記号ごとに色を分けている、②隠された名前は Jinja の差し込みでテンプレートに埋め込まれる、③裏の通信で推測を送る、④結果の表に行を追加する、⑤全部が緑なら正解を知らせる、という流れだ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：採点の記号がそのまま色になる仕組み</h4>
+      <p>サーバは <code>"HCMH"</code> のような文字列を返します。画面側は、1文字目の <code>H</code> をそのままマスの見た目の名前として設定します。</p>
+      <p>見た目の指定に <code>.H { background-color: lightgreen; }</code> と書いてあるので、そのマスが緑になります。つまり、採点の記号と見た目の名前をそろえておくことで、変換の処理を1行も書かずに色が付きます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>1つのテンプレートに HTML・装飾・JavaScript</li>
+        <li>裏の通信で推測を送る</li>
+        <li>採点の記号（H/C/M）で色を分ける</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑥ サービス1 ===== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">6</div><h2>サービスその1：初期化<span class="tag">名前を1つ取り出す</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>データ層に頼んで、でたらめに1つ名前を取り出します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># ゲームのためのデータ層を取り込む。</span>
+<span class="kw">import</span> data.game <span class="kw">as</span> data
+
+<span class="cmt"># 今回の答えになる名前を1つ返す処理。</span>
+<span class="kw">def</span> <span class="fn">get_word</span>() -&gt; <span class="kw">str</span>:
+    <span class="cmt"># 実際の取り出しはデータ層に任せて、結果をそのまま返す。</span>
+    <span class="cmt"># これまでの章と同じく、層をまたがない形にしている。</span>
+    <span class="kw">return</span> data.<span class="fn">get_random_creature_name</span>()
+</pre></details>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>データ層に頼んで、でたらめに1つ名前を取り出す</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑦ サービス2 ===== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">7</div><h2>サービスパート2：採点<span class="tag">1文字ずつ比べる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>採点は1文字ずつの記号の並びです。大文字と小文字は区別せず、長さが違えば空の文字列を返します。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">送られてくるデータの形と、採点の処理です。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># データの形を定義するための元を取り込む。</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="cmt"># 送られてくる内容の形を決める。2つの項目を持つ。</span>
+<span class="kw">class</span> <span class="fn">Guess</span>(BaseModel):
+    <span class="cmt"># 隠された名前。サーバは覚えていないので、毎回送ってもらう。</span>
+    name: <span class="kw">str</span>
+    <span class="cmt"># 利用者が入力した推測。</span>
+    guess: <span class="kw">str</span>
+
+<span class="cmt"># 採点する処理。結果は H/C/M を並べた文字列。</span>
+<span class="kw">def</span> <span class="fn">score</span>(item: Guess) -&gt; <span class="kw">str</span>:
+    <span class="cmt"># 比べる前に、両方を小文字にそろえる。大文字で入力されても同じ扱いになる。</span>
+    name = item.name.<span class="fn">lower</span>()
+    guess = item.guess.<span class="fn">lower</span>()
+    <span class="cmt"># 長さが違う場合は採点できないので、空の文字列を返す。</span>
+    <span class="kw">if</span> <span class="fn">len</span>(guess) != <span class="fn">len</span>(name):
+        <span class="kw">return</span> <span class="str">""</span>
+    <span class="cmt"># 1文字ずつの結果を、ここにためていく。</span>
+    result = []
+    <span class="cmt"># 推測を1文字ずつ、その位置の番号と一緒に取り出す。</span>
+    <span class="kw">for</span> i, ch <span class="kw">in</span> <span class="fn">enumerate</span>(guess):
+        <span class="cmt"># 同じ位置の文字と一致するかを確かめる。</span>
+        <span class="kw">if</span> i &lt; <span class="fn">len</span>(name) <span class="kw">and</span> ch == name[i]:
+            <span class="cmt"># 位置も文字も合っている。</span>
+            result.<span class="fn">append</span>(<span class="str">"H"</span>)
+        <span class="cmt"># 位置は違うが、名前のどこかに含まれているかを確かめる。</span>
+        <span class="kw">elif</span> ch <span class="kw">in</span> name:
+            <span class="cmt"># 文字は含まれるが、位置が違う。</span>
+            result.<span class="fn">append</span>(<span class="str">"C"</span>)
+        <span class="kw">else</span>:
+            <span class="cmt"># その文字は含まれない。</span>
+            result.<span class="fn">append</span>(<span class="str">"M"</span>)
+    <span class="cmt"># ためた結果を、1つの文字列につなげて返す。</span>
+    <span class="kw">return</span> <span class="str">""</span>.<span class="fn">join</span>(result)
+<span class="cmt"># --- 動きの例 ---</span>
+<span class="cmt"># name="yeti", guess="yeti" → "HHHH"</span>
+<span class="cmt"># name="yeti", guess="eyit" → "CCCC"（全部含まれるが、全部位置が違う）</span>
+<span class="cmt"># name="yeti", guess="abcd" → "MMMM"</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>採点は1文字ずつの文字列だ。<code>H</code> は位置も文字も合っている、<code>C</code> は文字は含まれるが位置が違う、<code>M</code> は含まれない。大文字と小文字は、両方を小文字にそろえてから比べる。長さが違えば空の文字列を返す。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">採点の窓口を追加します。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># データの形と、採点の処理を取り込む。</span>
+<span class="kw">from</span> service.game <span class="kw">import</span> Guess, score
+
+<span class="cmt"># 末尾のスラッシュの有無、どちらでも受け付ける。</span>
+<span class="fn">@router.post</span>(<span class="str">""</span>)
+<span class="fn">@router.post</span>(<span class="str">"/"</span>)
+<span class="cmt"># 送られた内容が Guess の形として受け取られる。合わなければ自動で 422 が返る。</span>
+<span class="kw">def</span> <span class="fn">game_step</span>(guess: Guess) -&gt; <span class="kw">dict</span>:
+    <span class="cmt"># 採点した結果を、項目名を付けて返す。画面側はこの score を読む。</span>
+    <span class="kw">return</span> {<span class="str">"score"</span>: <span class="fn">score</span>(guess)}
+</pre></details>
+
+    <h3 class="blk">採点の3つの分岐</h3>
+    <div class="grid3">
+      <div class="mini" style="border-color:#5ee7a055"><div class="ic">🟩</div><h4>H</h4><p>同じ位置に、同じ文字がある。</p></div>
+      <div class="mini" style="border-color:#ffb45455"><div class="ic">🟨</div><h4>C</h4><p>名前のどこかにはあるが、位置が違う。</p></div>
+      <div class="mini" style="border-color:#8b93bf55"><div class="ic">⬜</div><h4>M</h4><p>名前のどこにも含まれない。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>採点の結果: H/C/M を並べた文字列</li>
+        <li>大文字と小文字は区別しない</li>
+        <li>長さが違えば空の文字列</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑧ テスト ===== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">8</div><h2>テストだ！<span class="tag">いくつもの入力をまとめて確かめる</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>入力と期待する結果を一覧に並べ、1つの処理でまとめて確かめます。</p>
+
+    <p style="font-size:14px;color:#cdd4f6;margin:14px 0 0">5つの場合を、1つのテストで確かめます。</p>
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 確認の道具を取り込む。</span>
+<span class="kw">import</span> pytest
+<span class="cmt"># データの形と、採点の処理を取り込む。</span>
+<span class="kw">from</span> service.game <span class="kw">import</span> Guess, score
+
+<span class="cmt"># 1つめの指定は、受け取る引数の名前をカンマで並べたもの。</span>
+<span class="cmt"># 2つめは、確かめたい場合を並べた一覧。この5組が順に試される。</span>
+<span class="fn">@pytest.mark.parametrize</span>(<span class="str">"name,guess,expected"</span>, [
+    <span class="cmt"># 完全に一致する場合。すべて H になるはず。</span>
+    (<span class="str">"yeti"</span>, <span class="str">"yeti"</span>, <span class="str">"HHHH"</span>),
+    <span class="cmt"># 大文字が混ざっている場合。区別しないので、同じ結果になるはず。</span>
+    (<span class="str">"yeti"</span>, <span class="str">"Yeti"</span>, <span class="str">"HHHH"</span>),
+    <span class="cmt"># 文字はすべて含まれるが、位置が全部違う場合。すべて C になるはず。</span>
+    (<span class="str">"yeti"</span>, <span class="str">"eyit"</span>, <span class="str">"CCCC"</span>),
+    <span class="cmt"># どの文字も含まれない場合。すべて M になるはず。</span>
+    (<span class="str">"yeti"</span>, <span class="str">"abcd"</span>, <span class="str">"MMMM"</span>),
+    <span class="cmt"># 長さが違う場合。空の文字列が返るはず。</span>
+    (<span class="str">"yeti"</span>, <span class="str">"yetii"</span>, <span class="str">""</span>),
+])
+<span class="cmt"># 引数の名前を、上で並べた名前とそろえる。</span>
+<span class="kw">def</span> <span class="fn">test_score</span>(name, guess, expected):
+    <span class="cmt"># 渡された値で、送られてくる内容の形を組み立てる。</span>
+    item = <span class="fn">Guess</span>(name=name, guess=guess)
+    <span class="cmt"># 採点の結果が、期待どおりかを確かめる。この行が5回実行される。</span>
+    <span class="kw">assert</span> <span class="fn">score</span>(item) == expected
+</pre></details>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 確認を実行する。-q は表示を最小限にする指定。</span>
+$ pytest -q test_game.py
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># .....                                               [100%]</span>
+<span class="cmt"># 5 passed in 0.05s</span>
+<span class="cmt"># ドットが5つ。1つの処理を書いただけで、5件分の確認になっている。</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>この書き方で、5つの場合を一度に確かめられる。テストの中で繰り返しを書く必要がない。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：この書き方の利点</h4>
+      <p>もし「同じ文字が2回出てくる場合」も確かめたくなったら、一覧に1行足すだけです。処理の中身は変えません。</p>
+      <p>また、5件のうち3件目だけが失敗した場合、失敗の表示には <code>test_score[yeti-eyit-CCCC]</code> のように、どの組み合わせで失敗したかが出ます。1つの処理の中で繰り返しを書いていると、何回目で失敗したかが分かりにくくなります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>いくつもの場合を、1つの処理でまとめて確かめる</li>
+        <li>入力と期待する結果を一覧にする書き方</li>
+        <li>繰り返しを自分で書くより読みやすい</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑨ データ ===== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">9</div><h2>データ初期化<span class="tag">でたらめに1件取り出す</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>データベース側の機能でばらばらに並べ替え、1件だけ取り出します。</p>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># でたらめな選び方をするための標準の機能を取り込む。</span>
+<span class="kw">import</span> random
+<span class="cmt"># データベースへの取っ手を取り込む。</span>
+<span class="kw">from</span> data.init <span class="kw">import</span> curs
+
+<span class="cmt"># でたらめに1つ、名前を返す処理。</span>
+<span class="kw">def</span> <span class="fn">get_random_creature_name</span>() -&gt; <span class="kw">str</span>:
+    <span class="cmt"># order by random() は、行をばらばらの順に並べる指定。</span>
+    <span class="cmt"># limit 1 は、その先頭の1件だけを取る指定。</span>
+    <span class="cmt"># この2つを組み合わせると、でたらめな1件が取れる。</span>
+    qry = <span class="str">"select name from creature order by random() limit 1"</span>
+    <span class="cmt"># 実行する。</span>
+    curs.<span class="fn">execute</span>(qry)
+    <span class="cmt"># 1件を取り出す。</span>
+    row = curs.<span class="fn">fetchone</span>()
+    <span class="cmt"># 取り出したのは名前だけなので、その0番目を返す。</span>
+    <span class="kw">return</span> row[<span class="num">0</span>]
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>データベース側の機能を使うのが簡単だ。Python 側で全件を読み込んで選んでもいいけど、表が大きくなるとデータベース側でやるほうが効率がいい。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：Python 側で選ぶとどうなるか</h4>
+      <p>全件を読み込んでから選ぶ場合、10万件あれば10万件分をメモリに載せ、そこから1つだけ使って残りを捨てることになります。ゲームを始めるたびに、これが起きます。</p>
+      <p>データベース側で並べ替えて1件だけ取れば、返ってくるのは1件分だけです。通信量もメモリの使用量も、ほぼ変わりません。</p>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul><li>データベース側の機能でばらばらに並べ、1件取り出す</li><li>効率のよい取り出し方</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑩ プレイ ===== -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-num">10</div><h2>実際にプレイする<span class="tag">全部つないで動かす</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>ブラウザで <code>/game</code> を開き、文字を入れて送信します。全部が緑になれば正解です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ブラウザで <code>http://localhost:8000/game</code> を開くと、最初の画面が出る。文字を入れて送信のボタンを押す。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>各文字が採点される。黄色なら、隠された名前に含まれるが位置が違う。緑なら位置も合っている。灰色なら、その文字は含まれない。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>全部が緑になれば「正解！」と知らせが出る。それまでは何度でも推測できる。大文字と小文字は区別せずに比べるので、どちらで入力してもいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>動きました！ これまで学んだことが、全部つながってる…！</div></div>
+    </div>
+
+    <h3 class="blk">推測が進む様子</h3>
+    <p style="font-size:13.5px;color:var(--sub);margin:0">隠された名前が <code>yeti</code> のとき、推測を重ねていくとこう変わります。</p>
+    <div style="margin:12px 0">
+      <p style="font-size:13px;color:var(--sub);margin:0 0 4px">1回目：<code>abcd</code> → どれも含まれない</p>
+      <div class="tiles"><div class="t M">A</div><div class="t M">B</div><div class="t M">C</div><div class="t M">D</div></div>
+      <p style="font-size:13px;color:var(--sub);margin:10px 0 4px">2回目：<code>eyit</code> → 全部含まれるが、位置が全部違う</p>
+      <div class="tiles"><div class="t C">E</div><div class="t C">Y</div><div class="t C">I</div><div class="t C">T</div></div>
+      <p style="font-size:13px;color:var(--sub);margin:10px 0 4px">3回目：<code>yeti</code> → すべて位置も合っている。正解</p>
+      <div class="tiles"><div class="t H">Y</div><div class="t H">E</div><div class="t H">T</div><div class="t H">I</div></div>
+    </div>
+
+    <h3 class="blk">1回の推測で、どこを通るか</h3>
+    <div class="cycle">
+      <div class="node"><h4>① 画面側</h4><p>入力された文字をつなげ、隠された名前と一緒に送る。</p><span class="when">JavaScript</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② Web層</h4><p>送られた内容が決めた形か確認し、サービス層に渡す。</p><span class="when">web/game.py</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ サービス層</h4><p>1文字ずつ比べて、採点の文字列を作る。</p><span class="when">service/game.py</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 画面側</h4><p>受け取った採点で、表に1行を追加し色を付ける。</p><span class="when">JavaScript</span></div>
+    </div>
+    <div class="loopback">↺ ①〜④を、正解が出るまで繰り返します。この間、画面は一度も切り替わりません。</div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>ブラウザで <code>/game</code> を開く</li>
+        <li>文字を入力 → 送信 → 採点の表示</li>
+        <li>全部が緑で正解</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">5つのキーフレーズ</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のキーフレーズです。1つ目、「Web は前回を覚えていない。ゲームの途中経過は、画面側かサーバ側か、その両方に持つ」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>設計の判断の、いちばん根本の部分だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「本書は、裏の通信を使い、サーバ側は最小限にする形」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>それぞれの良いところを取っている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「テンプレートに HTML・装飾・JavaScript を全部入れて、最初のデータを差し込みで埋め込む」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>小さなゲームには十分だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「採点は H/C/M の文字列。見た目の指定の名前にもなる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>単純な決め方だが、よく効いている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「pytest で、いくつもの入力をまとめて確かめられる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>複数の場合を、きれいに書ける。ここまでお疲れさま。第1章から第18章まで、全部がこの1つのゲームにつながっている。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">全5問</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>途中経過の持ち方の選択肢</div>
+      <p style="font-size:14px;margin:0">Web が前回を覚えていない場合、複数の段階にわたるゲームの「途中経過」をどこに持つかについて、3つの選択肢を挙げて、それぞれの良い点と困る点を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①<b>画面側で完結</b>：すべての状態をブラウザ側で管理する。良い点はサーバへの負担が小さく、動きが速いこと。困る点は JavaScript の知識が必要で、複雑な判断を扱いにくく、記録が残しにくいこと。②<b>サーバ側で持つ</b>：最初の呼び出しでゲームの番号を発行し、以降その番号でサーバが状態を管理する。良い点は確実に記録が残り、複雑な判断も書けること。困る点は読み書きが増え、サーバの負担が大きいこと。③<b>両方で分担</b>：本書のゲームが採る形。良い点は釣り合いが良く、役割がはっきりすること。困る点は両方の知識が必要なこと。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つの選択肢を挙げている<br>□ それぞれの良い点・困る点に触れている<br>□ 本書がどれを採ったかを述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>テンプレートと JavaScript の連携</div>
+      <p style="font-size:14px;margin:0">本章のゲームでは、でたらめに選ばれた名前を、どうやって画面側の JavaScript に渡していますか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">サーバ側でゲームを始める処理のときに、名前をサービス層から取得し、テンプレートに <code>name</code> という値として渡す。テンプレートの中の JavaScript の部分で <code>const SECRET_NAME = "{{ name }}";</code> のように差し込みを使って、JavaScript の値として埋め込む。これで画面側がその名前を持ち、入力との比較や、送信する内容に含めることができる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ サーバ側で名前をテンプレートに渡すことを述べている<br>□ テンプレートの中の JavaScript で差し込みを使うことを述べている<br>□ 「JavaScript の値として埋め込む」という動きを理解している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>採点の仕様</div>
+      <p style="font-size:14px;margin:0">本章の採点の処理の仕様を、自分の言葉で説明してください。<code>H</code>、<code>C</code>、<code>M</code> の意味と、例外的な場合の扱いを含めてどうぞ。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">推測と隠された名前を比べ、1文字ごとに記号を付ける。ある位置について、①推測のその位置の文字と、名前のその位置の文字が同じなら <code>H</code>（位置も文字も合っている）、②そうでなく、その文字が名前のどこかに含まれていれば <code>C</code>（文字は含まれるが位置が違う）、③それ以外は <code>M</code>（含まれない）。全体は、1文字ごとの記号をつなげた文字列になる。比較は大文字と小文字を区別しない（両方を小文字にそろえてから比べる）。推測と名前の長さが違う場合は、空の文字列を返す。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ H/C/M の意味を正しく説明している<br>□ 大文字と小文字を区別しない決まりに触れている<br>□ 長さが違う場合の扱い（空の文字列）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>まとめて確かめる書き方</div>
+      <p style="font-size:14px;margin:0">pytest で、いくつもの入力をまとめて確かめる書き方は何のために使いますか？ 同じテストを複数回書く場合と比べてどう便利ですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">1つのテストの処理を、いくつもの違う入力で繰り返し実行するための書き方。引数の名前を並べたものと、確かめたい場合の一覧を渡すと、pytest がそれぞれを別のテストとして実行する。同じ処理を <code>test_score1</code>, <code>test_score2</code>… と書くよりずっと短く、場合を増やすときも一覧に1行足すだけで済む。入力と期待する結果を一覧にして並べる、定番のやり方。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ いくつもの入力で繰り返し実行する目的を述べている<br>□ 引数の名前と、場合の一覧を渡す書き方に触れている<br>□ 一覧にする利点（短い、増やしやすい）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>住所の設計での衝突の回避</div>
+      <p style="font-size:14px;margin:0">本章では、新しい窓口として <code>/creature/game</code> ではなく、一番上の階層の <code>/game</code> を作りました。なぜですか？</p>
+      <details><summary>✅ 解答例</summary><div class="ans">既存の窓口に <code>/creature/{name}</code> がある。これは「任意の文字を名前として受け取る」もの。もし <code>/creature/game</code> を追加すると、住所を処理に割り当てる順番によっては <code>/creature/{name}</code> のほうが先に選ばれて、<code>game</code> を名前として扱ってしまう可能性がある。意図しない動きを防ぐため、重ならない一番上の階層の <code>/game</code> という別の住所で定義する。住所の設計では、値として受け取る部分と、固定の部分の重なりに注意が必要。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ <code>/creature/{name}</code> と重なる可能性に触れている<br>□ 割り当ての順番に触れている<br>□ 重なりを避けるために一番上の階層を選んだ理由を説明している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>初心者がこの内容を理解するための次のステップ<span class="tag">手を動かす5つ</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>実際に動かして遊ぶ</h4><p>本章のゲームを手元で動かし、何度かプレイしてみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>回数の制限を付けてみる</h4><p>「6回までで終わり」「表示は最大6行」など、本物に近づける改造を試す。</p>
+        <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt">// 画面側に、これまでの回数を覚えておく値を用意する。</span>
+<span class="kw">let</span> tryCount = <span class="num">0</span>;
+<span class="cmt">// 上限を決めておく。</span>
+<span class="kw">const</span> MAX_TRIES = <span class="num">6</span>;
+
+<span class="cmt">// 送信の処理の中で、結果を表示した後に足す。</span>
+tryCount++;
+<span class="cmt">// 正解でなく、かつ上限に達していたら終わりにする。</span>
+<span class="kw">if</span> (score !== <span class="str">"H"</span>.<span class="fn">repeat</span>(nameLength) &amp;&amp; tryCount &gt;= MAX_TRIES) {
+  <span class="cmt">// 答えを見せて終わる。</span>
+  <span class="fn">alert</span>(<span class="str">"残念！答えは "</span> + SECRET_NAME);
+  <span class="cmt">// ボタンを押せなくして、それ以上進めないようにする。</span>
+  document.<span class="fn">getElementById</span>(<span class="str">"submit-btn"</span>).disabled = <span class="kw">true</span>;
+}
+</pre></details>
+      </div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>画面側を書き直してみる</h4><p>広く使われている画面用のライブラリで、画面側を作り直してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>身分の確認を足す</h4><p>第11章の内容を使い、利用者ごとの記録を残せるようにする。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>つながったままの通信を試す</h4><p>FastAPI 公式の手引きで、つながったまま双方向にやり取りする仕組みを試し、対戦できるゲームを作ってみる。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』第18章「ゲーム」の図解 ― 原文の全節（Python ゲームパッケージ／ゲームロジックを分割する／ゲームデザイン／Webパート1・2／サービスその1・2／テストだ！／データ初期化／実際にプレイする）＋章のまとめ・理解度チェック5問・次のステップを収録。<br>これで全19章（0〜18章）の図解が完成しました。</p>
+
+</div>
+</body>
+</html>

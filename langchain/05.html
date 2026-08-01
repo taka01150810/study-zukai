@@ -1,0 +1,782 @@
+<meta charset="utf-8">
+<title>5. LangGraphによる認知アーキテクチャ ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+  @media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  @media(max-width:520px){.grid4{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第5章</span>
+  <h1>5. LangGraphによる認知アーキテクチャ</h1>
+  <p>プロンプト・RAG・メモリと部品は揃いました。次は<b>どう組み合わせるか</b>——アプリの設計図です。鍵になるのは「LLMにどこまで決めさせるか（自律性）」と「その出力をどこまで信用できるか（信頼性）」のつり合い。<b>LLM呼び出し</b>・<b>チェーン</b>・<b>ルーター</b>の3つを実装しながら学びます。</p>
+  <p>コードはすべてPythonです。1行ずつ日本語の説明と、実行結果のコメントを付けました。</p>
+  <div class="badge-row">
+    <span class="badge">📘 原文の全セクション収録</span>
+    <span class="badge">🐍 コードはPythonのみ</span>
+    <span class="badge">💬 対話つき</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🚫 たとえ話なし</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#arasuji">🎬 この章のあらすじ</a>
+  <a href="#yousuruni">🎯 要するに</a>
+  <a href="#naze">📌 なぜこれが必要か</a>
+  <a href="#intro">📖 導入 ― 自律性と信頼性のつり合い</a>
+  <a class="sub" href="#levels">認知アーキテクチャの4段階</a>
+  <a href="#s51">5.1 LLM呼び出しアーキテクチャ</a>
+  <a href="#s52">5.2 チェーンアーキテクチャ</a>
+  <a href="#s53">5.3 ルーターアーキテクチャ</a>
+  <a href="#s54">5.4 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のPythonコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。実行結果も同じ枠の中にコメントで書いてあります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ソラと先輩リクの対話が本筋です。コードを飛ばしても流れがつかめます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな入力でどう分岐するか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、専門知識なしで読める形にまとめました。</p>
+  <div class="gl">
+    <div class="item"><div class="w">認知アーキテクチャ</div><p>アプリが目的を達成するために踏む手順の組み立て方。この章の主題。</p></div>
+    <div class="item"><div class="w">自律性</div><p>LLMがどれだけ自分で決めて動けるか、の度合い。</p></div>
+    <div class="item"><div class="w">信頼性</div><p>出てきた結果をどれだけ信用してよいか、の度合い。</p></div>
+    <div class="item"><div class="w">トレードオフ</div><p>片方を強めるともう片方が弱まる関係。両立できない組み合わせ。</p></div>
+    <div class="item"><div class="w">LLM呼び出しアーキテクチャ</div><p>LLMを1回だけ呼んで答えを返す、いちばん単純な組み立て方。</p></div>
+    <div class="item"><div class="w">チェーンアーキテクチャ</div><p>決めた順番どおりにLLMを複数回呼ぶ組み立て方。順番は毎回同じ。</p></div>
+    <div class="item"><div class="w">フローエンジニアリング</div><p>処理の順番をあらかじめ設計しておくやり方の呼び名。チェーンの別名。</p></div>
+    <div class="item"><div class="w">ルーターアーキテクチャ</div><p>用意した複数の処理のうち、どれを実行するかをLLMに選ばせる組み立て方。</p></div>
+    <div class="item"><div class="w">エージェント</div><p>ルーターよりさらに自律的な組み立て方。6章以降で扱います。</p></div>
+    <div class="item"><div class="w">条件付きエッジ</div><p>関数の判定結果によって、次に進む先が変わるつながり。</p></div>
+    <div class="item"><div class="w">add_conditional_edges</div><p>条件付きエッジをグラフに登録する呼び方。</p></div>
+    <div class="item"><div class="w">ステート</div><p>処理全体で共有される途中経過のデータ。</p></div>
+    <div class="item"><div class="w">ノード</div><p>1つの処理を表す関数。</p></div>
+    <div class="item"><div class="w">入力スキーマ<span>Input</span></div><p>外から受け取る項目だけを書いた形の指定。</p></div>
+    <div class="item"><div class="w">出力スキーマ<span>Output</span></div><p>外へ返す項目だけを書いた形の指定。</p></div>
+    <div class="item"><div class="w">中間ステート</div><p>処理の途中でだけ使い、外には返さないデータ。</p></div>
+    <div class="item"><div class="w">temperature</div><p>答えのばらつきを決める数値。低いと安定、高いと表現が自由になります。</p></div>
+    <div class="item"><div class="w">Text-to-SQL</div><p>日本語などの質問を、データベースへの命令文に変換すること。</p></div>
+    <div class="item"><div class="w">インデックス</div><p>検索できるように整えて保存したデータのまとまり。</p></div>
+    <div class="item"><div class="w">ゼロショット</div><p>見本を1つも見せずに、指示だけで仕事をさせること。</p></div>
+    <div class="item"><div class="w">分類モデル</div><p>入力がどの区分に当たるかを判定する仕組み。LLM以前は専用に作る必要がありました。</p></div>
+    <div class="item"><div class="w">ドメイン</div><p>扱う領域・分野のこと。この章では「医療記録」「保険FAQ」の区分。</p></div>
+    <div class="item"><div class="w">Literal</div><p>「この値のどれかだけ」と、取りうる値を限定する書き方。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ ============ -->
+<section id="arasuji">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">部品ではなく、組み合わせ方の話</span></div></div>
+  <div class="card">
+    <p class="lead">「プロンプト・RAG・メモリ、部品は揃いました。これをどう組み合わせるんですか？」とソラ。リク先輩は「同じ部品でも、組み合わせ方を変えれば別のアプリになる。その組み合わせ方が<b>アーキテクチャ</b>だよ」と答えます。</p>
+    <p style="margin:0;font-size:14px;color:#cdd4f6">この章では、LLMアプリの「設計図（認知アーキテクチャ）」を学びます。鍵になるのは「<b>自律性</b> と <b>信頼性</b>」のつり合い。LLMにどこまで決めさせるかで、コード（0）→LLM呼び出し（1）→チェーン（2）→ルーター（3）という段階があります。LangGraphで、後ろの3つを実装しながら理解します。</p>
+  </div>
+</section>
+
+<!-- ============ 要するに ============ -->
+<section id="yousuruni">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">この章を1枠でまとめると</span></div></div>
+  <div class="card">
+    <p class="lead">部品（プロンプト・RAG・メモリ）を<b>どう組み合わせるか</b>が「認知アーキテクチャ」です。これは「<b>自律性</b>（LLMにどこまで自由に決めさせるか）」と「<b>信頼性</b>（出力をどこまで信用できるか）」のつり合いで選びます。自律性が上がるほど便利になりますが、行動を制御する仕組みも厳密に必要になります。</p>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🕊️</div><h4>自律性を上げると</h4><p>できることが増え、人の手間が減ります。ただし想定外の行動が起きる余地も増えます。</p></div>
+      <div class="mini"><div class="ic">🛡️</div><h4>信頼性を上げると</h4><p>結果が読めるようになります。ただし手順を細かく決める必要があり、柔軟さは失われます。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ なぜ必要か ============ -->
+<section id="naze">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ると何ができるか</h2><span class="tag">学ぶ理由と、身につくこと</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>同じ部品でも、組み合わせ方しだいで、役に立つアプリにも危ないアプリにもなるから。</li>
+        <li>「自律性と信頼性」を意識しないと、便利さを追って「送ってほしくないメールを送る」ような事故を起こすから。</li>
+        <li>LLMにどこまで決めさせるか（出力だけ／次の手順／手順そのもの）で、設計の選択肢が変わるから。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>🟢 これを知ったらできるようになること</h4>
+      <ul>
+        <li>認知アーキテクチャの段階（コード→LLM呼び出し→チェーン→ルーター）を理解し、用途に応じて選べる。</li>
+        <li>LangGraphで、LLM呼び出し・チェーン・ルーターの3つを実装できる。</li>
+        <li>条件付きエッジ（<code>add_conditional_edges</code>）で、LLMの判断に応じて道筋を分けられる。</li>
+        <li>入力の形と出力の形を分けて、途中だけで使うデータを管理できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 導入 ============ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― 自律性と信頼性のつり合い</h2><span class="tag">メールアシスタントで考える</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>先生、プロンプト・RAG・メモリと部品が揃いました。あとは？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>いい段階に来たね。同じ部品を使っても、並べ方と役割の分け方を変えれば、まったく別の性質のアプリになる。それを決めるのが<b>アーキテクチャ</b>だ。LLMアプリでは、RAG・プロンプト・メモリをどう組み合わせるかが最も重要な判断になる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>たとえば、どんなアプリを考えるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>メールアシスタントを作るとしよう。興味のないメールを自動で片づけて、一部に自動で返信して、残りを「後で確認」として印を付ける。守るべき条件はこうだ——①利用者の手を止めるのを最小限に（時間を節約するため）、②自分なら絶対に送らないメールを送らない。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>便利だけど、勝手に変なメールを送られたら困ります。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そこに重要なつり合いが見える。<b>自律性</b>（自由に行動できる程度）と<b>信頼性</b>（出力をどこまで信用できるか）だ。多く自動化すれば便利だけど、行き過ぎれば「送ってほしくないメール」を送る。自律性を測る目安は、「振る舞いのどれだけをLLMが決めて、どれだけをコードが決めるか」だ。</div></div>
+    </div>
+
+    <h3 class="blk">LLMに何を決めさせるか ― 3段階</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">✍️</div><h4>① 出力を決めさせる</h4><p>手順は人が固定し、その中の1つの結果だけをLLMに作らせます。例：返信文の下書き。</p><span class="pill">自律性 低</span></div>
+      <div class="mini"><div class="ic">🔀</div><h4>② 次の手順を選ばせる</h4><p>用意した選択肢の中から、次に何をするかをLLMに選ばせます。例：片づける／返信する／印を付ける の3択。</p><span class="pill">自律性 中</span></div>
+      <div class="mini"><div class="ic">🧠</div><h4>③ 手順そのものを決めさせる</h4><p>用意していない行動を、LLM自身にコードとして書かせます。</p><span class="pill">自律性 高</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：段階ごとに何が起きるか（メール1通に対して）</h4>
+      <p><b>①出力だけ</b>：「返信文を書いて」と頼み、出てきた文章を人が読んで送信ボタンを押す。誤りがあっても送信前に気づけます。</p>
+      <p><b>②次の手順</b>：LLMが「これは返信すべき」と判断し、自動で返信まで進む。判断を誤ると、返信不要のメールに返信してしまいます。</p>
+      <p><b>③手順そのもの</b>：LLMが「このメールには添付ファイルを解析して集計表を作って返すべきだ」と判断し、そのためのコードを自分で書いて実行する。できることは広がりますが、何が起きるか事前に読めません。</p>
+    </div>
+  </div>
+
+  <div class="card" id="levels">
+    <h3 class="blk" style="margin-top:4px">認知アーキテクチャの4段階</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この役割分担（LLM・開発者・利用者）の典型的な形を<b>認知アーキテクチャ</b>と呼ぶ。アプリが踏む手順の組み立て方だ。順番に見よう。本章は後ろの3つを実装する。次章でさらに自律的なエージェントを扱うよ。</div></div>
+    </div>
+
+    <div class="grid4">
+      <div class="mini"><div class="ic">0️⃣</div><h4>コード</h4><p>LLMをまったく使わない、普通のソフトウェア。手順はすべて人が書きます。</p><span class="pill">自律性 なし</span></div>
+      <div class="mini"><div class="ic">1️⃣</div><h4>LLM呼び出し</h4><p>LLMを1回だけ呼びます。翻訳・要約など。</p><span class="pill">5.1</span></div>
+      <div class="mini"><div class="ic">2️⃣</div><h4>チェーン</h4><p>決めた順番どおりに複数回呼びます。順番は常に同じ。</p><span class="pill">5.2</span></div>
+      <div class="mini"><div class="ic">3️⃣</div><h4>ルーター</h4><p>用意した手順のうち、どれを実行するかをLLMが選びます。</p><span class="pill">5.3</span></div>
+    </div>
+
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>段階</th><th>LLMが決めるもの</th><th>手順の順番</th><th>自律性</th><th>向く用途</th></tr>
+      <tr><td>0 コード</td><td>なし</td><td>完全に固定</td><td>なし</td><td>仕様がはっきり決まっている処理</td></tr>
+      <tr><td>1 LLM呼び出し</td><td>1回分の出力</td><td>固定（1回）</td><td>低</td><td>要約・翻訳・単純なSQL生成</td></tr>
+      <tr><td>2 チェーン</td><td>各回の出力</td><td>固定（複数回）</td><td>中</td><td>生成→解説のように段取りが決まっている処理</td></tr>
+      <tr><td>3 ルーター</td><td>出力＋次にどれを実行するか</td><td>LLMが分岐を選ぶ</td><td>やや高</td><td>入力の種類によって処理を変えたい場合</td></tr>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5.1 ============ -->
+<section id="s51">
+  <div class="sec-head"><div class="sec-num">5.1</div><div><h2>LLM呼び出しアーキテクチャ</h2><span class="tag">1回呼ぶだけ</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：LLMを1回だけ呼んで、利用者の発言にそのまま答えます。4章のチャットボットがこれです。</p>
+
+    <div class="cycle">
+      <div class="node"><h4>START</h4><p>入口。利用者の発言を受け取ります。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>chatbot</h4><p>LLMを1回呼んで答えを作ります。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>END</h4><p>出口。答えを返します。</p></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 型の道具、グラフの土台、追記の更新方法、チャットモデルを読み込む。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+<span class="cmt"># モデルの呼び出し口を作る。</span>
+model = <span class="fn">ChatOpenAI</span>()
+
+<span class="cmt"># 持ち回るデータの形を決める。会話の履歴を1項目だけ持つ。</span>
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    messages: Annotated[<span class="fn">list</span>, add_messages]
+
+<span class="cmt"># 唯一の処理。今の履歴をまるごとモデルに渡して、返答を履歴に足す。</span>
+<span class="kw">def</span> <span class="fn">chatbot</span>(state: State):
+    answer = model.<span class="fn">invoke</span>(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [answer]}
+
+<span class="cmt"># 組み立て役を作り、処理を1つだけ登録する。</span>
+builder = <span class="fn">StateGraph</span>(State)
+builder.<span class="fn">add_node</span>(<span class="str">"chatbot"</span>, chatbot)
+
+<span class="cmt"># 入口→chatbot→出口 と一直線につなぐ。分岐はない。</span>
+builder.<span class="fn">add_edge</span>(START, <span class="str">'chatbot'</span>)
+builder.<span class="fn">add_edge</span>(<span class="str">'chatbot'</span>, END)
+
+<span class="cmt"># 実行できる形に仕上げる。</span>
+graph = builder.<span class="fn">compile</span>()
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最も単純だけど、出番は多い。NotionなどのAI機能（要約・翻訳）は1回のLLM呼び出しで作れるし、想定する使い勝手しだいでは単純なSQLの生成もこれで十分だ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5.2 ============ -->
+<section id="s52">
+  <div class="sec-head"><div class="sec-num">5.2</div><div><h2>チェーンアーキテクチャ</h2><span class="tag">決めた順番どおりに複数回</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：あらかじめ決めた順番で複数回LLMを呼びます。入力や結果は毎回違っても、<b>呼ぶ順番はいつも同じ</b>です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次に<b>チェーンアーキテクチャ</b>。あらかじめ決めた順番で複数回LLMを呼ぶ。何度動かしても入力や結果は違うけど、<b>呼び出しの順番は常に同じ</b>だ。これは<b>フローエンジニアリング</b>とも呼ばれる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>たとえば？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>日本語からSQLを作るアプリだ。①利用者の質問とデータベースの構造からSQLを作るLLM呼び出し→②作ったSQLを、技術に詳しくない人にも分かるように説明するLLM呼び出し。これで、作られたSQLが意図に合っているか確認できる。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>START</h4><p>利用者の質問を受け取ります。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>generate_sql</h4><p>質問からSQLを作ります（ばらつきを抑えた設定）。</p><span class="when">temperature 0.1</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>explain_sql</h4><p>そのSQLを平易に説明します（自然な文章になる設定）。</p><span class="when">temperature 0.7</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>END</h4><p>SQLと説明を返します。</p></div>
+    </div>
+    <div class="loopback">この順番は、どんな質問が来ても必ず同じ。分岐はありません。</div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 型の道具、メッセージの入れ物、モデル、グラフの土台、追記の更新方法を読み込む。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage, SystemMessage
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> END, START, StateGraph
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+
+<span class="cmt"># SQLを作る役のモデル。文法を外すと動かないので、ばらつきを小さくする。</span>
+model_low_temp = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0.1</span>)
+
+<span class="cmt"># 説明を書く役のモデル。読みやすい文章にしたいので、ばらつきを大きめにする。</span>
+model_high_temp = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0.7</span>)
+
+<span class="cmt"># 処理の間で持ち回るデータの形を決める。4項目すべてを内部で使う。</span>
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    messages: Annotated[<span class="fn">list</span>, add_messages]  <span class="cmt"># 会話の履歴</span>
+    user_query: <span class="kw">str</span>       <span class="cmt"># 外から受け取る質問</span>
+    sql_query: <span class="kw">str</span>        <span class="cmt"># 作られたSQL</span>
+    sql_explanation: <span class="kw">str</span>  <span class="cmt"># SQLの説明</span>
+
+<span class="cmt"># 外から受け取る項目だけを書いた形。利用者はこれだけ渡せばよい。</span>
+<span class="kw">class</span> <span class="fn">Input</span>(TypedDict):
+    user_query: <span class="kw">str</span>
+
+<span class="cmt"># 外へ返す項目だけを書いた形。会話の履歴は返さない。</span>
+<span class="kw">class</span> <span class="fn">Output</span>(TypedDict):
+    sql_query: <span class="kw">str</span>
+    sql_explanation: <span class="kw">str</span>
+
+<span class="cmt"># 1つ目の処理に与える前提の指示。</span>
+generate_prompt = <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたはユーザーの質問に基づいてSQLクエリを生成する有能なデータアナリストです。"</span>)
+
+<span class="cmt"># 1つ目の処理：質問からSQLを作る。</span>
+<span class="kw">def</span> <span class="fn">generate_sql</span>(state: State) -> State:
+    <span class="cmt"># 受け取った質問を、利用者の発言の形にする。</span>
+    user_message = <span class="fn">HumanMessage</span>(state[<span class="str">"user_query"</span>])
+    <span class="cmt"># 前提の指示、これまでの履歴、今回の質問を順に並べる。</span>
+    messages = [generate_prompt, *state[<span class="str">"messages"</span>], user_message]
+    <span class="cmt"># ばらつきの小さいモデルに渡して、SQLを作らせる。</span>
+    res = model_low_temp.<span class="fn">invoke</span>(messages)
+    <span class="cmt"># 作られたSQLを記録し、質問と返答を履歴に足す（次の処理がこれを読む）。</span>
+    <span class="kw">return</span> {<span class="str">"sql_query"</span>: res.content, <span class="str">"messages"</span>: [user_message, res]}
+
+<span class="cmt"># 2つ目の処理に与える前提の指示。</span>
+explain_prompt = <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたはユーザーにSQLクエリを説明する有能なデータアナリストです。"</span>)
+
+<span class="cmt"># 2つ目の処理：作られたSQLを説明する。</span>
+<span class="kw">def</span> <span class="fn">explain_sql</span>(state: State) -> State:
+    <span class="cmt"># 履歴には、1つ目の処理で足した「質問」と「作られたSQL」がすでに入っている。</span>
+    messages = [explain_prompt, *state[<span class="str">"messages"</span>]]
+    <span class="cmt"># 読みやすさ重視のモデルに渡して、説明を書かせる。</span>
+    res = model_high_temp.<span class="fn">invoke</span>(messages)
+    <span class="cmt"># 説明を記録し、履歴にも足す。</span>
+    <span class="kw">return</span> {<span class="str">"sql_explanation"</span>: res.content, <span class="str">"messages"</span>: res}
+
+<span class="cmt"># 組み立て役を作る。持ち回る形・受け取る形・返す形の3つを別々に指定できる。</span>
+builder = <span class="fn">StateGraph</span>(State, input=Input, output=Output)
+
+<span class="cmt"># 2つの処理を登録する。</span>
+builder.<span class="fn">add_node</span>(<span class="str">"generate_sql"</span>, generate_sql)
+builder.<span class="fn">add_node</span>(<span class="str">"explain_sql"</span>, explain_sql)
+
+<span class="cmt"># 入口→生成→説明→出口 と一直線につなぐ。この順番は変わらない。</span>
+builder.<span class="fn">add_edge</span>(START, <span class="str">"generate_sql"</span>)
+builder.<span class="fn">add_edge</span>(<span class="str">"generate_sql"</span>, <span class="str">"explain_sql"</span>)
+builder.<span class="fn">add_edge</span>(<span class="str">"explain_sql"</span>, END)
+
+<span class="cmt"># 実行できる形に仕上げる。</span>
+graph = builder.<span class="fn">compile</span>()
+
+<span class="cmt"># 質問を1つ渡すと、SQLとその説明の2つが返る。履歴は返らない（返す形に含めていないため）。</span>
+<span class="fn">print</span>(graph.<span class="fn">invoke</span>({<span class="str">"user_query"</span>: <span class="str">"各製品の売上高はいくらですか？"</span>}))
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># {</span>
+<span class="cmt">#   "sql_query": "SELECT product_name, SUM(sales_amount) AS total_sales FROM sales GROUP BY product_name;",</span>
+<span class="cmt">#   "sql_explanation": "このクエリは、sales_amount 列を製品ごとに合計し、product_name でグループ化して、各製品の売上高を取得します。",</span>
+<span class="cmt"># }</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>まず <code>generate_sql</code> が <code>sql_query</code> を決めて履歴を更新、続いて <code>explain_sql</code> が作られたSQLを使って <code>sql_explanation</code> を決める。順番は固定だ。注目してほしいのは、<code>StateGraph</code> を作るときに<b>受け取る形と返す形を分けて指定できる</b>こと。どの項目を利用者から受け取って、どれを返すかを決められる。残りの項目は処理の途中でだけ使うデータだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>🟣 なぜ受け取る形と返す形を分けるのか</h4>
+      <ul>
+        <li>利用者が渡すべき項目がはっきりして、間違った使い方をされにくくなるから。</li>
+        <li>会話の履歴のような内部の作業用データを、外に漏らさずに済むから。</li>
+        <li>後から内部の作りを変えても、外から見た使い方が変わらずに済むから。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5.3 ============ -->
+<section id="s53">
+  <div class="sec-head"><div class="sec-num">5.3</div><div><h2>ルーターアーキテクチャ</h2><span class="tag">次に何をするかをLLMに選ばせる</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに</b>：用意しておいた複数の処理のうち、<b>どれを実行するかをLLMに選ばせます</b>。チェーンより自律性が上がります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>最後に<b>ルーターアーキテクチャ</b>。次に取るべき手順の判断をLLMに任せて、自律性をさらに高める。チェーンが決まった手順を常に実行するのに対して、ルーターは<b>用意しておいた複数の手順から、どれを実行するかをLLMに選ばせる</b>。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>たとえば？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>分野の違う資料を複数の保管場所に分けて入れたRAGアプリだ。指示文に関係のない情報を含めないほうがLLMの性能は上がるから、質問ごとに正しい保管場所を選んで、そこだけ検索すべきだ。この選択をLLMに任せる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>昔はどうやってたんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>LLM以前は、機械学習で<b>分類の仕組み</b>を作って、質問と保管場所を対応付けたデータを人手で作っていた。すごく手間だった。LLMは人間の言葉を理解しているから、見本を1つも見せずに、あるいは少数の見本で、その分類の役割を果たせる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>どの保管場所を使うか選ぶ</h4><p>質問と、各保管場所の説明をLLMに渡して、名前を1つ答えさせます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>選ばれた保管場所を検索する</h4><p>ここで道が2つに分かれます。<b>条件付きエッジ</b>の出番です。</p><div class="branch ok">records（医療記録）を選んだ → 医療記録の保管場所を検索</div><div class="branch ng">insurance（保険FAQ）を選んだ → 保険FAQの保管場所を検索</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>取り出した資料から答えを作る</h4><p>どちらの道を通っても、最後はこの処理に合流します。選ばれた分野に合わせて指示文も切り替えます。</p></div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 型の道具、資料の入れ物、メッセージの入れ物、ベクトルストア、モデル、グラフの部品を読み込む。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, Literal, TypedDict
+<span class="kw">from</span> langchain_core.documents <span class="kw">import</span> Document
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage, SystemMessage
+<span class="kw">from</span> langchain_core.vectorstores.in_memory <span class="kw">import</span> InMemoryVectorStore
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI, OpenAIEmbeddings
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> END, START, StateGraph
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+
+<span class="cmt"># 埋め込みモデルと、2種類のモデル（判断用と回答用）を用意する。</span>
+embeddings = <span class="fn">OpenAIEmbeddings</span>()
+model_low_temp = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0.1</span>)   <span class="cmt"># 判断がぶれないように</span>
+model_high_temp = <span class="fn">ChatOpenAI</span>(temperature=<span class="num">0.7</span>)  <span class="cmt"># 回答が自然になるように</span>
+
+<span class="cmt"># 持ち回るデータの形を決める。domain には2つの値しか入らないよう限定している。</span>
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    messages: Annotated[<span class="fn">list</span>, add_messages]
+    user_query: <span class="kw">str</span>                              <span class="cmt"># 外から受け取る質問</span>
+    domain: Literal[<span class="str">"records"</span>, <span class="str">"insurance"</span>]      <span class="cmt"># LLMが選んだ分野</span>
+    documents: <span class="fn">list</span>[Document]                     <span class="cmt"># 取り出した資料</span>
+    answer: <span class="kw">str</span>                                   <span class="cmt"># 最終の答え</span>
+
+<span class="cmt"># 外から受け取る項目だけの形。</span>
+<span class="kw">class</span> <span class="fn">Input</span>(TypedDict):
+    user_query: <span class="kw">str</span>
+
+<span class="cmt"># 外へ返す項目だけの形。根拠になった資料も一緒に返す。</span>
+<span class="kw">class</span> <span class="fn">Output</span>(TypedDict):
+    documents: <span class="fn">list</span>[Document]
+    answer: <span class="kw">str</span>
+
+<span class="cmt"># 2つの保管場所を用意する（中身の入れ方は2章を参照）。</span>
+medical_records_retriever = InMemoryVectorStore.<span class="fn">from_documents</span>([], embeddings).<span class="fn">as_retriever</span>()
+insurance_faqs_retriever = InMemoryVectorStore.<span class="fn">from_documents</span>([], embeddings).<span class="fn">as_retriever</span>()
+
+<span class="cmt"># 判断役への前提の指示。選択肢とその中身を説明し、名前だけを答えさせる。</span>
+<span class="cmt">#「出力はドメイン名のみ」と縛るのは、後の処理で文字列を比べやすくするため。</span>
+router_prompt = <span class="fn">SystemMessage</span>(
+    <span class="str">"""ユーザーの問い合わせをどのドメインへルーティングするか決定してください。
+    選べるドメインは2つです:
+      - records: 患者の診断、治療、処方などの医療記録を含む。
+      - insurance: 保険契約、請求、補償に関するFAQを含む。
+    出力はドメイン名のみとしてください。"""</span>)
+
+<span class="cmt"># 判断の処理：質問を読んで、どちらの分野かを決める。</span>
+<span class="kw">def</span> <span class="fn">router_node</span>(state: State) -> State:
+    user_message = <span class="fn">HumanMessage</span>(state[<span class="str">"user_query"</span>])
+    messages = [router_prompt, *state[<span class="str">"messages"</span>], user_message]
+    res = model_low_temp.<span class="fn">invoke</span>(messages)
+    <span class="cmt"># 返ってきた分野名を記録する。次の分岐でこの値が使われる。</span>
+    <span class="kw">return</span> {<span class="str">"domain"</span>: res.content, <span class="str">"messages"</span>: [user_message, res]}
+
+<span class="cmt"># 分岐を決める関数。次に動かす処理の「名前」を返すのがポイント。</span>
+<span class="kw">def</span> <span class="fn">pick_retriever</span>(state: State) -> Literal[<span class="str">"retrieve_medical_records"</span>, <span class="str">"retrieve_insurance_faqs"</span>]:
+    <span class="kw">if</span> state[<span class="str">"domain"</span>] == <span class="str">"records"</span>:
+        <span class="kw">return</span> <span class="str">"retrieve_medical_records"</span>
+    <span class="kw">else</span>:
+        <span class="kw">return</span> <span class="str">"retrieve_insurance_faqs"</span>
+
+<span class="cmt"># 分岐先その1：医療記録の保管場所から資料を取り出す。</span>
+<span class="kw">def</span> <span class="fn">retrieve_medical_records</span>(state: State) -> State:
+    <span class="kw">return</span> {<span class="str">"documents"</span>: medical_records_retriever.<span class="fn">invoke</span>(state[<span class="str">"user_query"</span>])}
+
+<span class="cmt"># 分岐先その2：保険FAQの保管場所から資料を取り出す。</span>
+<span class="kw">def</span> <span class="fn">retrieve_insurance_faqs</span>(state: State) -> State:
+    <span class="kw">return</span> {<span class="str">"documents"</span>: insurance_faqs_retriever.<span class="fn">invoke</span>(state[<span class="str">"user_query"</span>])}
+
+<span class="cmt"># 回答役への前提の指示を、分野ごとに2つ用意する。</span>
+medical_records_prompt = <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたは患者の医療記録（診断・治療・処方など）に基づいて質問に答える有能な医療チャットボットです。"</span>)
+insurance_faqs_prompt = <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたは保険契約・請求・補償に関するFAQに回答する有能な医療保険チャットボットです。"</span>)
+
+<span class="cmt"># 回答の処理：どちらの道を通ってきても、最後はここに来る。</span>
+<span class="kw">def</span> <span class="fn">generate_answer</span>(state: State) -> State:
+    <span class="cmt"># 選ばれた分野に合わせて、使う前提の指示を切り替える。</span>
+    prompt = medical_records_prompt <span class="kw">if</span> state[<span class="str">"domain"</span>] == <span class="str">"records"</span> <span class="kw">else</span> insurance_faqs_prompt
+    <span class="cmt"># 前提の指示、履歴、そして取り出した資料を並べて渡す。</span>
+    messages = [prompt, *state[<span class="str">"messages"</span>], <span class="fn">HumanMessage</span>(<span class="str">f"Documents: {state['documents']}"</span>)]
+    res = model_high_temp.<span class="fn">invoke</span>(messages)
+    <span class="kw">return</span> {<span class="str">"answer"</span>: res.content, <span class="str">"messages"</span>: res}
+
+<span class="cmt"># 組み立て役を作り、4つの処理をすべて登録する。</span>
+builder = <span class="fn">StateGraph</span>(State, input=Input, output=Output)
+builder.<span class="fn">add_node</span>(<span class="str">"router"</span>, router_node)
+builder.<span class="fn">add_node</span>(<span class="str">"retrieve_medical_records"</span>, retrieve_medical_records)
+builder.<span class="fn">add_node</span>(<span class="str">"retrieve_insurance_faqs"</span>, retrieve_insurance_faqs)
+builder.<span class="fn">add_node</span>(<span class="str">"generate_answer"</span>, generate_answer)
+
+<span class="cmt"># 入口からは、まず必ず判断の処理へ進む。</span>
+builder.<span class="fn">add_edge</span>(START, <span class="str">"router"</span>)
+
+<span class="cmt"># 判断の処理のあとは、pick_retriever が返す名前によって進む先が変わる。</span>
+<span class="cmt"># 固定のつなぎではなく、実行するたびに行き先が決まる点が普通のエッジとの違い。</span>
+builder.<span class="fn">add_conditional_edges</span>(<span class="str">"router"</span>, pick_retriever)
+
+<span class="cmt"># どちらの検索処理からも、同じ回答の処理へ合流させる。</span>
+builder.<span class="fn">add_edge</span>(<span class="str">"retrieve_medical_records"</span>, <span class="str">"generate_answer"</span>)
+builder.<span class="fn">add_edge</span>(<span class="str">"retrieve_insurance_faqs"</span>, <span class="str">"generate_answer"</span>)
+
+<span class="cmt"># 回答の処理が終わったら出口へ。</span>
+builder.<span class="fn">add_edge</span>(<span class="str">"generate_answer"</span>, END)
+
+<span class="cmt"># 実行できる形に仕上げる。</span>
+graph = builder.<span class="fn">compile</span>()
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span><code>add_conditional_edges</code> がポイントですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>そう。グラフには2つの道（医療記録／保険FAQ）があって、両方とも最初に <code>router</code> を通って、最後に <code>generate_answer</code> で終わる。<code>pick_retriever</code> が、LLMの選んだ <code>domain</code> を2つの処理のどちらかに対応づける<b>条件付きエッジ</b>だ。実行してみよう。</div></div>
+    </div>
+
+    <details class="code"><summary>コードを見る（1行ずつ説明つき）</summary><pre>
+<span class="cmt"># 保険に関する質問を1つ用意する。</span>
+user_input = {<span class="str">"user_query"</span>: <span class="str">"新型コロナウイルスの治療は補償されていますか？"</span>}
+
+<span class="cmt"># 動かしながら、各処理が終わるたびにその結果を表示する。</span>
+<span class="cmt"># どの道を通ったかが順に見えるので、分岐の確認に便利。</span>
+<span class="kw">for</span> c <span class="kw">in</span> graph.<span class="fn">stream</span>(user_input):
+    <span class="fn">print</span>(c)
+<span class="cmt"># --- 実行結果 ---</span>
+<span class="cmt"># { "router": { "messages": [...], "domain": "insurance" } }</span>
+<span class="cmt"># { "retrieve_insurance_faqs": { "documents": [...] } }</span>
+<span class="cmt"># { "generate_answer": { "messages": ..., "answer": "..." } }</span>
+<span class="cmt"># ↑ 医療記録側の処理は一度も動いていない。LLMが保険側を選んだため</span>
+</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>出てくる内容には、動いた各処理の戻り値が含まれる。①<code>router</code> が履歴を更新して <code>domain</code>（insurance）を返す→②<code>pick_retriever</code> が次の処理名を返す→③<code>retrieve_insurance_faqs</code> が関係する資料を取り出す（LLMが選んだ道を通った）→④<code>generate_answer</code> が答えを作る、だ。</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：質問を変えると通る道が変わる</h4>
+      <p>「新型コロナウイルスの治療は補償されていますか？」→ 補償の話なので <code>domain</code> は <b>insurance</b>。保険FAQの保管場所だけが検索されます。</p>
+      <p>「山田さんに処方されている薬は？」→ 処方の話なので <code>domain</code> は <b>records</b>。医療記録の保管場所だけが検索されます。</p>
+      <p>どちらの場合も、関係のないほうの保管場所は<b>一度も検索されません</b>。無関係な文章が指示文に混ざらないので、答えの精度が上がり、料金も抑えられます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>認知アーキテクチャ＝部品の組み合わせ方（アプリの設計図）。「自律性と信頼性」のつり合いで選ぶ。</li>
+        <li>段階：0コード→1 LLM呼び出し（翻訳・要約など）→2チェーン（決まった順番で複数回、フローエンジニアリング）→3ルーター（LLMが次の手順を選ぶ）。</li>
+        <li>チェーン：受け取る形と返す形を分けて、途中だけで使うデータを管理できる（例：質問→SQL生成→説明）。</li>
+        <li>ルーター：<code>add_conditional_edges</code> で、LLMの判断（domain）に応じて道筋を分ける。</li>
+        <li>自律性が高まるほどできることは増えるが、行動を制御する仕組みも厳密に必要。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5.4 ============ -->
+<section id="s54">
+  <div class="sec-head"><div class="sec-num">5.4</div><div><h2>まとめ</h2><span class="tag">3つの設計図を実装した</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>この章では、LLMアプリを作るうえで重要なつり合い「自律性と信頼性」を扱った。自律性が高まるほどできる仕事は増えるけど、制御の仕組みも厳密に求められる。そして、自律性と監視のつり合いが異なる3つの認知アーキテクチャ——LLM呼び出し・チェーン・ルーター——を実装した。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>設計図の選び方がわかってきました。次は？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>次の6章は「エージェントアーキテクチャの基本」だ。ここまで見た認知アーキテクチャの中で最も強力な、エージェントを解説するよ。さらに自律性を高めていく。</div></div>
+    </div>
+    <div class="summary">
+      <h4>🟢 この項のまとめ</h4>
+      <ul>
+        <li>自律性が高まるほどできる仕事は増えるが、行動を制御する仕組みも厳密に必要。</li>
+        <li>LLM呼び出し・チェーン・ルーターは、自律性と監視のつり合いが異なる。</li>
+        <li>次章は最も強力なエージェントアーキテクチャへ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが4つのポイントを言葉にする</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>今日のポイントです。1つ目は「同じ部品でも組み合わせ方（認知アーキテクチャ）で、できあがるアプリの性質が変わる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>アーキテクチャが最も重要な判断、だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>2つ目は「自律性と信頼性のつり合い。LLMにどこまで決めさせるか（出力／次の手順／手順そのもの）」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>便利さと事故の危険は表と裏だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>3つ目は「段階はコード→LLM呼び出し→チェーン（決まった順番）→ルーター（LLMが選ぶ）」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>自律性が上がる順だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>4つ目は「ルーターは <code>add_conditional_edges</code> で、LLMの判断に応じて道筋を分ける」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>受け取る形と返す形を分けられる、も。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">ソラ</span>完璧でしょうか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">リク</span>完璧だ。次はエージェントへ進もう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ クイズ ============ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみましょう</span></div></div>
+  <div class="card">
+    <p class="lead">スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>認知アーキテクチャとは</div>
+      <p style="font-size:14px;margin:0">❓ 認知アーキテクチャとは何ですか。なぜそれが重要な判断になるのかも含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">認知アーキテクチャとは、LLMアプリが目的を達成するために踏む手順の組み立て方、つまり「部品（プロンプト・RAG・メモリなど）をどう組み合わせるか＝設計図」のこと。同じ部品を使っても、並べ方と役割の分け方を変えれば、まったく性質の違うアプリになる。たとえばLLMを1回呼ぶだけの構成と、LLMに次の手順を選ばせる構成では、できることも危険性もまるで違う。だから、どう組み合わせるかを決めることが最も重要な判断になる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 認知アーキテクチャ＝部品の組み合わせ方（手順の組み立て方）、に触れている<br>□ 同じ部品でも組み合わせ方で性質が変わる、に触れている<br>□ アーキテクチャの選択が重要な判断、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>自律性と信頼性</div>
+      <p style="font-size:14px;margin:0">❓ 「自律性」と「信頼性」のつり合いとは何ですか。メールアシスタントの例で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">自律性は「LLMがどれだけ自由に行動できるか」、信頼性は「その出力をどこまで信用できるか」。両者は片方を強めるともう片方が弱まる関係にある。メールアシスタントの例では、より多くの作業を自動化（自律性を高く）すれば便利になるが、行き過ぎると「自分なら絶対に送らないメール」を勝手に送ってしまう事態が避けられない。自律性を測る目安は「振る舞いのどれだけをLLMが決め、どれだけをコードが決めるか」で、出力だけ／次の手順／手順そのもの、と段階がある。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 自律性＝自由に行動できる程度、信頼性＝出力を信用できる程度、に触れている<br>□ 自動化を進めると便利だが事故（送ってほしくないメール）の危険、に触れている<br>□ LLMにどこまで決めさせるかの段階に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>チェーンとルーターの違い</div>
+      <p style="font-size:14px;margin:0">❓ チェーンアーキテクチャとルーターアーキテクチャの違いを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">チェーンは、あらかじめ決めた順番で複数回LLMを呼ぶ。入力や結果は毎回違っても、実行される手順の順番は常に同じ（例：質問からSQLを作る→そのSQLを説明する、の順を必ず実行）。ルーターは、次に取るべき手順の選択をLLMに任せる。用意しておいた複数の手順の中から、どれを実行するかをLLMに選ばせる（例：複数の保管場所を持つRAGで、質問に応じてどこを検索するかをLLMが決める）。ルーターのほうが自律性が高い。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ チェーン＝決まった順番で複数回呼ぶ、に触れている<br>□ ルーター＝次の手順をLLMに選ばせる、に触れている<br>□ ルーターのほうが自律性が高い、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>条件付きエッジ</div>
+      <p style="font-size:14px;margin:0">❓ ルーターアーキテクチャで使う「条件付きエッジ（<code>add_conditional_edges</code>）」は、何をするものですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">条件付きエッジは、固定の道筋ではなく、関数の判定結果に応じて次に実行する処理を動的に選ぶつながり。ルーターの例では、<code>router</code> でLLMが分野（records か insurance）を選び、<code>pick_retriever</code> 関数がその分野に応じて「医療記録を検索する処理」か「保険FAQを検索する処理」のどちらかの名前を返す。これにより、LLMの判断に応じてグラフの道筋が分かれる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 関数の判定結果に応じて次の処理を動的に選ぶ、に触れている<br>□ LLMの判断（domain）に応じて道筋が分かれる、に触れている<br>□ ルーターアーキテクチャの実装に使われる、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>受け取る形と返す形の分離</div>
+      <p style="font-size:14px;margin:0">❓ <code>StateGraph</code> で入力の形と出力の形を分けて指定できると、何が嬉しいですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">入力の形と出力の形を分けると、持ち回るデータのうち「どの項目を利用者からの入力として受け取り、どの項目を最終の出力として返すか」を柔軟に決められる。たとえば質問からSQLを作るチェーンでは、入力は <code>user_query</code> だけ、出力は <code>sql_query</code> と <code>sql_explanation</code>、というふうに指定できる。残りの項目（messagesなど）は処理の途中でだけ使い、利用者に返す最終の出力には含めない。これにより、外から見た使い方がはっきりする。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ どの項目を入力として受け取り、どれを出力として返すかを決められる、に触れている<br>□ 残りは途中だけで使うデータになる、に触れている<br>□ 外から見た使い方がはっきりする、に触れている（できれば）</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして確かめる</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏗️</div><h4>3つの設計図を動かす</h4><p>LLM呼び出し・チェーン・ルーターを順に実装し、図（<code>draw_mermaid_png</code>）にして構造の違いを見比べましょう。</p></div>
+      <div class="mini"><div class="ic">🗂️</div><h4>自律性を表にする</h4><p>自分が作りたいアプリで「LLMに出力だけ決めさせる／次の手順を選ばせる／手順そのものを決めさせる」のどれにするかを書き出してみましょう。</p></div>
+      <div class="mini"><div class="ic">➕</div><h4>チェーンを広げる</h4><p>SQLを作るチェーンに「SQLを実行→結果をまとめる」3段目を追加する設計を考えてみましょう。</p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>ルーターを試す</h4><p>2つの話題の保管場所を用意し、質問に応じて正しいほうが選ばれるかを <code>stream</code> で観察しましょう。</p></div>
+      <div class="mini"><div class="ic">📗</div><h4>LangGraph公式の実装例</h4><p>langchain-ai.github.io/langgraph/tutorials/workflows/ で、チェーンや振り分けの実装例を確認しましょう。</p></div>
+      <div class="mini"><div class="ic">🔮</div><h4>次章に備える</h4><p>ルーターより自律性の高い「エージェント」とは何かを、この章の3段階（出力／次の手順／手順そのもの）から予想してみましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第5章 LangGraphによる認知アーキテクチャ ― 図解版<br>次章：<b>6. エージェントアーキテクチャの基本</b></p>
+
+</div>
