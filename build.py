@@ -84,7 +84,7 @@ def collect():
             # URL に日本語やスペースが入らないよう、章番号だけのファイル名にする
             name = f"{num:02d}.html" if num != 9999 else f"{src.stem}.html"
             shutil.copy2(src, out_dir / name)
-            chapters.append({"num": num, "title": chap_title, "href": f"{slug}/{name}"})
+            chapters.append({"num": num, "title": chap_title, "file": name})
 
         chapters.sort(key=lambda c: c["num"])
         if chapters:
@@ -126,22 +126,39 @@ header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:
   background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
 header.hero h1{margin:.1em 0 .3em; font-size:32px; line-height:1.35}
 header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
-section.book{margin-top:44px}
-.sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
-.sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 14px; border-radius:14px;
-  display:grid; place-items:center; font-weight:800; font-size:14px; color:#0c0f1e;
-  background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
-.sec-head h2{margin:0; font-size:23px}
-.sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
-.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px}
-a.card{display:flex; gap:14px; align-items:flex-start; text-decoration:none;
-  background:var(--panel); border:1px solid var(--line); border-radius:16px;
-  padding:16px 18px; box-shadow:var(--shadow); transition:.15s}
-a.card:hover{border-color:var(--accent); transform:translateY(-2px)}
-a.card .no{flex:0 0 auto; min-width:34px; height:34px; border-radius:10px; display:grid;
+a.crumb{display:inline-block; margin-bottom:18px; color:var(--sub); text-decoration:none;
+  font-size:13.5px; border:1px solid var(--line); border-radius:999px; padding:5px 14px;
+  background:var(--panel); transition:.15s}
+a.crumb:hover{color:var(--ink); border-color:var(--accent)}
+
+/* トップページ: 本の一覧 */
+.books{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:18px; margin-top:32px}
+a.bookcard{display:block; text-decoration:none; background:var(--panel);
+  border:1px solid var(--line); border-radius:18px; padding:26px 26px 22px;
+  box-shadow:var(--shadow); transition:.15s; position:relative; overflow:hidden}
+a.bookcard::after{content:""; position:absolute; left:0; top:0; width:100%; height:4px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2))}
+a.bookcard:hover{border-color:var(--accent); transform:translateY(-3px)}
+a.bookcard h2{margin:0 0 8px; font-size:21px; color:var(--ink); line-height:1.4}
+a.bookcard .sub{margin:0; font-size:13.5px; color:var(--sub)}
+a.bookcard .meta{display:flex; align-items:center; gap:10px; margin-top:18px;
+  font-size:12.5px; color:var(--sub)}
+a.bookcard .count{font-weight:700; color:#0c0f1e; border-radius:999px; padding:3px 12px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2))}
+a.bookcard .go{margin-left:auto; color:var(--accent2)}
+
+/* 各書籍ページ: 章の一覧 */
+.chapters{display:grid; gap:10px; margin-top:28px}
+a.chap{display:flex; gap:16px; align-items:center; text-decoration:none;
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:15px 20px; box-shadow:var(--shadow); transition:.15s}
+a.chap:hover{border-color:var(--accent); transform:translateX(3px)}
+a.chap .no{flex:0 0 auto; min-width:40px; height:36px; border-radius:10px; display:grid;
   place-items:center; font-size:13px; font-weight:700; color:#c5d0ff;
   background:#6c8cff1f; border:1px solid #6c8cff44}
-a.card .t{color:var(--ink); font-size:14.5px; line-height:1.5}
+a.chap .t{color:var(--ink); font-size:15px; line-height:1.5}
+a.chap .go{margin-left:auto; color:var(--sub); font-size:16px}
 footer{margin-top:64px; padding-top:24px; border-top:1px solid var(--line);
   color:var(--sub); font-size:13px}
 footer a{color:var(--accent2)}
@@ -149,59 +166,83 @@ footer a{color:var(--accent2)}
   header.hero{padding:26px 20px}
   header.hero h1{font-size:25px}
   .wrap{padding:20px 14px 80px}
+  .books{grid-template-columns:1fr}
 }
 """
 
+FOOTER = (
+    "<footer>"
+    "書籍の内容そのものではなく、学習のために自分の言葉で要約・図解したノートです。"
+    "詳細は各書籍の原典を参照してください。 / "
+    '<a href="https://github.com/taka01150810/study-zukai">GitHub</a>'
+    "</footer>"
+)
 
-def render_index(books):
-    """トップページの HTML 文字列を組み立てる。"""
+
+def page(title, body):
+    """共通の HTML の外枠。中身の body だけを差し替えて使う。"""
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="ja">\n<head>\n<meta charset="utf-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        f"<title>{html.escape(title)}</title>\n"
+        f"<style>{CSS}</style>\n</head>\n<body>\n"
+        f'<div class="wrap">\n{body}\n{FOOTER}\n</div>\n'
+        "</body>\n</html>\n"
+    )
+
+
+def chapter_label(num):
+    """章番号の表示。0章は「序」、番号なしは「—」にする。"""
+    if num == 0:
+        return "序"
+    return str(num) if num != 9999 else "—"
+
+
+def render_top(books):
+    """トップページ（本のタイトルだけを並べる）を組み立てる。"""
     total = sum(len(b["chapters"]) for b in books)
     parts = [
-        '<div class="wrap">',
         '<header class="hero">',
         '<span class="chip">技術書の図解ノート</span>',
         "<h1>Study 図解</h1>",
         "<p>読んだ技術書の内容を、専門用語を極力使わずに図で読める形にまとめたノートです。"
         f"現在 {len(books)} 冊 / 全 {total} 章。各ページは単体で完結した HTML です。</p>",
         "</header>",
+        '<div class="books">',
     ]
+    for book in books:
+        parts.append(
+            f'<a class="bookcard" href="{book["slug"]}/">'
+            f'<h2>{html.escape(book["title"])}</h2>'
+            f'<p class="sub">{html.escape(book["subtitle"])}</p>'
+            f'<div class="meta"><span class="count">全 {len(book["chapters"])} 章</span>'
+            f'<span class="go">章を見る →</span></div></a>'
+        )
+    parts.append("</div>")
+    return page("Study 図解 — 技術書のやさしい図解ノート", "\n".join(parts))
 
-    for i, book in enumerate(books, 1):
-        parts += [
-            '<section class="book">',
-            '<div class="sec-head">',
-            f'<div class="sec-num">{len(book["chapters"])}章</div>',
-            f'<div><h2>{html.escape(book["title"])}</h2>'
-            f'<span class="tag">{html.escape(book["subtitle"])}</span></div>',
-            "</div>",
-            '<div class="grid">',
-        ]
-        for chap in book["chapters"]:
-            no = "序" if chap["num"] == 0 else (str(chap["num"]) if chap["num"] != 9999 else "—")
-            parts.append(
-                f'<a class="card" href="{html.escape(chap["href"])}">'
-                f'<span class="no">{no}</span>'
-                f'<span class="t">{html.escape(chap["title"])}</span></a>'
-            )
-        parts += ["</div>", "</section>"]
 
-    parts += [
-        "<footer>",
-        "書籍の内容そのものではなく、学習のために自分の言葉で要約・図解したノートです。"
-        '詳細は各書籍の原典を参照してください。 / '
-        '<a href="https://github.com/taka01150810/study-zukai">GitHub</a>',
-        "</footer>",
-        "</div>",
+def render_book(book):
+    """書籍ページ（その本の章を並べる）を組み立てる。"""
+    parts = [
+        '<a class="crumb" href="../">← 書籍一覧</a>',
+        '<header class="hero">',
+        '<span class="chip">図解ノート</span>',
+        f'<h1>{html.escape(book["title"])}</h1>',
+        f'<p>{html.escape(book["subtitle"])} ／ 全 {len(book["chapters"])} 章</p>',
+        "</header>",
+        '<div class="chapters">',
     ]
-
-    body = "\n".join(parts)
-    return (
-        "<!DOCTYPE html>\n"
-        '<html lang="ja">\n<head>\n<meta charset="utf-8">\n'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        "<title>Study 図解 — 技術書のやさしい図解ノート</title>\n"
-        f"<style>{CSS}</style>\n</head>\n<body>\n{body}\n</body>\n</html>\n"
-    )
+    for chap in book["chapters"]:
+        parts.append(
+            f'<a class="chap" href="{html.escape(chap["file"])}">'
+            f'<span class="no">{chapter_label(chap["num"])}</span>'
+            f'<span class="t">{html.escape(chap["title"])}</span>'
+            f'<span class="go">→</span></a>'
+        )
+    parts.append("</div>")
+    return page(f'{book["title"]} — Study 図解', "\n".join(parts))
 
 
 def main():
@@ -213,7 +254,10 @@ def main():
     if not books:
         raise SystemExit("図解 HTML が1つも見つかりませんでした")
 
-    (DIST / "index.html").write_text(render_index(books), encoding="utf-8")
+    (DIST / "index.html").write_text(render_top(books), encoding="utf-8")
+    for book in books:
+        (DIST / book["slug"] / "index.html").write_text(render_book(book), encoding="utf-8")
+
     total = sum(len(b["chapters"]) for b in books)
     print(f"完了: {len(books)} 冊 / {total} 章 -> {DIST}")
 
