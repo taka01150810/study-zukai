@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第8章 分散システムの問題 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第8章</span>
+  <h1>分散システムの問題</h1>
+  <p>「これ、僕のコードのバグですよね？」――いいえ、それは<b>分散システムの“当たり前の地獄”</b>です。複数のサーバーが協力して動くと、<b>壊れるネットワーク・信用できない時計・勝手に止まるプロセス</b>という新種のトラブルが必ず起きます。新人ハルとベテラン カイ先輩の対話で、これらを徹底的に悲観的に見ていきます。</p>
+  <div class="badge-row">
+    <span class="badge">✉️ たとえ話は「遠隔地に散らばった支店どうしの手紙連絡」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a class="sub" href="#sintro2">導入 ― 「最大限に悲観的になる」</a>
+  <a href="#s81">8.1 フォールトと部分障害</a>
+  <a class="sub" href="#s811">8.1.1 クラウドとスーパーコンピューティング</a>
+  <a class="sub" href="#s81col">コラム：信頼できない部品から信頼できるシステム</a>
+  <a href="#s82">8.2 信頼性の低いネットワーク</a>
+  <a class="sub" href="#s821">8.2.1 ネットワークのフォールトの実際</a>
+  <a class="sub" href="#s822">8.2.2 フォールトの検出</a>
+  <a class="sub" href="#s823">8.2.3 タイムアウトと限度のない遅延</a>
+  <a class="sub" href="#s8231">　└ ネットワークの輻輳とキューイング</a>
+  <a class="sub" href="#s824">8.2.4 同期ネットワークと非同期ネットワーク</a>
+  <a class="sub" href="#s8241">　└ 遅延を予測可能にできないのか？</a>
+  <a href="#s83">8.3 信頼性の低いクロック</a>
+  <a class="sub" href="#s831">8.3.1 単調増加クロックと時刻クロック</a>
+  <a class="sub" href="#s832">8.3.2 クロックの同期と正確性</a>
+  <a class="sub" href="#s833">8.3.3 同期クロックへの依存</a>
+  <a class="sub" href="#s8331">　└ イベント順序とLWW</a>
+  <a class="sub" href="#s8332">　└ クロックの値には信頼区間がある</a>
+  <a class="sub" href="#s8333">　└ グローバルなスナップショット</a>
+  <a class="sub" href="#s834">8.3.4 プロセスの一時停止</a>
+  <a class="sub" href="#s8341">　└ レスポンスタイムの保証</a>
+  <a class="sub" href="#s8342">　└ GCのインパクト制限</a>
+  <a href="#s84">8.4 知識、真実、虚偽</a>
+  <a class="sub" href="#s841">8.4.1 真実は多数決で決定される</a>
+  <a class="sub" href="#s8411">　└ リーダーとロック</a>
+  <a class="sub" href="#s8412">　└ フェンシングトークン</a>
+  <a class="sub" href="#s842">8.4.2 ビザンチン障害</a>
+  <a class="sub" href="#s8421">　└ 弱い嘘</a>
+  <a class="sub" href="#s843">8.4.3 システムモデルと現実</a>
+  <a class="sub" href="#s8431">　└ アルゴリズムの正しさ</a>
+  <a class="sub" href="#s8432">　└ 安全性とライブ性</a>
+  <a class="sub" href="#s8433">　└ 現実世界へのマッピング</a>
+  <a href="#sumchap">まとめ</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">✉️</div><div><b>たとえ話はぜんぶ支店どうしの手紙連絡で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してすべて<b>「遠隔地に散らばった支店どうしの手紙連絡（届かない・遅れる・時計がずれる）」</b>に置きかえて説明します。分散システム＝各地の支店、ネットワーク＝手紙のやり取りです。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、支店連絡のたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">分散システム</div><p>複数のコンピュータがネットワークで協力して動くしくみ。<b>＝各地に散らばった支店</b>。本部はなく、手紙でやり取りする。</p></div>
+    <div class="item"><div class="w">部分障害 <span>partial failure</span></div><p>一部だけが予想外に壊れ、他は元気な状態。<b>＝ある支店との連絡だけ途絶え、他店は通常営業</b>。</p></div>
+    <div class="item"><div class="w">決定的／非決定的 <span>deterministic</span></div><p>決定的＝同じことをすれば必ず同じ結果。非決定的＝うまくいくことも失敗することもある（手紙が届くか不明）。</p></div>
+    <div class="item"><div class="w">フォールトトレランス <span>fault tolerance</span></div><p>一部が壊れても全体は動き続ける力。<b>＝1店と連絡が切れてもチェーン全体は営業継続</b>。</p></div>
+    <div class="item"><div class="w">シェアードナッシング <span>shared-nothing</span></div><p>何も共有せず、各マシンが自分のメモリ・ディスクを持ち、通信は手紙だけ。<b>＝各支店は独立、連絡は郵便のみ</b>。</p></div>
+    <div class="item"><div class="w">非同期ネットワーク</div><p>手紙がいつ着くか、そもそも着くか保証しないやり取り。遅れも紛失もある。</p></div>
+    <div class="item"><div class="w">タイムアウト <span>timeout</span></div><p>返事をどこまで待つかの制限時間。<b>＝返信をいつまで待って「もう来ない」と判断するか</b>。</p></div>
+    <div class="item"><div class="w">キューイング <span>queueing</span></div><p>順番待ちの列。遅延の主因。<b>＝郵便局に手紙が溜まって配達が遅れる</b>。</p></div>
+    <div class="item"><div class="w">輻輳 <span>congestion</span></div><p>通信が混み合って詰まること。<b>＝郵便が大渋滞</b>。</p></div>
+    <div class="item"><div class="w">時刻のクロック <span>time-of-day</span></div><p>カレンダー上の日時を返す時計。巻き戻りうる。<b>＝壁掛け時計</b>（直されて時刻が戻ることがある）。</p></div>
+    <div class="item"><div class="w">単調増加クロック <span>monotonic</span></div><p>常に前進し、差が経過時間。<b>＝ストップウォッチ</b>（絶対値に意味はなく差だけ使う）。</p></div>
+    <div class="item"><div class="w">NTP</div><p>ネットワーク越しに時計を合わせるしくみ。<b>＝標準時の電波で各支店の時計を合わせる</b>。</p></div>
+    <div class="item"><div class="w">クロックスキュー</div><p>マシン間の時計のズレ。<b>＝各支店の時計がバラバラ</b>。</p></div>
+    <div class="item"><div class="w">信頼区間 <span>confidence interval</span></div><p>時刻は一点でなく「この幅のどこか」と考える範囲。TrueTimeは [最早, 最遅] を返す。</p></div>
+    <div class="item"><div class="w">プロセスの一時停止</div><p>スレッドが急に数秒〜数分止まること。<b>＝担当者が急に席を外す</b>。</p></div>
+    <div class="item"><div class="w">GCポーズ <span>stop-the-world</span></div><p>ガベージコレクションで全スレッドが止まる時間。<b>＝長い昼休み</b>で店が一時的に無人になる。</p></div>
+    <div class="item"><div class="w">リース <span>lease</span></div><p>期限付きの「自分がリーダー」という権利。<b>＝期限つきの当番札</b>。更新しないと失効する。</p></div>
+    <div class="item"><div class="w">クオラム <span>quorum</span></div><p>ノード群の投票・定足数。<b>＝真実は支店の多数決で決める</b>。一般には過半数。</p></div>
+    <div class="item"><div class="w">フェンシングトークン <span>fencing token</span></div><p>増える整理番号札。古い番号の書き込みを弾く。<b>＝整理番号札で割り込みを締め出す</b>。</p></div>
+    <div class="item"><div class="w">ビザンチン障害 <span>Byzantine fault</span></div><p>ノードが嘘をつく障害。<b>＝嘘の手紙を送る裏切り支店</b>。それに耐えるのがビザンチン耐性。</p></div>
+    <div class="item"><div class="w">システムモデル <span>system model</span></div><p>どんなフォールトが起きるかの仮定の枠組み。タイミング3種＋ノード障害3種で記述する。</p></div>
+    <div class="item"><div class="w">安全性／ライブ性 <span>safety/liveness</span></div><p>安全性＝何も悪いことが起きない（常に守る）。ライブ性＝最終的に良いことが起きる（条件付きでよい）。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>新人エンジニアのハルは、ツバサ社で「複数のサーバーが協力して動くシステム（分散システム）」をはじめて任されました。ところが、あるサーバーへのリクエストが返ってこなかったり、ログの時刻がなぜか巻き戻っていたり、生きているはずのサーバーが「死んだ」とみなされて二重処理が起きたり……と、1台のパソコンで動かしていたときには考えられない不気味な現象が次々に起きます。「これ、僕のコードのバグですよね？」と落ち込むハルに、ベテランのカイ先輩はコーヒー片手にこう告げます。「いや、それは分散システムの“当たり前の地獄”なんだよ」。この章は、分散システムで<b>必ず起きる</b>トラブル――壊れるネットワーク・信用できない時計・勝手に止まるプロセス――を、徹底的に悲観的に見ていく回です。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：1台のコンピュータは「動くか、完全に壊れるか」で分かりやすい。でも複数台をネットワークでつなぐと、<b>一部だけがおかしくなる（部分障害）</b>という新しい地獄が生まれる。しかもネットワークは遅れたりパケットを落としたりするし、各マシンの時計はズレるし、プロセスは突然何秒も止まる。だから「相手のノードが生きているか」すら確実には<b>知ることができない</b>。この章は「何を信じられて、何を信じられないか」を整理し、最後に「システムモデル」という枠組みで現実をどう扱うかを学ぶ。</div>
+
+    <div class="analogy">
+      <h4>✉️ たとえ話：これから「支店どうしの手紙連絡」の話をします</h4>
+      <p>この章を通して、分散システム＝<b>遠隔地に散らばった支店</b>、ネットワーク＝<b>支店どうしの手紙のやり取り</b>、ノードの障害＝<b>ある支店との連絡が途絶える</b>ことに置きかえて読みます。本部はなく、支店どうしは手紙でしか連絡できません。手紙は<b>届かない・紛失する・遅れて届く</b>し、各支店の<b>時計はバラバラ</b>で、担当者は<b>急に席を外す</b>。この「届くか分からない手紙の世界」が、この章ぜんぶを貫くたとえです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>ありえないバグから解放される</b>：分散では「うまくいくことも失敗することもある」非決定的な振る舞いが普通。知らないと延々と悩む。</li>
+        <li><b>取り返しのつかない事故を防ぐ</b>：「ノードが落ちた」「時計が正しい」という素朴な思い込みが、データ消失・破壊を招く。先に知れば防げる。</li>
+        <li><b>9章への地図になる</b>：合意アルゴリズムなど高度な道具は、すべて「この章の問題をどう乗り越えるか」のためにある。</li>
+        <li><b>根拠を持って設計できる</b>：タイムアウト・リトライ・フェンシングトークンを「なんとなく」でなく根拠を持って選べるようになる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 導入 ===== -->
+<section id="sintro2">
+  <div class="sec-head"><div class="sec-num">📖</div><div><h2>導入 ― 「最大限に悲観的になる」</h2><span class="tag">起こりうる悪いことは、必ずいつか起こる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：分散システムでは「起こりうる悪いことは必ず起こる」と考える。1台用のプログラムとは根本的に違い、新しい問題が大量に現れる。この章はその問題（ネットワーク・クロック・知識）を悲観的に総点検する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩……。サーバーAからサーバーBにリクエストを投げたんですけど、返事が返ってこないんです。Bのログを見ると、処理はちゃんと終わってるのに。これ、僕のコードのバグですよね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>お、それは「分散システムの洗礼」だね。たぶんバグじゃない。1台のパソコンで動かしてたときの常識が、もう通用しない世界に来たんだよ。今日はその「暗くて重苦しい現実」を、わざと最大限に悲観的に見ていこう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>悲観的に、ですか……。なんだか怖いです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある本の引用にこんなのがある。「おかしくなる<b>かもしれない</b>ことは、<b>必ずいつか</b>おかしくなる」。経験を積んだ運用担当者なら、これは妥当な見積もりだと言うよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>✉️ たとえ話：手紙はいつか必ず届かない</h4>
+      <p>支店どうしの連絡を手紙だけでやっていると、「いつかは必ず手紙が届かない日が来る」と覚悟するのが正解です。届くか分からない、遅れるかもしれない、紛失するかもしれない――この「悪いことは必ず起こる」前提で店を回すのが、ベテラン店長の構えです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これまでの章でも「フォールト（故障の種・不具合の元）」の話はしてきましたよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。でも正直、これまでの数章は<b>楽観的すぎた</b>んだ。現実はもっと暗い。ここからは、起こりうる悪いことは全部起こる前提で考える。一番の違いは、<b>驚くような問題が新しく、しかも大量に出てくる</b>こと。何もかもがおかしくなっても、ユーザーに約束した動きを提供できるシステムを作るのが僕らの仕事だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>約束を守る具体的なアルゴリズムは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それは9章で見る。この章ではまず「どんな課題があるか」を理解する。ネットワークの問題（8.2）、時計とタイミングの問題（8.3）を見て、どこまで避けられるか論じる。最後に、問題だらけの中で「分散システムの状態をどう考え、起きたことをどう推論するか」（8.4）を調べていくよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「めったに起きないから大丈夫」という油断を捨てると、本番で初めて出る致命的バグを事前につぶせる。</li>
+        <li>課題の全体像を先に持つと、9章以降の解決策（合意など）が「何のためか」を見失わずに学べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>起こりうる障害は必ず起こる、という前提で設計する。</li>
+        <li>分散システムは1台用ソフトとは根本的に異なり、新種の問題が大量に出る。</li>
+        <li>本章はネットワーク・クロック・知識（真実と虚偽）の順で問題を点検する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 8.1 フォールトと部分障害 ===== -->
+<section id="s81">
+  <div class="sec-head"><div class="sec-num">8.1</div><div><h2>フォールトと部分障害</h2><span class="tag">一部だけ壊れて、他は元気 ― それが厄介</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：1台のコンピュータは「完全に動くか、完全に壊れるか」で予測しやすい（決定的）。だが複数台になると、一部だけが予想外に壊れる<b>部分障害</b>が起きる。しかも結果が決まらない（非決定的）ので、処理が成功したのかどうかさえ知ることができない。これが分散システムの難しさの根源。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも、1台のコンピュータって、そんなに信頼できるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>かなり信頼できる。1台で動くプログラムは振る舞いが<b>予測しやすい</b>。うまく動くか、まったく動かないかのどちらか。調子が悪いのもたいてい「うまく書けてないソフト」のせいで、再起動で直ることが多い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「半分だけ壊れる」中間状態はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>基本ないんだ。ハードが正しく動けば同じ処理は常に同じ結果＝<span class="term" data-tip="同じことをすれば必ず同じ結果になること。">決定的（deterministic）</span>。ハードに問題が起きたら、たいていシステム全体がバッタリ倒れる――カーネルパニックや「ブルースクリーン」、起動失敗みたいにね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>半端に間違うより、いっそ完全にクラッシュする、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それは<b>わざとそう設計</b>してる。間違った答えは混乱を招くから「間違うくらいなら完全に止まれ」という思想。だからコンピュータは雑然とした物理世界を隠して、数学みたいに完璧な「理想的なシステムモデル」を見せてくれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも複数台になると、その理想が崩れるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。分散システムは理想モデルじゃなく、ぐちゃぐちゃな物理世界に直面する。ネットワーク分断、配電障害、スイッチ障害、ラック全体の予想外の電源オフ、果ては「低血糖で運転を誤ったトラックが空調設備に突っ込んだ事故」まで起きるんだ。</div></div>
+    </div>
+
+    <h3 class="blk">部分障害（partial failure）のイメージ</h3>
+    <p>システムの一部だけが、予想外の形で壊れ、他の部分はピンピンしている――これが部分障害です。</p>
+    <details class="code"><summary>部分障害のスケッチ</summary>
+<pre><span class="cmt">部分障害（partial failure）のイメージ</span>
+[ノードA] ──正常── [ノードB]
+   │                  │
+   │ ★ここだけ壊れる   │ 正常
+   ▼                  ▼
+[ノードC] ←──切断──→ [ノードD]
+<span class="cmt">（システムの一部だけが、予想外の形で壊れる。</span>
+<span class="cmt"> 他の部分はピンピンしている。これが「部分障害」）</span></pre>
+    </details>
+
+    <div class="analogy">
+      <h4>✉️ たとえ話：1店との連絡だけ途絶え、他店は通常営業</h4>
+      <p>1台のコンピュータなら「全店一斉に休業」みたいに分かりやすい。でも支店が増えると、<b>ある支店とだけ手紙が往復しなくなる</b>のに、他の支店とは普通に連絡が取れる、という中途半端な事態が起きます。しかも「その支店に手紙が届いたのか、返事が途中で紛失したのか」さえ分からない。これが<span class="term" data-tip="一部だけが予想外に壊れ、他は正常な状態。">部分障害</span>の厄介さです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一部だけ壊れて、他は元気……。対処が難しそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>めちゃくちゃ難しい。部分障害の何が厄介かというと、<span class="term" data-tip="結果が決まらない。うまくいくことも失敗することもある。">非決定的（non-deterministic）</span>なところ。複数ノードやネットワークが絡む処理は、うまくいくことも、予想外に失敗することもある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>せめて「成功したか失敗したか」だけでも分かれば……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それがね、メッセージがネットワークを渡る時間そのものも非決定的だから、「成功したかどうかを<b>知ることさえできない</b>」ことがある。さっききみが悩んでた「返事が返ってこない」がまさにこれ。この非決定性と部分障害こそが、分散システムを難しくしている正体だよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「成功か失敗か分からない」状態が普通だと理解すると、リトライや冪等性（同じ処理を2回やっても安全）の設計を考えるようになる。</li>
+        <li>1台の常識（決定的）を分散に持ち込むと事故ると分かり、設計の前提を切り替えられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>1台のコンピュータは決定的で予測しやすく、壊れるときは全体が止まる（わざとそう設計されている）。</li>
+        <li>分散システムは理想モデルではなく雑然とした物理世界に直面する。</li>
+        <li>一部だけが壊れる「部分障害」は非決定的で、成否すら知れないことがある。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 8.1.1 ===== -->
+<section id="s811">
+  <div class="sec-head"><div class="sec-num">8.1.1</div><div><h2>クラウドコンピューティングとスーパーコンピューティング</h2><span class="tag">「壊れたら全停止」か「壊れても継続」か</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：大規模計算にはHPC（スーパーコンピュータ）からクラウドまで幅がある。スーパーコンピュータは「壊れたら全部止める」ので実は1台に近い。一方インターネットサービスはオンライン性・コモディティハード・大規模・地理分散ゆえ、部分障害を前提に耐障害性を組み込む必要がある。小規模でも「いつか壊れる」は必ず来るので、疑念・悲観・偏執で備える。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>大規模なコンピューティングって、どれもだいたい同じ作り方なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、考え方には幅（スペクトラム）がある。両端を見てみよう。</div></div>
+    </div>
+
+    <details class="code"><summary>大規模コンピューティングの哲学のスペクトラム</summary>
+<pre><span class="cmt">大規模コンピューティングの哲学のスペクトラム</span>
+[一端] ハイパフォーマンスコンピューティング（HPC）
+  - 数千CPUのスーパーコンピュータ
+  - 用途: 気象予測、分子動力学法（原子・分子の動きの計算）など演算集中型の科学計算
+
+[中間] 伝統的なエンタープライズデータセンター（両端の間のどこか）
+
+[もう一端] クラウドコンピューティング
+  - 複数テナント（複数の利用者が同居）のデータセンター
+  - IPネットワーク（多くはイーサネット）でつないだ一般的なコンピュータ群
+  - エラスティック（柔軟に増減できる）/ オンデマンドなリソース割り当て
+  - 計測に基づく課金（使った分だけ払う）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スーパーコンピュータって、分散システムの王様みたいなものですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが意外と逆でね。フォールトの扱い方が分散システムというより「1台の大きなコンピュータ」に近い。ジョブは時々<span class="term" data-tip="途中経過の保存。あとでそこから再開できる。">チェックポイント</span>を永続ストレージに書く。あるノードが壊れたら、よくある対応は「クラスタ全体を止める」こと。直したら最後のチェックポイントから再開する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一部が壊れたら全部止める……。「1台はバッタリ倒れる」と同じですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。でも本書が焦点を当てるのは<b>インターネット上のサービス</b>で、これはスーパーコンピュータとは大きく違う。5点に整理しよう。</div></div>
+    </div>
+
+    <details class="code"><summary>インターネットサービスがスーパーコンピュータと異なる5点</summary>
+<pre><span class="cmt">インターネットサービス が スーパーコンピュータ と異なる点</span>
+1. オンライン性: 常に低レイテンシでユーザーに応答が必要。
+   「修理のため停止」は許されない。
+   （気象シミュレーションのバッチジョブは止めて再開しても影響が小さい）
+2. ハードウェア: クラウドはコモディティ（安価で一般的）マシンで構築。
+   規模の経済で安いが障害発生率は高い。
+   スーパーコンピュータは特化ハードで高信頼、通信は共有メモリやRDMA。
+3. ネットワーク: 大規模データセンターはIP/イーサネット基盤、
+   高い2分割帯域のためClosトポロジーが多い。
+   スーパーコンピュータは多次元メッシュやトーラスなど特化トポロジー。
+4. 規模と故障: ノードが多いほど「常に何かが故障している」のが当たり前。
+   あきらめるだけの戦略だと、回復ばかりに時間を費やすことになる。
+5. 地理的分散: ユーザーの近くにデータを置くとレイテンシを下げられるが、
+   通信はインターネット経由になり、ローカルネットより低速で不安定。</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>✉️ たとえ話：本店集中型のチェーン vs 各店自立型のチェーン</h4>
+      <p>スーパーコンピュータは「巨大な本店1つに全機能を集中」させたチェーン。本店が止まれば全店休業ですが、強固に作ってあります。インターネットサービスは「各地にたくさんの自立した支店」を置くチェーン。<b>1店と連絡が切れても、他店で営業を続ける</b>のが前提です。だから<span class="term" data-tip="1台ずつ順に更新し、サービスは止めないこと。">ローリングアップグレード</span>（1店ずつ順番に改装）も、調子の悪い店を捨てて新しい店を出すこともできます。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>規模が大きいほど「常に何かが壊れている」って、すごい前提ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>数千ノードあれば妥当な前提だよ。だから、ノードが壊れてもシステム全体が処理を続けられると、運用がすごく楽になる。<b>ローリングアップグレード</b>でノードを1台ずつ再起動しながらサービスは止めない。クラウドなら調子の悪いVMを破棄して新しいのを要求すればいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分散システムをうまく動かすには？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>部分障害を受け入れて、ソフトに<span class="term" data-tip="一部が壊れても全体は動き続ける力。">フォールトトレランス（耐障害性）</span>を組み込むこと。「信頼できない部品から、信頼できるシステムを作る」。ただし1章でも言ったけど、完全な信頼性は存在しない。「現実的に約束できる限界」を理解しておくのが大事だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うちみたいに数ノードしかない小さいシステムでも、考えないとダメですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ダメだね。小さいシステムはほとんどの時間は正常に動くけど、「いつか一部がおかしくなる時」は<b>必ず来る</b>。フォールトの処理は設計の一部であるべきだし、運用者は障害時の振る舞いを知っておく必要がある。<b>疑念・悲観・偏執</b>が割に合うのが、この世界。テスト環境でわざと障害を起こして、何が起きるか見ておくといい。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分のシステムがHPC型かクラウド型かを意識すると、障害対応の方針（全停止か、耐えて継続か）を選べる。</li>
+        <li>「数ノードだから大丈夫」という油断を捨て、わざと障害を起こすテストを取り入れられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>HPCは「壊れたら全停止＋チェックポイント再開」で単一ノードに近い。</li>
+        <li>インターネットサービスはオンライン性・安価ハード・大規模・地理分散が特徴で、部分障害が前提。</li>
+        <li>耐障害性で「信頼できない部品から信頼できるシステム」を作る。完全な信頼性はない。</li>
+        <li>小規模でも障害は必ず来る。疑念・悲観・偏執で、わざと障害を起こしてテストする。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== コラム ===== -->
+<section id="s81col">
+  <div class="sec-head"><div class="sec-num">📦</div><div><h2>コラム：信頼性のないコンポーネントから信頼性のあるシステムを構築する</h2><span class="tag">「信頼性は最弱リンクで決まる」は誤り</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：「信頼性は最弱リンクで決まる」は間違い。エラー訂正コードやTCPのように、信頼できない土台の上に、より信頼できるシステムを築ける。ただし信頼性には常に上限があり（遅延は消せない等）、完璧にはならない。それでも低レベルの面倒を見てくれる点で有益。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも先輩、「信頼できない部品から信頼できるシステム」って直感に反します。システムの信頼性って、一番弱い部品（<b>最弱リンク</b>）と同じくらいにしかならないんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それ、よくある誤解なんだけど<b>間違い</b>なんだ。「信頼できない土台の上に、もっと信頼できるシステムを作る」のは、コンピューティングでは古くからある考え方。例を挙げよう。</div></div>
+    </div>
+
+    <details class="code"><summary>信頼できない土台から信頼できるシステムを作る例</summary>
+<pre><span class="cmt">信頼できない土台から信頼できるシステムを作る例</span>
+- エラー訂正コード（error-correcting code）
+    無線通信で電波障害により多少のビットが狂っても、正確にデータを転送できる
+- TCP（Transmission Control Protocol）
+    土台のIP（Internet Protocol）は信頼できない
+    （パケットのドロップ・遅延・重複・順序変化が起きる）
+    TCPはその上で「失われたパケットの再送・重複排除・順序の復元」を保証する</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>✉️ たとえ話：紛失する郵便の上に「確実な連絡網」を築く</h4>
+      <p>郵便（IP）は手紙を落としたり順番を入れ替えたりします。でも各支店が<b>「届いたら受領証を返す。来なければ再送する。番号順に並べ直す」</b>という取り決め（TCP）を上に重ねれば、紛失や順序の乱れを隠した「確実な連絡網」になります。土台が不確実でも、上のルールで信頼性を底上げできるのです。ただし<b>手紙が届くまでの時間（遅延）そのものは魔法のように消せません</b>。信頼性の向上には上限があります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>信頼できないIPの上に信頼できるTCPが乗ってる、と。じゃあ何でも信頼できるようにできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこには<b>上限がある</b>。エラー訂正コードは少数のビットエラーは直せるけど、信号が完全に洗い流されたら通せるデータ量に限界がある。TCPもパケットのロスや順序変化は隠せるけど、ネットワークの<b>遅延そのものは魔法のように消せない</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>完璧にはできないけど、有益ではある、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさに。完璧じゃなくても、難しい低レベルのフォールトをある程度面倒見てくれる。残ったフォールトは、たいてい理解しやすく対処しやすくなる。これは「エンドツーエンド論」として後の章でもっと深く扱うよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「部品が不安定だから無理」と諦めず、上位レイヤーで信頼性を高める発想が持てる。</li>
+        <li>信頼性向上には上限があると知り、過度な期待（遅延ゼロなど）をしなくなる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>信頼性が最弱リンクで決まるというのは誤り。</li>
+        <li>信頼できない土台の上に信頼できるシステムを作れる（エラー訂正コード、TCP）。</li>
+        <li>ただし信頼性には上限があり完璧にはならない。それでも有益。</li>
+      </ul>
+    </div>
+  </div>
+</section>

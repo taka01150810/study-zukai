@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第一部：何が新しいのか？ ― FastAPI 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"全行に日本語の説明つき"; float:right; font-size:11px;
+    color:#0c0f1e; background:#5ee7a0; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .tscroll{overflow-x:auto}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .example{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .example h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .example p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .example p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="chip">オライリー『FastAPI』／第一部 導入</div>
+  <h1>第一部：何が新しいのか？</h1>
+  <p>この本が扱う 3 つのテーマ「ウェブ」「Python」「FastAPI」と、本全体の道のり（パートI〜IV）を最初に地図として広げる章です。コードはまだ出てきません。読み終えると「いま自分は本のどこにいるのか」が分かるようになります。</p>
+  <div class="badge-row">
+    <span class="badge">未経験でも読めます</span>
+    <span class="badge">たとえ話なし</span>
+    <span class="badge">用語集つき</span>
+    <span class="badge">全セクション収録</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#tldr">🎯 要するに</a>
+  <a href="#why">📌 なぜこれが必要か</a>
+  <a href="#stage">① 舞台と登場人物</a>
+  <a href="#three" >② この本が扱う3つのテーマ</a>
+  <a class="sub" href="#three-sum">└ この項のまとめ</a>
+  <a href="#parts">③ 本書の構成（パートI〜IV）</a>
+  <a class="sub" href="#parts-sum">└ この項のまとめ</a>
+  <a href="#wrapup">🔁 章のまとめ（弟子の振り返り）</a>
+  <a href="#quiz">✏️ 理解度チェック（全3問）</a>
+  <a class="sub" href="#quiz">└ 第1問 本書の3本柱</a>
+  <a class="sub" href="#quiz">└ 第2問 本書の構成</a>
+  <a class="sub" href="#quiz">└ 第3問 なぜ最初に「現代のウェブ」か</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟩</div><div><b>コードも全行に説明つき</b><p>折りたたみを開くと実物のコードが出ますが、<b>1行ずつ日本語の説明</b>を付けてあります。プログラムを書いたことがなくてもそのまま読めます。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ハル）と先生（タカ師匠）の対話が本筋です。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は使いません</b><p>「◯◯にたとえると…」という言いかえはしません。黄色い「具体例」ボックスで、<b>実際にどんな場面でどう動くか</b>をそのまま示します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、日常の言葉で言い直したものです。分からない語が出たらここに戻ってください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">ウェブ <span>web</span></div><p>インターネットを通じて、画面や情報をやり取りする仕組み全体のこと。ブラウザで見るページも、スマホアプリが裏側で情報を取りにいく通信も、どちらもウェブに含まれます。</p></div>
+    <div class="item"><div class="w">Python <span>パイソン</span></div><p>プログラムを書くための言葉のひとつ。英語に近い書き方で読みやすく、Webサービスからデータ分析まで幅広く使われています。</p></div>
+    <div class="item"><div class="w">FastAPI <span>ファストAPI</span></div><p>Python で「ほかのプログラムから呼び出せる窓口」を作るための道具一式。少ない記述で、速く動き、入力の間違いも自動でチェックしてくれます。</p></div>
+    <div class="item"><div class="w">フレームワーク <span>framework</span></div><p>よく作るものの骨組みがあらかじめ用意された道具一式。ゼロから全部書かずに、決まった場所に自分の処理を書き足すだけで動きます。</p></div>
+    <div class="item"><div class="w">API</div><p>プログラムが別のプログラムに用件を伝えて、答えを受け取るための窓口。人が画面で操作する代わりに、機械同士が決まった形式でやり取りします。</p></div>
+    <div class="item"><div class="w">サービス <span>service</span></div><p>ひとつの役目を持って動き続けているプログラム。たとえば「ユーザー情報を管理する担当」「決済を扱う担当」のように役割ごとに分けて動かします。</p></div>
+    <div class="item"><div class="w">並行処理 <span>concurrency</span></div><p>たくさんの依頼が同時に来ても、待ち時間の間に別の依頼を進めることで、全体を止めずに処理するやり方。</p></div>
+    <div class="item"><div class="w">レイヤード・アーキテクチャ <span>層構造</span></div><p>プログラムを「外からの受け付け」「中身の判断」「データの保存」のように役割ごとの階層に分けて作る設計。どこを直せばいいかが分かりやすくなります。</p></div>
+    <div class="item"><div class="w">ビッグデータ</div><p>1台のパソコンでは扱いきれないほど大量のデータ。保存の仕方も、集計の仕方も、少量のときとは別のやり方が必要になります。</p></div>
+    <div class="item"><div class="w">バックエンド／フロントエンド</div><p>フロントエンドは利用者が直接見て触る画面の側。バックエンドは画面の裏でデータを保存したり計算したりしている側です。</p></div>
+    <div class="item"><div class="w">生産性が高い</div><p>同じものを作るのにかかる時間が短い、という意味。この本では「短い時間で、ちゃんと動くものが作れる」ことを指します。</p></div>
+    <div class="item"><div class="w">データソース</div><p>プログラムが読み書きする情報の出どころ。この本のパートIVでは、全部の例が同じ情報の出どころ（想像上の生き物のデータ）を使います。</p></div>
+  </div>
+</div>
+
+<!-- ================= あらすじ ================= -->
+<section id="story">
+  <div class="sec-head">
+    <div class="sec-num">🎬</div>
+    <h2>この章のあらすじ<span class="tag">物語のはじまり</span></h2>
+  </div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Python の基礎を独学で終えた新人プログラマー・ハルが、開発者向けカフェ「テックカフェ・コード」で達人エンジニアのタカ師匠に弟子入りする場面です。二人はコーヒー片手に「そもそも現代のウェブとは何か」「なぜ FastAPI なのか」という長い旅の地図を広げます。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧑‍💻</div><h4>ハル（弟子）</h4><p>先月 Python の入門書を1冊読み終えたばかりの新人。自分でも Web サービスを作りたいが、何から手を付けるか分からない。</p><span class="pill">生徒役</span></div>
+      <div class="mini"><div class="ic">☕</div><h4>タカ師匠（先生）</h4><p>40代半ば、Web サービス開発を15年やってきた技術者。口数は少ないが、聞かれたことは必ず噛み砕いて教えてくれる。</p><span class="pill">先生役</span></div>
+      <div class="mini"><div class="ic">🗺️</div><h4>この章のゴール</h4><p>コードを書く前に「地図」を手に入れること。本のテーマ3つと、全体の道のりを知る。</p><span class="pill">導入</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 要するに ================= -->
+<section id="tldr">
+  <div class="sec-head">
+    <div class="sec-num">🎯</div>
+    <h2>要するに<span class="tag">この章の中身を2行で</span></h2>
+  </div>
+  <div class="card">
+    <p class="lead">この本は 3 つのテーマ「<b>ウェブ</b>」「<b>Python</b>」「<b>FastAPI</b>」を、いちばん短い時間で成果が出るやり方で扱います。第一部ではまず「最近のウェブで何が変わったか」をざっくり見わたし、<span class="term" data-tip="ひとつの役目を持って動き続けているプログラムのこと。">サービス</span>と<span class="term" data-tip="プログラムが別のプログラムに用件を伝え、答えを受け取るための窓口。">API</span>、<span class="term" data-tip="たくさんの依頼が同時に来ても、待ち時間に別の依頼を進めて全体を止めないやり方。">並行処理</span>、<span class="term" data-tip="受付・判断・保存など役割ごとの階層にプログラムを分ける設計。">レイヤー</span>、<span class="term" data-tip="1台のパソコンでは扱いきれない量のデータ。">ビッグデータ</span>といった言葉を押さえます。第二部以降で、それらの課題に対する答えとしての FastAPI を少しずつ深く掘り下げていきます。</p>
+    <div class="example">
+      <h4>🔎 具体例：この章で得られるもの</h4>
+      <p>たとえば第12章に入って「テストが難しい」と感じたとき、この章の地図を思い出せば「ここはパートIII、道具箱の深掘りだから細かく読む場所だ」と判断できます。逆にパートII の FastAPI ツアーで細部が分からなくても、「ここは全体像をつかむ章だから、あとで戻ればいい」と切り替えられます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= なぜ必要か ================= -->
+<section id="why">
+  <div class="sec-head">
+    <div class="sec-num">📌</div>
+    <h2>なぜこれが必要か／これを知ると何ができるか<span class="tag">原文の「なぜ」ブロック</span></h2>
+  </div>
+  <div class="card">
+    <div class="why">
+      <h4>💡 これを飛ばすとどうなるか</h4>
+      <ul>
+        <li>いきなり FastAPI のコードに飛びついても、「なぜそういう設計になっているのか」が理解できず、すぐに迷子になる</li>
+        <li>現代のウェブが抱える課題（同時につながる人数、層の分け方、データ量の爆発）を知ると、フレームワークが解こうとしている問題が分かる</li>
+        <li>本全体の道のりを最初に押さえておくと、各章を読むときに「いま自分はどこにいるのか」を見失わない</li>
+        <li>第一部を読み終えると、なぜ今の Web 開発で Python と FastAPI が選ばれているかを、自分の言葉で説明できるようになる</li>
+        <li>各章のテーマがどうつながっているか（ウェブ → Python → FastAPI → 本番運用 → 応用例）の見取り図が頭の中にできる</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ① 舞台と登場人物 ================= -->
+<section id="stage">
+  <div class="sec-head">
+    <div class="sec-num">1</div>
+    <h2>舞台と登場人物<span class="tag">テックカフェ・コードにて</span></h2>
+  </div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>夕方のカフェで、入門書を1冊終えたばかりのハルが、15年の経験を持つタカ師匠に「何から手を付ければいいか」を相談します。師匠の答えは「まず地図を広げよう」でした。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>タカさん…えっと、相談していいですか。私、Python の本を一冊読み終えて、自分でも Web サービスを作りたいんです。でも、本屋にある Web 開発の本がどれも厚すぎて、何から手を付けたらいいか分からなくて…。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>ふむ。じゃあ、まずは「現代のウェブ」って何なのか、地図を広げるところから始めようか。地図がないまま森に入ると、必ず迷うからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>お願いします！</div></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：「地図がない」とはどういう状態か</h4>
+      <p>たとえば「ログイン機能を作りたい」と思って検索すると、パスワードの保存方法、トークンの発行、通信の暗号化、データベース設計…と別々の記事が何十件も出てきます。どれが先で、どれが後回しでよいのかの順番が分からない状態が「地図がない」状態です。この本のパート構成を先に知っておくと、「ログインは第11章（認証認可）で扱う、その前に第8章のウェブ層を読む必要がある」というように順番が決まります。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ② 3つのテーマ ================= -->
+<section id="three">
+  <div class="sec-head">
+    <div class="sec-num">2</div>
+    <h2>この本が扱う3つのテーマ<span class="tag">ウェブ・Python・FastAPI</span></h2>
+  </div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>本書は「現代のウェブ × Python × FastAPI」という 3 本柱で構成されます。順に、最も生産性の高い<b>技術領域</b>、最も生産性の高い<b>言語</b>、最も生産性の高い<b>フレームワーク</b>、という選び方です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>この本のテーマは、本当はシンプルで3つだけなんだ。「ウェブ」「Python」「FastAPI」。順に、最も生産性の高い<b>技術領域</b>、最も生産性の高い<b>言語</b>、最も生産性の高い<b>フレームワーク</b>、と覚えるといい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>「生産性が高い」って、つまり「短い時間で、ちゃんと動くものが作れる」ってことですか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう、まさにそれ。同じ機能を作るのに、A は B の3倍の時間がかかる、ということが現場では普通にある。Python と FastAPI の組み合わせは、その「3倍速」を選び取る選択肢のひとつだと思っていい。</div></div>
+    </div>
+
+    <h3 class="blk">3本柱を並べて見る</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🌐</div><h4>ウェブ</h4><p>最も生産性の高い<b>技術領域</b>。作ったものを世界中の人がすぐ使えて、更新もその場で反映できる場所です。</p><span class="pill">どこで作るか</span></div>
+      <div class="mini"><div class="ic">🐍</div><h4>Python</h4><p>最も生産性の高い<b>言語</b>。書く量が少なく読みやすいので、同じ機能を短い記述で実現できます。</p><span class="pill">何で書くか</span></div>
+      <div class="mini"><div class="ic">⚡</div><h4>FastAPI</h4><p>最も生産性の高い<b>フレームワーク</b>。Python の Web 開発でよく必要になる骨組みが用意されています。</p><span class="pill">どの道具で作るか</span></div>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：「3倍の時間差」が実際に出る場面</h4>
+      <p>「送られてきたデータの中に、名前が文字であること・年齢が0以上の整数であることを確認して、間違っていたらエラーを返す」という処理を考えます。自分で全部書くと、確認する項目ごとに if 文を書き、エラーメッセージを組み立て、返す形式をそろえる作業が必要です。FastAPI では受け取るデータの形を一度書いておくだけで、確認もエラー返しも自動で行われます。同じ動きに到達するまでの手数がはっきり違う、というのがここで言う生産性の差です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>これから読み進める章すべてが、この 3 本柱のどれかを深掘りする内容になっている</li>
+        <li>「なぜ FastAPI を選ぶのか」を、ただの流行りではなく、ウェブと Python 双方の進化の延長線上で説明できるようになる</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="three-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>3本柱は「ウェブ」「Python」「FastAPI」</li>
+        <li>それぞれ「最も生産性が高い」ことを軸に選ばれている</li>
+        <li>本書はこの3つの組み合わせを一本のストーリーとして説明する</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ③ 本書の構成 ================= -->
+<section id="parts">
+  <div class="sec-head">
+    <div class="sec-num">3</div>
+    <h2>本書の構成（パートI〜IV）<span class="tag">課題提示 → ツアー → 深掘り → 実例</span></h2>
+  </div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>本書は「課題提示（I）→ ツアー（II）→ 深掘り（III）→ 実例ギャラリー（IV）」という流れで進みます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>本の全体像も先に教えてもらえますか？</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>いいよ。4つのパートに分かれている。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>パートI（第1〜2章）では、現代のウェブとモダン Python で「何が新しいのか」を見る。サービスと API、並行処理、レイヤード・アーキテクチャ、ビッグデータといった言葉が登場する。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>パートII は、その課題に対する答えとしての FastAPI の<b>ハイレベルなツアー</b>だ。細部に入る前に、まず全体像を掴む章だね。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>パートIII で、FastAPI の道具箱を一段深く掘り下げる。実際に運用して学んだコツも織り込んである。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>最後のパートIV では、想像上の生き物をテーマにした Web サンプル集が並ぶ。よくある「毎回ばらばらの例題」よりも、共通のデータの出どころで一貫しているから読みやすい。実際のアプリの出発点として使えるはずだよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>なるほど、地図がぐっと見えてきました。</div></div>
+    </div>
+
+    <h3 class="blk">4つのパートを順番に見る</h3>
+    <div class="flow">
+      <div class="step">
+        <div class="bullet"><div class="dot">I</div><div class="line"></div></div>
+        <div class="body">
+          <h4>パートI（第1〜2章）── ウェブと Python の「いま」を俯瞰</h4>
+          <p>現代のウェブとモダン Python で何が新しくなったかを見わたす。サービスと API、並行処理、レイヤード・アーキテクチャ、ビッグデータが登場する。</p>
+          <div class="branch ok">読み方：全体を見わたす章。細部より「どんな課題があるか」を掴む。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="bullet"><div class="dot">II</div><div class="line"></div></div>
+        <div class="body">
+          <h4>パートII ── FastAPI のハイレベルなツアー</h4>
+          <p>パートI で見た課題に対する答えとしての FastAPI を、細部に入る前にまず全体像として一巡する。</p>
+          <div class="branch ok">読み方：ツアーなので、分からない部分があっても止まらず進んでよい。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="bullet"><div class="dot">III</div><div class="line"></div></div>
+        <div class="body">
+          <h4>パートIII ── 道具箱の深掘りと実運用のヒント</h4>
+          <p>FastAPI の個々の道具を一段深く掘り下げる。著者が実際に運用して学んだコツも織り込まれている。</p>
+          <div class="branch ng">読み方：ここは細かく読む場所。手を動かしながら進めると定着する。</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="bullet"><div class="dot">IV</div></div>
+        <div class="body">
+          <h4>パートIV ── 想像上の生き物を題材にしたサンプル集</h4>
+          <p>全部の例が共通のデータの出どころを使うため、例題ごとに設定を覚え直す必要がない。自分のアプリの出発点としてそのまま使える。</p>
+          <div class="branch ok">読み方：作りたいものに近い章から拾い読みしてよい。</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="blk">パート早見表</h3>
+    <div class="tscroll">
+    <table class="t">
+      <tr><th>パート</th><th>該当章</th><th>扱う内容</th><th>読み方</th></tr>
+      <tr><td><b>I</b></td><td>第1〜2章</td><td>現代のウェブ／モダン Python で何が新しいか</td><td>俯瞰する</td></tr>
+      <tr><td><b>II</b></td><td>FastAPI ツアー</td><td>課題への答えとしての FastAPI の全体像</td><td>流れをつかむ</td></tr>
+      <tr><td><b>III</b></td><td>道具箱の各章</td><td>個々の機能の深掘り＋実運用のコツ</td><td>細かく読む</td></tr>
+      <tr><td><b>IV</b></td><td>実例ギャラリー</td><td>共通データを使ったサンプル集</td><td>出発点として使う</td></tr>
+    </table>
+    </div>
+
+    <div class="example">
+      <h4>🔎 具体例：共通のデータの出どころだと何が楽か</h4>
+      <p>章ごとに例題が「書店の在庫」「社員名簿」「天気予報」とばらばらだと、章が変わるたびにデータの項目名や意味を覚え直すことになります。本書のパートIV は全章が同じ「想像上の生き物」のデータを使うので、たとえば name と country という項目の意味を一度覚えれば、以降の章ではその知識をそのまま使い回せます。読む側の負担が、内容の理解だけに集中します。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か／これを知ったらできること</h4>
+      <ul>
+        <li>章ごとの位置づけを知っておくと、難所に来ても「これは深掘りパートだから細かく読もう」「これはツアーだから流し読みでいい」と読み方を切り替えられる</li>
+        <li>自分が今どこにいるかが分かると、途中でやめてしまいにくい</li>
+      </ul>
+    </div>
+
+    <div class="summary" id="parts-sum">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>パートI: ウェブと Python の「いま」を俯瞰</li>
+        <li>パートII: FastAPI のハイレベルツアー</li>
+        <li>パートIII: 道具箱の深掘りと実運用のヒント</li>
+        <li>パートIV: 想像上の生き物を題材にしたサンプル集</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= まとめ ================= -->
+<section id="wrapup">
+  <div class="sec-head">
+    <div class="sec-num">🔁</div>
+    <h2>章のまとめ（弟子の振り返り）<span class="tag">ハルが自分の言葉で言い直す</span></h2>
+  </div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>今日学んだことをまとめますね。1つ目は「この本のテーマはウェブ・Python・FastAPI の3つで、どれも生産性を軸に選ばれている」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その通り。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>2つ目は「本書はパートI〜IV に分かれていて、課題提示 → ツアー → 深掘り → 実例の順で進む」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>そう。読みながら、いま自分がどのパートにいるかを意識すると迷子にならないよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル（弟子）</span>3つ目は「いきなり FastAPI に飛びつかず、まず現代のウェブで何が起きているかを押さえる」。</div></div>
+      <div class="bubble riku"><div class="av">タカ</div><div class="txt"><span class="who">タカ師匠</span>その姿勢があれば、技術書はだいたい読めるようになる。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① 課題を知る</h4><p>現代のウェブで何が起きているかを押さえる。</p><span class="when">パートI</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 答えを見わたす</h4><p>FastAPI の全体像をツアーで掴む。</p><span class="when">パートII</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 道具を深く知る</h4><p>個々の機能と実運用のコツを学ぶ。</p><span class="when">パートIII</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 作ってみる</h4><p>実例を出発点に自分のアプリを作る。</p><span class="when">パートIV</span></div>
+    </div>
+    <div class="loopback">↺ ④で作ってみると新しい課題が見つかり、①〜③に戻って読み直すことになります。この本は一度読んで終わりではなく、戻りながら使う本です。</div>
+  </div>
+</section>
+
+<!-- ================= クイズ ================= -->
+<section id="quiz">
+  <div class="sec-head">
+    <div class="sec-num">✏️</div>
+    <h2>章末の理解度チェック<span class="tag">全3問／自分の言葉で答えてみてください</span></h2>
+  </div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>本書の3本柱</div>
+      <p style="font-size:14px;margin:0">本書が扱う「3つの柱」をすべて挙げ、それぞれが何のために選ばれているか、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">3本柱は「ウェブ」「Python」「FastAPI」。それぞれ「最も生産性の高い技術領域」「最も生産性の高いウェブ開発言語」「最も生産性の高い Python ウェブフレームワーク」として選ばれている。短時間で、動く Web サービスを作るための組み合わせを意識した構成になっている。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3つの柱（ウェブ、Python、FastAPI）をすべて挙げている<br>□ それぞれが「生産性」を軸に選ばれていることに触れている<br>□ 「短時間で動くものを作る」という実用的な目的に言及している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>本書の構成</div>
+      <p style="font-size:14px;margin:0">本書のパートI〜IV がそれぞれ何を扱うか、初めて本を手に取る人に紹介するつもりで説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">パートI は「現代のウェブと Python で何が新しくなっているか」を俯瞰する導入部。パートII は FastAPI の全体像を掴むハイレベルなツアー。パートIII は FastAPI の細かい道具を深掘りし、実運用のコツも紹介する。パートIV は想像上の生き物を題材にした実例集で、自分のアプリの出発点になる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ パートI〜IV の内容を順番にカバーしている<br>□ 「俯瞰 → ツアー → 深掘り → 実例」の流れを表現している<br>□ パートIV が共通データソースを使う実例集だと触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>なぜ最初に「現代のウェブ」を学ぶのか</div>
+      <p style="font-size:14px;margin:0">なぜいきなり FastAPI のコードを書き始めるのではなく、第1章で「現代のウェブ」の概観から入るのですか？ 理由を自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">FastAPI は「現代のウェブが抱える課題」を解くために設計されたフレームワークなので、その課題を知らないと、なぜ FastAPI がこういう作りなのかが理解できない。土台を理解せずに道具だけ学ぶと、応用が利かず、ちょっとした問題で詰まる。だから先にウェブそのものの今を押さえる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ FastAPI が「課題を解くための道具」であると説明している<br>□ 課題を知らないと道具の意味がわからない、という論理に触れている<br>□ 応用力・問題解決力に関する言及がある</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 次のステップ ================= -->
+<section id="next">
+  <div class="sec-head">
+    <div class="sec-num">🌱</div>
+    <h2>初心者がこの内容を理解するための次のステップ<span class="tag">今日やれる5つ</span></h2>
+  </div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>次の章「現代のウェブ」を読む</h4><p>サービス、API、並行処理、レイヤーといった言葉を押さえる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>身近な Web サービスを1つ思い浮かべる</h4><p>SNS、通販サイト、地図アプリなど。「どこが画面側（フロントエンド）で、どこが裏側（バックエンド）か」を想像してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>Python 公式サイトを見る</h4><p>python.org にアクセスし、Python が現在どのバージョンまで公開されているかを確認する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>「ウェブフレームワーク」「API」を調べる</h4><p>Wikipedia の概略を読む程度でよい。深入りせず、雰囲気を掴むだけにする。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>作りたい Web サービスを1行で書く</h4><p>ノートに「この本を読み終えたあと作りたいもの」を書いておく。読み進める間の目標になる。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">オライリー『FastAPI』／第一部「何が新しいのか？」の図解 ― 原文の全セクション（あらすじ・要するに・なぜ必要か・舞台と登場人物・3つのテーマ・本書の構成・章のまとめ・理解度チェック3問・次のステップ）を収録</p>
+
+</div>
+</body>
+</html>

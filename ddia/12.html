@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第12章 データシステムの将来 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第12章</span>
+  <h1>データシステムの将来 ― 理想の街をどう設計するか</h1>
+  <p>最終章。1〜11章で学んだ部品（DB・ログ・ストリーム・トランザクション）を<b>どう組み合わせて1つのシステムにするか</b>。万能ツールはないから、<b>正本（記録のシステム）からイベントログを流して派生データを導出する</b>という「これからの設計様式」を、新人ハルとベテラン カイ先輩の対話で学びます。最後は――技術が人を傷つけないための<b>倫理</b>まで。</p>
+  <div class="badge-row">
+    <span class="badge">🏙️ たとえ話は「街づくり・都市計画」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a href="#s121">12.1 データのインテグレーション</a>
+  <a class="sub" href="#s1211">12.1.1 データの導出による特化したツールの組み合わせ</a>
+  <a class="sub" href="#s12111">└ データフローについての考慮</a>
+  <a class="sub" href="#s12112">└ 導出データと分散トランザクション</a>
+  <a class="sub" href="#s12113">└ 全順序の限界</a>
+  <a class="sub" href="#s12114">└ 因果律を把握するための順序づけ</a>
+  <a class="sub" href="#s1212">12.1.2 バッチ処理とストリーム処理</a>
+  <a class="sub" href="#s12121">└ 導出された状態の管理</a>
+  <a class="sub" href="#s12122">└ アプリの進化に伴う再処理</a>
+  <a class="sub" href="#s12123">└ ラムダアーキテクチャ</a>
+  <a class="sub" href="#s12124">└ バッチとストリームの統合</a>
+  <a href="#s122">12.2 データベースを解きほぐす</a>
+  <a class="sub" href="#s1221">12.2.1 データストレージ技術の組み合わせ</a>
+  <a class="sub" href="#s12211">└ インデックスの生成</a>
+  <a class="sub" href="#s12212">└ すべてに関するメタデータベース</a>
+  <a class="sub" href="#s12213">└ 処理の解体</a>
+  <a class="sub" href="#s12214">└ 解体されたシステムと結合されたシステム</a>
+  <a class="sub" href="#s12215">└ 欠けているものは何か？</a>
+  <a class="sub" href="#s1222">12.2.2 データフロー中心のアプリ設計</a>
+  <a class="sub" href="#s12221">└ 導出関数としてのアプリコード</a>
+  <a class="sub" href="#s12222">└ アプリコードと状態の分離</a>
+  <a class="sub" href="#s12223">└ データフロー：状態変化とコードの相互作用</a>
+  <a class="sub" href="#s12224">└ ストリームプロセッサとサービス</a>
+  <a class="sub" href="#s1223">12.2.3 導出された状態の監視</a>
+  <a class="sub" href="#s12231">└ マテビューとキャッシュ</a>
+  <a class="sub" href="#s12232">└ オフライン動作できるクライアント</a>
+  <a class="sub" href="#s12233">└ クライアントへの状態変化のプッシュ</a>
+  <a class="sub" href="#s12234">└ エンドツーエンドのイベントストリーム</a>
+  <a class="sub" href="#s12235">└ 読み取りもイベントである</a>
+  <a class="sub" href="#s12236">└ 複数パーティションにわたる処理</a>
+  <a href="#s123">12.3 正確性を求めて</a>
+  <a class="sub" href="#s1231">12.3.1 データベースのエンドツーエンド論</a>
+  <a class="sub" href="#s12311">└ 操作を厳密に一度だけ実行する</a>
+  <a class="sub" href="#s12312">└ 重複の抑制</a>
+  <a class="sub" href="#s12313">└ 操作識別子</a>
+  <a class="sub" href="#s12314">└ エンドツーエンド論</a>
+  <a class="sub" href="#s12315">└ データシステムへの適用</a>
+  <a class="sub" href="#s1232">12.3.2 制約の強制</a>
+  <a class="sub" href="#s12321">└ ユニーク制約には合意が必要</a>
+  <a class="sub" href="#s12322">└ ログベースでのユニーク性</a>
+  <a class="sub" href="#s12323">└ マルチパーティションのリクエスト処理</a>
+  <a class="sub" href="#s1233">12.3.3 適時性と整合性</a>
+  <a class="sub" href="#s12331">└ データフローシステムの正確性</a>
+  <a class="sub" href="#s12332">└ 制約の緩やかな解釈</a>
+  <a class="sub" href="#s12333">└ 調整を回避するデータシステム</a>
+  <a class="sub" href="#s1234">12.3.4 信頼しつつも検証を</a>
+  <a class="sub" href="#s12341">└ バグがあっても整合性を保つ</a>
+  <a class="sub" href="#s12342">└ 約束を単純に盲信してはならない</a>
+  <a class="sub" href="#s12343">└ 検証の文化</a>
+  <a class="sub" href="#s12344">└ 監査性のための設計</a>
+  <a class="sub" href="#s12345">└ エンドツーエンド論再び</a>
+  <a class="sub" href="#s12346">└ 監査可能なデータシステムのツール</a>
+  <a href="#s124">12.4 正しいことを行う</a>
+  <a class="sub" href="#s1241">12.4.1 予測分析</a>
+  <a class="sub" href="#s12411">└ バイアス（偏見）と差別</a>
+  <a class="sub" href="#s12412">└ 責任と説明責任</a>
+  <a class="sub" href="#s12413">└ フィードバックループ</a>
+  <a class="sub" href="#s1242">12.4.2 プライバシーと追跡</a>
+  <a class="sub" href="#s12421">└ 監視</a>
+  <a class="sub" href="#s12422">└ 承諾と選択の自由</a>
+  <a class="sub" href="#s12423">└ プライバシーとデータの利用</a>
+  <a class="sub" href="#s12424">└ 資産や権力としてのデータ</a>
+  <a class="sub" href="#s12425">└ 産業革命を忘れない</a>
+  <a class="sub" href="#s12426">└ 法律と自己規制</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🏙️</div><div><b>たとえ話はぜんぶ街づくり・都市計画で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「複数の専門の建物を組み合わせて理想の街をつくる」</b>に置きかえて説明します。データ＝役所の台帳、システム＝街の施設、データの流れ＝街の物流網です。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、街づくりのたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">データのインテグレーション <span>integration</span></div><p>複数の特化したシステムを組み合わせて使うこと。街でいうと<b>役所・図書館・倉庫など専門の建物を組み合わせて街にする</b>。</p></div>
+    <div class="item"><div class="w">記録のシステム（正本） <span>system of record</span></div><p>「これが正しい」と決める大もとの台帳。街の<b>役所の戸籍台帳</b>。ここから各種の一覧が作られる。</p></div>
+    <div class="item"><div class="w">派生データ <span>derived data</span></div><p>正本から作り直せるコピー。役所の台帳から作る<b>各種の一覧・名簿・地図</b>。失っても台帳から作り直せる。</p></div>
+    <div class="item"><div class="w">イベントログ <span>event log</span></div><p>起きた出来事を順番に追記だけする記録。役所の<b>受付の受理順の控え</b>。書き換えず足すだけ。</p></div>
+    <div class="item"><div class="w">CDC <span>変更データキャプチャ</span></div><p>台帳の変更を捕まえて、他の一覧へ順番どおり反映する仕組み。<b>台帳係から各課への連絡網</b>。</p></div>
+    <div class="item"><div class="w">二重書き込み <span>dual write</span></div><p>同じ更新を2か所へ別々に直接書くこと。順序が食い違って<b>台帳と一覧が永久に食い違う</b>事故の元。</p></div>
+    <div class="item"><div class="w">決定的 <span>deterministic</span></div><p>同じ入力なら必ず同じ結果になること。<b>同じ書類なら誰がやっても同じ一覧になる</b>。</p></div>
+    <div class="item"><div class="w">冪等（べきとう） <span>idempotent</span></div><p>何回やっても結果が同じになること。<b>同じ整理番号の受付は何度処理しても1件扱い</b>。</p></div>
+    <div class="item"><div class="w">バッチ処理 <span>batch</span></div><p>溜まった大量データをまとめて定期処理する。街の<b>定期清掃（夜にまとめて）</b>。</p></div>
+    <div class="item"><div class="w">ストリーム処理 <span>stream</span></div><p>終わりのない出来事を到着次第さばく。街の<b>日々のゴミ収集（来た順に）</b>。</p></div>
+    <div class="item"><div class="w">再処理 <span>reprocessing</span></div><p>過去のデータをもう一度処理して新しい一覧を作り直すこと。<b>古い台帳から新様式の名簿を作り直す</b>。</p></div>
+    <div class="item"><div class="w">ラムダアーキテクチャ</div><p>速いが粗い系統と、遅いが正確な系統を<b>二重に動かして</b>合わせる方式。手間がかかる二重管理。</p></div>
+    <div class="item"><div class="w">解体 <span>unbundling</span></div><p>1つの大型複合施設を、機能別の小さな建物に分けること。DBの機能を<b>専門の建物群に分解</b>する。</p></div>
+    <div class="item"><div class="w">フェデレーテッドDB <span>ポリストア</span></div><p>複数の建物を1つの窓口でまとめて読めるようにすること（<b>読み取りの統合</b>）。総合受付。</p></div>
+    <div class="item"><div class="w">データフロー <span>dataflow</span></div><p>状態の変化が次々と別の場所へ伝わる流れ。街の<b>物流網</b>。表計算ソフトのように自動で再計算。</p></div>
+    <div class="item"><div class="w">エンドツーエンド論</div><p>機能を完全に実現するには<b>送り手と受け手の両端</b>の協力が要る、という原則。途中だけでは足りない。</p></div>
+    <div class="item"><div class="w">フェンシング <span>fencing</span></div><p>古いリーダーを締め出して二重実行を防ぐ仕組み。<b>古い整理番号の窓口を閉める</b>。</p></div>
+    <div class="item"><div class="w">exactly-once <span>厳密に一度だけ</span></div><p>障害でやり直しても、効果が<b>障害がなかった場合と同じ</b>になること。二重請求しない。</p></div>
+    <div class="item"><div class="w">適時性 <span>timeliness</span></div><p>最新の状態を見られるか。違反は一時的（待てば直る）。<b>一覧の更新が少し遅い</b>程度。</p></div>
+    <div class="item"><div class="w">整合性 <span>integrity</span></div><p>壊れていないか（損失・矛盾がない）。違反は恒久的（直さないと直らない）。<b>金額が合わない</b>のは致命的。</p></div>
+    <div class="item"><div class="w">調整 <span>coordination</span></div><p>みんなで足並みをそろえる同期作業。<b>全課の会議で順番を決める</b>こと。コストが高い。</p></div>
+    <div class="item"><div class="w">監査 <span>auditing</span></div><p>データが壊れていないか突き合わせ検査すること。<b>帳簿の突き合わせ・棚卸し</b>。</p></div>
+    <div class="item"><div class="w">補正トランザクション</div><p>後から謝って埋め合わせる処理。<b>重複予約に謝って別席を案内</b>する。</p></div>
+    <div class="item"><div class="w">予測分析 <span>predictive analytics</span></div><p>データから将来を予測すること。再犯・ローン不履行など。<b>住民の将来を勝手に決める危うさ</b>がある。</p></div>
+    <div class="item"><div class="w">プライバシー <span>privacy</span></div><p>「何を誰に明かすか」を自分で選ぶ自由（判断の権利）。<b>家の中をどこまで見せるかを自分で決める</b>こと。</p></div>
+    <div class="item"><div class="w">監視 <span>surveillance</span></div><p>本人の利益でなく集める側の利益のために行動を追跡・記録すること。<b>街じゅうにマイク</b>がある状態。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">「今あるもの」から「これからどうあるべきか」へ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>入社から1年、ハルはこの本でデータベース・レプリケーション・パーティショニング・トランザクション・分散システム・バッチ処理・ストリーム処理を一通り学んできました。深夜0時すぎ、最後のコーヒーを片手にカイ先輩が言います。「ここまでは『今あるもの』の話だった。最後は『これからどうあるべきか』を一緒に考えよう」。複数のシステムにデータをどう流すか（データ統合）、データベースを部品に解きほぐす発想（解体）、障害があっても正しさをどう守るか（正確性）、そして最後に――技術が人を傷つけないために僕らが何を背負っているか（倫理）。哲学的で、ちょっと胸が熱くなる回です。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：すべてに効く万能のデータツールは存在しない。だから複数の道具を組み合わせる。その理想形は、<b>1つの記録のシステム（正本）</b>を起点に、イミュータブルなイベントログを流して、検索インデックス・キャッシュ・機械学習モデルといった<b>派生データを非同期に・決定的に導出する</b>こと。これで頑健性・進化のしやすさ・正確性を同時に高められる。さらにその正しさは<b>エンドツーエンドで検証し続ける</b>必要がある。そして最後に――データの大半は「人」に関するものだから、僕らは<b>倫理的な責任</b>を負っている。</p>
+
+    <div class="analogy">
+      <h4>🏙️ たとえ話：これから「街づくり・都市計画」の話をします</h4>
+      <p>この章を通して、データシステム＝<b>1つの街</b>、各ソフト＝<b>専門の建物（役所・図書館・倉庫・郵便局）</b>、正本のDB＝<b>役所の戸籍台帳</b>、派生データ＝<b>台帳から作る各種の一覧・名簿・地図</b>、イベントログ＝<b>受付の受理順の控え</b>、データの流れ＝<b>街の物流網</b>に置きかえて読みます。理想の街とは「専門の建物を上手に組み合わせ、台帳を起点に各一覧を自動で最新に保ち、帳簿を突き合わせて検査し、住民の尊厳を守る」街。これがこの最終章を貫く合言葉です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>総合問題の答えになる</b>：1〜11章で学んだ部品を「どう組み合わせて1つのシステムにするか」という、現場で必ずぶつかる総合問題に答えられる。</li>
+        <li><b>これからの設計様式</b>：分散トランザクションに頼らず、ログとイベントで正しさを保つ設計を理解できる。</li>
+        <li><b>整合性バグが起きにくい設計</b>：「記録のシステム＋派生データ」という型で設計できる。</li>
+        <li><b>過剰な調整を避ける</b>：「適時性」と「整合性」を分けて考え、高速で頑健なシステムを作れる。</li>
+        <li><b>倫理に向き合える</b>：差別・監視・プライバシーに、技術者の言葉で向き合えるようになる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 12.1 データのインテグレーション ===== -->
+<section id="s121">
+  <div class="sec-head"><div class="sec-num">12.1</div><div><h2>データのインテグレーション</h2><span class="tag">万能ツールはない ― 専門の建物を組み合わせて街にする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：すべてに効く万能のデータツールは存在しない。だからアプリは目的のために<b>複数の特化したソフトを組み合わせる</b>。その「組み合わせ方（インテグレーション）」をどう設計するかがこの節のテーマ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まず「データのインテグレーション」。何を統合するんですか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この本でずっと繰り返してきただろ。「どんな問題にも複数の解決策があって、それぞれ利点・欠点・トレードオフがある」って。ストレージエンジンならログ構造・Bツリー・列指向、レプリケーションならシングルリーダー・マルチリーダー・リーダーレス。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「データを保存して後で参照したい」に唯一の正解はない。でもソフトを実装するときは普通1つのやり方を選ぶ。全部を1つのソフトでやろうとすると実装が貧弱になる。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「汎用」をうたうDBも、本当は特定の利用パターンに合わせて設計されてるんですね。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。最初の課題は「どのソフトが、どの環境に合うか」を見極めること。複雑なアプリではデータは<b>複数の異なる方法</b>で使われる。そのすべてに合う単一ソフトはまずないから、複数を組み合わせざるを得ない。そこが本題だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏙️ たとえ話：1つの建物に全機能を詰め込むと、どれも中途半端</h4>
+      <p>街に必要なのは、戸籍を管理する役所、本を貸す図書館、荷物を保管する倉庫、手紙を運ぶ郵便局……。これを<b>1つの巨大な建物に全部詰め込む</b>と、どの機能も中途半端になります。だから<b>専門の建物を分けて、上手に連携させる</b>。この「建物の組み合わせ方」を決めるのが都市計画＝データのインテグレーションです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「どのツールがどの環境に合うか」を、ベンダーの宣伝ではなくトレードオフから判断できる。</li>
+        <li>複数ツールを組み合わせる前提で、データの流れを設計する視点を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>問題に唯一の正解はなく、環境ごとに適切なアプローチがある。</li>
+        <li>1つのソフトで全部やると実装が貧弱になるので、特化したツールを使う。</li>
+        <li>複雑なアプリではデータの使われ方が多彩で、複数ツールの組み合わせが避けられない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 12.1.1 ===== -->
+<section id="s1211">
+  <div class="sec-head"><div class="sec-num">12.1.1</div><div><h2>データの導出による特化したツールの組み合わせ</h2><span class="tag">役所の台帳から、各種の一覧を作り出す</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：1つのアプリでも、検索・分析・キャッシュ・機械学習・通知など多彩なデータ利用がある。それぞれに特化したツールへデータを「<b>導出</b>（コピー・変換）」して供給する必要がある。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体的にはどんな組み合わせが多いんですか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>定番は、OLTPデータベース（取引処理用のDB）に<b>全文検索インデックス</b>を足すパターン。任意のキーワードで検索したいからね。でも検索インデックスは「正本としてデータを永続的に持つ」のは苦手。だから2つの別ツールを組み合わせる。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>検索だけじゃない。分析システムにコピーを置く、キャッシュや非正規化オブジェクトを管理する、機械学習・レコメンドに供給する、変更に基づいて通知を出す……やりたいことは目がくらむほど幅広い。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「99%の人はXしか必要としない」みたいな話、よく聞きます。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そういう発言は、技術の有用性じゃなくて<b>言った人の経験の狭さ</b>を語ってることが多い。データ結合の必要性は、一歩引いて<b>組織全体のデータの流れ</b>を眺めて初めて見えてくる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏙️ たとえ話：戸籍台帳から、選挙人名簿も学区地図も作る</h4>
+      <p>役所の戸籍台帳（正本のDB）が1つあれば、そこから<b>選挙人名簿</b>（検索用の一覧）、<b>学区ごとの児童地図</b>（分析用）、<b>窓口用のよく出る照会の控え</b>（キャッシュ）、<b>転入者へのお知らせ宛先</b>（通知）など、いろんな一覧（派生データ）を作れます。台帳という1つの大もとから、目的別の一覧をどんどん<b>導出</b>するのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「うちには検索しか要らない」という思い込みを捨て、組織全体のデータフローで考えられる。</li>
+        <li>元データから派生データを導出する、という発想の地図を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>OLTPのDB＋全文検索インデックスは定番の組み合わせ。</li>
+        <li>ほかにも分析・キャッシュ・機械学習・通知など、データの使い道は幅広い。</li>
+        <li>データ結合の必要性は、組織全体のデータフローを俯瞰して初めて見える。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 12.1.1.1 データフローについての考慮 ===== -->
+<section id="s12111">
+  <div class="sec-head"><div class="sec-num">12.1.1.1</div><div><h2>データフローについての考慮</h2><span class="tag">二重書き込みは順序が食い違って永久に不一致になる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：複数のストレージにコピーするなら入出力を明確にする。アプリが各ストレージに<b>直接二重書き込み</b>すると順序が食い違って永久に不一致になる。代わりに「<b>全順序を決める単一システム（ログ）</b>」を通し、そこから決定的・冪等にすべての派生データを導出する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じデータのコピーを複数のストレージに持つとき、何に気をつければ？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>入出力を徹底的にはっきりさせる</b>こと。まず正本のDBに書く。そのDBへの変更をキャプチャして（CDC）、順序を保ったまま検索インデックスに適用する。CDCが検索インデックスを更新する<b>唯一の方法</b>なら、検索インデックスは完全にDBから導出されて確実に一貫する。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>アプリから検索インデックスとDBの両方に直接書いちゃダメなんですか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが落とし穴。2つのクライアントが衝突する書き込みを同時に送って、DBと検索インデックスが<b>異なる順序</b>で処理してしまう。どちらも「順序を決める責任」を負っていないから、互いに矛盾して永久に不一致になりかねない。</div></div>
+    </div>
+
+    <p>カイ先輩はホワイトボードに描きました。下の図は、二重書き込みのダメな例と、単一のログを通す良い例です。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">✕</div><div class="line"></div></div><div class="body"><h4>ダメな例：二重書き込み</h4><p>アプリがDBと検索インデックスの両方に直接書く。クライアント1とクライアント2が並行すると、DBは A→B の順、検索インデックスは B→A の順で処理してしまう。
+        <div class="branch ng">❌ DBと検索インデックスが永久に食い違う。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">○</div><div class="line"></div></div><div class="body"><h4>良い例：単一の順序決定システムを通す</h4><p>全クライアントの書き込みを「順序を決める単一システム（ログ）」に通し、そこからDBと検索インデックスを導出する。
+        <div class="branch ok">✅ 同じ順序で処理されるので一貫する。</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>ホワイトボードの図（二重書き込み vs 単一ログ）</summary>
+<pre><span class="cmt">ダメな例：二重書き込み（アプリが両方に直接書く）</span>
+[クライアント1] ──┐         ┌──▶ [DB]            ← 書き込み順 A→B
+[クライアント2] ──┴── 並行 ──┤
+                            └──▶ [検索インデックス] ← 書き込み順 B→A（順序が逆に！）
+<span class="cmt">→ DBと検索インデックスが永久に食い違う</span>
+
+<span class="cmt">良い例：単一の順序決定システムを通す</span>
+[クライアント] ──▶ [順序を決める単一システム（ログ）] ──┬──▶ [DB]
+                                                      └──▶ [検索インデックス]
+<span class="cmt">→ 同じ順序で処理されるので一貫する</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部を1つの順序を決めるシステムに通せばいいんですね。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。これは9章で見た<b>全順序のブロードキャスト</b>の応用なんだ。全書き込みを同じ順序で処理すれば、他の表現を導出するのがずっと楽になる。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>イベントログから派生データを更新する処理に、いい性質はありますか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="同じ入力なら必ず同じ出力になること。">決定的</span>で<span class="term" data-tip="何回やっても結果が同じになること。">冪等</span>にできる。落ちたら同じ地点から処理をやり直せばいいだけだから、障害から回復するのがすごく楽になる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏙️ たとえ話：受付の控えを1本にして、各課はそれを順に写す</h4>
+      <p>住民が役所と図書館の両方の窓口に別々に届け出ると、役所は「結婚→転居」、図書館は「転居→結婚」の順で記録してしまい、名簿が永久に食い違います（二重書き込み）。正しいやり方は、<b>受付の控え（ログ）を1本にして受理順に番号を振り</b>、各課はその番号順に写すこと。これなら全部の課が同じ順序になり、写し損ねても番号から写し直せます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>二重書き込みが整合性バグの温床だと理解し、避けられる。</li>
+        <li>「正本のログから派生を導出する」設計で、障害回復が容易なシステムを作れる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>データの入出力（どこに書き、どこから導出するか）を明確にする。</li>
+        <li>二重書き込みは順序が食い違い、永久に不一致になりうる。</li>
+        <li>全順序を決める単一システム（ログ）を通せば一貫性を保てる。</li>
+        <li>ログから派生を導出する処理は決定的・冪等にでき、障害回復が容易。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 12.1.1.2 導出データと分散トランザクション ===== -->
+<section id="s12112">
+  <div class="sec-head"><div class="sec-num">12.1.1.2</div><div><h2>導出データと分散トランザクション</h2><span class="tag">同じ目標を、別の手段で達成する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：複数システムの一貫性確保には、分散トランザクション（ロックとアトミックコミット、線形化可能で同期的）と、ログベースの導出（ログで順序決定、決定的リトライと冪等性、非同期）の2つがある。XAの分散トランザクションは性能・耐障害性が貧弱なので、<b>ログベースの導出が最有力</b>。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数システムの一貫性を保つ古典的な方法って、分散トランザクション（2相コミット）ですよね。「ログから導出」と比べたら？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>抽象的には、両者は<b>同じ目標を別の手段</b>で達成してる。分散トランザクションは順序をロックで決め、ログベースはログで決める。分散トランザクションはアトミックなコミットで「1回だけ適用」を保証し、ログベースは決定的リトライ＋冪等性で同じ保証をする。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一番大きな違いは？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>トランザクションは普通<b>線形化可能性</b>を提供するから「自分が書いた内容をすぐ読める」。一方、ログベースは更新が<b>非同期</b>だから、デフォルトでは同じ保証はない。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>となると分散トランザクションのほうが強そうですけど……。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ところが著者の見解は逆。分散トランザクション（特にXA）は耐障害性と性能が貧弱で、有用性は極めて限定的だと。だから<b>様々なデータシステムを結合する最も期待できるアプローチは、ログベースの導出データ</b>だと考えてる。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも「自分の書き込みを読める」保証を捨てて「結果整合性に慣れろ」っていうのは……。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこも釘を刺してる。「結果整合性は避けられないから文句を言わず学べ」と言うのは、うまく扱う方法のガイダンスがないかぎり生産的じゃない。だから12.3節で、非同期の上に<b>強い保証</b>を実装する方法を論じる。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>観点</th><th>分散トランザクション</th><th>ログベースの導出</th></tr>
+      <tr><td>順序の決め方</td><td>相互排他のロック（2相ロック）</td><td>ログ（全順序）</td></tr>
+      <tr><td>1回だけの保証</td><td>アトミックなコミット</td><td>決定的リトライ＋冪等性</td></tr>
+      <tr><td>タイミング</td><td>同期的・線形化可能</td><td>非同期</td></tr>
+      <tr><td>著者の評価</td><td>XAは性能・耐障害性が貧弱</td><td>最有力（弱い保証は12.3で補う）</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🏙️ たとえ話：会議で全課を止めて決めるか、受理番号順に各自で進めるか</h4>
+      <p>全課の手続きをそろえるのに、<b>全課長を会議室に集めて「せーの」で同時に決める</b>のが分散トランザクション。確実だけど、1課でも遅れると全課が待たされ、誰か倒れると全体が止まります。一方、<b>受付の受理番号順に、各課が自分のペースで写していく</b>のがログベース。少し反映が遅れることはあっても、1課が休んでも他は止まらず、後から番号順に追いつけます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>分散トランザクションとログベースが「同じ目標を別手段で達成する」と理解できる。</li>
+        <li>なぜログベースが推されるのか（耐障害性・性能）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>分散トランザクション＝ロック＋アトミックコミット＋線形化可能（同期）。</li>
+        <li>ログベース導出＝ログで順序決定＋決定的リトライ＋冪等性（非同期）。</li>
+        <li>XAは性能・耐障害性が貧弱で有用性が限定的。ログベースが最有力。</li>
+        <li>非同期ゆえの弱い保証の補い方は12.3節で扱う。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 12.1.1.3 全順序の限界 ===== -->
+<section id="s12113">
+  <div class="sec-head"><div class="sec-num">12.1.1.3</div><div><h2>全順序の限界</h2><span class="tag">大きくなると「全部に順番をつける」ことが難しくなる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：全順序のログは小規模では作れるが、(1)スループット超過でパーティショニングが必要、(2)地理的分散、(3)マイクロサービス、(4)オフライン動作――の4状況で限界にぶつかる。全順序ブロードキャストは合意と等価だが、<b>スケールして地理的分散でも働く合意アルゴリズムは未解決の研究課題</b>。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「全部をログに通して全順序を決める」って、いつでもできるんですか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>小さいシステムなら現実的だ。シングルリーダーのDBがその証拠。でも規模が大きくなり、ワークロードが複雑になると限界にぶつかる。4つ挙げよう。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📈</div><h4>1. スループット超過</h4><p>全イベントが単一リーダーを通る必要があるが、1台で捌けない量になるとログをパーティショニングする。→ 異なるパーティション間の順序は曖昧になる。</p></div>
+      <div class="mini"><div class="ic">🌍</div><h4>2. 地理的分散</h4><p>データセンター（DC）ごとに個別リーダーを置くのが普通。→ 異なるDCで生じたイベントの順序は定義されない。</p></div>
+      <div class="mini"><div class="ic">🧩</div><h4>3. マイクロサービス</h4><p>各サービスが独立して状態を持ち、共有しない設計。→ 異なるサービス発のイベント順序は定義されない。</p></div>
+      <div class="mini"><div class="ic">📴</div><h4>4. オフライン動作</h4><p>クライアント側の状態をサーバー確認を待たず即更新する。→ クライアントとサーバーで見る順序が食い違う。</p></div>
+    </div>
+
+    <details class="code"><summary>全順序が作りにくくなる4つの状況（メモ）</summary>
+<pre><span class="cmt">全順序を持つログが作りにくくなる4つの状況</span>
+1. スループット超過 : 全イベントが単一リーダーノードを通る必要があるが、
+                     1台で捌けない量になるとログをパーティショニングする。
+                     → 異なるパーティション間のイベント順序は曖昧になる
+2. 地理的分散       : データセンター（DC）ごとに個別リーダーを置くのが普通。
+                     → 異なるDCで生じたイベントの順序は定義されない
+3. マイクロサービス : 各サービスが独立して状態を持ち、状態を共有しない設計。
+                     → 異なるサービス発のイベント順序は定義されない
+4. オフライン動作   : クライアント側の状態をサーバー確認を待たず即更新する。
+                     → クライアントとサーバーで見るイベント順序が食い違う</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>形式的にはどう言うんですか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>イベントの全順序を決めることは<b>全順序ブロードキャスト</b>と呼ばれ、<b>合意（コンセンサス）と等価</b>なんだ。</div></div>
+
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>合意アルゴリズム……9章のやつですね。あれを使えば解決しないんですか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ほとんどの合意アルゴリズムは「単一ノードでイベントストリーム全体を捌ける」前提で設計されてる。順序付けを複数ノードで分担する仕組みはくれない。<b>単一ノードのスループットを超えてスケールでき、地理的分散でもうまく働く合意アルゴリズム</b>は、今でも未解決の研究課題なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏙️ たとえ話：街が大きくなると、受付を1か所に集約できない</h4>
+      <p>小さな村なら受付窓口は1つで、全届け出に通し番号を振れます。でも<b>大都市</b>になると、1つの窓口では捌けず区役所ごとに窓口を分け（パーティショニング）、<b>別の市の役所</b>とも連携し（地理的分散）、各課が独立して動き（マイクロサービス）、出張所はネットが切れても受け付ける（オフライン）。こうなると「街全体で1本の通し番号」を維持するのが極端に難しくなる――これが全順序の限界です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「全部をログに通せば万事解決」ではないと知り、規模拡大時の限界を予見できる。</li>
+        <li>どの状況で全順序が崩れるか（パーティション・DC・サービス・クライアント）を列挙できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>小規模では全順序ログは現実的（シングルリーダーDBが好例）。</li>
+        <li>スループット超過・地理的分散・マイクロサービス・オフライン動作で全順序は崩れる。</li>
+        <li>全順序ブロードキャストは合意と等価だが、スケールする合意アルゴリズムは未解決。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 12.1.1.4 因果律 ===== -->
+<section id="s12114">
+  <div class="sec-head"><div class="sec-num">12.1.1.4</div><div><h2>因果律を把握するためのイベントの順序づけ</h2><span class="tag">「友達解除→愚痴」の順番が壊れると事故になる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：因果関係のないイベントは順序自由でよいが、「友達解除→愚痴送信」のような<b>軽微な因果関係</b>が別々の場所に保存されると順序依存が失われ、外したはずの相手に通知が届く事故が起きる。対策の出発点は論理タイムスタンプ・イベント識別子の参照・衝突解決アルゴリズムだが、<b>外部への副作用（送った通知）は取り消せない</b>。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全順序がなくても困らない場合もあるんですか？</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある。イベント間に<b>因果関係</b>がなければ並行イベントは任意の順序でいい。同じオブジェクトへの更新なら、IDごとに同じログパーティションに送れば全順序を決められる。でも因果関係は<b>軽微な形</b>で現れることがあって、これがやっかい。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ソーシャルネットワークの例。AさんがBさんを「友達から外して」、その後「残りの友達に元友達への愚痴を送った」。Aさんは「Bを外したあとに書いたんだから、Bには見えないはず」と思ってる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>操作1：Bを友達から外す</h4><p>友人関係を保存する場所に記録される。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>操作2：元友達への愚痴を送信</h4><p>メッセージを保存する場所（別の場所）に記録される。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">!</div><div class="line"></div></div><div class="body"><h4>通知サービスが操作2を操作1より先に処理</h4><p><div class="branch ng">❌ 外したはずのBに愚痴の通知が届く！（操作の因果順序が失われた）</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>因果関係が壊れると起きる事故（図）</summary>
+<pre><span class="cmt">因果関係が壊れると起きる事故</span>
+[Aの操作1] Bを友達から外す  ──┐ 友人関係を保存する場所
+[Aの操作2] 元友達への愚痴を送信 ─┘ メッセージを保存する場所（別の場所）
+
+通知サービスが操作2を操作1より先に処理してしまうと…
+<span class="cmt">→ 外したはずのBに愚痴の通知が届く！（操作の因果順序が失われた）</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うわ、最悪ですね。友人関係とメッセージが別の場所だと、順序の依存関係が失われると。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この通知は事実上「メッセージと友人リストの結合」だから、11章の結合のタイミング問題に関係する。シンプルな答えはないけど、出発点が3つある。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">⏱️</div><h4>論理タイムスタンプ</h4><p>調整なしで全順序を提供できる。全順序ブロードキャストが非現実的なときに役立つ。受信側が順序どおりでない配送に対応する必要があり、追加メタデータを持ち回る。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>イベントの識別子参照</h4><p>システム状態を記録するイベントをログに書き、ユニークな識別子を付けられるなら、後のイベントからその識別子を参照して因果関係を記録できる。</p></div>
+      <div class="mini"><div class="ic">⚖️</div><h4>衝突解決アルゴリズム</h4><p>予想外の順序で届いたイベントの処理に役立つ。状態管理には役立つが、外部への副作用（通知の送信など）があると役立たない。</p></div>
+    </div>
+
+    <details class="code"><summary>因果関係を把握する3つの出発点（メモ）</summary>
+<pre><span class="cmt">因果関係を把握する出発点</span>
+1. 論理タイムスタンプ : 調整なしで全順序を提供できる。全順序ブロードキャストが
+                      非現実的なときに役立つ。ただし受信側が順序どおりでない配送に
+                      対応する必要があり、追加メタデータを持ち回ることになる。
+2. イベントの識別子参照 : システム状態を記録するイベントをログに書き、ユーザーが
+                      判断する前にそれを見られて、ユニークな識別子を付けられるなら、
+                      後のイベントからその識別子を参照して因果関係を記録できる。
+3. 衝突解決アルゴリズム : 予想外の順序で届いたイベントの処理に役立つ。状態管理には
+                      役立つが、外部への副作用（通知の送信など）があると役立たない。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3番目、状態は直せても「もう送っちゃった通知」は取り消せないってことですね。</div></div>
+
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。いつか、全順序ブロードキャストのボトルネックなしに因果関係を効率的に把握して派生状態を正しく管理するパターンが現れるだろう、というのが著者の見立てだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏙️ たとえ話：転出届より先に「町内会の回覧」が回ると</h4>
+      <p>住民が「町内会を抜ける届け」を出し、その後「町内に悪口の回覧」を頼んだとします。本来は抜けたあとだから本人には回りません。でも<b>届け（住民課）と回覧（広報課）が別々の窓口</b>で、広報課が先に処理すると、抜けたはずの本人に悪口が回ってしまう。順番（因果関係）を取り違えた街の事故です。一度配ってしまった回覧は回収できません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「順序が壊れると通知系で事故る」具体例を知り、因果関係の保存を意識できる。</li>
+        <li>因果関係を把握する3つの出発点を、状況に応じて検討できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>因果関係のないイベントは順序自由。同一オブジェクト更新は同じパーティションで全順序化できる。</li>
+        <li>軽微な因果関係が別々の場所に保存されると順序依存が失われ、通知事故が起きる。</li>
+        <li>対策の出発点は論理タイムスタンプ・識別子参照・衝突解決。副作用は取り消せない。</li>
+      </ul>
+    </div>
+  </div>
+</section>

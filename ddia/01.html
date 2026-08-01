@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第1章 信頼性・スケーラビリティ・メンテナンス性 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第1章</span>
+  <h1>信頼性・スケーラビリティ・メンテナンス性に優れたアプリケーション</h1>
+  <p>「いいアプリって何だろう？」――よいデータシステムが満たすべき<b>3つの大きな性質</b>、<b>こわれにくさ（信頼性）・大きくなっても平気なこと（スケーラビリティ）・直しやすさ（メンテナンス性）</b>を、新人ハルとベテラン カイ先輩の対話で根っこから学びます。</p>
+  <div class="badge-row">
+    <span class="badge">🍽️ たとえ話は「人気レストランの開店から繁盛まで」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a class="sub" href="#s0">データ指向 vs 演算指向 ― 今日のアプリの正体</a>
+  <a href="#s11">1.1 データシステムに関する考察</a>
+  <a href="#s12">1.2 信頼性</a>
+  <a class="sub" href="#s121">1.2.1 ハードウェアの障害</a>
+  <a class="sub" href="#s122">1.2.2 ソフトウェアのエラー</a>
+  <a class="sub" href="#s123">1.2.3 ヒューマンエラー</a>
+  <a class="sub" href="#s124">1.2.4 信頼性の重要度</a>
+  <a href="#s13">1.3 スケーラビリティ</a>
+  <a class="sub" href="#s131">1.3.1 負荷の表現</a>
+  <a class="sub" href="#s132">1.3.2 パフォーマンスの表現</a>
+  <a class="sub" href="#s132b">　└ パーセンタイル値の実際</a>
+  <a class="sub" href="#s133">1.3.3 負荷への対処のアプローチ</a>
+  <a href="#s14">1.4 メンテナンス性</a>
+  <a class="sub" href="#s141">1.4.1 運用性</a>
+  <a class="sub" href="#s142">1.4.2 単純さ</a>
+  <a class="sub" href="#s143">1.4.3 進化性</a>
+  <a href="#sumchap">章のまとめ</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🍽️</div><div><b>たとえ話は「レストラン」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「人気レストランの開店から繁盛まで」</b>に置きかえて説明します。データ＝食材、システム＝お店です。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、レストランのたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">データ指向 <span>data-intensive</span></div><p>「計算の速さ」より「データの量・複雑さ・変化の速さ」が課題になるアプリ。お店でいうと、調理の腕より<b>食材の仕入れ・保存・提供</b>が勝負のお店。</p></div>
+    <div class="item"><div class="w">演算指向 <span>compute-intensive</span></div><p>難しい計算（CPU）の速さが勝負のソフト。気象シミュレーションなど。お店でいうと、超絶技巧の調理が主役のお店。</p></div>
+    <div class="item"><div class="w">データシステム</div><p>DB・キャッシュ・検索などをまとめた呼び名。お店の<b>厨房まわりの設備一式</b>。</p></div>
+    <div class="item"><div class="w">フォールト <span>fault</span></div><p>部品が決められた動きをしていない状態（不具合の元）。コンロ1台の故障。</p></div>
+    <div class="item"><div class="w">障害 <span>failure</span></div><p>システム全体がサービスを止めた状態。<b>お店が営業停止</b>。</p></div>
+    <div class="item"><div class="w">フォールトトレラント <span>fault tolerant</span></div><p>フォールトに耐えてサービスを続けられること。コンロ1台壊れても営業を続けられるお店。</p></div>
+    <div class="item"><div class="w">冗長性 <span>redundancy</span></div><p>予備を持たせること。予備のコンロ・予備の発電機。</p></div>
+    <div class="item"><div class="w">レスポンスタイム</div><p>お客が注文してから料理が来るまでの「全部込み」の時間。</p></div>
+    <div class="item"><div class="w">レイテンシ <span>latency</span></div><p>リクエストが「処理を待っている」待ち時間の部分。行列に並んでいる時間。</p></div>
+    <div class="item"><div class="w">パーセンタイル <span>percentile</span></div><p>待ち時間を小さい順に並べて「下から何％の人はここまで」を見る指標。p50＝真ん中、p99＝下から99％目（＝遅い1％の境目）。</p></div>
+    <div class="item"><div class="w">テイルレイテンシ <span>tail latency</span></div><p>分布の「裾」＝とくに遅い層の待ち時間（p95/p99/p999）。体験に直結する。</p></div>
+    <div class="item"><div class="w">スループット <span>throughput</span></div><p>1秒（や1時間）あたりにさばける処理量。お店が1時間に出せる料理の数。</p></div>
+    <div class="item"><div class="w">スケールアップ／スケールアウト</div><p>アップ＝1台を強力に（厨房を大きく）。アウト＝台数を増やす（店舗を増やす）。</p></div>
+    <div class="item"><div class="w">シェアードナッシング <span>shared-nothing</span></div><p>何も共有せず、独立した多数のマシンに分散する構成。各店舗が独立して回る方式。</p></div>
+    <div class="item"><div class="w">エラスティック <span>elastic</span></div><p>負荷に応じて自動でリソースを増減する仕組み。混んだら自動で店員を増やすイメージ。</p></div>
+    <div class="item"><div class="w">ファンアウト <span>fan-out</span></div><p>1つの出来事を、関係する多数の相手へ配ること。1ツイートを全フォロワーへ。1つの新メニューを全常連へ。</p></div>
+    <div class="item"><div class="w">SLO／SLA</div><p>SLO＝サービスの性能目標、SLA＝お客との約束（守れなければ返金など）。「料理は◯分以内」の約束。</p></div>
+    <div class="item"><div class="w">運用性／単純性／進化性</div><p>メンテナンス性の3原理。動かしやすさ／覚えやすさ／変えやすさ。</p></div>
+    <div class="item"><div class="w">偶発的な複雑さ <span>accidental complexity</span></div><p>問題そのものではなく、実装の都合だけから生じる余計な複雑さ。本来いらない手間。</p></div>
+    <div class="item"><div class="w">抽象化 <span>abstraction</span></div><p>細かい中身を隠して、きれいな表面だけ使えるようにすること。注文ボタンの裏の厨房を気にしなくていい状態。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>新人エンジニアのハルは、配属されたスタートアップ「ツバサ社」で、自分が作ったアプリがなぜか落ちたり遅くなったりするのを目の当たりにして落ち込んでいます。夜のオフィス、コーヒーを片手に通りかかったベテランのカイ先輩が「いいアプリって何だと思う？」と問いかけ、よいデータシステムが満たすべき3つの大きな性質――<b>こわれにくさ・大きくなっても平気なこと・直しやすさ</b>――をめぐる対話が始まります。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：今どきのアプリの悩みは「計算が速いか」より「データをどう扱うか」にある。よいシステムは、①トラブルがあっても正しく動き続け（<b>信頼性</b>）、②利用が増えても無理なく対応でき（<b>スケーラビリティ</b>）、③長く関わる人が楽に手を入れられる（<b>メンテナンス性</b>）の3つを満たす。この章は、その3つの言葉が本当は何を意味するのかをていねいに言葉にする回。</p>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：これから「お店づくり」の話をします</h4>
+      <p>この章を通して、アプリ＝<b>レストラン</b>、データ＝<b>食材</b>、システムの設備＝<b>厨房まわり</b>、ユーザー＝<b>お客さん</b>に置きかえて読みます。よいお店とは「① コンロが1台壊れても営業を止めない（信頼性）、② お客が10倍来ても回せる（スケーラビリティ）、③ 新人が覚えやすく改装もしやすい（メンテナンス性）」お店。この3つが、この本ぜんぶを貫く合言葉です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>共通言語になる</b>：「信頼性」「スケーラビリティ」「メンテナンス性」は意味があいまいなまま使われがち。意味をそろえると設計の議論がかみ合う。</li>
+        <li><b>本全体の地図になる</b>：DB・レプリケーション・分散システムなど残りの章は、この3つの目標を達成するための道具と技。最初に地図を持つと迷わない。</li>
+        <li><b>視点が上がる</b>：「とりあえず動く」から「障害・成長・変更に耐える」へ。現場で信頼されるエンジニアになれる。</li>
+        <li><b>具体的に語れる</b>：良し悪しを3軸で語り、性能を数値（パーセンタイル）で表し、「この設計は将来つらい」を事前に見抜ける。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 0 データ指向 vs 演算指向 ===== -->
+<section id="s0">
+  <div class="sec-head"><div class="sec-num">🍽️</div><div><h2>データ指向 vs 演算指向 ― 今日のアプリの正体</h2><span class="tag">今のアプリは「計算」より「データ」が主役</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：今のアプリは「計算」より「データ」が主役（<b>データ指向</b>）。DB・キャッシュ・検索インデックス・ストリーム処理・バッチ処理といった標準部品を組み合わせて作るが、どれを選び、どう組むかの判断が腕の見せどころ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>僕の機能、また落ちたんです。CPUはそんなに使ってないのに、データが増えたら急に重くなって……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>いい現場に出くわしたね。昔のソフトは「いかに速く計算するか」が主役だった。気象シミュレーションみたいにCPUをぶん回すやつ。これを<span class="term" data-tip="計算（CPU）の速さが勝負のソフト。気象シミュレーションなど。">演算指向</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>僕のアプリは難しい計算なんてしてないし……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこなんだ。今のWebアプリの大半は<span class="term" data-tip="データの量・複雑さ・変化の速さが課題になるアプリ。">データ指向</span>。本当の問題は「データの量」「データの複雑さ」「データの変化する速さ」の3つ。きみのアプリが重くなったのも、データ量が増えたからだろ？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まさにそれです！ じゃあデータ指向のアプリって、どう作るのが普通なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ありものの「部品（ビルディングブロック）」を組み合わせて作るのが普通。よく使う部品はこんな感じだよ。</div></div>
+    </div>
+
+    <h3 class="blk">よく使うデータ部品（ビルディングブロック）</h3>
+    <div class="analogy">
+      <h4>🍽️ たとえ話：厨房の設備5点セット</h4>
+      <p>データの道具は、お店の厨房設備にそっくり対応します。<b>冷蔵庫</b>に食材をしまい（DB）、よく出る料理は<b>作り置き</b>しておき（キャッシュ）、メニューを<b>索引</b>で探せるようにし（検索）、注文は<b>オーダーの流し</b>で次々さばき（ストリーム）、仕込みは<b>営業後にまとめて</b>やる（バッチ）。</p>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧊</div><h4>データベース</h4><p>データを保存して、後で自分や他のアプリが取り出せるようにする。<b>＝冷蔵庫</b></p><span class="pill">保存の正本</span></div>
+      <div class="mini"><div class="ic">🍱</div><h4>キャッシュ</h4><p>重い処理の結果を覚えておいて、読み取りを速くする。<b>＝作り置き</b></p><span class="pill">読みを速く</span></div>
+      <div class="mini"><div class="ic">🔎</div><h4>検索インデックス</h4><p>キーワード検索やフィルタリングをできるようにする。<b>＝メニュー索引</b></p><span class="pill">探せる</span></div>
+      <div class="mini"><div class="ic">🌊</div><h4>ストリーム処理</h4><p>他のプロセスにメッセージを送り、非同期で処理してもらう。<b>＝オーダーの流し</b></p><span class="pill">流して渡す</span></div>
+      <div class="mini"><div class="ic">📦</div><h4>バッチ処理</h4><p>溜まった大量データを定期的にまとめて処理する。<b>＝営業後の仕込み</b></p><span class="pill">まとめて</span></div>
+    </div>
+
+    <details class="code"><summary>ナプキンに書いた「データ部品」メモ</summary>
+<pre><span class="cmt"># よく使うデータ部品（ビルディングブロック）</span>
+データベース       : データを保存して、後で取り出せるようにする
+キャッシュ         : 重い処理の結果を覚えて、読み取りを速くする
+検索インデックス   : キーワード検索やフィルタリングをできるようにする
+ストリーム処理     : 他のプロセスにメッセージを送り、非同期で処理してもらう
+バッチ処理         : 溜まった大量データを定期的にまとめて処理する</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>DBとかキャッシュとか、当たり前すぎませんか？ 毎日使ってますけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それがミソ。「当たり前に見える」のは、<span class="term" data-tip="DB・キャッシュ・検索などをまとめた呼び名。お店の厨房まわりの設備一式。">データシステム</span>という抽象化がうまくいきすぎて、深く考えずに使えてるからなんだ。誰も新しいストレージエンジンを一から書こうなんて夢想しない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあDBを1個選べば終わり、ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう単純じゃない。アプリが違えば要求も違う。<b>目の前のタスクにどの道具が合うかを見極める</b>のが僕らの仕事。1つで足りなければ複数を組み合わせる。それが意外と難しい。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「計算が重い」のか「データが重い」のかを見分けられると、改善の方向（CPU増強か、データ設計の見直しか）を間違えない。</li>
+        <li>標準部品の役割を知っておくと、やりたいことを「どの部品で実現するか」に翻訳できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>今日のアプリの大半は<b>データ指向</b>で、量・複雑さ・変化の速さが主な課題。</li>
+        <li>DB / キャッシュ / 検索インデックス / ストリーム処理 / バッチ処理が代表的な部品。</li>
+        <li>「データシステム」という抽象化が優秀なので普段は意識しないが、選定と組み合わせの判断は依然として必要。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.1 ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">1.1</div><div><h2>データシステムに関する考察</h2><span class="tag">なぜDBもキューもキャッシュも「ひとくくり」にするのか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：いろんなデータの道具を「データシステム」とまとめて捉える理由は、①道具の境界があいまいになり、②1つでは要求を満たせず複数を組み合わせるから。組み合わせた瞬間、あなたはデータシステムの設計者になる。本書はその設計を信頼性・スケーラビリティ・メンテナンス性の3軸で考える。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでDBもキューもキャッシュも「データシステム」ってひとくくりにするんですか？ 別物じゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>表面的にはDBとメッセージキューは「しばらく保存する」点で似てるけど、アクセスのパターンが違うから特性も実装も違う。でも、まとめて考える理由が2つあるんだ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1つめ。最近は道具の境界があいまい。<b>Redis</b>はデータストアなのにキューにも使えるし、<b>Apache Kafka</b>はキューなのにDB並みの耐久性を保証する。昔の枠に収まらなくなった。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つめは、1つの道具で全部の要求を満たせなくなったこと。処理を複数のタスクに割って、得意な道具にやらせて、最後にアプリのコードで結びつける。</div></div>
+    </div>
+
+    <h3 class="blk">複数の道具を組み合わせた構成（例）</h3>
+    <p>下は、メインの保存先（冷蔵庫＝DB）に加えて、読みを速くする作り置き（キャッシュ）と、探せる索引（検索）を一緒に使う構成です。<b>DBが更新されたら、キャッシュや検索もアプリが同期させる</b>のがポイント。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>クライアント（お客）</h4><p>書き込み（注文）／読み取り（メニュー閲覧）をアプリに送る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>アプリケーションのコード（店長）</h4><p>どの設備に渡すかを判断し、整合性も自分で管理する司令塔。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>メインDB／キャッシュ／全文検索へ振り分け</h4><p>本当の保存先＝メインDB（正本）、読みを速くする＝キャッシュ（Memcached）、キーワード検索＝全文検索（Elasticsearch）。</p>
+        <div class="branch ok">✅ DBが更新されたら、キャッシュと検索インデックスも<b>アプリが同期</b>させる。</div></div></div>
+    </div>
+
+    <details class="code"><summary>構成のスケッチ</summary>
+<pre>[クライアント]
+     │ 書き込み / 読み取り
+     ▼
+[アプリケーションのコード]
+   ├──▶ [メインDB]                <span class="cmt"># 本当の保存先（信頼できる正本）</span>
+   ├──▶ [キャッシュ(Memcached)]    <span class="cmt"># 読み取りを速くする</span>
+   └──▶ [全文検索(Elasticsearch)]  <span class="cmt"># キーワード検索用</span>
+   <span class="cmt">※ DBが更新されたら、キャッシュや検索インデックスもアプリが同期させる</span></pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：あなたはもう「お店の設計者」</h4>
+      <p>冷蔵庫（DB）と作り置き棚（キャッシュ）とメニュー索引（検索）を組み合わせて使い始めた瞬間、あなたは単なる調理係ではなく<b>厨房の設計者</b>になっています。冷蔵庫の中身を変えたら作り置きと索引も更新する――この「足並みをそろえる仕事」を誰がやるかを決めるのが設計です。たいていは店長（アプリのコード）の役目。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>複数の道具を組み合わせると、実装の詳細はサービスのインターフェース（外部から呼ぶための窓口＝API）の裏に隠れる。きみは汎用の小さな部品から「特定目的の新しいデータシステム」を作り出したことになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、ただアプリ書いてるだけのつもりだったんですけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もうきみは<b>データシステムの設計者</b>だ。「内部で問題が起きてもデータを正しく保つには？」「一部が遅くても安定した性能を出すには？」「負荷が増えてもスケールさせるには？」「よいAPIってどんな形？」……設計判断の連続だろ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>設計はスキル・経験・レガシー依存・納期・組織のリスク許容度・規制も絡む状況依存。だからこの本では重要な<b>3つの課題</b>に絞る。信頼性・スケーラビリティ・メンテナンス性だ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🛡️</div><h4>信頼性 <span style="font-size:11px;color:#8b93bf">Reliability</span></h4><p>障害（ハード・ソフト・人）があっても正しく動き続ける。</p></div>
+      <div class="mini"><div class="ic">📈</div><h4>スケーラビリティ <span style="font-size:11px;color:#8b93bf">Scalability</span></h4><p>量・トラフィック・複雑さの成長に無理なく対応できる。</p></div>
+      <div class="mini"><div class="ic">🔧</div><h4>メンテナンス性 <span style="font-size:11px;color:#8b93bf">Maintainability</span></h4><p>関わる人が生産的に作業し続けられる。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「アプリのコードがDB・キャッシュ・検索の同期を担う」と意識できると、整合性バグの原因を見つけやすくなる。</li>
+        <li>設計判断が状況依存だと理解すると、「正解は1つ」という思い込みを捨て、トレードオフで考えられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>道具の分類は境界があいまいになりつつある（Redis, Kafkaなど）。</li>
+        <li>複数の道具を組み合わせると、その結合（同期・整合性）はアプリのコードの責任になりがち。</li>
+        <li>組み合わせた時点で「データシステムの設計者」になり、難しい設計判断が生じる。</li>
+        <li>本書は信頼性・スケーラビリティ・メンテナンス性の3つに焦点を当てる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.2 信頼性 ===== -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">1.2</div><div><h2>信頼性</h2><span class="tag">何か問題が起きても正しく動き続けること</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：信頼性＝「問題（フォールト）が起きても正しく動き続けること」。すべてのフォールトには耐えられないので「ある種のフォールト」に耐えるよう設計する。<b>フォールト（部品の不具合）と障害（システム全体の停止）は別物</b>で、フォールトが障害に育たないようにするのが耐障害性。わざと壊して鍛えるのがChaos Monkey。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「信頼性」って、直感的には「壊れにくい」って感じですけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい出発点。もう少し分解するとこうなる。これを全部まとめて「正しく動作する」と呼ぶなら、<b>信頼性とは「何か問題が起きても正しく動き続けること」</b>だ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>信頼性に期待されること</th></tr>
+      <tr><td>ユーザーの期待どおりに機能する</td></tr>
+      <tr><td>ユーザーが間違ったり、想定外の使い方をしても耐える</td></tr>
+      <tr><td>想定される負荷とデータ量で、十分よい性能を出す</td></tr>
+      <tr><td>認可されていないアクセスや攻撃を防げる</td></tr>
+    </table>
+
+    <h3 class="blk">フォールト と 障害 ― ここが超重要</h3>
+    <div class="grid2">
+      <div class="mini" style="border-color:#ffb45455"><div class="ic">🔥</div><h4>フォールト（fault）</h4><p>部品が仕様を満たさない状態（不具合の元）。<br><b>＝コンロ1台が故障</b>。まだお店は回せる。</p></div>
+      <div class="mini" style="border-color:#ff6b8b55"><div class="ic">🚫</div><h4>障害（failure）</h4><p>システム全体がサービスを止めた状態。<br><b>＝お店が営業停止</b>。お客に出せない。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：コンロ1台の故障で、お店を閉めるな</h4>
+      <p>コンロが1台壊れる（フォールト）のは避けられません。でも予備のコンロや手順があれば、お客には何ごともなかったように料理を出せます。これが<span class="term" data-tip="フォールトに耐えてサービスを続けられること。">フォールトトレラント</span>（＝レジリエント＝回復力がある）なお店。目標は「コンロを絶対壊さない」ではなく、<b>「コンロが壊れても閉店（障害）にしない」</b>こと。信頼できない部品から、信頼できるお店を組むのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>フォールトトレラントって、どんなフォールトにも耐えられるんですか？ すごい！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが落とし穴。「どんなフォールトにも」は無理。地球ごとブラックホールに飲まれたら、宇宙のどこかにサーバーを置かないと耐えられない（笑）。現実的には<b>「ある種のフォールトに耐える」</b>ことしか語れない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>わざとフォールトを起こす、って聞いたことが……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>耐障害性の仕組みは、普段使わないと「いざ本番」で動くか不安だろ？ だからわざとランダムにプロセスをkill（強制終了）して常にテストする。Netflixの<b>Chaos Monkey（カオスモンキー）</b>が有名。致命的バグの多くは「エラー処理が雑」なせいだから、わざと壊して鍛えるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、予防接種みたいですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいたとえ。あと、回復できないものは「耐える」より「回避」が優先。セキュリティで機密データを抜かれたら取り返しがつかないから、これは防ぐ。本書で扱うフォールトの多くは回復可能なタイプだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「フォールト」と「障害」を区別できると、障害報告で原因（どの部品のフォールトか）と影響（全体の停止か）を整理して語れる。</li>
+        <li>「全部のフォールトには耐えられない」と知れば、どのフォールトに投資して耐えるかを選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>信頼性＝何か問題が起きても正しく動作し続けること。</li>
+        <li>フォールト＝部品の不具合、障害＝システム全体の停止。両者は別。</li>
+        <li>目標はフォールトをゼロにすることではなく、フォールトを障害に発展させないこと。</li>
+        <li>わざと壊して耐障害性を鍛える手法（Chaos Monkey）がある。回復不能なもの（セキュリティ侵害）は耐えるより防ぐ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.2.1 ハードウェア ===== -->
+<section id="s121">
+  <div class="sec-head"><div class="sec-num">1.2.1</div><div><h2>ハードウェアの障害</h2><span class="tag">機材は必ず壊れる ― 台数で考えると印象が変わる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ハードは必ず壊れる。1台の<span class="term" data-tip="MTTF=平均故障時間。1台が平均でどれくらい持つか。">MTTF</span>は長くても、台数が増えれば故障は日常。昔は部品の冗長化で足りたが、今は大量マシン＋クラウドが前提なので、ソフトの耐障害性も組み合わせて「マシン丸ごと失っても平気」にする。ローリングアップグレードで無停止運用ができる。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ハードディスクのクラッシュ、RAMの欠陥、停電、ケーブルの抜き間違い……大規模データセンターでは「こういうのは<b>常に</b>起きる」と身にしみる。ハードディスクの<span class="term" data-tip="mean time to failure = 平均故障時間。">MTTF</span>はだいたい10〜50年と報告されてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>10〜50年なら、めったに壊れないってことじゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1台ならね。でも<b>10,000台</b>のディスクなら？ 平均すると<b>1日1台</b>は壊れる計算だ。台数が増えれば故障は日常茶飯事。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：チェーン1万店なら毎日どこかでコンロが壊れる</h4>
+      <p>1店のコンロは10〜50年もつとしても、<b>1万店のチェーン</b>を持てば、平均すれば毎日どこかの店で1台壊れています。1店だけ見れば「めったに壊れない」のに、規模が大きくなると「壊れて当たり前」に変わる――これがハード障害の感覚です。</p>
+    </div>
+
+    <h3 class="blk">対策①：冗長性（予備を持たせる）</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">💽</div><h4>RAID構成</h4><p>ディスクを束ねて、1台壊れても予備が肩代わり。</p></div>
+      <div class="mini"><div class="ic">🔌</div><h4>電源2重化</h4><p>電源・CPUをホットスワップ可能に。停止せず交換。</p></div>
+      <div class="mini"><div class="ic">🔋</div><h4>発電機</h4><p>データセンターにバッテリーとディーゼル発電機。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ冗長化すれば安心ですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>少し前まではそれで十分だった。でもデータ量と処理量が増えて大量のマシンを使うと、フォールト発生率も比例して上がる。さらにAWSみたいなクラウドは、1台の信頼性より<span class="term" data-tip="elastic=伸縮自在。負荷に応じて自動でリソースを増減できる性質。">柔軟性やエラスティック性</span>を重視してて、仮想マシンが警告なしに落ちることも普通にある。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>だから今はハードの冗長化に<b>加えて</b>、ソフトの耐障害性で「マシン丸ごと失っても耐える」方向。運用メリットもある。1ノードずつパッチを当てて全体は止めない――これを<b>ローリングアップグレード</b>と呼ぶ（4章で扱う）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：1店ずつ改装して、チェーン全体は営業継続</h4>
+      <p>昔は「1店舗をうんと頑丈にする」発想。今は「1店が丸ごと使えなくなっても、他店でカバーできる」設計です。そうすると、<b>1店ずつ順番に休んで改装（パッチ）しても、チェーン全体はずっと営業</b>し続けられます。これがローリングアップグレード。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「台数×故障率」で考える視点を持つと、規模が大きいほど障害対策が重要だと判断できる。</li>
+        <li>ハード冗長化だけに頼らず、ソフト側の耐障害性も設計する発想が持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ハードのフォールトはランダムに起きる。MTTFは10〜50年でも、1万台なら毎日1台壊れる。</li>
+        <li>対策の基本は冗長性（RAID、電源2重化、発電機など）。</li>
+        <li>大量マシン＋クラウド時代は、ソフトの耐障害性を加えてマシン全損に耐える。</li>
+        <li>ローリングアップグレードでダウンタイムなしに更新できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.2.2 ソフトウェア ===== -->
+<section id="s122">
+  <div class="sec-head"><div class="sec-num">1.2.2</div><div><h2>ソフトウェアのエラー</h2><span class="tag">全台が同時に倒れる、相関するフォールト</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ソフトのエラーはノード間で相関する<span class="term" data-tip="システム内で連動して起きるエラー。複数のノードで同時多発しやすい。">システマティックなフォールト</span>で、ハード故障より障害につながりやすい。バグ・リソース枯渇・依存サービスの不調・カスケード障害などがある。特効薬はなく、前提の精査・テスト・分離・監視・自己チェックの積み重ねで対処する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ハードの故障はランダムで、別々のマシンが同時に壊れることはあまりない、んですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>基本は独立だ。でももう1つやっかいな分類がある。<b>システマティックなエラー</b>――システム内で<b>相関を持って</b>起きるエラー。ノード間で連動するから、相関のないハード障害よりずっと多くの障害につながりやすい。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>システマティックなソフトウェアのフォールトの例</th></tr>
+      <tr><td><b>ソフトのバグ</b>：特定の入力で全サーバーが同時にクラッシュ（例: 2012年6月30日のうるう秒で、Linuxカーネルのバグにより多数のアプリが同時にハング）</td></tr>
+      <tr><td><b>プロセスの暴走</b>：CPU・メモリ・ディスク・帯域など共有リソースを使い切る</td></tr>
+      <tr><td><b>依存サービスの不調</b>：依存先がスローダウン、無応答、壊れたレスポンスを返す</td></tr>
+      <tr><td><b>カスケード障害</b>：小さなフォールトが連鎖して次々にフォールトを引き起こす</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：レシピのミスは全店を同時に倒す</h4>
+      <p>コンロの故障（ハード）は1店ずつバラバラに起きます。でも<b>本部が配ったレシピに誤りがあった</b>ら、全店が同じ料理で同じ失敗をします（システマティック）。1店の事故よりはるかに深刻。さらに、ある食材が切れると他の料理も次々作れなくなる――これが<b>カスケード障害</b>（連鎖倒れ）です。</p>
+    </div>
+
+    <details class="code"><summary>システマティックなフォールトの例</summary>
+<pre><span class="cmt"># システマティックなソフトウェアのフォールトの例</span>
+ソフトのバグ     : 特定の入力で全サーバーが同時にクラッシュ
+                  <span class="cmt">（例: 2012/6/30 のうるう秒で Linux カーネルのバグにより多数のアプリが同時にハング）</span>
+プロセスの暴走   : CPU・メモリ・ディスク・帯域など共有リソースを使い切る
+依存サービスの不調: 依存先がスローダウン、無応答、壊れたレスポンスを返す
+カスケード障害   : 小さなフォールトが連鎖して次々にフォールトを引き起こす</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うるう秒で世界中のアプリが止まったって、こわいですね……。手っ取り早い直し方は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>残念ながらない。効くのは地道な積み重ねだけ。前提や相互作用を注意深く考える、徹底的にテストする、プロセスを分離する、クラッシュと再起動を許容する、計測・モニタリングする……。あと、システムが保証するはずのこと（例: キューの入力数と出力数が一致）を動作中に自分でチェックして、異常があればアラートを出すのも有効だ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「全台同時に落ちる」障害の正体（システマティックなエラー）を知ると、冗長化だけでは防げない種類があると分かる。</li>
+        <li>自分のコードが置いている「環境への前提」を意識し、その前提が崩れる状況を想像できるようになる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ソフトのフォールトはノード間で相関し、同時多発しやすい。</li>
+        <li>例: バグによる全台クラッシュ、リソース暴走、依存サービスの不調、カスケード障害。</li>
+        <li>特効薬はなく、前提の精査・テスト・分離・監視・実行中の自己チェックの積み重ねで減らす。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.2.3 ヒューマンエラー ===== -->
+<section id="s123">
+  <div class="sec-head"><div class="sec-num">1.2.3</div><div><h2>ヒューマンエラー</h2><span class="tag">障害原因の最多は、実は人間の設定ミス</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：障害原因のトップは人間の設定ミス。対策はミスしにくい設計・本番と分けたサンドボックス・全レベルの徹底テスト・速いロールバック/段階ロールアウト・詳細なモニタリング（テレメトリ）・よい運用とトレーニングの組み合わせ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結局、設計も運用も人間がやる。人は間違えるし……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。ある大規模インターネットサービスの研究では、障害原因で<b>最も多いのはオペレーターの設定ミス</b>で、ハード障害はたった10〜25%だった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、設定ミスが一番多いんですか！？ どうすれば信頼性を上げられるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1つの銀の弾丸はない。複数のアプローチを組み合わせる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：新人が間違えても事故にならない厨房</h4>
+      <p>事故の多くは食材の腐敗（ハード）ではなく、<b>スタッフのオペミス</b>（塩と砂糖を取り違える等）です。だから「容器の形を変えて取り違えにくくし（ミスしにくい設計）」「本番前に<b>まかない用の練習キッチン</b>で試させ（サンドボックス）」「仕込みを何度も確認し（テスト）」「おかしければすぐ前のレシピに戻し（ロールバック）」「厨房の状態を常に見える化する（モニタリング）」。仕組みでミスを事故にしないのです。</p>
+    </div>
+
+    <table class="t">
+      <tr><th>アプローチ</th><th>内容</th></tr>
+      <tr><td>ミスしにくい設計</td><td>よいAPI・抽象化・管理画面で「正しいこと」をやりやすく、「間違い」をやりにくく（※制約が強すぎると人は回避策を使うのでバランスが難しい）</td></tr>
+      <tr><td>分離</td><td>ミスしやすい所を、障害につながりやすい所から切り離す。本番とは別に<span class="term" data-tip="本物のデータで安全に試せる練習環境。本番には影響しない。">サンドボックス</span>を用意</td></tr>
+      <tr><td>徹底的なテスト</td><td>ユニット〜結合〜手動まで全レベルで。特にコーナーケース</td></tr>
+      <tr><td>速いリカバリ</td><td>設定変更を即ロールバック、新コードは段階的にロールアウト、データ再計算ツールを用意</td></tr>
+      <tr><td>モニタリング</td><td>性能やエラー率を詳細に監視（他分野では<span class="term" data-tip="telemetry=遠隔計測。離れた場所から状態の数値を取り続けること。">テレメトリ</span>と呼ぶ）。早期警告と診断に使う</td></tr>
+      <tr><td>よい運用とトレーニング</td><td>重要だが本書の範囲外</td></tr>
+    </table>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「テレメトリ」って初めて聞きました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>テレメトリ（遠隔計測）</b>は、離陸したロケットの状態を地上から追跡するのと同じ。打ち上げ後に何が起きてるか分からないと障害を理解できないだろ？ システムも走ってる最中の数値を取り続けるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>サンドボックスも、本番でいきなり触らず練習できる場所、ってことですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その理解でOK。実際のユーザーに影響を与えずに本物のデータで経験を積めるのが大事なんだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「人は必ず間違える」前提で仕組みを作ると、責める文化ではなく仕組みで防ぐ文化を作れる。</li>
+        <li>ロールバックや段階ロールアウトを用意しておけば、事故の影響範囲を小さくできる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>障害原因の最多は人間の設定ミス（ハード障害は10〜25%程度）。</li>
+        <li>対策は単一でなく組み合わせ：ミスしにくい設計、サンドボックス分離、徹底テスト、速いリカバリ、モニタリング（テレメトリ）、運用とトレーニング。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.2.4 信頼性の重要度 ===== -->
+<section id="s124">
+  <div class="sec-head"><div class="sec-num">1.2.4</div><div><h2>信頼性の重要度</h2><span class="tag">「ただのアプリ」でもユーザーには大切</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：信頼性は特別なシステムだけの話ではなく、ありふれたアプリにも必要。クリティカルでなくてもユーザーへの責任はある。意図的に信頼性を犠牲にする選択はありうるが、その時は犠牲にしていると自覚すること。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>信頼性って、原発とか航空管制みたいな特別なシステムの話ですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、ありふれたアプリにも必要。ビジネスアプリのバグは生産性を損なうし、数値を間違えれば法的リスク。ECサイトが落ちれば売上も評判も失う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、僕の作る「クリティカルじゃない」アプリなら少しくらい……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>写真アプリを作ったとして、その中に子どもの写真や動画を全部入れてる親がいるとする。ある日DBが壊れたら、その親はどう思う？ バックアップから戻す方法を知ってると思う？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>……僕にとっては「ただのアプリ」でも、その人にとっては唯一の思い出かも。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。もちろん信頼性をあえて犠牲にする場面もある。検証中のプロトタイプや利益の薄いサービスでコストを下げるとか。でもその時は「<b>今、信頼性を犠牲にしている</b>」と強く意識すべきなんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：常連にとっては「ただの一杯」じゃない</h4>
+      <p>あなたには日替わりの一品でも、毎日それを楽しみに来る常連には<b>かけがえのない一杯</b>です。屋台の試作メニュー（プロトタイプ）なら多少の失敗は許されますが、それは「今は品質を落としている」と承知のうえでやること。無自覚に手を抜くのとは違います。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「自分のアプリは重要じゃない」という油断を捨て、ユーザーにとっての価値で判断できる。</li>
+        <li>信頼性を下げる判断を「無自覚」ではなく「意図的なトレードオフ」として説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>信頼性は普通のアプリにも必要（バグ＝生産性損失・法的リスク、ECの障害＝売上と評判の損失）。</li>
+        <li>クリティカルでなくてもユーザーへの責任はある（例: 思い出の写真）。</li>
+        <li>信頼性を犠牲にする選択はありうるが、犠牲にしていると自覚して行う。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.3 スケーラビリティ ===== -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-num">1.3</div><div><h2>スケーラビリティ</h2><span class="tag">負荷の増大に対応できる能力</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：スケーラビリティ＝負荷増大に対応できる能力。「スケーラブルか否か」の1次元ラベルではなく、「特定の側面で成長したらどう対応するか」という問いとして考える。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>次は「スケーラビリティ」。今は信頼性があっても、将来もそうとは限らない、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>よく覚えてた。劣化の代表的な原因が<b>負荷の増大</b>。同時ユーザーが1万→100万に増えたり、データ量が増えたり。スケーラビリティは負荷の増大に対応できる能力のことだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「このシステムはスケーラブルです」って言えばいいんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それがダメ。1次元のラベルじゃない。正しくは問いの形になる――「この側面で成長したら、対応する選択肢は何か？」「どうリソースを足せば負荷の増大に対応できるか？」</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：「繁盛店です」では何も言ってない</h4>
+      <p>「うちは繁盛店です」と言っても情報ゼロ。意味があるのは<b>「ランチに客が3倍来たら、席・厨房・スタッフをどう増やして回すか」</b>という具体策です。スケーラビリティも同じで、「スケーラブル」と一言で言うのではなく、「<b>どの負荷がどう増えたら、どう手を打つか</b>」を語ります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「スケーラブル」という曖昧なラベルを避け、「どの負荷がどう増えたらどう対応するか」を具体的に議論できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>スケーラビリティは負荷の増大に対応する能力。</li>
+        <li>1次元のラベルではなく、成長の側面ごとに対応策を問う考え方。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.3.1 負荷の表現 ===== -->
+<section id="s131">
+  <div class="sec-head"><div class="sec-num">1.3.1</div><div><h2>負荷の表現</h2><span class="tag">まず「今の負荷」を数値で言えるようにする ― Twitterの例</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：負荷は「<span class="term" data-tip="負荷を表す数値。毎秒リクエスト数、読み書き比率など。何を選ぶかはアーキテクチャ次第。">負荷のパラメータ</span>」で表す。Twitterの例では量より<span class="term" data-tip="1つの出来事を関係する多数の相手へ配ること。1ツイートを全フォロワーへ。">ファンアウト</span>（フォロワーへの配信）が課題。読み取り時に集める方法1と、書き込み時に配る方法2があり、閲覧が圧倒的に多いため方法2が有利。ただし有名人問題があり、最終的に両者のハイブリッドに。鍵の負荷パラメータはフォロワー数の分布。</p>
+
+    <h3 class="blk">負荷のパラメータの例</h3>
+    <table class="t">
+      <tr><th>システム</th><th>負荷のパラメータ</th></tr>
+      <tr><td>Webサーバー</td><td>毎秒のリクエスト数</td></tr>
+      <tr><td>データベース</td><td>読み書きの比率</td></tr>
+      <tr><td>チャットルーム</td><td>同時アクティブユーザー数</td></tr>
+      <tr><td>キャッシュ</td><td>ヒット率</td></tr>
+    </table>
+
+    <h3 class="blk">具体例：Twitter（2012年11月）</h3>
+    <table class="t">
+      <tr><th>主な処理</th><th>負荷</th></tr>
+      <tr><td>ツイートのポスト（投稿＝書き込み）</td><td>平均 4,600 リクエスト/秒（ピーク時 12,000+）</td></tr>
+      <tr><td>ホームタイムラインの閲覧（読み取り）</td><td>300,000 リクエスト/秒</td></tr>
+    </table>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>毎秒12,000件の書き込みって、すごくないですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実は12,000件/秒の書き込み自体は簡単。本当の課題は量じゃなくて<b>ファンアウト</b>。各ユーザーは大勢をフォローし、大勢からフォローされてる。実装は大きく2つだ。</div></div>
+    </div>
+
+    <h3 class="blk">方法1：読み取り時に集める</h3>
+    <p>ツイートを1つの大きな置き場に入れておき、誰かがタイムラインを見たら「その人がフォロー中の全員のツイート」をその場でかき集めて時間順に並べる方式です。<b>読むたびに毎回かき集めるので重い。</b></p>
+    <details class="code"><summary>方法1：読み取り時に集めるSQL</summary>
+<pre><span class="cmt">-- ホームタイムラインを「読み取り時」に集める方法1のクエリ</span>
+<span class="cmt">-- フォローしている全員のツイートを結合して取得する</span>
+<span class="kw">SELECT</span> tweets.*, users.* <span class="kw">FROM</span> tweets
+  <span class="kw">JOIN</span> users   <span class="kw">ON</span> tweets.sender_id    = users.id
+  <span class="kw">JOIN</span> follows <span class="kw">ON</span> follows.followee_id = users.id
+  <span class="kw">WHERE</span> follows.follower_id = current_user</pre>
+    </details>
+
+    <h3 class="blk">方法2：書き込み時に配る</h3>
+    <p>各ユーザー専用の「受信ボックス（タイムラインのキャッシュ）」を用意し、誰かが投稿したら<b>その瞬間にフォロワー全員のボックスへ配って</b>おく方式。読むときは出来上がったボックスを返すだけなので軽い。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>ユーザーAがポスト</h4><p>投稿が発生する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>フォロワーを調べて配信</h4><p>Aのフォロワー全員のボックスへツイートを挿入していく。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>各フォロワーのタイムライン・キャッシュに挿入</h4><p>フォロワー1・2・3…のボックスにそれぞれ入る。</p>
+        <div class="branch ok">✅ 読み取りは出来上がったボックスを返すだけなので速い。</div></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：注文時に作る vs 作り置きを配る</h4>
+      <p><b>方法1＝注文が入ってから一から作る</b>（読み取り時に集める）。注文ごとに手間がかかります。<b>方法2＝あらかじめ常連の席に料理を配っておく</b>（書き込み時に配る）。来た人は出されたものを食べるだけで速い。お店の客は「食べる回数（読み取り）」が「新メニュー発表（書き込み）」よりずっと多いので、先に配っておく方法2が有利になります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Twitterは最初は方法1。でも閲覧の負荷に追いつけず方法2に切り替えてうまくいった。ポスト数は閲覧数より<b>約2桁（約100倍）少ない</b>から、「書き込み時に多めに処理し、読み取り時は軽くする」のが正解だった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも方法2にも欠点がありそう……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。方法2はポスト時が重い。平均1ツイートは75人に配るから、4,600ツイート/秒なら<b>345,000回/秒</b>の書き込み。しかも平均の話で、フォロワーが<b>3,000万人</b>超の有名人もいる。1ツイートで3,000万回以上の書き込み！ 5秒以内に配信したいから大きな挑戦だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>有名人がポストするたびに3,000万回……どう解決したんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最後にひねりがある。Twitterは<b>ハイブリッド</b>に移行した。普通のユーザーは方法2で配るけど、超大量フォロワーの有名人だけは例外にして方法1。読む人がタイムラインを開いたら、フォロー中の有名人のツイートだけ方法1で個別取得してマージする。これで安定して良い性能が出る（12章で再登場）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：常連には先に配り、人気店主は注文時に取り寄せる</h4>
+      <p>普通のスタッフの新作は、いつもの常連席に先に配って回ります（方法2）。でも<b>3,000万人のファンを持つ超有名シェフ</b>の新作まで全員に配ると厨房がパンクします。だから有名シェフの分だけは「食べたい人が来たときに取り寄せる」（方法1）。普通の人＝先配り、有名人＝取り寄せ、の<b>いいとこ取り</b>です。</p>
+    </div>
+
+    <details class="code"><summary>方法2の構成スケッチ</summary>
+<pre><span class="cmt"># 方法2の構成（書き込み時にフォロワーのボックスへ配る）</span>
+[ユーザーAがポスト]
+      │ フォロワーを調べて配信
+      ▼
+[フォロワー1のホームタイムラインのキャッシュ] ← ツイート挿入
+[フォロワー2のホームタイムラインのキャッシュ] ← ツイート挿入
+[フォロワー3のホームタイムラインのキャッシュ] ← ツイート挿入
+<span class="cmt">（読み取りは出来上がったボックスを返すだけなので速い）</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここでの鍵となる負荷パラメータは「<b>ユーザーごとのフォロワー数の分布</b>」（ツイート頻度で重み付けもされる）。これがファンアウトの負荷を決める。きみのアプリは特徴が違っても、負荷を論理的に考える原理は同じだよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分のシステムの「鍵となる負荷パラメータ」を特定できると、何をスケールさせるべきか焦点が定まる。</li>
+        <li>「読み取りが多いか書き込みが多いか」で設計（読み時集約か書き込み時配布か）を選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>負荷は負荷のパラメータで表す（アーキテクチャによって何を選ぶかが変わる）。</li>
+        <li>Twitterの課題は量よりファンアウト。読み時集約（方法1）と書き込み時配布（方法2）のトレードオフ。</li>
+        <li>閲覧が書き込みの約100倍なので方法2が有利だが、有名人で配信回数が爆発する。</li>
+        <li>解決はハイブリッド。鍵の負荷パラメータはフォロワー数の分布。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.3.2 パフォーマンスの表現 ===== -->
+<section id="s132">
+  <div class="sec-head"><div class="sec-num">1.3.2</div><div><h2>パフォーマンスの表現</h2><span class="tag">平均ではなく「分布（パーセンタイル）」で見る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：性能はオンラインではレスポンスタイムで測り、単一値でなく分布（パーセンタイル）で見る。p50は典型値、p95/p99/p999は<span class="term" data-tip="分布の裾＝とくに遅い層の待ち時間。ユーザー体験に直結する。">テイルレイテンシ</span>で体験に直結。高すぎるパーセンタイルの改善は費用対効果が悪い。SLO/SLAに使う。遅延の主因はキューイング（HOLブロッキング）。複数バックエンド呼び出しではテイルが増幅する。パーセンタイルは平均せずヒストグラムを足す。</p>
+
+    <h3 class="blk">まず：負荷増大の調べ方は2通り</h3>
+    <table class="t">
+      <tr><th>調べ方</th><th>問い</th></tr>
+      <tr><td>① リソースを一定にして負荷を増やす</td><td>性能はどう変わる？</td></tr>
+      <tr><td>② 性能を一定に保つには</td><td>リソースをどれだけ増やす必要がある？</td></tr>
+    </table>
+
+    <h3 class="blk">性能の指標（システムの種類で変わる）</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📦</div><h4>バッチ処理（Hadoopなど）</h4><p><span class="term" data-tip="1秒や1時間あたりにさばける処理量。">スループット</span>（1秒あたり処理レコード数、ジョブ完了までの合計時間）</p></div>
+      <div class="mini"><div class="ic">⚡</div><h4>オンラインシステム</h4><p>レスポンスタイム（リクエスト送信〜レスポンス受信までの時間）</p></div>
+    </div>
+
+    <h3 class="blk">重要 ― レイテンシ と レスポンスタイム は別物</h3>
+    <div class="grid2">
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">🕐</div><h4>レスポンスタイム</h4><p>クライアントから見た「全部込み」。処理そのものの時間（サービスタイム）＋ネットワーク遅延＋キューイング遅延。</p></div>
+      <div class="mini" style="border-color:#b78cff55"><div class="ic">⏳</div><h4>レイテンシ</h4><p>リクエストが「処理を待っている（待ち状態の）」期間のこと。</p></div>
+    </div>
+    <div class="analogy">
+      <h4>🍽️ たとえ話：席についてから料理が来るまで（全込み）と、行列の待ち時間</h4>
+      <p><b>レスポンスタイム＝注文してから料理が届くまでの全部の時間</b>（調理時間＋運ぶ時間＋順番待ち）。<b>レイテンシ＝行列に並んで「まだ作ってもらえてない」待ち時間</b>の部分。同じ料理でも、混み具合でレスポンスタイムは毎回変わります。</p>
+    </div>
+
+    <h3 class="blk">なぜ「分布」で見るのか</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>同じリクエストを何度投げてもレスポンスタイムは微妙に変わる。実際は色んなリクエストを処理するからもっとばらつく。だから<b>単一の数値じゃなく分布で考える</b>。</div></div>
+    </div>
+    <details class="code"><summary>レスポンスタイムの分布（イメージ図）</summary>
+<pre>時間
+ ↑           ┃ ← たまにすごく長い「外れ値(outlier)」
+ │        ┃  ┃
+ │   ┃ ┃ ┃ ┃┃ ┃    ┃
+ │ ┃ ┃┃┃ ┃┃┃┃┃┃ ┃ ┃┃   ← ほとんどは妥当な速度
+ └─────────────────────▶ リクエスト（1本=1リクエストの所要時間）</pre>
+    </details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>外れ値の原因はいろいろ。コンテキストスイッチ、ネットワークパケットのロスやTCP再送、ガベージコレクションの一時停止、ページフォールトによるディスク読み取り、サーバーラックの機械的振動……。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>平均（mean）を見ればいいんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「典型的な」レスポンスタイムを知りたいなら平均はイマイチ。何人がその遅延を体験してるか分からない。よく使うのは<span class="term" data-tip="小さい順に並べて下から何％の位置か。p50=真ん中、p99=下から99%目。">パーセンタイル</span>だ。</div></div>
+    </div>
+
+    <h3 class="blk">パーセンタイルの読み方</h3>
+    <table class="t">
+      <tr><th>指標</th><th>意味</th><th>使いどころ</th></tr>
+      <tr><td>中央値（median, p50）</td><td>真ん中の値。p50が200msなら、半分は200ms以下、半分はそれ以上。</td><td>ユーザーの「典型的な待ち時間」</td></tr>
+      <tr><td>p95 / p99 / p999</td><td>95/99/99.9パーセンタイル。p95が1.5秒なら100件中95件は1.5秒未満、5件は1.5秒以上。</td><td><b>テイルレイテンシ</b>＝遅い層の体験</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：「平均5分」のお店でも、5人に1人は20分待つ</h4>
+      <p>「平均待ち時間5分」と聞くと速そうですが、実は<b>大半が2分・たまに30分</b>かもしれません。平均では「何人がどれだけ待たされたか」が消えてしまう。だから「真ん中の人は何分か（p50）」「いちばん待たされる層は何分か（p95/p99）」と分けて見ます。長く待つ裾（テイル）の客ほど不満が大きいのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで「裾」の遅いところがそんなに大事なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Amazonは内部サービスの要件を<b>p999</b>で示してる。1,000件に1件しか影響しない値なのにね。処理に時間がかかってるのは「大量に買い物して大量のデータを持つ＝重要顧客」であることが多いから。Amazonはレスポンスタイムが100ms増えると売上が1%下がると観測してるし、1秒の遅延で顧客満足度が16%下がるという報告もある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>遅い人ほど大事なお客さんかも、と。じゃあp9999（1万件に1件）も改善すべき？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこは費用対効果。p9999の改善は負担が大きすぎてAmazonの目的には見合わなかった。自分で制御できない外部要因に左右されるから、極端に高いパーセンタイルの改善は難しいしメリットも薄れがち。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>パーセンタイルって契約にも使うって聞きました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>SLO</b>（サービスレベル目標）や<b>SLA</b>（サービスレベル合意）だね。「中央値200ms以下、p99は1秒以下、稼働率99.9%以上」と定義し、満たせなければ顧客が返金を求められる、みたいに使う。</div></div>
+    </div>
+
+    <h3 class="blk">高いパーセンタイルが遅くなる主因：キューイング遅延</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>サーバーが同時処理できる数は少ない（CPUコア数などで制限）。少数の遅いリクエストがあると後続が待たされる。これを<span class="term" data-tip="先頭の詰まりが後続を止める現象。HOL blocking。">ヘッドオブラインブロッキング（HOLブロッキング）</span>と呼ぶ。後続が速くても前の処理待ちで全体が遅く見える。だから<b>レスポンスタイムはクライアント側で計測する</b>のが大事。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スーパーのレジで前の人が手間取ると、自分の会計は一瞬でも全体は遅い、みたいな。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにそのたとえ。負荷テストで人工的に負荷をかける時も要注意。負荷生成クライアントは、レスポンスを待たずに送り続けないといけない。前のを待ってから次を送ると、人工的にキューを短く保ってしまい計測が歪む。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🍽️ たとえ話：1組の団体客で、後ろの一人客みんなが待たされる</h4>
+      <p>厨房（CPUコア）は同時に作れる数に限りがあります。先頭で<b>大量注文の団体</b>が入ると、後ろのシンプルな一人客まで全員が待たされる――これがHOLブロッキング。だから「料理が遅い」は<b>お客の席（クライアント側）で計った時間</b>で見ないと、厨房だけ見ても本当の待ちは分かりません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>平均ではなくパーセンタイルで性能を語れると、「一部のユーザーがひどく遅い」問題を見逃さない。</li>
+        <li>SLO/SLAを数値で設計・評価できる。</li>
+        <li>「パーセンタイルを平均する」というありがちな誤りを避けられる。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.3.2 サブ：パーセンタイル値の実際 -->
+  <div class="card" id="s132b">
+    <h3 class="blk">パーセンタイル値の実際（実務のコツ）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1回のエンドユーザーリクエストを処理するのに、バックエンドサービスが<b>複数回</b>呼ばれることがある。呼び出しが並列でも、エンドユーザーは「最も遅い1回」を待つことになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1個でも遅いと全体が遅い……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>しかも複数回呼ぶほど「遅い呼び出しに当たる確率」が上がる。結果的にエンドユーザーのリクエストの大部分が遅くなる。これを<b>テイルレイテンシの増幅</b>と呼ぶ。</div></div>
+    </div>
+
+    <details class="code"><summary>テイルレイテンシの増幅</summary>
+<pre><span class="cmt"># テイルレイテンシの増幅</span>
+[エンドユーザーのリクエスト1回]
+   ├─▶ バックエンド呼び出しA（速い）
+   ├─▶ バックエンド呼び出しB（速い）
+   └─▶ バックエンド呼び出しC（たまたま遅い）★
+   → 全部そろうまで待つので、Cの遅さに引っ張られて全体が遅い</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：コース料理は「いちばん遅い一皿」で決まる</h4>
+      <p>1人前のコースを、前菜・スープ・メインの3つの担当が<b>同時に作って</b>も、お客は「3皿そろう」まで食べ始められません。どれか1皿でも遅れれば、全体が遅くなる。皿数（呼び出し回数）が増えるほど「どれか1皿が遅れる確率」が上がる――これがテイルの増幅です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ダッシュボードにパーセンタイルを出すなら、効率的に計算する必要がある。たとえば直近10分のローリングウィンドウで、1分ごとに中央値や各パーセンタイルを計算してグラフ化する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全リクエストを毎分ソートする、とか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>単純実装はそれ。非効率なら、<b>forward decay</b>・<b>t-digest</b>・<b>HdrHistogram</b>みたいに少ないCPU・メモリで近似する手がある。あと大事な注意：パーセンタイルを<b>平均してはいけない</b>。「p95を平均」は数学的に無意味。正しくは<b>ヒストグラム同士を足す</b>んだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>パーセンタイルの平均はダメ、ヒストグラムを足す。メモします……！</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>負荷増大の調べ方は「リソース固定で性能を見る」「性能固定でリソース増を見る」の2通り。</li>
+        <li>バッチはスループット、オンラインはレスポンスタイム。レイテンシ（待ち）とレスポンスタイム（全込み）は別。</li>
+        <li>性能は分布で見る。p50＝典型、p95/p99/p999＝テイルレイテンシで体験に直結。</li>
+        <li>高すぎるパーセンタイル改善は割に合わない。SLO/SLAに利用。</li>
+        <li>遅延の主因はキューイング（HOLブロッキング）。テイルレイテンシは複数呼び出しで増幅。</li>
+        <li>パーセンタイルは平均NG、ヒストグラムを加算する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.3.3 負荷への対処 ===== -->
+<section id="s133">
+  <div class="sec-head"><div class="sec-num">1.3.3</div><div><h2>負荷への対処のアプローチ</h2><span class="tag">魔法のスケーリングソースは存在しない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：スケーリングはスケールアップ（1台強化）とスケールアウト（多数に分散＝シェアードナッシング）の組み合わせ。自動で伸縮する<span class="term" data-tip="elastic=伸縮自在。負荷に応じて自動でリソースを増減する。">エラスティック</span>も便利だが手動がシンプルな面も。ステートフルな分散は難しい。万能の「魔法のスケーリングソース」はなく、負荷の形に合わせた固有設計が要る。負荷パラメータの推定が外れると努力は無駄になるので、初期は機能イテレーションを優先することも多い。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大原則として、あるレベルの負荷に適したアーキテクチャは、その<b>10倍</b>の負荷には対応できない。急成長中なら、負荷が1桁増えるたびにアーキテクチャを考え直すことになる。</div></div>
+    </div>
+
+    <h3 class="blk">スケーリングの2方向</h3>
+    <div class="grid2">
+      <div class="mini" style="border-color:#6c8cff55"><div class="ic">🏗️</div><h4>スケールアップ（垂直）</h4><p>マシン1台をより強力にする。<b>＝厨房を大きく、設備を高性能に</b></p><span class="pill">シンプル／高価</span></div>
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">🏘️</div><h4>スケールアウト（水平）</h4><p>小さめのマシンを多数並べて負荷を分散。<b>＝店舗を増やす</b>。<span class="term" data-tip="何も共有せず、独立した多数のマシンに分散する構成。">シェアードナッシング</span>とも。</p><span class="pill">大量負荷に強い</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：1店を大きくする vs 店舗を増やす</h4>
+      <p><b>スケールアップ＝今の店の厨房を増築し、超高性能オーブンを入れる</b>。話はシンプルですが、最高級設備はとても高い。<b>スケールアウト＝同じような店を何軒も出して客を分ける</b>（各店は独立して回る＝シェアードナッシング）。現実は<b>両方を実践的に混ぜる</b>のが普通。強力な店数軒のほうが、小さな店を大量に持つよりシンプルで安いこともあります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>自動で増えたりするやつもありますよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>エラスティック（伸縮自在）</b>なシステムだ。負荷の増大を検知して自動でリソースを足す。負荷の予測が難しい時に役立つ。逆に手動スケールはシンプルで、運用で予想外が起きにくい利点がある（6章のリバランシングで詳しく）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ステートレスとステートフルって違いも関係しますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大いに関係する。<b>ステートレス</b>（状態を持たない）サービスは複数マシンに分散しやすい。でも<b>ステートフル</b>（状態を持つ）データシステムを単一ノードから分散環境へ移すと、複雑さが一気に増す。だから少し前まで「DBはやむを得なくなるまで単一ノードに留める（スケールアップ）」のが通念だった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今は変わったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>分散の道具の抽象化が良くなって、少なくとも一部のアプリでは通念が変わった。将来は分散データシステムがデフォルトになると考えられてる。本書でも多くの分散データシステムを扱うよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「これを使えば何でもスケールする」魔法はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>俗に<b>魔法のスケーリングソース（magic scaling sauce）</b>と呼ぶけど、存在しない。1サイズで全部に効く汎用アーキテクチャはない。問題は読み書きの量かもしれないし、レスポンスタイム要求、アクセスパターン、それらの混在かも。たとえばスループットが同じでも「1KBを毎秒10万回」と「2GBを毎分3回」では、まったく違う設計になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>負荷の「形」が違うと設計も違う、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。スケーラブルなアーキテクチャは「何が頻繁で何がまれか」という負荷パラメータの推定の上に作られる。推定が外れると努力は良くて無駄、最悪で逆効果。だから初期のスタートアップや未検証プロダクトでは、将来の仮の負荷に備えるより<b>プロダクトの機能を素早くイテレーションする</b>ほうが大事なことが多い。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：万能の繁盛レシピはない／開店直後は味の改良が先</h4>
+      <p>「これさえ入れれば何でも繁盛する魔法のソース」は存在しません。行列の原因が<b>席不足</b>か<b>厨房の遅さ</b>か<b>仕込みの量</b>かで打つ手はまるで違う。さらに開店直後は、来るかも分からない大行列に備えて巨大厨房を作るより、<b>まずメニューを磨いて客に試す（機能のイテレーション）</b>ほうが大事なことが多いのです。</p>
+    </div>
+
+    <details class="code"><summary>スケーリングの2方向（メモ）</summary>
+<pre><span class="cmt"># スケーリングの2方向</span>
+スケールアップ(垂直のスケーリング)  : マシン1台を強力にする
+スケールアウト(水平のスケーリング)  : 小さめのマシンを多数並べて負荷を分散する
+   → 複数マシンに分散するのは「シェアードナッシング(shared-nothing)アーキテクチャ」とも呼ぶ</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>スケールアップ/アウト、エラスティック、シェアードナッシングを使い分けて議論できる。</li>
+        <li>「万能アーキテクチャはない」と理解し、負荷の形（量・サイズ・パターン）に合わせて設計できる。</li>
+        <li>初期段階で過剰なスケーリング投資をせず、機能の検証を優先する判断ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>1桁負荷が増えるたびにアーキテクチャを見直す覚悟が要る。</li>
+        <li>スケールアップ（垂直）とスケールアウト（水平＝シェアードナッシング）を実践的に混ぜる。</li>
+        <li>エラスティック（自動伸縮）は予測困難時に有効、手動はシンプル。</li>
+        <li>ステートレスは分散が楽、ステートフルは難しい。</li>
+        <li>万能アーキテクチャ（魔法のスケーリングソース）はない。負荷の形に応じた固有設計。</li>
+        <li>負荷パラメータの推定が外れると逆効果。初期は機能イテレーション優先のことも多い。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.4 メンテナンス性 ===== -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-num">1.4</div><div><h2>メンテナンス性</h2><span class="tag">作って終わりじゃない ― コストの大半は運用・保守</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ソフトのコストは初期開発より運用・保守が大きい。レガシー化を避けるには、運用性（動かしやすさ）・単純性（理解しやすさ）・進化性（変えやすさ）の3原理を念頭に設計する。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ソフトのコストは初期開発だけじゃない。運用中のメンテナンスコストがずっと続く。バグ修正、運用維持、障害調査、新プラットフォーム対応、新ユースケース対応、技術的負債の返済、新機能追加……。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>正直、レガシーの保守って人気ないですよね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>嫌われるよね。他人のミスの修正、古びたプラットフォーム、本来想定されてない使われ方……。でも保守の苦痛を最小化し、自分たちがレガシーを生み出さないよう設計はできる。そのために3つの設計原理に注意するんだ。</div></div>
+    </div>
+
+    <h3 class="blk">メンテナンス性のための3つの設計原理</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🛠️</div><h4>運用性（Operability）</h4><p>運用チームがスムーズに動かし続けやすいように。</p></div>
+      <div class="mini"><div class="ic">🧩</div><h4>単純性（Simplicity）</h4><p>新しいエンジニアが理解しやすいように（複雑さを取り除く。UIの単純さとは別物）。</p></div>
+      <div class="mini"><div class="ic">🌱</div><h4>進化性（Evolvability）</h4><p>将来の変更や予想外のユースケースに対応しやすいように（拡張性・修正容易性・プラスティシティとも）。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：長く愛される店の3条件</h4>
+      <p>開店費用より、その後<b>何年も続く運営費</b>のほうがずっと大きい。長く繁盛する店は、①スタッフが毎日<b>回しやすく</b>（運用性）、②<b>新人がすぐ覚えられ</b>（単純性）、③季節やブームに合わせて<b>メニューや内装を変えやすい</b>（進化性）。この3つを最初から意識して店を作るのです。</p>
+    </div>
+
+    <details class="code"><summary>3つの設計原理（メモ）</summary>
+<pre><span class="cmt"># メンテナンス性のための3つの設計原理</span>
+運用性(Operability)    : 運用チームがスムーズに動かし続けやすいように
+単純性(Simplicity)     : 新しいエンジニアが理解しやすいように（複雑さを取り除く。UI の単純さとは別物）
+進化性(Evolvability)   : 将来の変更や予想外のユースケースに対応しやすいように</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「作って終わり」でなく保守コストまで見越して設計判断ができる。</li>
+        <li>運用性・単純性・進化性という共通語で、保守しやすさを具体的に議論できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ソフトのコストの大半は運用・保守。</li>
+        <li>レガシー化を避けるための3原理：運用性・単純性・進化性。</li>
+        <li>簡単な解決策はないが、3原理を念頭に置くことが重要。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.4.1 運用性 ===== -->
+<section id="s141">
+  <div class="sec-head"><div class="sec-num">1.4.1</div><div><h2>運用性：運用担当者への配慮</h2><span class="tag">優れた運用は信頼性の土台</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：運用性は運用チームへの配慮。優れた運用は信頼性の土台で、モニタリング・障害対応・更新・キャパシティ計画などを担う。データシステム側は、可視化・自動化サポート・マシン非依存・よいドキュメント・優れたデフォルト・自己回復・予想可能性で運用を楽にする。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「劣悪なソフトでも優れた運用でカバーできることはあるが、運用が悪ければ優れたソフトも信頼性を保てない」と言われてきた。自動化できる部分もあるけど、その仕組みをセットアップして正しく動くか確認するのは結局人間なんだ。</div></div>
+    </div>
+
+    <h3 class="blk">優れた運用チームの責任（例）</h3>
+    <table class="t">
+      <tr><th>運用チームの主な責任</th></tr>
+      <tr><td>健全性のモニタリングと、状態が悪化したら素早く回復させる</td></tr>
+      <tr><td>障害や性能低下の原因を発見する</td></tr>
+      <tr><td>ソフトやプラットフォームを最新に保つ（セキュリティパッチ含む）</td></tr>
+      <tr><td>システム間の相互作用に注目し、危ない変更がダメージを与える前に回避する</td></tr>
+      <tr><td>将来の問題を予想し発生前に解決する（例: キャパシティプランニング）</td></tr>
+      <tr><td>デプロイ・設定管理のよいプラクティスとツールを確立する</td></tr>
+      <tr><td>プラットフォーム間移動など複雑なメンテナンス作業を行う</td></tr>
+      <tr><td>設定変更時のセキュリティ維持</td></tr>
+      <tr><td>運用で予想外が起きないようプロセスを定義し、本番の安定を保つ</td></tr>
+      <tr><td>人の出入りがあっても組織の知識を保つ</td></tr>
+    </table>
+
+    <h3 class="blk">データシステムが運用を楽にする工夫</h3>
+    <table class="t">
+      <tr><th>工夫</th></tr>
+      <tr><td>ランタイムの挙動や内部を可視化し、優れたモニタリングを提供する</td></tr>
+      <tr><td>自動化と標準ツールへの結合を十分サポートする</td></tr>
+      <tr><td>個々のマシンへの依存をなくす（停止しても全体は止まらない）</td></tr>
+      <tr><td>優れたドキュメントと分かりやすい運用モデル（「Xすると Y が起きる」）を提供する</td></tr>
+      <tr><td>デフォルトの挙動を優れたものにしつつ、管理者が上書きできる自由も残す</td></tr>
+      <tr><td>適切な場合は自己回復し、必要なら手動で状態を制御できるようにする</td></tr>
+      <tr><td>挙動を予想しやすくし、予想外をできるだけ減らす</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：店長が回しやすい店づくり</h4>
+      <p>どんなに料理が良くても、<b>店長（運用チーム）が回せなければ</b>店は続きません。良い店は、厨房の状態がひと目で分かるモニター（可視化）、自動化された洗浄機（自動化サポート）、誰か1人が休んでも回る体制（マシン非依存）、分かりやすいマニュアル（ドキュメント）、最初から良い初期設定（優れたデフォルト）、軽い不調は勝手に直る仕組み（自己回復）、そして<b>「このボタンを押すとこうなる」が予測できる</b>こと（予想可能性）を備えています。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>運用しやすさを設計段階から組み込めば、本番の安定運用につながる。</li>
+        <li>モニタリングや自己回復、予想可能性を意識したシステムを作れる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>優れた運用は信頼性の前提。自動化も人がセットアップ・確認する。</li>
+        <li>運用チームは監視・原因発見・更新・予防・デプロイ整備・知識継承などを担う。</li>
+        <li>システム側は可視化・自動化サポート・マシン非依存・よいドキュメント・優れたデフォルト・自己回復・予想可能性で運用を支援する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.4.2 単純さ ===== -->
+<section id="s142">
+  <div class="sec-head"><div class="sec-num">1.4.2</div><div><h2>単純さ：複雑さの管理</h2><span class="tag">機能を減らすことではなく「偶発的な複雑さ」を取り除く</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：単純さは複雑さの管理。複雑さは動きを遅くし保守コストとバグを増やす（巨大な泥の玉）。単純化とは機能削減ではなく、実装の都合で生じる「<span class="term" data-tip="問題そのものではなく、実装の都合だけから生じる余計な複雑さ。">偶発的な複雑さ</span>」を取り除くこと。最強の手段は抽象化で、詳細を隠して再利用と品質向上を可能にする。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>単純さ、ですか。小さいプロジェクトはシンプルなんですけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きくなるとコードが複雑になり、理解しにくくなる。関わる全員の動きを遅くし、保守コストを増やす。複雑さにはまったソフトは<b>巨大な泥の玉（big ball of mud）</b>と呼ばれることもある。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>複雑さから生じる症状の例</th></tr>
+      <tr><td>状態空間の爆発</td></tr>
+      <tr><td>モジュール間の密な結合</td></tr>
+      <tr><td>依存関係のもつれ</td></tr>
+      <tr><td>一貫性のない命名や用語</td></tr>
+      <tr><td>性能問題を解決するためのハック</td></tr>
+      <tr><td>どこかの問題を回避する特別ケースの山積み</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：継ぎ足しだらけの「ぐちゃぐちゃ厨房」</h4>
+      <p>場当たりに棚を足し、配線を引き回し、「この鍋だけは別ルール」を積み重ねた厨房は<b>巨大な泥の玉</b>。誰も全体を把握できず、新人は動けず、ちょっと触ると別のところが壊れます。<b>単純にする＝メニューを減らすことではありません</b>。「本来いらない、置き方の都合だけの混乱（偶発的な複雑さ）」を片付けることです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>単純にするって、機能を減らすことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこ誤解しやすい。機能を減らすことじゃなく、<b>偶発的な複雑さ</b>を取り除くこと。MoseleyとMarksは「（ユーザーから見た）問題そのものが持っていない、実装からだけ生じる複雑さ」と定義してる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうやって消すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最強の手段の1つが<b>抽象化</b>。優れた抽象化は実装の詳細をクリーンな外観の裏に隠す。しかも幅広いアプリで再利用できる。再利用は効率的なだけでなく、抽象化部分の品質向上が使う全アプリに恩恵を与えるから品質も上がる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体例で言うと？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>高レベル言語は機械語・CPUレジスタ・システムコールを隠す。SQLは、ディスクやメモリ上の複雑なデータ構造、複数クライアントの並行リクエスト、クラッシュ後の非整合性を隠す抽象化だ。内部では機械語を使ってるけど、僕らは直接触らずに済んでる。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ただし優れた抽象化を見つけるのは難しい。分散システムには良いアルゴリズムが多いけど、どう抽象化・パッケージ化すれば複雑さを管理できるかはまだはっきりしてない。本書はそれに注目していくよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：注文ボタン＝厨房を隠す優れた抽象化</h4>
+      <p>お客は「ハンバーグ」ボタンを押すだけ。裏でどの食材をどう焼くか（機械語）は知らなくていい――これが<b>抽象化</b>です。さらに、その「焼き方の手順書」を全店で共有（再利用）すれば、手順書を改良するたびに<b>全店の品質が一気に上がる</b>。ただし「誰でも迷わない注文ボタン」を設計するのは、実はとても難しい仕事です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>複雑さの症状（密結合・依存のもつれ・特別ケースの山）を見つけ、リファクタの優先度を判断できる。</li>
+        <li>「本質的な複雑さ」と「偶発的な複雑さ」を区別し、消すべきものを見極められる。</li>
+        <li>よい抽象化を設計・選択して、システムを理解しやすく保てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>複雑さは保守を難しくし、コスト・スケジュール超過とバグを招く（巨大な泥の玉）。</li>
+        <li>単純化＝機能削減ではなく、偶発的な複雑さ（実装由来）の除去。</li>
+        <li>抽象化が複雑さ除去の最強手段（高レベル言語、SQLなど）。</li>
+        <li>優れた抽象化を見つけるのは難しいが、本書はそれに注目する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.4.3 進化性 ===== -->
+<section id="s143">
+  <div class="sec-head"><div class="sec-num">1.4.3</div><div><h2>進化性：変更への配慮</h2><span class="tag">要求は必ず変わる ― 変えやすさを設計する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：進化性は変更への配慮。要求は必ず変わる。アジャイルやTDD・リファクタリングは変化適応に役立つが議論は小スケール中心で、本書は大規模データシステムでのアジリティ＝進化性に注目する。進化性は単純さと密接に関係する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>進化性。要求って、ずっと同じじゃないですもんね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>変わらないことはない。新しい学び、想定外のユースケース、ビジネス優先順位の変化、ユーザーの新機能要望、プラットフォーム置き換え、法規制の変更、成長によるアーキテクチャ変更……。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>変化に対応する方法ってあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>組織のプロセスでは<span class="term" data-tip="変化に素早く適応する開発の進め方。">アジャイル</span>な働き方が変化適応のフレームワークをくれる。アジャイルのコミュニティは<span class="term" data-tip="test-driven development=テスト駆動開発。先にテストを書いてから実装する。">TDD</span>やリファクタリングなど、変化の多い環境で役立つツールやパターンを開発した。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でもアジャイルって、小さいスケールの話が多くないですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、議論の多くは1アプリ内の数ファイルみたいな小さいローカルスケール。本書が探すのは、特徴の違う複数アプリ・サービスから成る<b>もっと大規模なデータシステム</b>でアジリティを高める方法だ。さっきのTwitterのタイムラインを方法1から方法2へ「リファクタ」するにはどうする？ みたいな話。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>進化性って、さっきの単純さと関係しますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>密接に関係する。単純で理解しやすいシステムは複雑なものより修正しやすい。でもこの概念はすごく重要だから、本書ではデータシステムのレベルのアジリティを<b>進化性</b>という別名で呼ぶことにするんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🍽️ たとえ話：模様替えしやすい店は長生きする</h4>
+      <p>季節・流行・客の好みは必ず変わります。<b>テーブルを動かしやすく、メニューを差し替えやすい店</b>は、ブームが来ても素早く対応できる。これが進化性。そして、もともと<b>シンプルで分かりやすい店ほど模様替えも簡単</b>――だから単純さと進化性は仲良しなのです。小さなテーブル1卓の入れ替え（小スケール）だけでなく、<b>チェーン全体の業態転換（大規模）</b>をどうやるかが本書のテーマです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「要求は必ず変わる」前提で、変更しやすい構造を最初から意識できる。</li>
+        <li>単純さへの投資が将来の進化性につながると理解し、設計の優先度を上げられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>要求は常に変化する（学習・新ユースケース・優先順位変更・規制・成長など）。</li>
+        <li>アジャイル・TDD・リファクタリングが変化適応に役立つが、議論は小スケール中心。</li>
+        <li>本書は大規模データシステムのアジリティ＝進化性に注目する。</li>
+        <li>進化性は単純さと密接に関係する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== まとめ ===== -->
+<section id="sumchap">
+  <div class="sec-head"><div class="sec-num">📋</div><div><h2>まとめ</h2><span class="tag">機能的要求と非機能的要求、そして3本柱</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：アプリは機能的要求と非機能的要求の両方を満たす必要がある。本書の3本柱は信頼性（フォールトに耐える）・スケーラビリティ（負荷増大に対応）・メンテナンス性（運用性・単純さ・進化性）。簡単な解はないが、繰り返し現れるパターンを以降の章で学ぶ。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリが役立つには<b>機能的な要求</b>（保存・取り出し・検索・処理など、何をするか）と<b>非機能的な要求</b>（セキュリティ・信頼性・コンプライアンス・スケーラビリティ・互換性・メンテナンス性など、どんな性質か）の両方が要る。本書で詳しく見たのは後者のうち3つ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🛡️</div><h4>信頼性</h4><p>フォールト（ハード=ランダム／ソフト=システマティック／人=不可避）があっても正しく動く。耐障害性の手法でエンドユーザーから隠せる。</p></div>
+      <div class="mini"><div class="ic">📈</div><h4>スケーラビリティ</h4><p>負荷増大でも性能を保つ戦略を持つ。負荷とパフォーマンスを定量化（Twitterのタイムライン、レスポンスタイムのパーセンタイル）。</p></div>
+      <div class="mini"><div class="ic">🔧</div><h4>メンテナンス性</h4><p>エンジニア・運用チームの暮らしを良くする。よい抽象化で複雑さを減らし、運用性で可視化と管理を提供する。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>残念ながら、これらを高める簡単な方法はない。でも、いろんなアプリに繰り返し現れるパターンやテクニックはある。この後の章でデータシステムの例を見ながら分析していく。第Ⅲ部では、複数コンポーネントが協調するシステムのパターンも見るよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんだか、これから読む地図をもらった気分です。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい言い方だ。今日の3つは、これから何度も戻ってくる羅針盤になるからね。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>要求には機能的要求と非機能的要求がある。本書は非機能的要求の3つに注目。</li>
+        <li>信頼性：ハード（ランダム）・ソフト（システマティック）・人（不可避）のフォールトに耐える。</li>
+        <li>スケーラビリティ：負荷とパフォーマンスを定量化し、負荷増大でも性能を保つ。</li>
+        <li>メンテナンス性：運用性・単純さ・進化性。よい抽象化で複雑さを減らす。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ（振り返り） ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で5つを言ってみる</span></div></div>
+
+  <div class="card">
+    <div class="cycle">
+      <div class="node"><h4>① データ指向</h4><p>今のアプリはCPUより、データの量・複雑さ・変化の速さが課題。DB・キャッシュ・検索・ストリーム・バッチを組み合わせる。組んだ瞬間きみは設計者。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 信頼性</h4><p>問題（フォールト）が起きても正しく動き続ける。フォールトは部品の不具合、障害は全体の停止。ハード・ソフト・人の三方向から来る。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ スケーラビリティ</h4><p>負荷増大に対応する能力。負荷は負荷パラメータで表し、性能はパーセンタイル（p50・p95・p99・p999）で測る。テイルレイテンシが体験に直結。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 万能はない</h4><p>魔法のスケーリングソースは存在しない。負荷の形に合わせて固有に設計。スケールアップとスケールアウトを実践的に混ぜ、エラスティックも道具の1つ。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>⑤ メンテナンス性</h4><p>運用性・単純さ・進化性。偶発的な複雑さを抽象化で取り除く。</p></div>
+    </div>
+    <div class="loopback">🧭 この5つを羅針盤に、次の章から具体的な道具の中身へ潜っていく</div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ「分かっていなかった部分」</span></div></div>
+
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>フォールトと障害</div>
+      <p style="font-size:14px;margin:0">「フォールト」と「障害」の違いを、初めて聞く人に説明してください。また、信頼性のあるシステムを作るうえで、どちらをゼロにしようとするのが現実的かも述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">フォールトは「部品が決められた動きをしていない状態（不具合の元）」で、障害は「システム全体がユーザーに必要なサービスを提供できなくなった状態」です。フォールトは部品レベル、障害は全体レベルの話です。障害をゼロにするのは不可能なので、現実的には「フォールトが起きても、それが障害にまで発展しないようにする（耐障害性を持たせる）」ことを目指します。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ フォールト＝部品が仕様を満たさない不具合、と説明できている ／ □ 障害＝システム全体がサービスを止める、と説明できている ／ □ 障害ゼロは不可能で、フォールトを障害に発展させないのが目標、と述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>パーセンタイルと平均</div>
+      <p style="font-size:14px;margin:0">レスポンスタイムを「平均」で見るより「パーセンタイル（中央値やp99など）」で見るほうがよいのはなぜですか。自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">平均は1つの数字に押し込むため、「一部のユーザーがどれくらいひどく遅いか」が見えなくなります。外れ値が少数あると平均は引っ張られますが、何人が遅延を体験しているかは分かりません。中央値（p50）は「典型的な待ち時間」を、p95やp99などのテイルレイテンシは「最も遅い層の体験」を表します。遅い層には重要顧客が含まれることが多く、ユーザー体験に直結するため、パーセンタイルで見るほうが実態をつかめます。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 平均は「何人がどれくらい遅延を体験しているか」が分からない、と指摘している ／ □ 中央値＝典型値、高いパーセンタイル＝テイルレイテンシ、と区別している ／ □ テイルレイテンシがユーザー体験に直結する（遅い層に重要顧客がいる等）と述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>スケールアップとスケールアウト</div>
+      <p style="font-size:14px;margin:0">スケールアップ（垂直）とスケールアウト（水平）の違いを説明し、それぞれの長所・短所を1つずつ挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">スケールアップは1台のマシンをより強力なものにすること、スケールアウトは比較的小さなマシンを多数並べて負荷を分散すること（シェアードナッシング）です。スケールアップはシステムがシンプルになる長所がありますが、ハイエンドのマシンは非常に高価という短所があります。スケールアウトは大量の負荷に対応できる長所がありますが、特に状態を持つ（ステートフルな）システムでは分散による複雑さが増す短所があります。実際は両者を実践的に混ぜて使います。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ スケールアップ＝1台を強力に、スケールアウト＝多数に分散、と説明できている ／ □ スケールアウト＝シェアードナッシングに触れている ／ □ それぞれの長所・短所を具体的に挙げ、実際は混ぜると述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>信頼性を脅かす3種類のフォールト</div>
+      <p style="font-size:14px;margin:0">システムの信頼性を脅かすフォールトには大きく3種類あります。それらを挙げ、それぞれの特徴を簡単に説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①ハードウェアのフォールト：ディスククラッシュや停電など。基本的にランダムで互いに独立に起きます。②ソフトウェアのエラー：バグやリソース枯渇など。システマティックでノード間で相関するため、同時多発しやすく障害につながりやすいです。③ヒューマンエラー：設定ミスなど。人は必ず間違えるため不可避で、実は障害原因の最多です。対策はミスしにくい設計・サンドボックス分離・テスト・速いロールバック・モニタリングの組み合わせです。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ハード・ソフト・人間の3種を挙げている ／ □ ハードはランダム/独立、ソフトはシステマティック/相関、人は不可避、と特徴を述べている ／ □ ヒューマンエラーが障害原因の最多であることに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>メンテナンス性の3原理</div>
+      <p style="font-size:14px;margin:0">メンテナンス性を高めるための3つの設計原理を挙げ、それぞれが何を目指すものか説明してください。「単純さ」については、「機能を減らすこと」との違いにも触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">3原理は運用性・単純性・進化性です。運用性は運用チームがシステムをスムーズに動かし続けやすくすること、単純性は新しいエンジニアが理解しやすくすること、進化性は将来の変更や予想外のユースケースに対応しやすくすることを目指します。単純性は機能を減らすことではなく、実装の都合だけから生じる「偶発的な複雑さ」を取り除くことです。その最強の手段が抽象化で、詳細を隠して理解しやすく、再利用しやすくします。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 運用性・単純性・進化性の3つを挙げている ／ □ それぞれの目的（動かしやすさ・理解しやすさ・変えやすさ）を説明できている ／ □ 単純さ＝機能削減ではなく偶発的な複雑さの除去、抽象化が手段、と述べている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして体感する</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>自分のアプリの負荷パラメータを書き出す</h4><p>毎秒リクエスト数・読み書き比率・同時ユーザー数などを実際に測り、「鍵となる負荷パラメータ」は何かを考えてみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>パーセンタイルを実感する</h4><p>手元のAPIのレスポンスタイムを100回ほど測り、平均・p50・p95・p99を計算して、平均とテイルの差を体感（スプレッドシートでも十分）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>SLO/SLAの実例を読む</h4><p>使っているクラウド（例: AWSやGCP）の公開SLAを読み、どんなパーセンタイルや稼働率で約束しているか確認しましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>「巨大な泥の玉」を探す</h4><p>過去に触ったコードで「複雑さの症状」（密結合・特別ケースの山など）が出ていた箇所を1つ思い出し、どんな抽象化で単純化できたかを考えてみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次章へ</h4><p>2章「データモデルとクエリ言語」では、データを「どう表現し、どう問い合わせるか」を学びます。本章の3原理（特に単純さと進化性）が、データモデル選びにどう効いてくるかを意識しながら読み進めてください。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『データ指向アプリケーションデザイン』第1章 図解 ／ たとえ話メタファー：🍽️ 人気レストランの開店から繁盛まで ／ 信頼性・スケーラビリティ・メンテナンス性</p>
+
+</div>
+</body>
+</html>

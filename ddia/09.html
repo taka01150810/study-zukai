@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第9章 一貫性と合意 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第9章</span>
+  <h1>一貫性と合意</h1>
+  <p>「3台に同じデータを置いたのに、読むたびに答えが違う」「2台が両方とも自分がリーダーだと言い張る」――壊れる前提の分散システムでも正しく動かすために、<b>線形化可能性・順序の保証・合意</b>という3つの道具を、新人ハルとベテラン カイ先輩の対話で根っこから学びます。</p>
+  <div class="badge-row">
+    <span class="badge">⚖️ たとえ話は「委員会の意思決定（全員で合意を取る会議）」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a href="#s91">9.1 一貫性の保証</a>
+  <a href="#s92">9.2 線形化可能性</a>
+  <a class="sub" href="#s921">9.2.1 線形化可能にする条件は？</a>
+  <a class="sub" href="#s921b">　└ 線形化可能性と直列化可能性</a>
+  <a class="sub" href="#s922">9.2.2 線形化可能性への依存</a>
+  <a class="sub" href="#s923">9.2.3 線形化可能なシステムの実装</a>
+  <a class="sub" href="#s924">9.2.4 線形化可能にすることによるコスト</a>
+  <a href="#s93">9.3 順序の保証</a>
+  <a class="sub" href="#s931">9.3.1 順序と因果関係</a>
+  <a class="sub" href="#s932">9.3.2 シーケンス番号の順序</a>
+  <a class="sub" href="#s933">9.3.3 全順序のブロードキャスト</a>
+  <a href="#s94">9.4 分散トランザクションと合意</a>
+  <a class="sub" href="#s941">9.4.1 アトミックなコミットと2PC</a>
+  <a class="sub" href="#s942">9.4.2 分散トランザクションの実際</a>
+  <a class="sub" href="#s943">9.4.3 耐障害性を持つ合意</a>
+  <a class="sub" href="#s944">9.4.4 メンバーシップと協調サービス</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードや図です。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">⚖️</div><div><b>たとえ話はぜんぶ「委員会の会議」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「みんなで合意を取る委員会の会議」</b>に置きかえて説明します。サーバー＝委員、データ＝議事録、リーダー＝議長、合意＝過半数の賛成です。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、委員会の会議のたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">一貫性 <span>consistency</span></div><p>複数のコピー（委員）の内容がそろっていること。委員会でいうと<b>全員が同じ議事録を持っている</b>状態。</p></div>
+    <div class="item"><div class="w">結果整合性 <span>eventual consistency</span></div><p>「いつかはそろう」だけの弱い約束。会議のメモが<b>あとで配られて最終的に全員同じになる</b>が、届く時刻はバラバラ。</p></div>
+    <div class="item"><div class="w">線形化可能性 <span>linearizability</span></div><p>コピーがたくさんあっても「1冊の公式議事録」に見せる最強クラスの約束。<b>誰が見ても今この瞬間の最新版が見える</b>。</p></div>
+    <div class="item"><div class="w">最新性の保証 <span>recency guarantee</span></div><p>「書いた直後は以降の全員が新しい値を見られる」という保証。<b>議長が決定を記した直後は、誰が議事録を開いてもその決定が載っている</b>。</p></div>
+    <div class="item"><div class="w">レプリカ <span>replica</span></div><p>同じデータのコピーを持つ各サーバー。委員会の<b>各委員</b>。</p></div>
+    <div class="item"><div class="w">スプリットブレイン <span>split brain</span></div><p>2台が両方「自分がリーダー」と思い込む事故。会議に<b>議長が2人いて両方が勝手に決定を下す</b>大混乱。</p></div>
+    <div class="item"><div class="w">因果関係 <span>causality</span></div><p>原因が結果より先、という前後のつながり。<b>質問より回答が先には来ない</b>、発言の前後関係。</p></div>
+    <div class="item"><div class="w">全順序／半順序</div><p>全順序＝任意の2つに必ず前後がつく（1本の議事録）。半順序＝並行な発言は前後がつけられない（枝分かれ）。</p></div>
+    <div class="item"><div class="w">ランポートタイムスタンプ</div><p>(カウンタ, 委員ID)で全部の発言に番号をふり、見た最大値を持ち回る方式。<b>発言の通し番号</b>。</p></div>
+    <div class="item"><div class="w">全順序ブロードキャスト</div><p>全委員に<b>同じ議題を同じ順番で確実に配る</b>仕組み。配った時点で順番が確定する。</p></div>
+    <div class="item"><div class="w">合意 <span>consensus</span></div><p>全委員が1つの決定に同意し、それを覆さないこと。<b>過半数の賛成で議題を可決</b>する。</p></div>
+    <div class="item"><div class="w">2相コミット <span>2PC</span></div><p>幹事が全員に「OK？」を確認してから確定する方式。<b>幹事＝コーディネータ</b>。</p></div>
+    <div class="item"><div class="w">コーディネータ <span>coordinator</span></div><p>2PCで取りまとめる調整役。委員会の<b>幹事</b>。クラッシュすると全員が待たされる。</p></div>
+    <div class="item"><div class="w">未確定 <span>in doubt</span></div><p>幹事が落ちて「可決か否決か」がわからず動けない状態。<b>幹事待ちで身動きできない委員</b>。</p></div>
+    <div class="item"><div class="w">クオラム <span>quorum</span></div><p>決定に必要な最低人数（普通は過半数）。<b>会議が成立する定足数</b>。</p></div>
+    <div class="item"><div class="w">エポック番号 <span>epoch</span></div><p>議長の「任期番号」。新しく議長を選ぶたびに1つ増える。<b>大きい任期の議長が優先</b>。</p></div>
+    <div class="item"><div class="w">CAP定理</div><p>ネット分断時に「一貫性か可用性か」を選ばされるという話。<b>会議室が2つに分断されたら、止めるか・別々に進めるか</b>。</p></div>
+    <div class="item"><div class="w">ZooKeeper / etcd</div><p>合意や障害検出を肩代わりする協調サービス。委員会の<b>事務局</b>。リーダー選出や役割分担を仕切る。</p></div>
+    <div class="item"><div class="w">compare-and-set <span>CAS</span></div><p>「今が古い値ならアトミックに新しい値にする」操作。<b>空席なら予約、埋まっていれば失敗</b>。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>新人エンジニアのハルは、複数のサーバーに同じデータをコピーして持つ「分散システム」を任されました。ところが「同じデータを読んだはずなのにサーバーによって答えが違う」「2台が両方とも『自分がリーダーだ』と言い張ってデータが壊れた」といったトラブルに次々ぶつかります。夜のツバサ社、コーヒー片手のカイ先輩が「それは分散システムの一番奥の話だね」とほほえみます。8章で「分散システムでは何もかもがおかしくなる」ことを学んだ2人は、いよいよ「壊れる前提でも正しく動かす」ための道具――<b>線形化可能性・順序の保証・合意</b>――に挑みます。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：分散システムは「壊れる」のが当たり前。その上で正しく動かすには、便利な「保証（＝約束）」を1回だけきちんと実装し、アプリにはその約束だけを信じさせるのが賢い。主役は3つ。①<b>線形化可能性</b>（コピーがたくさんあっても「コピーは1つだけ」に見せる強い約束）、②<b>順序の保証</b>（どのイベントが先か後かをそろえる仕組み）、③<b>合意</b>（全ノードが1つの決定に同意し、覆さない）。実は②③①は深くつながり、最後はすべて「合意」という1つの難問に行き着く。</p>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：これから「委員会の会議」の話をします</h4>
+      <p>この章を通して、サーバー＝<b>委員</b>、データ（コピー）＝<b>各委員が持つ議事録</b>、リーダー＝<b>議長</b>、合意＝<b>過半数の賛成で決める</b>、に置きかえて読みます。よい会議とは「① 全員の議事録が食い違わない（一貫性）、② 議長が1人だけに保たれる（合意）、③ 議題が全員に同じ順番で配られる（全順序ブロードキャスト）」会議。この「みんなで足並みをそろえる」苦労が、この章ぜんぶを貫く合言葉です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>致命的バグを避けられる</b>：「リーダーが2人になる（スプリットブレイン）」「お金が二重に引き落とされる」は、一貫性と合意を理解しないまま組むと必ず起きる。</li>
+        <li><b>代償を見極められる</b>：「強い一貫性が欲しい」と安易に言いがちだが、強い保証はパフォーマンスや可用性の代償を伴う。代償を知れば必要な保証だけ選べる。</li>
+        <li><b>道具の存在理由が腹落ちする</b>：ZooKeeperやetcdが「なぜ存在するのか」「何を解決しているのか」がわかる。</li>
+        <li><b>自前実装の地雷を避けられる</b>：「自前で合意アルゴリズムを書く」を避け、実績ある道具に任せる判断ができる。</li>
+      </ul>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、3台に同じデータをコピーしたのに、読み取るサーバーによって新しい値だったり古い値だったりするんです。バグですか……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>いや、それはバグじゃなくて「仕様」かもしれない。8章で「分散システムは何もかもおかしくなる」って話をしたよね。パケットはロストするし、順序は狂うし、クロックもあてにならない。今日はその上で、それでも正しく動かすための「約束ごと（保証）」を学ぶんだ。一番抽象的で、一番面白い回だよ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>7章のトランザクションを思い出して。「クラッシュは起きない（原子性）」みたいな便利な約束を1回だけ実装すれば、アプリはそれを信じるだけで済んだろ。今日も同じ作戦。分散システム特有の問題を隠す「抽象概念」を探す。その最重要選手が<span class="term" data-tip="全ノードが何かに同意すること。委員会でいうと過半数の賛成で議題を可決すること。">合意（consensus）</span>なんだ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.1 ===== -->
+<section id="s91">
+  <div class="sec-head"><div class="sec-num">9.1</div><div><h2>一貫性の保証</h2><span class="tag">レプリカは一時的にズレる ― 「最終的にそろう」だけでは弱い</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：レプリケーションを使うとレプリカ間で一時的に値がズレる。たいていのDBは「最終的にはそろう」という弱い保証（<b>結果整合性／収束性</b>）しか出さず、いつそろうかは保証しない。普通の変数の感覚で扱うとバグる。だからもっと強い一貫性モデルを学ぶ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも、なんでサーバーによって答えが違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>5章でやった「レプリケーションラグ」だね。書き込みが各サーバー（レプリカ）に届く時刻がバラバラだから、ある瞬間に2台を見比べると違うデータが入っている。シングルリーダーでもマルチリーダーでもリーダーレスでも、レプリケーションを使う以上は起きる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、ずっとバラバラのままなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、たいていのDBは少なくとも<span class="term" data-tip="最終的には整合する、という弱い保証。いつそろうかは保証されない。">結果整合性</span>を提供する。「書き込みを止めてしばらく待てば、最終的にはすべての読み取りが同じ値を返す」という約束だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「最終的に」って、いつですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが弱点。<b>いつ</b>収束するかは何も保証されてない。だから「収束性」と呼んだ方が正確かもね。値を書いた直後に読み直しても、別のレプリカに飛んで古い値が返るかもしれない（「自分が書いた内容の読み取り」問題）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、アプリを書く側からするとかなり困りますね。普通の変数なら、代入した直後に読めば必ずその値が返るのに。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにそこ。表面はただの変数に見えて、中身はずっと複雑なセマンティクス（意味づけ）を持つ。しかもこの手のバグは、ほとんどの時間は問題なく動くから目立たない。ネットワークが切れたときや並行性が高いときだけ表面化する。テストで見つけにくい、たちの悪いやつだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：会議メモはあとで配られて、最終的に全員そろう</h4>
+      <p>委員会で決まったことを、書記が各委員に<b>あとからメモで配る</b>と考えてください。最終的には全員が同じメモを持ちますが、配達のタイミングは委員によってバラバラ（結果整合性）。だから自分が発言した直後に隣の委員のメモを覗くと、まだ古い内容のことがあります。<b>「いつ全員そろうか」は誰も約束していない</b>のが弱点です。</p>
+    </div>
+
+    <p>カイ先輩はホワイトボードに、この章で見ていく3つの大テーマを書きました。</p>
+    <details class="code"><summary>ホワイトボードのメモ：この章の3大テーマ</summary>
+<pre><span class="cmt"># この章で見ていく3つの大テーマ</span>
+1. 線形化可能性(linearizability) : 最も強い一貫性モデルの1つ。長所と短所を見る
+2. 順序の保証                    : イベントの前後（因果律・全順序）をどうそろえるか
+3. 分散トランザクションと合意    : 原子的にコミットする方法 → 合意の問題へ</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>注意。7章の「分離レベル（直列化可能性など）」と、今日の「分散の一貫性」は似てるけど別物。トランザクションの分離は「並行実行のレース条件を避ける」のが目的、分散の一貫性は「遅延や障害のときにレプリカの状態をそろえる」のが目的。重なる部分はあるけど注目点が独立してるんだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「書いた直後に読んでも古い値が返ることがある」という分散特有の落とし穴を最初に知っておける。</li>
+        <li>結果整合性のバグが「テストで見つかりにくい」理由（障害時・高並行時だけ出る）を理解し、警戒できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>レプリケーションするとレプリカ間で値がズレる（レプリケーションラグ）。</li>
+        <li>結果整合性＝「最終的にはそろう」だけの弱い保証。いつそろうかは不明。</li>
+        <li>普通の変数とは違うセマンティクスなので、過剰な期待をしない。</li>
+        <li>この章ではより強い一貫性モデル（線形化可能性など）を学ぶ。分離レベルとは別概念。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.2 線形化可能性 ===== -->
+<section id="s92">
+  <div class="sec-head"><div class="sec-num">9.2</div><div><h2>線形化可能性</h2><span class="tag">コピーがたくさんあっても「1冊の公式議事録」に見せる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：線形化可能性＝「コピーは1つだけに見せる」最強クラスの約束。最新性を保証するので、誰かが書いた直後は、以降の全員が新しい値を見る。サッカー結果の例で「後に操作した人が古い値を見る」のは違反。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>では、一番強いという「線形化可能性」って、結局なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一言でいうと「<b>データのコピーが1つしかないように見せる</b>」約束だ。実際には3台にコピーがあっても、アプリからは1台のように見える。だからレプリケーションラグを気にしなくていい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コピーが1つに見える……？ 具体的には？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるクライアントの書き込みが成功した瞬間から、以降に読むすべてのクライアントは、その最新の値を必ず見られる。古い値は返さない。つまり線形化可能性とは<span class="term" data-tip="書き込み成功後は、それ以降の全読み取りが必ず新しい値を返すという保証。">最新性の保証（recency guarantee）</span>なんだ。別名がいっぱいあって、原子的一貫性・強い一貫性・即時一貫性・外部一貫性、ぜんぶほぼ同じものを指す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>逆に「線形化可能じゃない」例を見せてもらえますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい質問。サッカーの試合結果サイトを考えよう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：1冊の公式議事録なら、誰が見ても同じ最新版</h4>
+      <p>線形化可能性は、委員会に<b>たった1冊の公式議事録</b>があり、議長が決定を記した<b>その瞬間</b>に反映される、という状態です。誰がいつ開いても、必ず最新の決定が載っています。実際にはコピー（各委員のメモ）が3冊あっても、<b>「1冊しかない」かのように振る舞わせる</b>のが線形化可能性。だから「さっき決まった後に開いたのに古い」ことは絶対に起きません。</p>
+    </div>
+
+    <p>線形化可能性を「持たない」サッカー結果サイトの例です。アリスが最新スコアを見て声に出した「後に」ボブがリロードしたのに、古い結果が返ってしまいます。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>アリス：スマホでリロード</h4><p>最新の最終スコアが見える！ →「決まったよ！」と声に出す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>ボブ：アリスの声を聞いた「後で」リロード</h4><p>古いレプリカに飛ぶ →「まだ試合中」と表示。
+        <div class="branch ng">❌ ボブはアリスの「後に」操作したのに古い結果を見た＝線形化可能性の違反。</div></p></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もし2人が<b>同時に</b>リロードしたなら、結果が違っても驚かない。サーバーで処理された正確な時刻はわからないからね。でもボブは「アリスが叫んだ<b>後に</b>」タップしたとわかってる。だから少なくともアリスと同じ新しさを期待していい。なのに古い結果が返った。これが違反だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あー、「後にやったのに古い」ってのが問題なんですね。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「コピーが1つに見える」という強い直感的モデルで考えられるので、設計やデバッグがしやすい。</li>
+        <li>「最新性の保証」という言葉で、何が壊れたら違反なのかを明確に語れる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>線形化可能性＝データのコピーが1つだけ・全操作がアトミックに見えるようにする保証。</li>
+        <li>別名は多い（原子的/強い/即時/外部一貫性）が中身はほぼ同じ。</li>
+        <li>本質は最新性の保証。書いた直後は全員が新しい値を見られる。</li>
+        <li>「後に操作したのに古い値」が典型的な違反例（サッカー結果）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.2.1 ===== -->
+<section id="s921">
+  <div class="sec-head"><div class="sec-num">9.2.1</div><div><h2>システムを線形化可能にする条件は？</h2><span class="tag">新しい値が一度見えたら、もう古い値には戻れない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：各操作はある1点でアトミックに効力を持つ。新しい値が一度見えたら後戻り禁止。送信順と処理順は別でよい（並行な操作は柔軟に並べ替えてよい）が、処理順は一直線に前進する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「コピーが1つに見える」を、もっとカチッと定義できますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>図で考えよう。レジスタ（register、ここでは1つのキーや行やドキュメント）_x_に、3人のクライアントが並行に読み書きする。操作は3種類だ。</div></div>
+    </div>
+
+    <p>操作には<b>読む（read）</b>・<b>書く（write）</b>・<b>compare-and-set（CAS、今が指定値なら書き換える）</b>の3種類があります。CASは委員会でいうと「<b>その席がまだ空席なら予約、埋まっていれば失敗</b>」のような確認つきの書き込みです。</p>
+    <details class="code"><summary>レジスタ x への3種類の操作</summary>
+<pre><span class="cmt"># レジスタ x への3種類の操作</span>
+read(x) ⇒ v               <span class="cmt"># xを読んだら値vが返った</span>
+write(x, v) ⇒ r           <span class="cmt"># xにvを書いた。rは結果（ok か error）</span>
+cas(x, v_old, v_new) ⇒ r  <span class="cmt"># compare-and-set。今のxがv_oldと等しければアトミックにv_newにする</span>
+                          <span class="cmt"># 違えば変更せずerror（並行に書き換えられていないかチェックできる）</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各リクエストは「棒」で表す。棒の左端＝送信した時刻、右端＝レスポンスを受け取った時刻。ネットワーク遅延があるから、DBが処理した正確な瞬間はわからない。わかるのは「棒の左端と右端の間のどこかで処理された」ということだけだ。</div></div>
+    </div>
+
+    <details class="code"><summary>図：書き込みの前後で読み取り結果が決まる</summary>
+<pre>時間 ──────────────────────────────────────────▶
+クライアントC:   write(x,1) [========================]   （xを0→1に）
+クライアントA: read[==](=0) ........... read[====](=?)  read[==](=1)
+クライアントB:                      read[====](=?)
+           ↑書き込み前の読みは確実に0   ↑書き込みと重なる読みは0か1   ↑書き込み後の読みは確実に1</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>書き込みの前後で返る値が決まるのはわかります。重なってる読み取りは0か1のどっちもありえる、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。でもそれだけだと足りない。「書き込み中の読みは0か1のどっちでもいい」を野放しにすると、読むたびに新→旧→新→旧とチラチラ入れ替わるかもしれない。それは「コピーが1つ」らしくない。だからもう1つ制約を足す。</div></div>
+    </div>
+
+    <details class="code"><summary>追加の制約（これが線形化可能性のキモ）</summary>
+<pre><span class="cmt"># 追加の制約（これが線形化可能性のキモ）</span>
+ある読み取りが新しい値1を返したら、それ以降のすべての読み取りは
+（同じクライアントでも別のクライアントでも）必ず1を返さなければならない。
+→ つまり、どこか1点でxはアトミックに0→1へ切り替わったと考えられる。
+   いったん新しい値が見えたら、もう古い値には戻れない。</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：議事録は前のページに書き戻せない</h4>
+      <p>公式議事録は<b>追記していくノート</b>です。議長が「議案Aは可決」と記した瞬間に効力を持ちます。一度「可決」と書かれたら、後から開いた委員は全員「可決」を見る――<b>前のページに戻って「まだ審議中」に書き換えることはできません</b>。並行して出された動議は議長が好きな順に並べてよいけれど、いったん記録した順序は一直線に前へ進むだけ。これが線形化可能性です。</p>
+    </div>
+
+    <details class="code"><summary>複雑な例（read / write / cas が混在）での注目点</summary>
+<pre><span class="cmt"># 複雑な例（read / write / cas が混在）での注目点</span>
+- 送信順と処理順は違ってよい : Bがread送信→Dがwrite(0)→Aがwrite(1)の順に送っても、
+                              Bの読みに1が返るのはOK（DB内ではD→A→Bの順に処理されたと解釈）
+- okレスポンスの遅延もOK    : Aがwrite(1)の成功通知を受け取る「前」にBが1を読んでも問題ない
+                              （書く前に読めたのではなく、ok通知がネット上で遅れただけ）
+- 分離は想定しない          : 値はいつでも他クライアントに書き換えられる。Cが1を読み次に2を読むのは、
+                              間にBが書き換えたから。casを使えば並行な書き換えをチェックできる
+- 線形化できない読み取り    : Aが先に新しい値4を読んだ後で、Bがそれより古い2を読むのは違反
+                              （Aより後なのに古い = アリスとボブと同じ状況）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、「送信順」と「処理順」は別で、処理順が一直線に前進できればいい。でも一度新しい値が見えたら後戻りは絶対ダメ、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。リクエストとレスポンスのタイミングを全部記録して、矛盾なく一直線に並べられるかをチェックすれば、線形化可能かどうかテストできる（計算は重いけどね）。</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 線形化可能性と直列化可能性 ===== -->
+  <div class="card" id="s921b">
+    <h3 class="blk">線形化可能性と直列化可能性 ― 名前が似すぎて混乱するペア</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「線形化可能性（linearizability）」と7章の「直列化可能性（serializability）」って、名前が似すぎて混乱します……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>みんな混同する。でも保証する内容が全然違うから、しっかり区別しよう。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>用語</th><th>何を保証するか</th></tr>
+      <tr><td><b>直列化可能性</b></td><td>トランザクションの分離性。複数オブジェクトを読み書きする複数トランザクションが「何らかの順序で1個ずつ順番に実行された」のと同じ結果になる保証。その順序は実際の実行順と違ってもよい。</td></tr>
+      <tr><td><b>線形化可能性</b></td><td>個々のオブジェクトの読み書きにおける「最新性」の保証。複数操作をまとめないので、追加手段なしでは書き込みスキューは防げない。</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：議題の進め方の約束 vs 議事録の最新さの約束</h4>
+      <p>直列化可能性は「<b>複数の議題を、まとめて1つずつ順番に審議したかのように扱う</b>」会議運営の約束。順番は実際の発言順と違っても構いません。線形化可能性は「<b>議事録に書いた決定が、その瞬間から全員に最新版として見える</b>」という記録の鮮度の約束。<b>両方そろう</b>と「厳密な直列化可能性」になります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>両方を同時に提供することもできて、それは<b>厳密な直列化可能性（strict serializability）</b>とか「強い単一コピーの直列化可能性（strong-1SR）」と呼ばれる。2相ロック（2PL）や完全な順次実行は、線形化可能性も持つ典型例だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、直列化可能なら必ず線形化可能なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや。<b>直列化可能なスナップショット分離（SSI）</b>は線形化可能じゃない。SSIは一貫したスナップショット（ある時点の断面）から読むけど、その断面以降の書き込みは含まれない。だから「最新の値」が読めず、最新性を破る。ここが落とし穴だね。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「送信順」と「効力を持った処理順」を分けて考えられるようになり、並行処理の挙動を正しく読み解ける。</li>
+        <li>似て非なる「線形化可能性」と「直列化可能性」を区別でき、「直列化可能だから最新が読める」という誤解を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>各操作はある1点でアトミックに効力を持つ。新しい値が一度見えたら後戻り禁止。</li>
+        <li>送信順と処理順は別でよい（並行な操作は柔軟に並べ替えてよい）。</li>
+        <li>直列化可能性＝トランザクションの順序保証、線形化可能性＝個々オブジェクトの最新性保証。</li>
+        <li>両方そろうと厳密な直列化可能性。SSIは線形化可能ではない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.2.2 ===== -->
+<section id="s922">
+  <div class="sec-head"><div class="sec-num">9.2.2</div><div><h2>線形化可能性への依存</h2><span class="tag">これがないとシステムが正しく動かない3つの場面</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：線形化可能性が本当に要る場面は、①リーダー選出/ロック（スプリットブレイン防止）、②厳密なユニーク制約や残高・在庫・座席（全ノードが同意する単一の最新値が必要）、③クロスチャネル依存（複数の通信経路があるとレース条件が起き、最新性がないと食い違う）。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>サッカーの結果が数秒古いくらいなら困らない気もします。線形化可能性って、本当に必要な場面あるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい疑問。サッカーは大した話じゃない。でも、これがないとシステムが<b>正しく動かない</b>分野が実在する。3つ見ていこう。</div></div>
+    </div>
+
+    <h3 class="blk">① ロックとリーダー選出（スプリットブレイン防止）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まず<b>リーダー選出</b>。シングルリーダーレプリケーションでは、リーダーが本当に1人だと保証しないといけない。2台が「自分がリーダーだ」と思い込む<span class="term" data-tip="2台が両方リーダーを自称してデータが壊れる事故。">スプリットブレイン</span>になると、両方が書き込みを受けてデータが壊れる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうやって1人だけに保つんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ロックを使う。立候補するノードがロック取得を試み、取れたノードがリーダーになる。このロックの実装は<b>線形化可能でなければならない</b>。全ノードが「誰がロックを持っているか」で同意できないと意味がないからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そのロック、自分で作るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ふつう作らない。<b>Apache ZooKeeper</b>や<b>etcd</b>みたいな協調サービスを使う。合意アルゴリズムで耐障害性のある線形化可能な操作を実装してる（あとで詳しくやる）。フェンシングの問題もあって繊細だけど、Apache Curatorみたいなライブラリが助けてくれる。Oracle RACのような分散DBは、ディスクのページごとにもっと細かい分散ロックを使ってたりもする。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：議長は1人だけ ― バッジを取り合う</h4>
+      <p>会議に<b>議長は1人だけ</b>でなければなりません。2人が同時に「私が議長だ」と決定を下したら議事録は矛盾だらけ（スプリットブレイン）。そこで「議長バッジ」を1つだけ用意し、<b>最初にバッジを取った人だけが議長</b>になります。このバッジ管理を<b>事務局（ZooKeeper／etcd）</b>に任せ、全員が「今バッジを持っているのは誰か」で確実に一致できるようにします。</p>
+    </div>
+
+    <h3 class="blk">② 制約及びユニーク性の保証</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>次は<b>ユニーク制約</b>。ユーザー名やメールアドレスは1人にユニークじゃないとダメ。2人が同時に同じユーザー名で登録しようとしたら、どちらかにエラーを返す。これにも線形化可能性が要る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それって、さっきのロックと似てません？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさに似てる。「ユーザー名を取る」＝「その名前のロックを取る」。compare-and-set（その名前がまだ空ならIDをセット）とそっくりだ。同じ問題は、銀行口座をマイナスにしない・在庫以上に売らない・同じ座席を2人に予約させない、にも出てくる。どれも「全ノードが同意する単一の最新の値」が必要なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部そんなに厳密じゃなきゃダメですか？ 飛行機ってオーバーブッキングしますよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。現実には緩めていい制約もある。オーバーブッキングしたら別便に振り替えて補償する、みたいに。その場合は線形化可能性は要らない。でもリレーショナルDBの厳密なユニーク制約には要る。一方、外部キー制約みたいなものは線形化可能性なしでも実装できる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：同じ座席を2人に売らない</h4>
+      <p>委員会で「座席Aは田中さんに割り当て」と決めるとき、<b>全員が同じ最新の議事録</b>を見ていないと、別の委員が同時に「座席Aは佐藤さん」と決めてしまいます。1席を2人に売る事故を防ぐには「全員が同意する単一の最新値」＝線形化可能性が必要。ただし「定員より少し多めに受け付けて、あふれたら振り替える」と<b>緩めてよい運用</b>なら、厳密な一致は要りません。</p>
+    </div>
+
+    <h3 class="blk">③ クロスチャネルタイミング依存関係</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3つ目はちょっと面白い。さっきのサッカーで、ボブが違反に気づいたのは「アリスの声」という別の通信経路があったからだろ。同じことがコンピュータでも起きる。</div></div>
+    </div>
+
+    <p>写真アップロード→サムネイル生成の流れです。WebサーバーとリサイズモジュールのあいだにはWeb<b>「ファイルストレージ」と「メッセージキュー」の2つの経路</b>があり、速い方（キュー）の指示が先に届くと、リサイズモジュールがまだ古い／無い写真を取りに行って事故ります。</p>
+    <details class="code"><summary>写真アップロード → サムネイル生成のデータフロー</summary>
+<pre><span class="cmt"># 写真アップロード → サムネイル生成のデータフロー</span>
+[ユーザー] フルサイズ写真をアップロード
+     │
+     ▼ (1) 写真本体をファイルストレージに書く（大きいのでキューには入れない）
+[Webサーバー] ──(2)「リサイズして」という指示をキューに入れる──▶ [リサイズモジュール]
+                                                              │
+                              (3) キューから指示を受け取る ◀──┘
+                              (4) ファイルストレージから写真を取得 ★ここで古い/無いと事故
+                              (5) リサイズして保存</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あれ、Webサーバーとリサイズモジュールの間に「ファイルストレージ」と「メッセージキュー」の2つの経路がありますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが肝。メッセージキューの方がファイルストレージの内部レプリケーションより速いと、リサイズモジュールが写真を取りに行ったとき（ステップ4）、まだ古いバージョンだったり、そもそも無かったりする。すると、フルサイズ画像とリサイズ画像が<b>永久に食い違う</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>アリスの声と同じで、2つの経路の間でレース条件が起きるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。ファイルストレージが線形化可能なら防げる。線形化可能性はレース条件を避ける唯一の方法じゃないけど、一番シンプルに理解できる方法なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：口頭連絡と回覧板の競争</h4>
+      <p>議長が「資料を棚に置いた」あと、別ルートで「棚の資料を見て処理して」と<b>口頭で速報</b>すると、棚に資料が届く前に担当者が見に行って「無い！」となります。委員会で<b>複数の連絡経路（回覧板と口頭）</b>が並走すると、速い経路が先に着いて食い違う――これがクロスチャネル依存。棚（ファイルストレージ）が常に最新と保証されていれば防げます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分のシステムのどの部分に線形化可能性が必須かを見抜ける（リーダー選出・ユニーク制約・複数経路の同期）。</li>
+        <li>「緩めていい制約」と「厳密に守る制約」を区別し、過剰な強い保証を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ロック/リーダー選出：線形化可能なロックでスプリットブレインを防ぐ。ZooKeeper/etcdを使う。</li>
+        <li>ユニーク制約：ユーザー名・残高・在庫・座席など。compare-and-setに似て、単一の最新値が要る。</li>
+        <li>クロスチャネル依存：複数経路があると最新性がないとレース条件で食い違う（サムネイル例）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.2.3 ===== -->
+<section id="s923">
+  <div class="sec-head"><div class="sec-num">9.2.3</div><div><h2>線形化可能なシステムの実装</h2><span class="tag">どのレプリケーション方式なら線形化可能か</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：線形化可能にする最も確実な手段は合意アルゴリズム（ZooKeeper/etcd）。シングルリーダーは「潜在的に」可能だが思い違いや非同期で崩れる。マルチリーダー・リーダーレスは基本不可。クオラムを満たしてもネットワーク遅延次第で違反が起きるので、リーダーレスは非線形化可能とみなすのが安全。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、どうやって線形化可能なシステムを作るんですか？ コピーを1つにすればいい？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>理屈ではそう。本当にコピーを1個だけ持てば線形化可能だ。でもそのノードが落ちたらデータが消えるか、復活まで使えない。耐障害性ゼロだ。だから普通はレプリケーションで耐障害性を持たせる。5章の手法ごとに線形化可能かを見てみよう。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>レプリケーション手法</th><th>線形化可能か</th></tr>
+      <tr><td><b>シングルリーダー</b></td><td>潜在的に線形化可能。リーダーか同期フォロワーから読めば最新が読める「かも」。ただし設計（スナップショット分離）やバグで崩れる。さらに「自分が本当にリーダーか」を確実に知る必要あり（思い違いは違反のもと）。非同期レプリケーションだとフェイルオーバーでコミット済み書き込みを失うことも。</td></tr>
+      <tr><td><b>合意アルゴリズム</b></td><td>線形化可能。スプリットブレインや古いレプリカを回避する手段を持つ。例：ZooKeeper, etcd。</td></tr>
+      <tr><td><b>マルチリーダー</b></td><td>線形化可能ではない。複数ノードで並行に書き、非同期にレプリケート→衝突が起きる。</td></tr>
+      <tr><td><b>リーダーレス</b></td><td>おそらく線形化可能ではない。LWW（時刻で衝突解決）はクロックスキューでほぼ確実にNG。いい加減なクオラムもNG。</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：議長1人＋過半数の同意がいちばん確実</h4>
+      <p>「公式議事録を1冊だけに見せる」最も確実なやり方は、<b>議長を1人に保ち、過半数の同意（合意）で決める</b>こと（事務局＝ZooKeeper/etcd）。議長を1人だけ立てる方式（シングリーダー）も「うまくいけば」最新が読めますが、議長が交代に気づかず古い議長が決めると壊れます。<b>議長が何人もいて勝手に決める方式（マルチリーダー／リーダーレス）</b>は、議事録が食い違うので公式版にはなりません。</p>
+    </div>
+
+    <h3 class="blk">線形化可能性とクオラム ― クオラムを満たしても違反する</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーレスでクオラム（_w_+_r_&gt;_n_）を満たせば「強い一貫性」って聞きました。線形化可能なんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>直感的にはそう思うよね。でも違うんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>厳密なクオラムでも線形化可能でない実行（n=3, w=3, r=2）</summary>
+<pre><span class="cmt"># 厳密なクオラムでも線形化可能でない実行（n=3, w=3, r=2）</span>
+時間 ──────────────────────────────▶
+書き込み: x=1 を3レプリカ全部へ [================]
+クライアントA: 2ノードから読む → 片方が新しい1を見た（=1）  [==]
+クライアントB:        Aの後に 別の2ノードから読む → どちらも古い0（=0）  [==]
+             ↑ w+r&gt;n を満たすのに、後に読んだBが古い値 = 線形化可能性の違反</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ネットワーク遅延がばらつくと、クオラム条件を満たしててもこうなる。BはAより後なのに古い0、Aは新しい1。またアリスとボブだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えー、クオラムって万能じゃないんですね。線形化可能にする方法はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>パフォーマンスを犠牲にすればできる。読み取り時に「読み取り修復」を同期的にやり、書き込み前にクオラムの最新状態を読む、とか。でもRiakは遅くなるからやらないし、Cassandraは読み取り修復を待つけど、同じキーへの並行書き込みでLWWを使うから結局線形化可能性を失う。しかもこの方法でできるのは読み書きだけで、compare-and-setはできない。それには合意アルゴリズムが要る。結論はこうだ。</div></div>
+    </div>
+
+    <details class="code"><summary>結論</summary>
+<pre><span class="cmt"># 結論</span>
+Dynamoスタイルのリーダーレスシステムは「線形化可能性を提供しない」と
+考える方が安全。</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>使っているDBのレプリケーション方式から、線形化可能性が得られるかを判断できる。</li>
+        <li>「クオラムだから強い一貫性」という誤解を避け、本当に必要なら合意ベースの仕組みを選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>単一コピーは線形化可能だが耐障害性がない。普通はレプリケーションで補う。</li>
+        <li>合意アルゴリズムは線形化可能。シングルリーダーは潜在的に可能だが崩れやすい。</li>
+        <li>マルチリーダー・リーダーレスは基本的に線形化可能ではない。</li>
+        <li>厳密クオラムでも遅延次第で違反する。compare-and-setには合意が必須。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.2.4 ===== -->
+<section id="s924">
+  <div class="sec-head"><div class="sec-num">9.2.4</div><div><h2>線形化可能にすることによるコスト</h2><span class="tag">CAP定理と「常に遅い」という代償</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：線形化可能性には代償がある。ネットワーク分断時は「一貫性か可用性か」を選ばされる（CAP定理。ただしCAPは誤解だらけで実用価値は低く、避けるべき）。さらに分断がなくても、線形化可能性は常に遅い。マルチコアCPUのRAMさえ性能のため非線形化可能。速さを取るなら弱い一貫性。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そんなに便利なら、全部線形化可能にすればいいのに。なぜしないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>コストがあるからだ。マルチデータセンター（複数の地域にDCを置く構成）で考えよう。2つのDC間のネットワークが切れた、でも各DC内は動いてる、という状況だ。</div></div>
+    </div>
+
+    <details class="code"><summary>データセンター間ネットワーク切断時の挙動</summary>
+<pre><span class="cmt"># データセンター間ネットワーク切断時の挙動</span>
+- マルチリーダー  : 各データセンターは通常運用を続けられる。書き込みはキューに溜め、
+                   ネットワーク回復時に交換する → 切断中も使える
+- シングルリーダー: リーダーはどちらか一方のDCにある。フォロワー側DCのクライアントは
+                   リーダーに繋げない → 書き込みも線形化可能な読み取りもできない（=使えない）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>シングルリーダーだと、片方が使えなくなるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。そしてこれはシングルかマルチかの問題じゃない。<b>線形化可能なあらゆるデータベースに共通する</b>問題なんだ。この有名なトレードオフがCAP定理だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：会議室が2つに分断されたら</h4>
+      <p>委員会の途中で<b>仕切りが下りて会議室が2部屋に分断</b>され、互いに連絡が取れなくなったとします。「公式議事録は1冊だけ」を守るなら、議長のいない部屋は<b>何も決められず待つしかない</b>（一貫性優先＝使えない）。逆に「とりあえず各部屋で進める」なら<b>動き続けるが、後で議事録が食い違う</b>（可用性優先＝非線形化）。これがCAPのトレードオフです。</p>
+    </div>
+
+    <h3 class="blk">CAP定理 ― よくある「3つから2つ」は誤解</h3>
+    <details class="code"><summary>ネットワーク分断が起きたときのトレードオフ</summary>
+<pre><span class="cmt"># ネットワーク分断が起きたときのトレードオフ</span>
+- 線形化可能性が必須なら : 切り離されたレプリカはリクエストを処理できない
+                          → 待つかエラーを返す（= 利用できない）
+- 線形化可能性が不要なら : 各レプリカが独立に書き込みを受け付けられる（例: マルチリーダー）
+                          → 利用できるが、動作は線形化可能ではない</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>つまり「線形化可能性を諦めれば、ネットワーク障害に強くできる」。これを2000年にEric Brewerが<b>CAP定理</b>と名付けた。トレードオフ自体は1970年代から知られてた。CAPは大規模Webサービス向けのシェアードナッシング分散システムを探究するきっかけになり、NoSQLの爆発的普及につながった。文化を変えた功績は大きい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>CAPって「一貫性・可用性・分断耐性の3つから2つ選ぶ」やつですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう言われがちだけど誤解を招く。よく考えて。<b>ネットワーク分断はフォールトの一種</b>だから、選べるものじゃない。好むと好まざるとに関わらず起きるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、たしかに。「分断耐性を選ばない」って選択肢はおかしいですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。だから正しくは「<b>ネットワーク分断が起きたとき、一貫性と可用性のどちらを選ぶか</b>」と言うべきだ。ネットワークが正常なときは両方提供できる。しかもCAPの「可用性」の定義は形式的に独特で、世間の「高可用性」とは一致しない。考慮してるのも線形化可能性という1つの一貫性モデルと、ネットワーク分断という1種類のフォールトだけ。遅延や落ちたノードについては何も言ってない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあCAPは……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>歴史的には大きな影響力があったけど、システム設計の実用的な価値はほとんどない。今はもっと精密な結果に置き換えられてる。だから<b>CAPは避けておく方がいい</b>、というのが今日の理解だ。</div></div>
+    </div>
+
+    <h3 class="blk">線形化可能性とネットワークの遅延 ― 常に遅い</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、線形化可能なシステムって世の中にいっぱいあるんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが意外と少ない。なんと、現代のマルチコアCPUのRAMですら線形化可能じゃない。あるコアが書いた値を、別のコアが直後に読んでも、読める保証がないんだ（メモリバリア/フェンスを使わない限り）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、同じコンピュータの中なのに！？ なぜですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各CPUコアが自分のキャッシュとストアバッファを持っていて、書き込みは非同期にメインメモリへ反映されるから。コピーが複数（メインメモリと各キャッシュ）あって非同期更新になる。レプリケーションと同じ構造だ。ここで線形化可能性を捨てる理由は<b>耐障害性じゃなくてパフォーマンス</b>。CPU内部の通信は信頼できるからCAPは関係ない。ただ速くしたいだけ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分散DBで線形化可能性を捨てるのも、同じくパフォーマンスのため？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くはそう。線形化可能性を提供すると、障害時だけじゃなく<b>常に</b>遅くなる。AttiyaとWelchが証明したんだけど、線形化可能性を求めると読み書きのレスポンスタイムは少なくともネットワーク遅延の不確実性に比例する。遅延がばらつくネットワークではどうしても遅い。もっと速い線形化可能アルゴリズムは存在しない。でも弱い一貫性ならずっと速くできる。だからレイテンシに敏感なシステムでは、このトレードオフが重要なんだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ネットワーク障害時に「止まる（一貫性優先）」か「動き続ける（可用性優先）」かを意識的に選べる。</li>
+        <li>「CAPで2つ選ぶ」という雑な議論を卒業し、「分断時に一貫性か可用性か」と正確に語れる。</li>
+        <li>線形化可能性が「常に遅い」と知り、レイテンシ要件に応じて一貫性レベルを選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>分断時、線形化可能性が必須なら切り離されたレプリカは使えなくなる（マルチリーダーなら使えるが非線形化）。</li>
+        <li>CAP定理＝分断時に一貫性か可用性かの選択。分断は選べるものではない。CAPは実用価値が低く避けるべき。</li>
+        <li>線形化可能性は分断がなくても常に遅い（レスポンスはネット遅延の不確実性に比例）。</li>
+        <li>マルチコアCPUのRAMも性能のため非線形化可能（理由は耐障害性でなくパフォーマンス）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.3 順序の保証 ===== -->
+<section id="s93">
+  <div class="sec-head"><div class="sec-num">9.3</div><div><h2>順序の保証</h2><span class="tag">この本の裏テーマ ― 順序・線形化可能性・合意は深くつながる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：線形化可能なレジスタは「すべての操作がある時点でアトミックに効力を持つ」ので、操作の順序が明確に決まる。実は「順序」は本書の裏テーマで、何度も出てきている。順序・線形化可能性・合意には深い関係がある。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでで「線形化可能性＝操作が一直線に並ぶ」って感じがしました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいところに気づいた。線形化可能なレジスタは操作の<b>順序</b>が明確に決まる。実は「順序」はこの本の裏テーマで、何度も出てきてるんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>これまで「順序」が出てきた文脈</summary>
+<pre><span class="cmt"># これまで「順序」が出てきた文脈</span>
+- 5章: シングルリーダーは「書き込みの順序」を決めるのが主目的（フォロワーはその順で適用）
+- 7章: 直列化可能性は「トランザクションが何らかの順序で順次実行された」ように振る舞わせる
+- 8章: タイムスタンプやクロックは、順序のない世界に順序を持ち込もうとする試み</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：発言の前後関係をそろえるのが会議の命</h4>
+      <p>会議では「<b>どの発言が先で、どれが後か</b>」を全員で一致させることが命です。質問より先に回答が議事録に載っていたら混乱しますよね。順序を守ること＝因果関係を守ること。この章では、発言の前後をそろえる仕組み（因果律・通し番号・全員に同じ順で議題を配ること）を順に見ていきます。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>順序・線形化可能性・合意の3つには深い関係がある。ちょっと抽象的だけど、「何ができて何ができないか」を理解するのにすごく役立つ。順を追って見ていこう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.3.1 ===== -->
+<section id="s931">
+  <div class="sec-head"><div class="sec-num">9.3.1</div><div><h2>順序と因果関係</h2><span class="tag">全順序は一直線、半順序はGitのブランチのよう</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：順序は因果関係を守るために重要。因果律は半順序（並行な操作は比較不能、Gitのブランチのよう）で、線形化可能性は全順序。線形化可能性は因果律を含むより強い保証だが遅い。因果律の一貫性は「遅延で遅くならない最強の一貫性」でCAPに縛られず、多くの場合これで十分。因果依存はバージョンベクトルで追える。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでそんなに順序が大事なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>順序は<span class="term" data-tip="原因が結果より先、という前後のつながり。質問は回答より先など。">因果関係（causality）</span>を守るのに役立つからだ。具体例を集めると因果律がいかに大事かわかる。</div></div>
+    </div>
+
+    <details class="code"><summary>因果関係が重要だった例</summary>
+<pre><span class="cmt"># 因果関係が重要だった例</span>
+- 一貫性のあるプレフィックス読み取り(5章): 質問より先に回答が見えると混乱（回答は質問に因果依存）
+- マルチリーダーで更新が書き込みを追い越す(5章): 行を作る前に更新が届くと「無い行への更新」に見える
+- 並行書き込みの検出(5章): A→B、B→A、A∥B（並行）の3通り。「事前発生」は因果律の表現
+- スナップショット分離(7章): 「一貫した」スナップショット=因果的に一貫（答えがあれば問いもある）
+- 書き込みスキュー(7章): 当直から外れる判断は「誰が当直か」の情報に因果依存。SSIは因果依存を追って検出
+- アリスとボブ(9章)/サムネイル(9章): 別チャネルで因果律違反に気づく</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>因果律はイベントに順序を生む。原因は結果より先、メッセージは受信より先に送信、質問は回答より先。あるノードが読んで→書いて、別ノードがそれを読んで→書いて……と連鎖して、システム全体に順序が決まる。この因果律の順序に従うシステムを<b>因果律において一貫している（causally consistent）</b>という。スナップショット分離はこれを提供してる。</div></div>
+    </div>
+
+    <h3 class="blk">因果律に基づく順序と全順序の違い</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「順序」って、全部の操作にきっちり順番がつくんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが面白い。2種類あるんだ。<b>全順序（total order）</b>と<b>半順序（partial order）</b>。</div></div>
+    </div>
+
+    <details class="code"><summary>全順序 vs 半順序（数学のたとえ）</summary>
+<pre><span class="cmt"># 全順序 vs 半順序（数学のたとえ）</span>
+- 全順序 : 任意の2つを必ず比較できる。例: 自然数。5と13なら必ず13が大きい
+- 半順序 : 比較できないペアがある。例: 集合 {a,b} と {b,c} はどちらも他方の部分集合でない
+          → 比較不能(incomparable)</pre>
+    </details>
+
+    <details class="code"><summary>一貫性モデルと順序</summary>
+<pre><span class="cmt"># 一貫性モデルと順序</span>
+- 線形化可能性 : 操作には全順序がある。コピーが1つでアトミックなら、任意の2操作の前後が必ず決まる
+- 因果律       : 半順序。因果関係があれば順序が決まるが、並行な操作は比較不能</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり線形化可能なシステムには「並行な操作」が存在しない、と？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。すべて単一の時系列に全順序で並ぶ。一方、因果律では並行性があると時系列が枝分かれして再合流する。別の枝にある操作同士は比較不能（並行）だ。Gitを知ってるなら、コミット履歴をイメージするといい。普通は一直線だけど、ブランチで枝分かれして、マージで合流するだろ。あれが半順序の依存グラフなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Gitのブランチ！ それはすごくわかりやすいです。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：1本の議事録（全順序）と、分科会の枝分かれ（半順序）</h4>
+      <p>全順序は<b>1本の議事録に全発言が前後つきで並ぶ</b>状態。どの2つの発言も「どちらが先か」が必ず決まります（線形化可能性）。半順序は、委員会が<b>複数の分科会に枝分かれ</b>して並行に議論し、後で合流する状態。別々の分科会で同時に出た発言は「どちらが先か」を決められません（因果律）。まさにGitのブランチとマージのようです。</p>
+    </div>
+
+    <h3 class="blk">因果律の一貫性よりも強い線形化可能性</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>因果律と線形化可能性って、どっちが強いんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>線形化可能性の方が強い。線形化可能性は因果律を<b>暗に含む</b>。線形化可能なシステムは、特別なことをしなくても因果律を自動的に正しく保つ。複数の通信チャネルがあってもね。だから理解しやすくて魅力的。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも遅いんですよね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。だから中間地点があるのが救いだ。因果律を保つ方法は線形化可能性だけじゃない。線形化可能性の代償を避けつつ因果律の一貫性を持たせることは可能で、<b>ここではCAP定理は当てはまらない</b>。実際、因果律の一貫性は「ネットワーク遅延で遅くならない一貫性の中で最も強いもの」で、ネットワーク障害があっても使い続けられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それは理想的じゃないですか！ なぜみんな使わないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>研究がまだ新しくて、本番投入されたものは多くないし、課題も残ってる。でも未来に期待できる方向性だ。「線形化可能性が必要に見えて、実は因果律の一貫性で十分」というケースは多いんだよ。</div></div>
+    </div>
+
+    <h3 class="blk">因果律における依存関係の捕捉</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>因果律を保つって、具体的に何をするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「ある操作の前に、どの操作が先行したか」を知る必要がある。これは半順序だ。並行な操作の順序は問わないが、先行する操作は全レプリカで同じ順序で処理する。あるレプリカが操作を処理するときは、因果的に先行する全操作がすでに処理済みでなければならない。まだなら待つ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「先に知っていたか」を判断するわけですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、まるで取り調べだ。「そのCEOは判断Yを下した時点でXを知っていたのか？」みたいにね。5章の並行書き込み検出に似た手法を使うけど、単一のキーじゃなくDB全体の因果依存を追う必要がある。<b>バージョンベクトル</b>を汎用化すれば使える。DBは、アプリが読んだデータのバージョンを知っていないといけないから、書き込み時に以前のバージョン番号を返すんだ。SSIの衝突検出と同じ考え方だね。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「全順序」と「半順序（因果律）」を区別し、自分のシステムにどちらが必要かを判断できる。</li>
+        <li>「線形化可能性が要ると思っていたが因果律で十分」というケースを見抜き、性能を稼げる。</li>
+        <li>因果依存の追跡（バージョンベクトル、書き込み時のバージョン返却）の意味を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>順序は因果関係（原因→結果）を守るために重要。</li>
+        <li>全順序＝任意の2操作を比較可能（線形化可能性）。半順序＝並行な操作は比較不能（因果律、Gitのよう）。</li>
+        <li>線形化可能性は因果律を含むより強い保証だが遅い。</li>
+        <li>因果律の一貫性は遅延に強くCAPに縛られない。バージョンベクトルで因果依存を捕捉する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.3.2 ===== -->
+<section id="s932">
+  <div class="sec-head"><div class="sec-num">9.3.2</div><div><h2>シーケンス番号の順序</h2><span class="tag">論理クロックで全順序をつける ― でも「いつ確定するか」が問題</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：因果依存を全部追うのは重いので、シーケンス番号/タイムスタンプで順序づける。リーダーなしの素朴な生成法（奇偶分担・物理クロック・ブロック割当）は速いが因果律に反する。ランポートタイムスタンプ（カウンタ+ノードID、最大値を持ち回る）は因果律と一貫する全順序を与える。ただし「順序がいつ確定するか」がわからないと、ユニーク制約のような即時判断には不十分。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>因果依存を全部追跡するの、大変そうですね。読んだデータ全部を記録するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが現実的じゃない。普通アプリは書く前に大量のデータを読むし、どれが因果関係にあるか曖昧だ。全部追跡したらオーバーヘッドが大きい。だからもっといい方法を使う。<b>シーケンス番号</b>か<b>タイムスタンプ</b>で順序づけるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>タイムスタンプって、時計の時刻ですか？ 8章でクロックは当てにならないって……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>物理クロックである必要はない。<b>論理クロック（logical clock）</b>でいい。操作ごとにインクリメントするカウンタみたいなアルゴリズムだ。これはコンパクト（数バイト）で、しかも<b>全順序</b>を与える。すべての操作にユニークな番号がつき、比べればどっちが後か必ずわかる。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>しかも因果律と一貫する全順序にできる。AがBより先なら、Aの番号はBより小さい。並行な操作の順序は不定だけど、因果律の情報は全部含む。実はシングルリーダーDBがまさにこれをやってる。リーダーがカウンタを1つずつ増やしながら各書き込みに番号をふる。フォロワーがその順で適用すれば、因果律的に常に一貫する。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：発言に通し番号をふる書記</h4>
+      <p>議長が1人いる会議なら、書記が発言ごとに「第1号議案・第2号議案…」と<b>通し番号</b>をふれば、全発言に前後がつきます（全順序）。先に出た発言ほど小さい番号なので、因果関係（先に言ったこと→それを受けた発言）も番号に正しく反映されます。問題は、議長がいない（複数の分科会が並行する）ときに、誰がどう番号をふるか、です。</p>
+    </div>
+
+    <h3 class="blk">因果的でないシーケンス番号生成器</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーがいないとき（マルチリーダー、リーダーレス、パーティション分割）は、どうやって番号をふるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いくつか方法があるけど、どれも問題を抱えてる。</div></div>
+    </div>
+
+    <details class="code"><summary>リーダーなしでシーケンス番号を生成する3つの方法と、それぞれの問題</summary>
+<pre><span class="cmt"># リーダーなしでシーケンス番号を生成する3つの方法と、それぞれの問題</span>
+- 各ノードが独立に生成 : ノード1は奇数、ノード2は偶数だけ発行。番号にノードIDを埋めて衝突回避。
+   → 問題: 各ノードの処理速度が違うと、奇数と偶数のどちらが先かを正しく言えない
+- 物理クロックのタイムスタンプ : 解像度が十分なら全順序になる（LWWで使われる）。
+   → 問題: クロックスキューで、因果的に後の操作に小さいタイムスタンプがつくことがある
+- 番号のブロックを事前割り当て : ノードAは1〜1000、Bは1001〜2000を使う。
+   → 問題: 因果的に後の操作に1〜1000、先の操作に1001〜2000がつくことがある</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この3つはどれも単一リーダーより高速でスケールするけど、生成される番号は<b>因果律と一貫しない</b>。複数ノードの操作の順序を正しく捉えられないからだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>速いけど順序が狂う、と。両立はできないんですか？</div></div>
+    </div>
+
+    <h3 class="blk">ランポートタイムスタンプ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できるんだ。それが<b>ランポートタイムスタンプ（Lamport timestamp）</b>。1978年にLeslie Lamportが提案した、分散システムで最も引用される論文の1つだ。</div></div>
+    </div>
+
+    <details class="code"><summary>ランポートタイムスタンプの仕組み</summary>
+<pre><span class="cmt"># ランポートタイムスタンプの仕組み</span>
+- 各ノードはユニークなID + 処理した操作数のカウンタを持つ
+- タイムスタンプ = (カウンタ, ノードID) のペア
+- 大小比較: まずカウンタが大きい方が大きい。同じなら ノードID が大きい方が大きい
+- ★キモ: すべてのノードとクライアントは「過去に見た最大のカウンタ値」を覚えておき、
+         すべてのリクエストにその値を含める。
+         受信した値が自分のカウンタより大きければ、即座に自分のカウンタをその値に更新する</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：「いま第何号まで進んだか」を全員が言い合う</h4>
+      <p>議長がいなくても、各委員が「私はここまで第5号まで進めた」という<b>最大の通し番号</b>を、発言のたびに名乗り合います。誰かから「第5号」を聞いた委員は、自分がまだ第1号でも<b>即座に第5号まで進めて</b>、次を第6号にします。こうして「これまで見た最大値」を全員で持ち回ると、先に言われたことの番号は必ず小さくなり、因果関係を保った1本の通し番号（全順序）ができあがります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>例えば、クライアントAがノード2からカウンタ5を受け取り、その5をノード1に送る。ノード1のカウンタが1だったら、すぐ5に進める。次の操作は6になる。こうして全因果依存がタイムスタンプに反映されて、因果律と一貫する全順序になるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これ、5章のバージョンベクトルと似てません？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>混同しやすいけど目的が違う。バージョンベクトルは「2操作が並行か因果依存か」を判定するもの。ランポートタイムスタンプは「常に全順序を決める」もの。ランポートの全順序からは、2操作が並行だったかは<b>わからない</b>。代わりにコンパクトなのが利点だ。</div></div>
+    </div>
+
+    <h3 class="blk">タイムスタンプによる順序づけでは不十分</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ランポートタイムスタンプで全部解決ですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、それでも足りない問題がある。さっきのユーザー名のユニーク制約だ。2人が同じユーザー名で同時に登録しようとしたら、1人は成功・1人は失敗させたい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>タイムスタンプが小さい方を勝ちにすればいいのでは？ 全順序があるんだし。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>全部の操作を集め終わった<b>後</b>なら、それでいい。でも、ノードがリクエストを受けた<b>その場で即座に</b>成功か失敗かを答えたいときはダメなんだ。その時点では、他のノードが並行して同じ名前を登録中か、その操作にどんなタイムスタンプがつくか、わからないだろ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ……確認するには全ノードに問い合わせないといけない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。そして、他のノードが落ちてたりネットワークが切れてたら、システムは止まる。これじゃ耐障害性がない。問題の本質はこうだ。</div></div>
+    </div>
+
+    <details class="code"><summary>タイムスタンプ順序づけの限界</summary>
+<pre><span class="cmt"># タイムスタンプ順序づけの限界</span>
+- 操作の全順序が確定するのは「すべての操作を集めた後」
+- まだ届いていない他ノードの操作が、全順序の途中に挿入されるかもしれない
+- → ユニーク制約のためには「全順序がいつ確定するか」を知る必要がある
+   （= 自分の操作より先に同じ名前を要求したノードが他にいない、と確実に言える時点）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この「いつ確定するか」という問題が、次の<b>全順序ブロードキャスト</b>につながるんだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>論理クロックとランポートタイムスタンプの仕組みを理解し、因果律を保つ番号づけを実装/選択できる。</li>
+        <li>「全順序があれば何でも解ける」という誤解を避け、「順序の確定時期」も必要だと見抜ける。</li>
+        <li>ランポートタイムスタンプとバージョンベクトルの目的の違いを区別できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>因果依存の全追跡は重いので、シーケンス番号/タイムスタンプで順序づける。</li>
+        <li>素朴な生成法（奇偶・物理クロック・ブロック割当）は速いが因果律と一貫しない。</li>
+        <li>ランポートタイムスタンプ＝(カウンタ, ノードID)＋最大値の持ち回りで因果律と一貫する全順序を作る。</li>
+        <li>全順序があっても「いつ確定するか」がわからないと即時のユニーク判断には不十分。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.3.3 ===== -->
+<section id="s933">
+  <div class="sec-head"><div class="sec-num">9.3.3</div><div><h2>全順序のブロードキャスト</h2><span class="tag">全員に同じ順番で議題を配る ― 配った時点で順序確定</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：全順序ブロードキャスト＝「全ノードに同じ順序でメッセージを確実に配信する」仕組み。配信時点で順序が確定するのでタイムスタンプより強力。これを使うとレプリケーション・直列化可能トランザクション・ログ・フェンシングトークン・線形化可能ストレージが作れる。逆に線形化可能レジスタからも全順序ブロードキャストが作れ、両者と合意は等価。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「全順序がいつ確定するか」を解決するのが全順序ブロードキャストですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。<b>全順序ブロードキャスト（total order broadcast）</b>、別名アトミックブロードキャスト。シングルリーダーは1台のCPUで操作を並べて全順序を決めてたけど、スループットの限界とフェイルオーバーの問題があった。それを正面から扱うのがこれだ。ノード間のメッセージ交換プロトコルで、2つの安全性を常に満たす。</div></div>
+    </div>
+
+    <details class="code"><summary>全順序ブロードキャストが満たす2つの安全性</summary>
+<pre><span class="cmt"># 全順序ブロードキャストが満たす2つの安全性</span>
+- 信頼できる配信     : メッセージはロストしない。1ノードに配信されたら全ノードに配信される
+- 全順序づけされた配信: メッセージはすべてのノードに「同じ順序」で配信される</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：全員に同じ順番で議題プリントを配る</h4>
+      <p>全順序ブロードキャストは、事務局が<b>全委員にまったく同じ順番で議題プリントを配る</b>仕組みです。①プリントは必ず全員に届く（信頼できる配信）、②配る順番は全員で完全に同じ（全順序）。誰かが受け取れなくても、回復したら何度でも配り直して、最後は必ず同じ順番で全員に届けます。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ノードやネットワークが障害を起こしても、この2つは常に満たす。障害中は配信できないけど、回復したらリトライし続けて、正しい順序で必ず届ける。</div></div>
+    </div>
+
+    <h3 class="blk">全順序ブロードキャストの利用</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これ、何の役に立つんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いろいろある。まず、ZooKeeperやetcdは実際に全順序ブロードキャストを実装してる。これは全順序ブロードキャストと合意が強く関係してるヒントだ（あとで詳しく）。</div></div>
+    </div>
+
+    <details class="code"><summary>全順序ブロードキャストの使い道</summary>
+<pre><span class="cmt"># 全順序ブロードキャストの使い道</span>
+- データベースのレプリケーション : 各メッセージ=書き込み。全レプリカが同じ書き込みを同じ順で適用
+                                 → レプリカが一貫する。これがステートマシンレプリケーション
+- 直列化可能トランザクション     : 各メッセージ=決定的なトランザクション。同じ順で実行→一貫を保つ
+- ログの生成                    : メッセージ配信=ログへの追記。どのノードも同じ順でログを読める
+- フェンシングトークン付きロック : ロック取得を全部ログに追記。登場順の連番がフェンシングトークン
+                                 （ZooKeeperではこれを zxid と呼ぶ）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>重要なのは、<b>メッセージが配信された時点で順序が確定する</b>こと。すでに配信されたメッセージの前に、後から割り込むことはできない。だから全順序ブロードキャストはタイムスタンプ順序づけより強力なんだ。</div></div>
+    </div>
+
+    <h3 class="blk">全順序ブロードキャストで線形化可能なストレージを作る</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全順序ブロードキャストがあれば、線形化可能なストレージも作れますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>作れる。ユーザー名のユニーク制約をやってみよう。各ユーザー名に初期値<span class="kw">null</span>の線形化可能なレジスタがあるとする。compare-and-setで、<span class="kw">null</span>ならIDをセットする。これを全順序ブロードキャストを「追記専用ログ」として使って実装する。</div></div>
+    </div>
+
+    <details class="code"><summary>全順序ブロードキャストで線形化可能なcompare-and-setを実装する手順</summary>
+<pre><span class="cmt"># 全順序ブロードキャストで線形化可能なcompare-and-setを実装する手順</span>
+1. 取りたいユーザー名を仮に示すメッセージをログに追記する
+2. ログを読み、自分が追記したメッセージが配信されてくるのを待つ
+3. その名前を要求している最初のメッセージが「自分のもの」なら成功。
+   名前をコミットしてクライアントに承認を返す。
+   最初のメッセージが「他人のもの」なら、自分の操作は中断する</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ログのエントリは全ノードに同じ順序で届くから、並行な書き込みがあっても「どれが最初か」で全ノードが合意できる。勝者を1人選び、後続を破棄する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これで読み取りも線形化可能ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、書き込みは線形化可能になるけど、読み取りは保証されない。ログから非同期に更新されるストアを読むと古いかもしれない（正確にはこれは<b>逐次一貫性（sequential consistency）</b>＝タイムライン一貫性で、線形化可能性よりわずかに弱い）。読み取りも線形化可能にするには方法がいくつかある。</div></div>
+    </div>
+
+    <details class="code"><summary>読み取りも線形化可能にする方法</summary>
+<pre><span class="cmt"># 読み取りも線形化可能にする方法</span>
+- 読み取りもログを通す : 読み取りメッセージを追記し、配信されて戻った時点で実際に読む
+                       （etcdのクオラム読み取りに近い）
+- 最新位置を取得して待つ: 線形化可能にログの最新位置を取得し、そこまで配信を待ってから読む
+                       （ZooKeeperの sync() の考え方）
+- 同期更新レプリカから読む: 最新が確実なレプリカから読む（チェーンレプリケーションで使われる）</pre>
+    </details>
+
+    <h3 class="blk">線形化可能なストレージから全順序ブロードキャストを作る</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>逆もできる。線形化可能なストレージがあれば、全順序ブロードキャストを作れる。一番簡単なのは、アトミックなincrement-and-get操作を持つ線形化可能な整数レジスタを使う方法だ。</div></div>
+    </div>
+
+    <details class="code"><summary>線形化可能レジスタから全順序ブロードキャストを作る</summary>
+<pre><span class="cmt"># 線形化可能レジスタから全順序ブロードキャストを作る</span>
+- 送信したい各メッセージで、線形化可能な整数を increment-and-get する
+- 取得した値をシーケンス番号としてメッセージに添付
+- 全ノードに送信（ロストしたら再送）。受信側は番号順に連続的に配信する</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここが重要。ランポートタイムスタンプと違って、この番号は<b>隙間なく連続する</b>。ノードがメッセージ4を送った後にシーケンス番号6を受け取ったら、「6を配信する前に5を待たないといけない」とわかる。ランポートタイムスタンプではこれができない。これが全順序ブロードキャストとタイムスタンプ順序づけの決定的な違いだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そのincrement-and-getレジスタを作るのは簡単ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>障害がなければ簡単。1つのノードの変数に持てばいい。でもそのノードへの接続が切れたり、障害から値を復元したりするのが難しい。よく考えていくと……必然的に<b>合意アルゴリズム</b>に行き着く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>合意、また出てきましたね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>偶然じゃない。<b>線形化可能なcompare-and-set（またはincrement-and-get）レジスタ</b>と<b>全順序ブロードキャスト</b>は、どちらも<b>合意と等価</b>だと証明できる。どれか1つを解ければ、他の問題の解決策に変換できる。これはものすごく重大な知見だ。さあ、いよいよ合意そのものに取り組むときだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：番号は飛ばさず連続するから「待てばわかる」</h4>
+      <p>議題プリントの通し番号が<b>1, 2, 3, …と飛ばさず連続</b>するので、委員は「6番が来たけど、まだ5番を受け取っていない」とわかれば、5番が届くまで6番の処理を待てます。これがランポート方式（番号が飛び飛び）との決定的な違い。そして「全員に同じ順で確実に配る」「公式議事録を1冊に見せる」「過半数で決める」は、<b>じつは同じ難問の別の顔</b>なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「全順序ブロードキャスト」が分散システムの土台（レプリケーション・ログ・ロック）になることを理解できる。</li>
+        <li>番号が「隙間なく連続する」ことが、ランポートタイムスタンプとの本質的な違いだと見抜ける。</li>
+        <li>線形化可能ストレージ・全順序ブロードキャスト・合意が等価という、章の核心をつかめる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>全順序ブロードキャスト＝信頼できる配信＋全順序づけされた配信。配信時点で順序確定。</li>
+        <li>用途: ステートマシンレプリケーション、直列化可能トランザクション、ログ、フェンシングトークン。</li>
+        <li>全順序ブロードキャストから書き込み線形化可能なストレージを作れる（読み取りは別途工夫が要る）。</li>
+        <li>線形化可能レジスタから全順序ブロードキャストも作れる。番号は隙間なく連続するのが特徴。</li>
+        <li>線形化可能compare-and-set・全順序ブロードキャスト・合意は等価。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.4 分散トランザクションと合意 ===== -->
+<section id="s94">
+  <div class="sec-head"><div class="sec-num">9.4</div><div><h2>分散トランザクションと合意</h2><span class="tag">「複数ノードが何かに同意する」は、見た目より遥かに難しい</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：合意は分散コンピューティングで最も重要で基本的な問題の1つ。「簡単そう」という思い込みでたくさんのシステムが壊れてきた。合意が要る代表例は、リーダー選出（スプリットブレイン防止）とアトミックなコミット（全ノードがコミットか中断かを同意）。FLP帰結は「合意は不可能」と言うが、現実はタイムアウトなどで回避できる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ついに合意ですね。「複数ノードが何かに同意する」だけなら、簡単そうですけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その「簡単そう」という思い込みのせいで、たくさんのシステムが壊れてきたんだ。合意は分散コンピューティングで最も重要で基本的な問題の1つで、研究者が何十年もかけてやっと理解した。レプリケーション・トランザクション・システムモデル・線形化可能性・全順序ブロードキャストを学んだ今、やっと準備が整った。</div></div>
+    </div>
+
+    <details class="code"><summary>合意が重要な状況</summary>
+<pre><span class="cmt"># 合意が重要な状況</span>
+- リーダー選出  : シングルリーダーDBで「誰がリーダーか」を全ノードが同意。
+                スプリットブレイン（2台がリーダーを自称）を防ぐ
+- アトミックなコミット : 複数ノードにまたがるトランザクションで、全ノードがコミットか中断かを同意。
+                      一部だけコミットすると原子性が壊れる（アトミックコミット問題）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：全員で1つの結論に同意し、覆さない</h4>
+      <p>合意とは、委員会が<b>1つの結論に過半数で同意し、いったん決めたら誰も覆さない</b>ことです。一番効くのは「議長は誰か」を全員一致で決める場面（スプリットブレイン防止）と、「この議案を全部署で同時に実行するか、全部やめるか」を全員でそろえる場面（アトミックコミット）。バラバラだと議事録が壊れます。</p>
+    </div>
+
+    <h3 class="blk">合意の不可能性（FLP帰結）</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「合意は不可能」って聞いたことがあります。FLPなんとか……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>FLP帰結</b>だね。Fischer、Lynch、Patersonの頭文字。「ノードがクラッシュしうるなら、常に合意に達するアルゴリズムは存在しない」と証明した。でも、現に僕らは合意アルゴリズムを使ってる。どういうことか？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>矛盾してませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>FLPは「非同期システムモデル」での証明なんだ。クロックもタイムアウトも一切使えない、すごく制約の強いモデル。でも現実のアルゴリズムはタイムアウトや乱数を使える。それだけで不可能性を回避できる。だからFLPは理論として重要だけど、実際には分散システムはたいてい合意を達成できる。安心していい。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この後は、まずアトミックコミットの問題を詳しく見る。特に<b>2相コミット（2PC）</b>だ。これは合意アルゴリズムの一種だけど、あまり良いやつじゃない。そこから、ZooKeeperやetcdが使うもっと優れた合意アルゴリズムへ進む。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.4.1 ===== -->
+<section id="s941">
+  <div class="sec-head"><div class="sec-num">9.4.1</div><div><h2>アトミックなコミットと2相コミット（2PC）</h2><span class="tag">幹事が全員にOKを確認してから確定する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：2PCは複数ノードのアトミックコミットを実現する。コーディネータ（幹事）が準備（全員にコミット可否を問う）→コミット/中断（全員yesならコミット）の2フェーズ。参加者の「yes」とコーディネータの決定が2つの帰還不能点で、これが原子性を保証する。弱点はコーディネータがクラッシュすると参加者が未確定でブロックすること。3PC（ノンブロッキング）は現実の前提では機能せず、2PCが使われ続ける。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>7章で、トランザクションの原子性は「全部コミットするか、全部ロールバックするか」だと学んだね。中途半端な状態を残さない。これが特に大事なのはマルチオブジェクトトランザクションやセカンダリインデックスの管理だ。</div></div>
+    </div>
+
+    <h3 class="blk">単一ノードから分散アトミックコミットへ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>単一ノードなら、原子性はストレージエンジンが担う。データを書いて、最後にコミット記録をディスクのログに追記する。この<b>順序</b>が肝心だ。</div></div>
+    </div>
+
+    <details class="code"><summary>単一ノードでのコミットの瞬間</summary>
+<pre><span class="cmt"># 単一ノードでのコミットの瞬間</span>
+1. まずデータを書く
+2. 次にコミット記録をディスクに追記する ← この瞬間にコミット確定
+   - コミット記録の書き込み前にクラッシュ → ロールバック
+   - 書き込み後にクラッシュ → コミット済み（リカバリで復元）
+→ コミットをアトミックにしているのは「単一のデバイス（1つのディスクのコントローラ）」</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、複数ノードが関わるとどうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>単純に「全ノードにコミット要求を送って各自コミット」では破綻する。</div></div>
+    </div>
+
+    <details class="code"><summary>単純な「各自コミット」が破綻するケース</summary>
+<pre><span class="cmt"># 単純な「各自コミット」が破綻するケース</span>
+- 一部のノードで制約違反/衝突を検出して中断が必要なのに、他は問題なくコミットしてしまう
+- コミット要求の一部がネットワークでロストし、タイムアウトで中断、他は受理される
+- 一部のノードがコミット記録の書き込み前にクラッシュ→リカバリでロールバック、他はコミット成功</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一部がコミット・一部が中断すると、ノード間の一貫性が壊れる。そして<b>コミットは取り消せない</b>。一度コミットすると他のトランザクションがそのデータを見て依存し始めるから（read committedの基礎）、後から「やっぱり中断」はできない。だから、コミットするのは「他の全ノードもコミットすると確実なとき」だけだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>取り消せないなら、補正トランザクションは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>コミット済みの影響を別の補正トランザクションで打ち消すことはあるけど、それはDBから見れば別個のトランザクションで、複数トランザクションにまたがる正しさはアプリの責任になる。</div></div>
+    </div>
+
+    <h3 class="blk">2相コミット ― 結婚式に似ている</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで<b>2相コミット（2PC）</b>だ。複数ノードにまたがるアトミックなトランザクションを実現する。古典的アルゴリズムで、XAトランザクションという形でアプリからも使える。新登場するのが<span class="term" data-tip="2PCで取りまとめる調整役（幹事）。トランザクションマネージャとも。">コーディネータ（coordinator）</span>だ。</div></div>
+    </div>
+
+    <p>幹事（コーディネータ）が全員に「コミットできる？」と尋ね（フェーズ1）、<b>全員がyesなら「コミットせよ」、1人でもnoなら「中断せよ」</b>と指示します（フェーズ2）。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>フェーズ1：準備（コミットできる？）</h4><p>コーディネータが各参加者に「コミットできる？」と尋ねる。各参加者は「yes」か「no」を返す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>フェーズ2：コミット or 中断</h4>
+        <div class="branch ok">✅ 全員が yes →「コミットせよ」を送り、全員が実際にコミット。</div>
+        <div class="branch ng">❌ 1つでも no →「中断せよ」を送り、全員中断。</div></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：幹事が全員のOKを取ってから「決定」と宣言する</h4>
+      <p>2PCは結婚式に似ています。牧師（幹事）が新郎新婦それぞれに「結婚しますか？」と聞き、<b>両方が「はい」なら夫婦成立を宣言</b>。どちらかが「はい」と言わなければ式は中断です。委員会でいえば、幹事が全部署に「この案でOK？」と確認し、<b>全員OKなら初めて「可決」と宣言</b>する。誰か1人でも反対なら、誰も実行しません。</p>
+    </div>
+
+    <details class="code"><summary>紛らわしい名前に注意：2PC と 2PL は別物</summary>
+<pre><span class="cmt"># 2PC と 2PL は全くの別物</span>
+- 2相コミット(2PC) : 分散DBでアトミックなコミットを提供
+- 2相ロック(2PL)   : 直列化可能な分離を提供
+→ 名前が似てるだけ。無関係と考えるのが最善</pre>
+    </details>
+
+    <h3 class="blk">約束のシステム ― なぜ2フェーズで原子性が保証できるか</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、準備もコミットも、どっちのリクエストもネットワークでロストしますよね。なぜ2フェーズなら原子性が保証できるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい疑問だ。詳しく分解しよう。</div></div>
+    </div>
+
+    <details class="code"><summary>2相コミットがうまくいく理由（詳細手順）</summary>
+<pre><span class="cmt"># 2相コミットがうまくいく理由（詳細手順）</span>
+1. アプリがコーディネータにグローバルにユニークなトランザクションIDを要求
+2. 各参加者で単一ノードトランザクションを開始し、そのIDを添付。読み書きはこの中で行う
+3. アプリの準備が整ったら、コーディネータが全参加者に準備リクエストを送る。
+   失敗/タイムアウトがあれば中断リクエストを送る
+4. 参加者は準備リクエストを受けたら、「どんな状況でも確実にコミットできる」ことを確認する。
+   全データをディスクに書き、衝突/制約違反もチェック。「yes」と答えたら、
+   「要求されたら必ずエラーなくコミットする」と約束する（＝中断する権利を放棄する）
+5. コーディネータは全レスポンスを受け、コミットか中断かを最終決定。
+   その決定を自分のディスクのトランザクションログに書く ← コミットポイント
+6. 決定をディスクに書いた後、全参加者にコミット/中断リクエストを送る。
+   失敗/タイムアウトしても、成功するまで永遠にリトライする。もう引き返せない</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ポイントは2つの「帰還不能点」。①参加者が「yes」と返した瞬間（後で必ずコミットできると約束）、②コーディネータが決定を下した瞬間（覆せない）。この2つの約束が原子性を保証する。単一ノードでは、この2つが「コミット記録の書き込み」という1イベントにまとまっていた。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結婚式でいうと？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「はい」と言う前なら「嫌だ！」と中断できる。でも「はい」と言った後で失神して牧師の「夫婦になりました」を聞き逃しても、結婚は成立してる。意識を取り戻したら、牧師にIDの状況を尋ねるか、牧師の次のコミット要求のリトライを待てばわかる。</div></div>
+    </div>
+
+    <h3 class="blk">コーディネータの障害 ― 未確定でブロックする</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もしコーディネータ自身がクラッシュしたら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが2PCの弱点だ。参加者が「yes」を返した後にコーディネータがクラッシュすると、参加者は一方的に中断もコミットもできない。コーディネータの答えを待つしかない。この状態を<span class="term" data-tip="幹事が落ちて可決か否決か分からず動けない状態。">未確定（in doubt）</span>または不確実という。</div></div>
+    </div>
+
+    <details class="code"><summary>コーディネータ障害の最悪ケース</summary>
+<pre><span class="cmt"># コーディネータ障害の最悪ケース</span>
+- コーディネータは「コミット」と決定済み
+- DB2はコミット要求を受信した
+- しかしコーディネータはDB1に送る前にクラッシュ
+- → DB1は「コミットすべきか中断すべきか」わからないまま
+   - 一方的に中断 → コミット済みのDB2と不整合
+   - 一方的にコミット → 他が中断していたら危険
+   - タイムアウトも役に立たない。ただ待つしかない</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：幹事が倒れると、誰も動けない</h4>
+      <p>全部署が「OK」と約束した後で、<b>幹事が突然倒れて連絡が途絶える</b>と、各部署は「可決と決まったのか、否決なのか」がわかりません。勝手に実行すれば、別部署が中断していたら大事故。勝手に中止すれば、可決済みの部署と食い違う。<b>幹事が回復するまでひたすら待つしかない</b>のが「未確定」です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>唯一の解決法は、コーディネータのリカバリを待つこと。だからコーディネータは決定をまずディスクのトランザクションログに書いてから参加者に送る。リカバリしたコーディネータはログを読み、コミット記録があるものはコミット、ないものは中断と確定する。結局、2PCのコミットポイントはコーディネータ上の単一ノードのアトミックなコミットに行き着くんだ。</div></div>
+    </div>
+
+    <h3 class="blk">スリーフェーズコミット（3PC）</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>待つしかないって、不便すぎませんか。改良版はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2PCは<b>ブロッキング</b>アトミックコミットプロトコルと呼ばれる。コーディネータ待ちで行き詰まるからね。理論的には<b>スリーフェーズコミット（3PC）</b>という<b>ノンブロッキング</b>版が提案された。でも3PCは「ネットワーク遅延に上限があり、ノードのレスポンスタイムにも上限がある」ことを前提にしてる。現実は遅延に上限がなく、プロセスも一時停止する（8章）から、3PCでは原子性を保証できない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ノンブロッキングなアトミックコミットには<b>完璧な障害検出の仕組み</b>――ノードがクラッシュしたか確実に教えてくれるもの――が要る。でも遅延に上限がないネットワークでは、タイムアウトは信頼できる障害検出にならない（クラッシュしてなくてもタイムアウトしうる）。だから既知の問題があっても、2PCが使われ続けてるんだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「複数ノードに各自コミットさせる」がなぜ破綻するかを理解し、2PCの必要性を説明できる。</li>
+        <li>2PCの2つの帰還不能点（yesの約束・決定の確定）が原子性の根拠だと理解できる。</li>
+        <li>コーディネータ障害時の「未確定」ブロックという致命的弱点を認識し、運用リスクを見積もれる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>単一ノードのコミットは「コミット記録の書き込み」という1点でアトミックになる。</li>
+        <li>複数ノードでは各自コミットは破綻。コミットは取り消せないので「全員コミット確実」なときだけ行う。</li>
+        <li>2PC＝準備フェーズ＋コミット/中断フェーズ。コーディネータが調整。</li>
+        <li>帰還不能点は「参加者のyes」と「コーディネータの決定」。これが原子性を保証。</li>
+        <li>コーディネータ障害時は参加者が未確定でブロック。3PCは現実では機能せず2PCが使われる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.4.2 ===== -->
+<section id="s942">
+  <div class="sec-head"><div class="sec-num">9.4.2</div><div><h2>分散トランザクションの実際</h2><span class="tag">XAトランザクションと、その重い運用コスト</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：分散トランザクションには「DB内部」と「ヘテロジニアス（XA）」の2種類。XAは異種システムをまたぐ2PCの標準で、exactly-onceなメッセージ処理などを可能にする。しかし未確定中はロックを保持し続けてアプリをブロックし、孤立トランザクションは手動解決が必要。コーディネータが単一障害点・ステートレス性破壊・障害増幅といった重い限界を持つ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分散トランザクションって、現場では評判いいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>賛否両論だ。「他では得られない重要な安全性を提供する」と評価される一方、「運用上の問題を生み、性能を損ない、約束を守れない」と批判される。MySQLの分散トランザクションは単一ノードより10倍以上遅いと報告されてる。多くのクラウドサービスは運用問題のため実装しない選択をしてる。でも学ぶ価値はある。まず2種類を区別しよう。</div></div>
+    </div>
+
+    <details class="code"><summary>2種類の分散トランザクション</summary>
+<pre><span class="cmt"># 2種類の分散トランザクション</span>
+- データベース内部の分散トランザクション : 同じDBソフトを動かすノード間のトランザクション。
+   例: VoltDB, MySQL ClusterのNDB。独自プロトコルで最適化でき、うまく動くことが多い
+- ヘテロジニアスな分散トランザクション   : 異なる技術（別ベンダーのDB、メッセージブローカー等）にまたがる。
+   舞台裏が全く違っても、アトミックなコミットを保証しなければならない → 課題が多い</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：同じ会社の会議 vs 他社合同の会議</h4>
+      <p>DB内部の分散トランザクションは、<b>同じ会社内の部署同士の会議</b>。ルールも様式も共通なので合意は取りやすい。ヘテロジニアスなトランザクションは、<b>言語も慣習も違う他社まで巻き込んだ合同会議</b>。全員にアトミックな合意を取らせるのは大仕事です。</p>
+    </div>
+
+    <h3 class="blk">exactly-once（ちょうど1回）なメッセージ処理</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ヘテロジニアスなトランザクションの強力な使い方が、<b>exactly-once（ちょうど1回）なメッセージ処理</b>だ。メッセージキューから来たメッセージを処理して結果をDBに書く。このとき「メッセージの承認」と「DBへの書き込み」を1つのトランザクションでアトミックにコミットする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それで何が嬉しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>どちらかが失敗したら両方中断されるから、メッセージブローカーは後で安全に再配信できる。リトライを何回しても、最終的にメッセージが<b>事実上1回だけ</b>処理されたことになる。中断時は副作用も全部破棄される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部のシステムでできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>影響する全システムが同じアトミックなコミットプロトコルを使える場合だけだ。例えば副作用が「メール送信」で、メールサーバーが2PC非対応なら、リトライ時にメールが複数回飛ぶかもしれない。でも、副作用が中断時に全部ロールバックできるなら安全にリトライできる。</div></div>
+    </div>
+
+    <h3 class="blk">XAトランザクション</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ヘテロジニアスな2PCの標準が<b>X/Open XA</b>（eXtended Architectureの略）だ。1991年提案で、PostgreSQL・MySQL・DB2・SQL Server・Oracleや、ActiveMQ・IBM MQなどのメッセージブローカーが対応してる。</div></div>
+    </div>
+
+    <details class="code"><summary>XAの正体</summary>
+<pre><span class="cmt"># XAの正体</span>
+- XAはネットワークプロトコルではなく、トランザクションコーディネータに対するCのAPI
+- 多くの言語にバインディングあり（JavaではJTA、JDBCドライバやJMSがサポート）
+- コーディネータは多くの場合、独立サービスではなくアプリと同じプロセスにロードされるライブラリ
+- コーディネータは参加者を追跡し、ドライバのコールバックで準備/コミット/中断を要求、
+  ローカルディスクのログで各トランザクションの決定を管理</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリのプロセス（やマシン）がクラッシュすると、コーディネータも一緒に落ちる。準備済み・未コミットの参加者は未確定で行き詰まる。サーバー再起動後、コーディネータのライブラリがログを読んで決定を復元し、それからやっと参加者にコミット/中断を要求できる。</div></div>
+    </div>
+
+    <h3 class="blk">未確定状態中のロックの保持 ― これが一番痛い</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>未確定のトランザクションって、放っておけばいいんじゃ？ そのうち片付くでしょう。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが<b>ロック</b>のせいでダメなんだ。トランザクションはダーティライトを避けるため変更行に排他ロックを取るし、直列化可能な分離なら2PLで読み取り行にも共有ロックを取る。これらのロックはコミットか中断まで解放できない。</div></div>
+    </div>
+
+    <details class="code"><summary>未確定中のロック保持の悲劇</summary>
+<pre><span class="cmt"># 未確定中のロック保持の悲劇</span>
+- コーディネータがクラッシュし、再起動に20分かかれば → ロックは20分間保持され続ける
+- コーディネータのログが完全に失われれば → ロックは永久に（または管理者が手動解決するまで）保持
+- ロック中は他のトランザクションがその行を変更（場合によっては読み取りも）できない
+- → 未確定トランザクションが解決するまで、アプリの大部分が利用不能になりうる</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：幹事不在の間、議題が「審議中」のまま凍結</h4>
+      <p>未確定の議案は「審議中」の札がかかったまま。<b>その議案に関係する書類は誰も触れません</b>（ロック）。幹事が20分で戻れば20分凍結、議事メモが失われれば<b>永久に凍結</b>。関係する案件が次々止まって、委員会の大部分が機能しなくなります。</p>
+    </div>
+
+    <h3 class="blk">コーディネータの障害からのリカバリ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>理論上はリカバリしたコーディネータがログから状態を復元して未確定を解決する。でも実際には<b>孤立した（orphaned）</b>未確定トランザクションが生じることがある。ログが失われたりバグで壊れたりして、コーディネータが結果を判断できなくなったやつだ。自動では解決できず、ロックを持ったまま永久に残る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうやって直すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>唯一の方法は管理者が手作業でコミットかロールバックを判断すること。各参加者を調べ、すでにコミット/ロールバックした参加者があればそれに合わせる。大量の手作業で、しかも本番の重大障害中に強いプレッシャーの下でやる羽目になる。多くのXA実装には<b>ヒューリスティックな判断（heuristic decisions）</b>という緊急避難ハッチもあるけど、これは「おそらく原子性が破られる」という婉曲表現だ。約束のシステムへの違反だから、壊滅的状況からの脱出にだけ使うもので、通常は使うべきじゃない。</div></div>
+    </div>
+
+    <h3 class="blk">分散トランザクションの限界</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>XAトランザクションは現実の重要な問題を解くけど、大きな運用問題も招く。一番大事なのは、<b>トランザクションコーディネータ自体が一種のデータベース</b>だということだ。</div></div>
+    </div>
+
+    <details class="code"><summary>分散トランザクション（XA）の限界</summary>
+<pre><span class="cmt"># 分散トランザクション（XA）の限界</span>
+- 単一障害点 : コーディネータがレプリケーションなしの単一マシンだと、落ちると全体がブロック。
+              驚くことに多くの実装はデフォルトで高可用性を持たない
+- ステートレス性が壊れる : コーディネータのログは未確定トランザクションの回復に必要で、
+              DBと同じくらい重要。コーディネータを抱えたアプリサーバーはもうステートレスでない
+- 最小公分母 : XAは幅広いシステムに合わせるため、システムをまたぐデッドロック検出ができず、
+              SSIとも併用できない
+- 障害の増幅 : 2PCはコミット成功に「全」参加者の反応が要る。一部が壊れるとトランザクションも失敗。
+              分散トランザクションは障害を増幅し、耐障害性の目標に反する</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、複数システム間の一貫性は諦めるしかないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや。ヘテロジニアスな分散トランザクションの苦痛なしに同じことを達成する別の方法がある。それは11章・12章で見る。まずは合意の話を締めくくろう。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「DB内部」と「ヘテロジニアス」を区別し、後者（XA）の運用リスクの大きさを判断できる。</li>
+        <li>exactly-onceがどう実現されるか（メッセージ承認とDB書き込みのアトミックコミット）を理解できる。</li>
+        <li>コーディネータが単一障害点・障害増幅源になる危険を見抜き、別アプローチ（11/12章）を検討できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>分散トランザクションはDB内部型（うまく動く）とヘテロジニアス型（XA、課題多い）に分かれる。</li>
+        <li>XAは異種システムの2PC標準。exactly-onceなメッセージ処理を可能にする。</li>
+        <li>未確定中はロックを保持し続けてアプリをブロック。孤立トランザクションは手動解決が必要。</li>
+        <li>コーディネータは単一障害点・ステートレス性破壊・最小公分母・障害増幅という限界を持つ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.4.3 ===== -->
+<section id="s943">
+  <div class="sec-head"><div class="sec-num">9.4.3</div><div><h2>耐障害性を持つ合意</h2><span class="tag">過半数で決め、エポック番号でパラドックスを解く</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：合意＝全ノードが1つの値を決定し（一様同意・整合性・妥当性・終了性を満たす）、覆さないこと。終了性には過半数のノードの稼働が必要。Paxos/Raft/Zab/VSRは値の並びを決める＝全順序ブロードキャストとして実装される。リーダー選出は「鶏が先か卵が先か」に見えるが、エポック番号＋重複するクオラム投票で解決する。2PCと違い投票は過半数でよくリカバリ手順を持つ。代償は同期コスト・過半数必須・固定メンバーシップ・タイムアウト依存。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いよいよ合意の核心だ。合意の問題はこう形式化される。1つ以上のノードが値を<b>提案</b>し、合意アルゴリズムがその中から1つを<b>決定</b>する。座席予約なら、各ノードが担当顧客のIDを提案し、決定されるのが席を買えた顧客だ。合意アルゴリズムは4つの性質を満たさないといけない。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🤝</div><h4>一様同意 <span style="font-size:11px;color:#8b93bf">uniform agreement</span></h4><p>2つのノードが異なる決定をしない。<b>＝全員が同じ結論</b></p></div>
+      <div class="mini"><div class="ic">1️⃣</div><h4>整合性 <span style="font-size:11px;color:#8b93bf">integrity</span></h4><p>2回決定するノードがない。<b>＝決定を覆さない</b></p></div>
+      <div class="mini"><div class="ic">✅</div><h4>妥当性 <span style="font-size:11px;color:#8b93bf">validity</span></h4><p>決定した値vは、誰かが提案した値。<b>＝勝手な結論を作らない</b></p></div>
+      <div class="mini"><div class="ic">🏁</div><h4>終了性 <span style="font-size:11px;color:#8b93bf">termination</span></h4><p>クラッシュしてない全ノードは最終的に何かを決定。<b>＝耐障害性の本体</b></p></div>
+    </div>
+
+    <details class="code"><summary>合意アルゴリズムが満たすべき4つの性質</summary>
+<pre><span class="cmt"># 合意アルゴリズムが満たすべき4つの性質</span>
+- 一様同意(uniform agreement) : 2つのノードが異なる決定をしない
+- 整合性(integrity)          : 2回決定するノードがない
+- 妥当性(validity)           : ノードが値vを決定したら、vを提案したノードが存在する
+- 終了性(termination)        : クラッシュしていない全ノードは最終的に何らかの値を決定する</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一様同意と整合性は「全員が同じ結論を出して、覆さない」ってことですね。妥当性は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>妥当性は自明な解を除外するためにある。「何を提案されても常に<span class="kw">null</span>を決定する」アルゴリズムは同意と整合性は満たすけど、誰も提案してない<span class="kw">null</span>を決めるから妥当性を破る。意味のない解を排除するわけだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>終了性は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが耐障害性の本体だ。「ただ居座って永遠に何もしない」のを禁じる。一部ノードが落ちても、他のノードは決定に達しないといけない。最初の3つは安全性（悪いことが起きない）、終了性はライブ性（良いことがいつか起きる）の性質だ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>合意のモデルでは「クラッシュしたノードは突然消えて二度と戻らない」と仮定する。地震でデータセンターが土砂崩れに飲まれて10メートルの泥の下、みたいなイメージだ。だから「ノードのリカバリを待つ」アルゴリズム（＝2PC）は終了性を満たせない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>何台まで落ちても大丈夫なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>全部落ちたら当然どんなアルゴリズムも決定できない。証明されてるのは、終了性を保証するには<b>少なくとも過半数のノードが正しく動いている</b>必要があること。過半数は安全にクオラムを形成できる。落ちてるノードが半数未満なら大丈夫。しかも、たとえ大多数が落ちても安全性（同意・整合性・妥当性）は常に満たされる。大障害で止まることはあっても、おかしな決定は下さない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あと前提として、多くの合意アルゴリズムは<b>ビザンチン障害（嘘をつくノード）がない</b>ことを仮定してる。ノードがプロトコルに従わず矛盾したメッセージを送ると安全性が壊れうる。ビザンチン障害に耐えるには故障ノードが1/3未満なら可能だけど、本書では詳細は扱わない。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：過半数が出席していれば会議は前に進む</h4>
+      <p>合意の4性質は委員会のルールそのもの。①全員が同じ結論（一様同意）、②一度決めたら覆さない（整合性）、③誰かが出した案だけを採択（妥当性）、④出席している委員は必ず結論にたどり着く（終了性）。そして<b>過半数（定足数）が出席していれば会議は前に進める</b>。たとえ少数が欠席しても、おかしな決定は下しません。逆に<b>嘘をつく委員（ビザンチン障害）</b>がいると話が壊れるので、ここでは「全員正直」を前提にします。</p>
+    </div>
+
+    <h3 class="blk">合意アルゴリズムと全順序ブロードキャスト</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>有名な耐障害性のある合意アルゴリズムは、Viewstamped Replication（VSR）、Paxos、Raft、Zabだ。似てるけど同一じゃない。自分で実装するのはおすすめしない――険しい道だ。高レベルの考え方を押さえれば十分。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これらは1個の値を決めるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実は違う。ほとんどは1個の値じゃなく、値の<b>並び</b>に対して決定を行う。つまり<b>全順序ブロードキャストになってる</b>んだ。</div></div>
+    </div>
+
+    <details class="code"><summary>全順序ブロードキャストは「合意を何回も回す」ことと等価</summary>
+<pre><span class="cmt"># 全順序ブロードキャストは「合意を何回も回す」ことと等価</span>
+- 各回で、ノードが次に送りたいメッセージを提案し、次に配信するメッセージを決定する
+- 同意性 → 全ノードが同じメッセージを同じ順序で配信
+- 整合性 → メッセージは複製されない
+- 妥当性 → メッセージは壊れたりでっち上げられたりしない
+- 終了性 → メッセージは失われない</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>VSR・Raft・Zabは全順序ブロードキャストを直接実装してる。1回ずつ合意するより効率的だからだ。Paxosでこの最適化版はMulti-Paxosと呼ばれる。</div></div>
+    </div>
+
+    <h3 class="blk">シングルリーダーレプリケーションと合意 ― 無限ループ？</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あれ、シングルリーダーレプリケーションって全書き込みをリーダー経由で同じ順に適用しますよね。それって全順序ブロードキャストでは？ なんで5章では合意を心配しなくてよかったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。答えは「リーダーの選び方」にある。リーダーを人間が手動で設定するなら、それは「独裁的な合意アルゴリズム」だ。1台だけが書き込めて、落ちたら人間が手動で次を設定する。これはうまく動くけど、人間の介入が要るから<b>終了性を満たさない</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>自動フェイルオーバーなら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>自動でリーダー選出すれば、耐障害性のある全順序ブロードキャスト、ひいては合意に近づく。でも問題がある。スプリットブレインを防ぐには「誰がリーダーか」を全ノードが同意しないといけない。つまり<b>リーダー選出にも合意が要る</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっと……合意アルゴリズムは全順序ブロードキャストで、それはシングルリーダーみたいなもので、シングルリーダーにはリーダーが要って、リーダー選出には合意が要って……あれ、無限ループ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、「リーダーを選ぶにはまずリーダーが要る」「合意するにはまず合意が要る」ように見える。この難局をどう脱するか。次でわかるよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：「議長を選ぶには議長が要る」という鶏と卵</h4>
+      <p>会議を仕切るには議長が要る。でも議長を選ぶ会議にもまた議長が要る……一見すると<b>鶏が先か卵が先か</b>のループです。この行き詰まりを、次の「任期番号（エポック）＋過半数の投票」が見事に解きほぐします。</p>
+    </div>
+
+    <h3 class="blk">エポック番号とクオラム ― パラドックスの種明かし</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>種明かしだ。合意プロトコルは内部でリーダーを使うけど、「リーダーが常にユニーク」とは保証しない。代わりに弱い保証をする。<span class="term" data-tip="議長の任期番号。新しく議長を選ぶたびに1つ増える。大きい任期が優先。">エポック番号（epoch）</span>を使うんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>エポック番号とクオラムの仕組み</summary>
+<pre><span class="cmt"># エポック番号とクオラムの仕組み</span>
+- エポック番号（Paxosでは投票番号、VSRではビュー番号、Raftでは期間(term)番号）を定義
+- 各エポック内ではリーダーがユニーク
+- 現在のリーダーが落ちたと思われるたびに新リーダー選出の投票が始まり、エポック番号がインクリメント
+- エポック番号は全順序で単調増加。2人のリーダーが衝突したら、大きいエポック番号の方が優先</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>リーダーは何か決定する前に、「自分より大きいエポック番号のリーダーがいない」ことを確認する。どうやって？ 自分の判断を信じちゃダメで、ノードの<span class="term" data-tip="決定に必要な最低人数（普通は過半数）。会議の定足数。">クオラム</span>（普通は過半数）から投票を集めるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>投票が2回ある感じですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、2ラウンド。1回目がリーダー選出、2回目がリーダーの提案への投票だ。重要なのは、<b>この2つの投票のクオラムは必ず重複する</b>こと。ある提案への投票が成功したら、その投票者の少なくとも1人は直近のリーダー選出にも参加していた。だから提案投票でより大きいエポックが現れなければ、現リーダーは「自分より大きいエポックの選出は起きてない」と結論でき、自分がまだリーダーだと確信して決定を下せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これ、2PCと似てません？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>似てるけど決定的に違う。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：「任期番号」と「重なる出席者」で議長を確定する</h4>
+      <p>議長には<b>任期番号</b>がつき、選び直すたびに番号が1つ増えます。新議長は「自分より新しい任期の議長はいない」ことを、<b>過半数の委員から投票を集めて</b>確認します。カギは、議長選びの投票と議案への投票で<b>出席者が必ず一部重なる</b>こと。重なった委員が「もっと新しい任期の議長を見ていない」なら、今の議長は安心して可決できます。これで「議長を選ぶには議長が要る」のループを脱出できます。</p>
+    </div>
+
+    <details class="code"><summary>2PC vs 耐障害性を持つ合意アルゴリズム</summary>
+<pre><span class="cmt"># 2PC vs 耐障害性を持つ合意アルゴリズム</span>
+- 2PC          : コーディネータは選出されない。コミットには「全」参加者のyesが必要
+- 合意アルゴリズム: リーダーは選出される。投票は「過半数」のノードでよい。
+                  さらに新リーダー選出後にノードを一貫状態にするリカバリ手順があり、
+                  安全性が常に満たされる</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この違いが、合意アルゴリズムの正しさと耐障害性の鍵なんだ。</div></div>
+    </div>
+
+    <h3 class="blk">合意の限界</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>合意アルゴリズムは万能ですね！ なんで全部に使わないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>メリットには代償がある。</div></div>
+    </div>
+
+    <details class="code"><summary>合意アルゴリズムの限界</summary>
+<pre><span class="cmt"># 合意アルゴリズムの限界</span>
+- 同期レプリケーションの一種 : 決定前の投票は同期レプリケーション。
+   非同期の方が速いので、フェイルオーバーでのデータ損失リスクを受け入れる人も多い
+- 厳密な過半数が常に必要 : 1障害に耐えるには最低3ノード、2障害には最低5ノード。
+   分断で過半数を含む側だけが処理を進め、残りはブロック
+- メンバーシップが固定前提 : ノードの追加/削除が単純にはできない。
+   動的メンバーシップの拡張はあるが、静的なものほど理解が進んでいない
+- タイムアウトに依存 : 障害ノードの検出にタイムアウトを使う。遅延の大きい環境（地理分散）では、
+   一時的なネット問題でリーダーが落ちたと誤判断しやすい。
+   頻繁なリーダー選出で、有益な処理よりリーダー選びに時間を費やすことも
+- ネットワーク問題に敏感 : 例えばRaftには、特定の1リンクだけ不安定だとリーダーシップが
+   2ノード間を行き来し続ける悪いエッジケースが知られている</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>信頼性の低いネットワークに強い合意アルゴリズムの設計は、今も研究が続いてるテーマだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>合意の4性質を使って、合意アルゴリズムの正しさ/耐障害性を評価できる。</li>
+        <li>「リーダー選出には合意が要る」というパラドックスがエポック番号で解けることを理解できる。</li>
+        <li>「過半数必須」「タイムアウト依存」などの限界を知り、地理分散などでの落とし穴を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>合意の4性質: 一様同意・整合性・妥当性（安全性）と終了性（ライブ性、耐障害性の本体）。</li>
+        <li>終了性には過半数のノードの稼働が必要。安全性は大多数が落ちても保たれる。</li>
+        <li>Paxos/Raft/Zab/VSRは値の並びを決定し、全順序ブロードキャストとして実装される。</li>
+        <li>リーダー選出のパラドックスはエポック番号＋重複するクオラム投票で解決。</li>
+        <li>限界: 同期コスト、厳密な過半数、固定メンバーシップ、タイムアウト依存、ネットワークへの敏感さ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 9.4.4 ===== -->
+<section id="s944">
+  <div class="sec-head"><div class="sec-num">9.4.4</div><div><h2>メンバーシップと協調サービス</h2><span class="tag">ZooKeeper/etcd ― 合意を「事務局」にアウトソーシングする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ZooKeeper/etcdは少量データを合意で全ノードにレプリケートする協調サービス。線形化可能なアトミック操作（ロック/リース）・操作の全順序（フェンシングトークン/zxid）・障害検出（エフェメラルノード）・変更通知を組み合わせて、リーダー選出やパーティション割り当てを自動化する。固定数ノードで動かし協調を「アウトソーシング」する。サービスディスカバリ自体は合意不要（DNS的でよい）だが、リーダー選出には合意が要る。メンバーシップサービスは「生きてるノード」の同意を提供する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ZooKeeperやetcdって「分散キー‐バリューストア」って説明されますよね。ただのDBなら、なんでわざわざ合意アルゴリズムを実装してるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい疑問。実はZooKeeperは汎用DBとしては作られてない。アプリ開発者が直接使うことはめったになくて、HBase・Hadoop YARN・OpenStack Nova・Kafkaみたいな他のプロジェクトが裏で依存してる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>彼らはZooKeeperから何を得てるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ZooKeeperとetcdは、完全にメモリに収まる<b>少量の</b>データを保持するよう設計されてる（永続性のためディスクにも書く）。だからアプリの全データは置かない。この少量データを、耐障害性のある全順序ブロードキャストで全ノードにレプリケートする。ZooKeeperはGoogleのロックサービスChubbyを参考にしてて、合意だけじゃなく便利な機能群を実装してる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：会議を仕切る「事務局」に面倒ごとを任せる</h4>
+      <p>ZooKeeper/etcdは委員会の<b>事務局</b>です。各部署（HBaseやKafkaなど）は自前で議長選びや出欠確認をやらず、事務局に任せます。事務局が管理するのは<b>議事のごく一部のメタ情報</b>（「いま誰が議長か」「どの担当が誰か」）だけで、変化もゆっくり。重い実データは扱いません。</p>
+    </div>
+
+    <details class="code"><summary>ZooKeeperが提供する機能群</summary>
+<pre><span class="cmt"># ZooKeeperが提供する機能群</span>
+- 線形化可能でアトミックな操作 : compare-and-setでロックを実装。並行実行で成功は1つだけ。
+   ロックは有効期限付きの「リース」として実装され、クライアント障害でも最終的に解放される
+- 操作の全順序 : ロックが取得されるたびに単調増加するフェンシングトークンを提供。
+   ZooKeeperは全操作にトランザクションID(zxid)とバージョン番号(cversion)を与える
+- 障害検出 : クライアントとサーバーがハートビートを交換。セッションタイムアウトより長く途絶えると
+   セッションが死んだと宣言。そのセッションのロックは自動解放（エフェメラルノード）できる
+- 変更通知 : 他クライアントが作ったロックや値の変化を監視できる。
+   通知を購読すれば、頻繁なポーリングが不要になる</pre>
+    </details>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔒</div><h4>線形化可能なアトミック操作</h4><p>CASでロック（リース）。成功は1つだけ。障害でも最終的に解放。<b>＝議長バッジの管理</b></p></div>
+      <div class="mini"><div class="ic">🔢</div><h4>操作の全順序</h4><p>単調増加するフェンシングトークン（zxid）を発行。<b>＝発言の通し番号</b></p></div>
+      <div class="mini"><div class="ic">💓</div><h4>障害検出</h4><p>ハートビートで生存確認。途絶えたらロック自動解放（エフェメラルノード）。<b>＝出欠の確認</b></p></div>
+      <div class="mini"><div class="ic">🔔</div><h4>変更通知</h4><p>値やロックの変化を購読。ポーリング不要。<b>＝決定の回覧</b></p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>このうち本当に合意が要るのは「線形化可能でアトミックな操作」だけ。でも、これらの組み合わせがZooKeeperを分散協調に有益にしてるんだ。</div></div>
+    </div>
+
+    <h3 class="blk">ノードへの処理の割り当て</h3>
+    <details class="code"><summary>ZooKeeperの活躍例</summary>
+<pre><span class="cmt"># ZooKeeperの活躍例</span>
+- リーダー/プライマリの選出 : サービスの複数インスタンスから1つを選ぶ。障害時は別ノードが代替。
+   シングルリーダーDBだけでなく、ジョブスケジューラなどステートフルなシステムでも有益
+- パーティションの割り当て : どのノードにどのパーティションを割り当てるか決める。
+   新ノード加入時のリバランスにも使う
+→ アトミックな操作・エフェメラルノード・通知を賢く使えば、人間の介入なしに自動で障害回復できる
+   （簡単ではない。Apache Curatorのような高レベルライブラリが助ける）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ノードが数千台になっても、その全部で過半数投票するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それは効率が悪い。代わりに、ZooKeeperを固定数のノード（普通3か5）で動かし、過半数投票はその中だけで行う。大量のクライアントはそれを利用する。つまりZooKeeperは協調作業（合意・順序づけ・障害検出）を外部サービスに「アウトソーシング」する方法をくれる。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あと、ZooKeeperが扱うデータはごくゆっくり変化するものだ。「10.1.1.23のノードがパーティション7のリーダー」みたいな情報で、変化は数分〜数時間おき。毎秒数千〜数百万回変わるアプリの状態を保存するためじゃない。それにはApache BookKeeperみたいな別ツールを使う。</div></div>
+    </div>
+
+    <h3 class="blk">サービスディスカバリ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ZooKeeper・etcd・Consulは<b>サービスディスカバリ</b>にもよく使われる。あるサービスに繋ぐべきIPアドレスを調べるサービスだ。クラウドでは仮想マシンが頻繁に現れては消えるから、IPが事前にわからない。だからサービスは起動時に自分のエンドポイントをレジストリに登録して、他から見つけてもらう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それも合意が要るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実はサービスディスカバリ自体は合意を必要としないことが多い。昔からDNSが使われてきたし、DNSは多層キャッシュで高性能・高可用性を実現してる。DNSの読み取りは線形化可能じゃないし、結果が多少古くても普通は問題にならない。可用性とネット障害耐性の方が重要だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあZooKeeperを使う意味は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>サービスディスカバリ自体に合意は要らないけど、<b>リーダー選出には合意が要る</b>。合意システムがすでに「誰がリーダーか」を知ってるなら、その情報を他サービスのリーダー発見に使うのは合理的だ。だから合意システムには、投票に参加せず決定ログを非同期受信する「リードオンリーのキャッシュレプリカ」を持てるものがある。それなら線形化が不要な読み取りに応答できる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：連絡先名簿は多少古くてOK、でも議長の確定は厳密に</h4>
+      <p>「どの担当に連絡すればいいか」の<b>連絡先名簿</b>は、多少古くても致命的ではありません（サービスディスカバリ＝合意不要、DNSで十分）。一方、「いま誰が議長か」を間違えると会議が壊れるので、ここは事務局が<b>合意で厳密に</b>決めます。事務局が握る「議長は誰か」を、各部署が連絡先探しに流用するのは理にかなっています。</p>
+    </div>
+
+    <h3 class="blk">メンバーシップサービス</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最後に<b>メンバーシップサービス</b>。ZooKeeperはこの長い研究の歴史の一部だ。1980年代の航空管制みたいな信頼性の高いシステムから重要だった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>メンバーシップって、何を決めるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「今アクティブでクラスタのメンバーになってるノードはどれか」を決める。8章で見たように、ネットワーク遅延に上限がないから、あるノードが本当に落ちてるかを信頼性を持って判定するのは不可能だ。でも、合意と障害検出を組み合わせれば「どのノードが生きてて、どれが落ちてるか」でノード間が同意できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>生きてるノードを誤って「落ちてる」と判断することは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>起こりうる。でも「メンバー構成について全システムが同意できる」こと自体が非常に有益なんだ。例えばリーダー選出を「メンバーの中で最小番号のノードを選ぶ」と単純化できる。でも各ノードがメンバー構成について違う意見を持ってたら、この方法は破綻する。だから同意が大事なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>⚖️ たとえ話：出席者名簿を全員で一致させる</h4>
+      <p>メンバーシップサービスは「<b>いま会議に出席している委員は誰か</b>」を全員で一致させる仕組み。たとえ「居眠り中の委員を欠席と誤判定」しても、<b>出席者名簿について全員の意見がそろっている</b>こと自体が役立ちます。名簿が一致していれば「出席者の中で一番若い番号の委員を議長にする」のような単純なルールでリーダーを決められます。名簿がバラバラだと、このルールは破綻します。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ZooKeeper/etcdが「なぜ存在し、何を解決するか」を理解し、自前で合意を書かずに済む判断ができる。</li>
+        <li>ロック・フェンシングトークン・エフェメラルノード・通知の使い分けを理解できる。</li>
+        <li>サービスディスカバリ（合意不要）とリーダー選出（合意必要）を区別して設計できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ZooKeeper/etcdは少量データを合意でレプリケートする協調サービス。HBase/Kafkaなどが裏で依存。</li>
+        <li>機能: 線形化可能なアトミック操作（ロック/リース）、操作の全順序（フェンシングトークン）、障害検出（エフェメラルノード）、変更通知。</li>
+        <li>用途: リーダー選出、パーティション割り当て。固定数ノードで協調をアウトソーシング。</li>
+        <li>サービスディスカバリは合意不要だがリーダー選出は合意必要。メンバーシップサービスは生存ノードの同意を提供。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 振り返り ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で全部つなげてみる</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日は一番抽象的でしたけど、最後に全部つながった感じがします。自分の言葉で整理してみていいですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ぜひ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まず<b>線形化可能性</b>は「コピーがたくさんあっても1つに見せる」最強クラスの約束で、最新性を保証する。でも代償があって、分断時は可用性とのトレードオフ（CAP）になるし、分断がなくても常に遅い。だから本当に必要な場面――リーダー選出、ユニーク制約、複数経路の同期――を見極めて使う。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>次に<b>順序の保証</b>。順序は因果関係を守るために大事。線形化可能性は全順序（一直線）、因果律は半順序（Gitのブランチみたいに枝分かれ・合流）。因果律の一貫性は遅延に強くて線形化可能性より軽い。順序づけにはランポートタイムスタンプが使えるけど、「いつ順序が確定するか」がわからないとユニーク制約には足りない。そこで<b>全順序ブロードキャスト</b>が登場して、配信時点で順序が確定する。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そして？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全順序ブロードキャストと線形化可能なcompare-and-setレジスタ、そして<b>合意</b>は、ぜんぶ等価だった。合意は「全ノードが1つの決定に同意して覆さない」こと（4性質）。2PCはアトミックコミットを実現するけど、コーディネータが落ちると未確定でブロックして終了性を満たさない。Paxos/Raft/Zabみたいな耐障害性のある合意アルゴリズムは、エポック番号と過半数のクオラムで「リーダーを選ぶにはリーダーが要る」パラドックスを解いて、ちゃんと終了性を満たす。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>完璧だ。最後の道具は？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><b>ZooKeeperやetcd</b>ですね。合意・障害検出・メンバーシップを「アウトソーシング」してくれる。自分で合意アルゴリズムを書くのは険しい道だから、こういう道具に任せる。でも全システムに合意が要るわけじゃなくて、リーダーレスやマルチリーダーは合意なしでやっていく道もある。要するに、リーダーを置くのは「合意の問題を別の場所に・低い頻度で先送りしてるだけ」で、合意そのものは消えない――ここがすごく腑に落ちました。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① 一貫性の保証</h4><p>レプリカは一時的にズレる。結果整合性は「最終的にそろう」だけの弱い約束。もっと強い保証を探す旅へ。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 線形化可能性</h4><p>コピーを1つに見せる最新性の保証。リーダー選出・ユニーク制約・複数経路に必須。だがCAPと「常に遅い」代償あり。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 順序の保証</h4><p>全順序（一直線）と半順序（因果律＝Gitのブランチ）。ランポートタイムスタンプ→全順序ブロードキャストで「いつ確定するか」を解決。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 合意</h4><p>全順序ブロードキャスト・線形化可能CAS・合意は等価。2PCは未確定でブロック。Paxos/Raftはエポック＋過半数で解決。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>⑤ 協調サービス</h4><p>ZooKeeper/etcdが合意・障害検出・メンバーシップを事務局として代行。自前実装は避けて任せる。</p></div>
+    </div>
+    <div class="loopback">🧭 リーダーを置いても「合意」は消えず、別の場所に・低い頻度で先送りされているだけ</div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ「分かっていなかった部分」</span></div></div>
+
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>線形化可能性と最新性の保証</div>
+      <p style="font-size:14px;margin:0">線形化可能性とは何か、「最新性の保証」という言葉を使い、サッカー結果サイトのアリスとボブの例を交えて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">線形化可能性とは、データのコピーが実際には複数あっても「コピーは1つだけで、すべての操作がアトミックに効く」ように見せる保証です。本質は最新性の保証で、誰かの書き込みが成功した瞬間以降は、それ以降に読むすべてのクライアントが必ずその新しい値を見られます（古いキャッシュやレプリカの値は返さない）。アリスとボブの例では、アリスが最新スコアを見て声に出した「後に」ボブがリロードしたのに古い結果が返りました。これは「後に操作した人が古い値を見た」ので、最新性の保証＝線形化可能性に違反しています。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 「コピーが1つに見える/全操作がアトミックに見える」に触れている ／ □ 「最新性の保証」＝書き込み成功後は以降の全読み取りが新しい値、を説明している ／ □ アリス→ボブの時間的前後（後に操作したのに古い値）が違反だと指摘している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>CAP定理の誤解</div>
+      <p style="font-size:14px;margin:0">CAP定理について、「3つから2つ選ぶ」という説明がなぜ誤解を招くのか、正しい言い換えは何かを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ネットワーク分断はフォールト（障害）の一種で、好むと好まざるとに関わらず起きるものなので「選ぶ/選ばない」の対象になりません。だから「一貫性・可用性・分断耐性の3つから2つ選ぶ」という言い方はおかしいのです。正しくは「ネットワーク分断が起きたとき、一貫性（線形化可能性）と可用性のどちらを選ぶか」と言うべきです。ネットワークが正常なときは両方提供できます。なおCAPは可用性の定義が独特で考慮するフォールトも分断だけと狭く、実用的価値は低いので避けた方がよいです。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ネットワーク分断はフォールトであり選択対象ではない、と説明している ／ □ 正しい言い換え「分断時に一貫性か可用性か」を示している ／ □ 分断がないときは両立できる、に触れていれば加点</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>全順序と半順序（Gitのたとえ）</div>
+      <p style="font-size:14px;margin:0">因果律に基づく順序（半順序）と、線形化可能性が定める全順序の違いを、Gitのコミット履歴のたとえを使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">全順序は任意の2つの操作が必ず比較できて前後が決まります（自然数のよう、線形化可能性が提供）。半順序は比較できないペア（並行な操作）があります（因果律が提供）。因果律ではAがBより先という関係があれば順序が決まりますが、AとBが並行なら比較不能です。これはGitのコミット履歴に似ています。普通は一直線（全順序）ですが、複数人が並行作業するとブランチで枝分かれし、マージで合流します。別ブランチのコミット同士は比較不能（並行）で、これがまさに半順序＝因果律の構造です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 全順序＝任意の2操作を比較可能、半順序＝並行な操作は比較不能、を区別している ／ □ 線形化可能性＝全順序、因果律＝半順序、と対応づけている ／ □ Gitのブランチ（枝分かれ）とマージ（合流）で半順序を説明している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>2PCのコーディネータ障害</div>
+      <p style="font-size:14px;margin:0">2相コミット（2PC）でコーディネータが「準備フェーズの後・コミット指示を全員に送る前」にクラッシュすると、なぜ参加者は一方的にコミットも中断もできないのか説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">「yes」を返した参加者は「要求されたら必ずコミットする」と約束し、中断する権利を放棄しています。一方コーディネータはコミットか中断かを最終決定する権限を持ちます。コーディネータがコミットと決めてDB2には伝えたがDB1に伝える前に落ちた、という状況だと、DB1は決定を知りません。ここでDB1が一方的に中断すると、すでにコミットしたDB2と不整合になります。逆に一方的にコミットしても、もし他が中断していたら危険です。タイムアウトも役に立ちません。だから安全な唯一の方法はコーディネータのリカバリを待つこと（この状態が「未確定」）です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 「yes」を返した参加者は中断する権利を放棄している、に触れている ／ □ 一方的な中断/コミットがどちらも不整合や危険を招くと説明している ／ □ 唯一の解決はコーディネータのリカバリ待ち（未確定状態）と述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>リーダー選出のパラドックスをどう解くか</div>
+      <p style="font-size:14px;margin:0">「リーダーを選出するにはまず合意が必要で、合意するにはリーダーが必要に見える」というパラドックスを、耐障害性を持つ合意アルゴリズムがどう解決するか、エポック番号とクオラムを使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">合意アルゴリズムは「リーダーが常にユニーク」とは保証せず、エポック番号（Raftではterm番号など）を使います。各エポック内ではリーダーがユニークで、リーダーが落ちたと思われるたびに新選出が始まりエポック番号が単調増加します。リーダーは決定の前に、ノードのクオラム（普通は過半数）から投票を集めます。投票は2ラウンドで、1回目がリーダー選出、2回目が提案への投票です。この2つのクオラムは必ず重複するので、提案投票でより大きいエポックが現れなければ、現リーダーは「自分より大きいエポックの選出は起きていない」と確信して安全に決定できます。こうして「最初にリーダーが要る」状態を、エポック番号の比較と過半数投票の重複で脱します。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ エポック番号が単調増加し、各エポック内でリーダーがユニークだと説明している ／ □ 過半数（クオラム）からの投票が必要だと述べている ／ □ 2ラウンドの投票のクオラムが重複することが安全性の鍵だと指摘している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして体感する</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>5章・7章・8章を復習する</h4><p>この章は5章（レプリケーション）・7章（トランザクション・直列化可能性）・8章（分散システムの障害・クロック）の上に立っています。レプリケーションラグ、書き込みスキュー、クロックスキューを思い出すと理解が深まります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>Raftを動かして体感する</h4><p>合意アルゴリズムの中でも理解しやすさを狙って設計されたRaftには、ブラウザで動く可視化教材（thesecretlivesofdata の Raft アニメーションなど）があります。リーダー選出とログ複製が目で見えます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>ZooKeeperかetcdを実際に触る</h4><p>ローカルに3ノード立てて、1ノードを落としても過半数が生きていれば動き続けること、過半数を割ると止まることを実験すると「過半数必須」が腹落ちします。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>Jepsenのレポートを読む</h4><p>Kyle Kingsbury（aphyr）の「Call Me Maybe」シリーズは、実在のDB（MongoDB、etcd、Cassandraなど）が宣伝どおりの一貫性を本当に守るかを壊して検証しています。理論が現実でどう破れるかがわかります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次は第Ⅲ部（派生データ）へ</h4><p>ここまでの理論的基盤の上に、11章（ストリーム処理・exactly-once）や12章（信頼できるシステムの構築、因果律を保つ別アプローチ）が続きます。「分散トランザクションの苦痛なしに一貫性を達成する別の道」がそこで明かされます。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『データ指向アプリケーションデザイン』第9章 図解 ／ たとえ話メタファー：⚖️ 委員会の意思決定（全員で合意を取る会議） ／ 一貫性と合意</p>
+
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+

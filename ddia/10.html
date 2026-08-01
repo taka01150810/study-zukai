@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第10章 バッチ処理 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第10章</span>
+  <h1>バッチ処理 ― 溜めた材料を、夜間にまとめて加工する</h1>
+  <p>「夜のうちにたまったログを全部読んで、毎朝レポートを出して」――待っている人はいないけれど大量のデータをまとめてさばく<b>バッチ処理</b>を、新人ハルとベテラン カイ先輩の対話で学びます。小さな<b>Unixツール</b>の組み合わせから、数千台に分散する<b>MapReduce</b>、そして高速な<b>データフローエンジン（Spark/Flink）</b>まで一気に追いかけます。</p>
+  <div class="badge-row">
+    <span class="badge">🏭 たとえ話は「工場の大量生産ライン（夜間にまとめて加工）」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a class="sub" href="#s0">システムの3タイプ ― サービス・バッチ・ストリーム</a>
+  <a href="#s101">10.1 Unixのツールによるバッチ処理</a>
+  <a class="sub" href="#s1011">10.1.1 単純なログの分析</a>
+  <a class="sub" href="#s10111">　└ コマンドの連鎖とカスタムプログラム</a>
+  <a class="sub" href="#s10112">　└ ソートとインメモリ集計</a>
+  <a class="sub" href="#s1012">10.1.2 Unixの哲学</a>
+  <a class="sub" href="#s10121">　└ 一様なインターフェース</a>
+  <a class="sub" href="#s10122">　└ ロジックと結線の分離</a>
+  <a class="sub" href="#s10123">　└ 透過性と実験</a>
+  <a href="#s102">10.2 MapReduceと分散ファイルシステム</a>
+  <a class="sub" href="#s1021">10.2.1 MapReduceジョブの実行</a>
+  <a class="sub" href="#s10211">　└ MapReduceの分散実行</a>
+  <a class="sub" href="#s10212">　└ MapReduceのワークフロー</a>
+  <a class="sub" href="#s1022">10.2.2 Reduce側での結合とグループ化</a>
+  <a class="sub" href="#s10221">　└ 事例：ユーザーのアクティビティ分析</a>
+  <a class="sub" href="#s10222">　└ ソートマージ結合</a>
+  <a class="sub" href="#s10223">　└ 関連データを同じ場所にまとめる</a>
+  <a class="sub" href="#s10224">　└ GROUP BY</a>
+  <a class="sub" href="#s10225">　└ スキューの処理</a>
+  <a class="sub" href="#s1023">10.2.3 map側での結合</a>
+  <a class="sub" href="#s10231">　└ ブロードキャストハッシュ結合</a>
+  <a class="sub" href="#s10232">　└ パーティション化ハッシュ結合</a>
+  <a class="sub" href="#s10233">　└ map側マージ結合</a>
+  <a class="sub" href="#s10234">　└ map側結合のワークフロー</a>
+  <a class="sub" href="#s1024">10.2.4 バッチワークフローの出力</a>
+  <a class="sub" href="#s10241">　└ 検索インデックスの構築</a>
+  <a class="sub" href="#s10242">　└ キー‐バリューストア</a>
+  <a class="sub" href="#s10243">　└ 出力における哲学</a>
+  <a class="sub" href="#s1025">10.2.5 Hadoopと分散DBの比較</a>
+  <a class="sub" href="#s10251">　└ ストレージの多様性</a>
+  <a class="sub" href="#s10252">　└ 処理モデルの多様性</a>
+  <a class="sub" href="#s10253">　└ 頻繁な障害に備えた設計</a>
+  <a href="#s103">10.3 MapReduceを超えて</a>
+  <a class="sub" href="#s1031">10.3.1 中間的な状態の実体化</a>
+  <a class="sub" href="#s10311">　└ データフローエンジン</a>
+  <a class="sub" href="#s10312">　└ 耐障害性</a>
+  <a class="sub" href="#s10313">　└ 実体化についての議論</a>
+  <a class="sub" href="#s1032">10.3.2 グラフとイテレーティブな処理</a>
+  <a class="sub" href="#s10321">　└ Pregelの処理モデル</a>
+  <a class="sub" href="#s10322">　└ 耐障害性</a>
+  <a class="sub" href="#s10323">　└ 並列実行</a>
+  <a class="sub" href="#s1033">10.3.3 高レベルAPIと様々な言語</a>
+  <a class="sub" href="#s10331">　└ 宣言的なクエリ言語への移行</a>
+  <a class="sub" href="#s10332">　└ 様々な領域への特化</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🏭</div><div><b>たとえ話はぜんぶ「工場の生産ライン」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「工場の大量生産ライン（夜間にまとめて加工）」</b>に置きかえて説明します。入力データ＝原材料、出力＝完成品、処理＝加工です。別の世界のたとえは混ぜません。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、工場の生産ラインのたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">バッチ処理 <span>batch processing</span></div><p>溜めた大量データを定期的にまとめて一括加工する処理。<b>＝夜間に原材料をまとめて加工する生産ライン</b>。人は完成を待たない。</p></div>
+    <div class="item"><div class="w">サービス <span>online</span></div><p>リクエストにすぐ返事を返す処理。<b>＝注文を受けてその場で1品作る窓口</b>。指標はレスポンスタイム。</p></div>
+    <div class="item"><div class="w">スループット <span>throughput</span></div><p>単位時間にさばける処理量。<b>＝1時間に何個の完成品を作れるか</b>。バッチの性能指標。</p></div>
+    <div class="item"><div class="w">ジョブ <span>job</span></div><p>ひとまとまりの処理。<b>＝1回ぶんの製造ロット</b>。</p></div>
+    <div class="item"><div class="w">Unixのパイプ <span>|</span></div><p>あるツールの出力を次のツールの入力に流す仕組み。<b>＝工程をつなぐベルトコンベア</b>。</p></div>
+    <div class="item"><div class="w">MapReduce</div><p>数千台に分散できるバッチ処理の仕組み。<b>＝大勢の作業員に同じ作業を割り振り、集約する</b>。</p></div>
+    <div class="item"><div class="w">マッパー <span>mapper</span></div><p>各レコードからキーと値を取り出す関数。<b>＝原材料を見て仕分けラベルを貼る仕分け担当</b>。</p></div>
+    <div class="item"><div class="w">リデューサー <span>reducer</span></div><p>同じキーの値をまとめて処理する関数。<b>＝同じラベルの材料を集めて集計する集計担当</b>。</p></div>
+    <div class="item"><div class="w">ソート <span>sort</span></div><p>並べ替え。<b>＝同じ種類が隣り合うように並べ替えライン</b>。</p></div>
+    <div class="item"><div class="w">結合 <span>join</span></div><p>関連する2つのデータを突き合わせること。<b>＝2つの部品ラインを突き合わせて1つにする</b>。</p></div>
+    <div class="item"><div class="w">シャッフル <span>shuffle</span></div><p>同じキーを同じリデューサーへ運ぶ工程（分割＋ソート＋コピー）。<b>＝同じ種類を同じ集計台へ運ぶ</b>。ランダム性はない。</p></div>
+    <div class="item"><div class="w">HDFS</div><p>多数のマシンのディスクを束ねた分散ファイルシステム。<b>＝工場じゅうの倉庫を1つの巨大倉庫として扱う</b>。</p></div>
+    <div class="item"><div class="w">シェアードナッシング <span>shared-nothing</span></div><p>特別な共有設備を使わず、独立した普通のマシンを並べる方式。<b>＝各作業台が独立して動く</b>。</p></div>
+    <div class="item"><div class="w">データフローエンジン <span>dataflow engine</span></div><p>Spark/Tez/Flink。ワークフロー全体を1ジョブとして扱う高速エンジン。<b>＝工程表を一気通貫で組んだ生産ライン</b>。</p></div>
+    <div class="item"><div class="w">オペレータ <span>operator</span></div><p>map/reduceを一般化した処理単位。<b>＝各加工マシン</b>。</p></div>
+    <div class="item"><div class="w">フォールトトレランス <span>fault tolerance</span></div><p>失敗に耐える性質。<b>＝失敗した工程だけやり直して全体は止めない</b>。</p></div>
+    <div class="item"><div class="w">実体化 <span>materialization</span></div><p>中間結果を先に計算してファイルに書き出すこと。<b>＝半製品をいったん倉庫に置く</b>。</p></div>
+    <div class="item"><div class="w">スキュー／ホットキー <span>skew / hot key</span></div><p>1つのキーにデータが偏ること。<b>＝1つの集計台に材料が集中して詰まる</b>。</p></div>
+    <div class="item"><div class="w">決定的 <span>deterministic</span></div><p>同じ入力なら必ず同じ出力になる性質。<b>＝同じ材料・手順なら毎回同じ完成品</b>。</p></div>
+    <div class="item"><div class="w">Pregel</div><p>グラフ処理のモデル（BSP）。<b>＝各部品が辺づたいに伝言を送り合って計算する</b>。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>ある朝、ツバサ社のハルは「夜のうちにたまったログを全部読んで、人気ページのレポートを毎朝出してほしい」という依頼を受けます。今までのハルは「ユーザーがボタンを押す → すぐ返事を返す」アプリしか作ったことがありません。でも今回は、待っている人はいないけれど、とにかく大量のデータをまとめて処理する仕事。カイ先輩は「それは"バッチ処理"っていう、コンピュータの歴史でいちばん古いやり方なんだよ」と言い、Unixの小さなコマンドの組み合わせから、Googleを支えたMapReduce、そして今どきのSparkやFlinkまで、たっぷり一日かけて教えてくれます。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：世の中のシステムには3タイプある。①リクエストにすぐ返事を返す<b>サービス（オンライン）</b>、②たまった大量データをまとめて処理する<b>バッチ処理（オフライン）</b>、③その中間の<b>ストリーム処理</b>。この章は②の話。<code>sort</code> や <code>uniq</code> といった小さなUnixツールを「庭のホースみたいにつなぐ」考え方が、数千台に分散するMapReduceへ、さらに高速なデータフローエンジンへと発展していった流れを、最初から最後まで追いかける。</div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：これから「工場の大量生産ライン」の話をします</h4>
+      <p>この章を通して、バッチ処理＝<b>夜間にまとめて加工する生産ライン</b>、入力データ＝<b>原材料</b>、出力＝<b>完成品</b>、Unixのパイプ＝<b>工程をつなぐベルトコンベア</b>、MapReduce＝<b>大勢の作業員に同じ作業を割り振って集約する</b>、マッパー＝<b>仕分け担当</b>、リデューサー＝<b>集計担当</b>、ソート＝<b>並べ替えライン</b>、結合＝<b>2つの部品ラインを突き合わせる</b>、シャッフル＝<b>同じ種類を同じ集計台へ運ぶ</b>、フォールトトレランス＝<b>失敗した工程だけやり直す</b>に置きかえて読みます。別の世界のたとえは混ぜません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>現場の重い処理はたいていバッチ</b>：集計・レポート・機械学習の前処理など。仕組みを知らないと毎晩落ちるジョブにふりまわされる。</li>
+        <li><b>分散処理の教科書</b>：MapReduceは今や主役でないが「分散処理がなぜ難しく、どう解決するか」をいちばんわかりやすく見せる教材。SparkもFlinkもストリームも、これを土台に理解できる。</li>
+        <li><b>安心の哲学</b>：「入力はいじらない、出力は丸ごと作り直す」というバッチの哲学は、バグからの回復・実験のしやすさに直結する。</li>
+        <li><b>できること</b>：<code>awk</code>・<code>sort</code>・<code>uniq</code> で数GBのログを数秒で分析。結合アルゴリズムを最適に選べる。再実行しても壊れないジョブを設計できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== システムの3タイプ ===== -->
+<section id="s0">
+  <div class="sec-head"><div class="sec-num">🏭</div><div><h2>システムの3タイプ ― サービス・バッチ・ストリーム</h2><span class="tag">自分の処理が「すぐ返事」か「あとでまとめて」かを見分ける</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：システムには①サービス（即レスポンス、指標はレスポンスタイム）、②バッチ処理（大量データをまとめて、指標は<span class="term" data-tip="単位時間にさばける処理量。1時間に何個作れるか。">スループット</span>、人は待たない）、③ストリーム処理（中間、イベントをすぐ）の3タイプがある。この章は②のバッチ処理。バッチ処理は機械式の集計機の時代からある古い形態。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、おはようございます。「毎朝、前日のアクセスログから人気ページTOP5を出して」って頼まれたんですけど……。僕、ボタン押したらすぐ返事するアプリしか作ったことなくて。これ、どう作ればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>お、いい仕事をもらったね。それは<b>バッチ処理</b>っていう、コンピュータの中でいちばん古い処理スタイルなんだ。まず、世の中のシステムには大きく3つのタイプがあるって話から始めようか。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つのタイプ、ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これまで話してきたのは、ほとんどが「リクエスト」と「レスポンス」のやりとり。ユーザーが尋ねたら、システムが少し後に答える。DB、キャッシュ、検索、Webサーバー……みんなこの形。これを<span class="term" data-tip="リクエストにすぐ返事を返す処理。人が待っている。">サービス（オンラインシステム）</span>と呼ぶ。人間が待ってるから<b>レスポンスタイム</b>と<b>可用性</b>が大事だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>僕がいつも作ってるやつですね。3つ目は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つ目が<b>バッチ処理（オフライン）</b>。大量入力を受け取り<b>ジョブ</b>を実行して出力を作る。数分〜数日かかるから人間は待たない。定期スケジュールで動かす（毎日深夜に、みたいに）。性能は<b>スループット</b>で測る。3つ目の<b>ストリーム処理</b>は両者の中間で、発生したイベントをすぐ処理する。11章でやるよ。今日は2つ目だ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ちなみにバッチ処理は歴史が古い。1890年のアメリカ国勢調査では「ホレリスマシン」というパンチカードの集計機械が大量のカードから統計を集計してた。MapReduceも、不思議なことに1940〜50年代のIBMのカード分類器にそっくりなんだ。歴史は繰り返すんだよ。</div></div>
+    </div>
+
+    <h3 class="blk">システムの3タイプ</h3>
+    <div class="grid3">
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">🪟</div><h4>サービス（オンライン）</h4><p>リクエストを待ち、できるだけ速く返事を返す。</p><span class="pill">指標＝レスポンスタイム</span></div>
+      <div class="mini" style="border-color:#6c8cff55"><div class="ic">🏭</div><h4>バッチ処理（オフライン）</h4><p>大量の入力をまとめて処理し、出力を作る。人は待たない。</p><span class="pill">指標＝スループット</span></div>
+      <div class="mini" style="border-color:#b78cff55"><div class="ic">🌊</div><h4>ストリーム処理（準リアルタイム）</h4><p>発生したイベントをすぐ処理。オンラインとバッチの中間。</p><span class="pill">低レイテンシ</span></div>
+    </div>
+
+    <details class="code"><summary>ホワイトボードのメモ：システムの3タイプ</summary>
+<pre><span class="cmt"># システムの3タイプ</span>
+サービス（オンライン）      : リクエストを待ち、できるだけ速く返事を返す。指標=レスポンスタイム
+バッチ処理（オフライン）    : 大量の入力をまとめて処理し、出力を作る。指標=スループット
+ストリーム処理（準リアルタイム）: 発生したイベントをすぐ処理する。オンラインとバッチの中間</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：注文窓口・夜間ライン・流れ作業</h4>
+      <p><b>サービス＝注文窓口</b>。お客が来たらその場で1品作って渡す（速さが命）。<b>バッチ処理＝夜間の大量生産ライン</b>。昼に溜まった原材料を、夜にまとめて加工して完成品の山を作る（待つ人はいないが、1晩で何個作れるか＝スループットが勝負）。<b>ストリーム処理＝流れてくる材料をその都度すぐ加工する流れ作業</b>。今日の主役は真ん中の夜間ラインです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分の処理が「すぐ返事が要る」のか「あとでまとめてでいい」のかを見分けられると、設計の方向（レスポンスタイム重視かスループット重視か）を間違えない。</li>
+        <li>バッチ・ストリームという言葉を区別して使えるようになる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>サービス＝オンライン、即レスポンス、指標はレスポンスタイムと可用性。</li>
+        <li>バッチ処理＝オフライン、大量データをまとめて処理、指標はスループット、人は完了を待たない。</li>
+        <li>ストリーム処理＝両者の中間、発生イベントをすぐ処理、低レイテンシ。</li>
+        <li>バッチ処理は機械式集計機の時代から続く古い形態。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.1 ===== -->
+<section id="s101">
+  <div class="sec-head"><div class="sec-num">10.1</div><div><h2>Unixのツールによるバッチ処理</h2><span class="tag">バッチ処理の考え方の原点 ― 手元のツールだけでやってみる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：いきなり大きなフレームワークは使わない。まずはPCにもう入っているUnixの基本ツールだけでアクセスログを分析する。これがバッチ処理の考え方の原点。題材はnginxのアクセスログの1行――そこにIP・時刻・URL・ステータス・サイズ・ブラウザなど大量の情報が詰まっている。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、肝心のレポートはどう作るんですか？ いきなり大きいフレームワーク使うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、まずはきみのPCにもう入ってる、Unixの基本ツールだけでやってみよう。これがバッチ処理の考え方の原点なんだ。題材は、まさにきみのWebサーバーのアクセスログだよ。この1行に、たくさんの情報が詰まってる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うわ、1行からこんなに読めるんですね。</div></div>
+    </div>
+
+    <p>下のログ1行を読み解くと――2015年2月27日17:55:11(UTC)に、クライアントIP <code>216.58.210.78</code> から <code>/css/typography.css</code> へのリクエストが来た。認証してないので <code>$remote_user</code> は <code>-</code>。ステータスは <code>200</code>（成功）、レスポンスは <code>3377</code> バイト。ブラウザはChrome 40、参照元は <code>http://martin.kleppmann.com/</code>、というわけです。</p>
+
+    <details class="code"><summary>nginxのアクセスログ1行とフォーマット定義</summary>
+<pre><span class="cmt"># nginx のアクセスログ1行（本当は1行だが、読みやすく折り返している）</span>
+216.58.210.78 - - [27/Feb/2015:17:55:11 +0000] "GET /css/typography.css HTTP/1.1"
+200 3377 "http://martin.kleppmann.com/" "Mozilla/5.0 (Macintosh; Intel Mac OS X
+10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.115 Safari/537.36"
+
+<span class="cmt"># このログ行がどういう順番で並んでいるかの定義（nginx の設定）</span>
+$remote_addr - $remote_user [$time_local] "$request"
+$status $body_bytes_sent "$http_referer" "$http_user_agent"</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：1個の伝票に書かれた製造記録</h4>
+      <p>このログ1行は、生産ラインを流れる<b>原材料1個に貼られた製造記録の伝票</b>のようなものです。誰が（IP）・いつ（時刻）・何の加工を頼んだか（URL）・成功したか（ステータス）・重さ（バイト数）が全部書いてある。1日分の伝票が山ほど溜まる――これをまとめて加工して「人気の加工TOP5」を出すのが今日の仕事です。</p>
+    </div>
+  </div>
+
+  <!-- 10.1.1 -->
+  <div class="card" id="s1011">
+    <div class="sec-head"><div class="sec-num">10.1.1</div><div><h2>単純なログの分析</h2><span class="tag">小さなツールをパイプでつないでTOP5を出す</span></div></div>
+
+    <div class="lead">📌 <b>要するに</b>：Unixの小さなツール（<code>awk</code> でフィールド抽出 → <code>sort</code> で並べ → <code>uniq -c</code> で集計 → <code>sort -rn</code> で並べ替え → <code>head</code> で上位）を<span class="term" data-tip="あるツールの出力を次のツールの入力に流す仕組み。記号は | 。">パイプ</span>でつなぐだけで、巨大ログから人気ページTOP5が数秒で出せる。<code>uniq</code> は隣同士しか見ないので先に <code>sort</code> が要る。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、「人気ページTOP5」はどう出すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Unixの小さなツールを、パイプ（<code>|</code>）でつないでやるんだ。これ1発で出るよ。① <code>cat</code> でログを読む。② <code>awk '{print $7}'</code> で7番目のフィールド（＝URL）だけ出す。③ <code>sort</code> でURLをアルファベット順に並べる。④ <code>uniq -c</code> で隣り合う同じ行をまとめ、回数を頭に付ける。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、③でわざわざ並べたのは、④の <code>uniq</code> が「隣同士」しか見れないからなんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り！ よく気づいた。先に <code>sort</code> で同じものを隣に集めておく必要がある。⑤ 2回目の <code>sort -r -n</code> は回数で降順に並べ、⑥ <code>head -n 5</code> で先頭5行だけ取る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、こんな短いのにTOP5が出るんですか！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、信じられないほど強力。数GBのログでも秒で処理できるし修正も簡単。CSSを除きたければ <code>awk</code> を <code>'$7 !~ /\.css$/ {print $7}'</code> に、クライアントIP別にしたければ <code>'{print $1}'</code> にするだけ。<code>awk</code>・<code>sed</code>・<code>grep</code>・<code>sort</code>・<code>uniq</code>・<code>xargs</code> の組み合わせで驚くほど多くの分析が数分でできる。</div></div>
+    </div>
+
+    <h3 class="blk">処理の流れ（6工程）</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>cat ― ログを読み込む</h4><p>原材料（ログファイル）をラインに投入する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>awk '{print $7}' ― URLだけ取り出す</h4><p>各行の7番目（リクエストされたURL）だけを抜き出す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>sort ― URLをアルファベット順に並べる</h4><p>同じURLが連続して並ぶようにする（④の準備）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>uniq -c ― 隣の同じ行をまとめて数える</h4><p>隣接する同じ行を1つにまとめ、出現回数を頭に付ける。
+        <div class="branch ng">⚠ uniq は隣り合う行しか比べない。だから③のsortが先に必要。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>sort -r -n ― 回数の降順に並べ替え</h4><p>先頭の数値（回数）で数値ソート（-n）し降順（-r）。多いものが先頭へ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">6</div><div class="line"></div></div><div class="body"><h4>head -n 5 ― 上位5件だけ取る</h4><p>先頭5行だけ取り、あとは捨てる。
+        <div class="branch ok">✅ これで人気ページTOP5の完成。数GBでも秒で出る。</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>人気ページTOP5のUnixワンライナーと出力</summary>
+<pre><span class="cmt"># アクセスログから「人気ページTOP5」を出すUnixワンライナー</span>
+<span class="fn">cat</span> /var/log/nginx/access.log | <span class="cmt"># ①ログファイルを読み込む</span>
+  <span class="fn">awk</span> <span class="str">'{print $7}'</span> |             <span class="cmt"># ②各行の7番目（=リクエストされたURL）だけ出す</span>
+  <span class="fn">sort</span>             |             <span class="cmt"># ③URLをアルファベット順に並べる（同じURLを隣に）</span>
+  <span class="fn">uniq</span> -c          |             <span class="cmt"># ④隣り合う同じ行をまとめ、出現回数を頭に付ける</span>
+  <span class="fn">sort</span> -r -n       |             <span class="cmt"># ⑤回数で降順（-r）に数値ソート（-n）</span>
+  <span class="fn">head</span> -n <span class="num">5</span>                      <span class="cmt"># ⑥先頭5行だけ取り、あとは捨てる</span>
+
+<span class="cmt"># 出力（左が回数、右がURL）</span>
+4189 /favicon.ico
+3631 /2013/05/24/improving-security-of-ssh-private-keys.html
+2124 /2012/12/05/schema-evolution-in-avro-protocol-buffers-thrift.html
+1369 /
+ 915 /css/typography.css</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：仕分け→並べ替え→数える→ランキング</h4>
+      <p>ベルトコンベア（パイプ）に伝票を流し、<b>仕分け担当（awk）</b>が「加工の種類（URL）」だけ抜き出し、<b>並べ替えライン（sort）</b>で同じ種類を隣同士に集め、<b>数え係（uniq -c）</b>が「隣の同じものを1つにまとめて個数を書く」。最後にもう一度<b>個数で並べ替えて（sort）</b>、上位5種類だけ取り出す（head）。数え係は「隣しか見ない」ので、先に並べ替えておくのが鉄則です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ライブラリやフレームワークを入れる前に、手元のUnixツールでサッと分析できる。</li>
+        <li><code>awk</code> の引数を変えるだけで分析対象を切り替えられる柔軟さが手に入る。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li><code>awk '{print $7}'</code> で各行から欲しい列（URL）を取り出す。</li>
+        <li><code>sort</code> → <code>uniq -c</code> で「同じものを隣に集めて数える」。<code>uniq</code> は隣接行しか比べない点が肝。</li>
+        <li><code>sort -r -n</code> で回数の降順、<code>head -n 5</code> で上位5件。</li>
+        <li>数GBでも秒で処理でき、引数の変更で分析を簡単に切り替えられる。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.1.1.1 -->
+  <div class="card" id="s10111">
+    <h3 class="blk">10.1.1.1 コマンドの連鎖とカスタムのプログラム</h3>
+    <div class="lead">📌 <b>要するに</b>：同じ集計はRubyのようなプログラムでも書ける。ハッシュテーブルにURLごとの回数を覚えていく方式。Unixパイプ版とは見た目の好みだけでなく、実行の流れ（メモリの使い方）に大きな違いがあり、それは大きいファイルで顕在化する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも僕、Unixのパイプより普通のプログラムのほうが書きやすいです。Rubyとかで同じことできませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もちろんできる。① URLごとの回数を覚えるハッシュテーブルを用意（初期値ゼロ）。②各行の7番目をURLにする。③そのURLのカウンタを1増やす。④回数で降順に並べて上位5件。⑤出力。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>こっちのほうが読みやすい気がします。どっちがいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>表面的な好みもあるけど、実は<b>実行の流れに大きな違い</b>があるんだ。それは大きいファイルに対して実行すると見えてくる。次でそれを見よう。</div></div>
+    </div>
+
+    <details class="code"><summary>Rubyで「人気ページTOP5」を出すプログラム</summary>
+<pre><span class="cmt"># Ruby で「人気ページTOP5」を出すプログラム</span>
+counts = <span class="fn">Hash</span>.new(<span class="num">0</span>) <span class="cmt"># ①URLごとの出現回数を覚えるハッシュテーブル。初期値はゼロ</span>
+
+<span class="fn">File</span>.open(<span class="str">'/var/log/nginx/access.log'</span>) <span class="kw">do</span> |file|
+  file.each <span class="kw">do</span> |line|
+    url = line.split[<span class="num">6</span>] <span class="cmt"># ②行を空白で区切り、7番目（0始まりなので添字6）をURLとする</span>
+    counts[url] += <span class="num">1</span>    <span class="cmt"># ③そのURLのカウンタを1増やす</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+top5 = counts.map{|url, count| [count, url] }.sort.reverse[<span class="num">0</span>...<span class="num">5</span>] <span class="cmt"># ④回数で降順ソートし上位5件</span>
+top5.each{|count, url| <span class="fn">puts</span> <span class="str">"#{count} #{url}"</span> }                   <span class="cmt"># ⑤上位5件を出力</span></pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：手元の台帳に正の字を書く vs 並べてから数える</h4>
+      <p>Ruby版は<b>手元の台帳（ハッシュテーブル）に種類ごとの「正」の字を書き足していく</b>方式。種類が少なければ台帳1冊で足ります。Unixパイプ版は<b>いったん全部並べ替えてから、隣の同じものを数える</b>方式。どちらが有利かは「加工の種類が何通りあるか」で変わります。次の項でその境目を見ます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>同じ処理を「パイプ」でも「自前プログラム」でも書けると分かり、状況で選べる。</li>
+        <li>ハッシュテーブルで数える、という定番パターンを身につけられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>カスタムプログラム版はハッシュテーブルにURL→回数を保持する。</li>
+        <li>Unixパイプ版とは見た目だけでなく実行の流れが違う。</li>
+        <li>違いは大きなファイルで顕在化する（次項）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.1.1.2 -->
+  <div class="card" id="s10112">
+    <h3 class="blk">10.1.1.2 ソートとインメモリ集計</h3>
+    <div class="lead">📌 <b>要するに</b>：インメモリのハッシュテーブル方式はユニークキー数がメモリに収まる限り高速。収まらないほど種類が多いなら、ディスクを効率よく（<span class="term" data-tip="あちこちに飛ばず、順番に読み書きすること。ランダムアクセスより速い。">シーケンシャル</span>に）使えるソート方式が有利。GNU <code>sort</code> は自動でディスク退避と複数コア並列をやるので巨大データでもスケールする。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「実行の流れの違い」って、具体的には？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Ruby版はURLと回数を全部<b>メモリ上のハッシュテーブル</b>に持つ。Unixパイプ版はそれを持たず、URLを<b>ソートして並べ</b>、同じURLが連続することを利用する。どっちが優れてるかは「ユニークなURLが何種類あるか」で決まる。ここで大事なのが<span class="term" data-tip="ジョブがランダムアクセスしなきゃいけないメモリの量。">ワーキングセット</span>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>種類の数で決まるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。この例ではワーキングセットはユニークURLの数だけで決まる。1つのURLに数十万ログがあっても、必要なのは「URL1個＋カウンタ」のぶんだけ。小〜中規模サイトなら1GB程度のメモリに収まってノートPCでもサクサク動く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあメモリに収まらないくらいURLの種類が多かったら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで<b>ソート方式</b>の出番。ソートはディスクを効率よく使える。3章のSSTableとLSMツリーと同じ原理――かたまりをメモリ内でソートしてディスクにセグメントとして書き出し、複数のソート済みセグメントをマージする。このマージのディスクアクセスは<b>シーケンシャル</b>だから速い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ランダムにあちこち飛ぶより、順番に読むほうが速い、ってやつですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。GNU Coreutilsの <code>sort</code> はメモリより大きいデータを自動でディスクに書き出し、複数コアで並列ソートもする。だから巨大データでもメモリを使い果たさずスケールする。ボトルネックはたぶん「入力をディスクから読む速度」になる。</div></div>
+    </div>
+
+    <h3 class="blk">どちらを選ぶ？（ユニークキー数で決まる）</h3>
+    <div class="grid2">
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">🗂️</div><h4>ハッシュ集計（インメモリ）</h4><p>ユニークキーがメモリに収まるなら高速。台帳1冊で足りるイメージ。</p><span class="pill">種類が少ない時に有利</span></div>
+      <div class="mini" style="border-color:#6c8cff55"><div class="ic">🔀</div><h4>ソート集計（Unixパイプ）</h4><p>収まらないほど多種類なら有利。ディスクをシーケンシャルに使う。GNU <code>sort</code> は自動でディスク退避＋並列。</p><span class="pill">種類が膨大な時に有利</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：作業台に載る種類数で方式が変わる</h4>
+      <p>種類が少なければ、<b>作業台（メモリ）の上に種類ごとの小箱を並べて、その場で数えていく</b>のが速い（ハッシュ集計）。でも種類が作業台に載りきらないほど多いなら、いったん<b>巨大な並べ替えライン（ソート）に全部流して、隣の同じものをまとめて数える</b>ほうが現実的。並べ替えラインは「端から順に流す」だけなので、巨大でも詰まらないのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「ユニークキー数がメモリに収まるか」でハッシュ集計とソート集計を選べる。</li>
+        <li>ワーキングセットという概念で、メモリ要求量を見積もれる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ハッシュ方式の必要メモリ＝ワーキングセット＝ユニークキー数で決まる。</li>
+        <li>メモリに収まればハッシュ集計が速い。</li>
+        <li>収まらなければソート方式（マージソート、シーケンシャルI/O）が有利。</li>
+        <li>GNU <code>sort</code> はディスク退避と複数コア並列を自動で行いスケールする。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.1.2 Unixの哲学 ===== -->
+<section id="s1012">
+  <div class="sec-head"><div class="sec-num">10.1.2</div><div><h2>Unixの哲学</h2><span class="tag">なぜ別々の人が作ったツールがきれいに組み合わさるのか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：コマンドが簡単につながるのは偶然でなく<b>設計の勝利</b>。Doug McIlroyの「庭のホースのようにプログラムをつなぐ」発想が1978年にUnixの哲学にまとまった。自動化・素早い試作・少しずつ改善・実験しやすさ・大きな仕事の分割――今のアジャイルやDevOpsとそっくりで、40年経っても変わっていない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>こんなに簡単にコマンドをつなげられるのって、たまたまですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、<b>設計の勝利</b>なんだ。パイプを発明したDoug McIlroyが1964年に「必要なのは、庭のホースのようにプログラムをつなげる方法だ。別の操作が必要になったら別のセグメントをつなげばいい」と書いてる。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><code>sort</code> がいい例だ。多くの言語の標準ライブラリのソート（ディスク退避もマルチスレッドもしない）より優れてる。でも <code>sort</code> 単体ではほとんど役に立たない。<code>uniq</code> みたいな他のツールと<b>合成（compose）</b>して初めて強力になる。<code>bash</code> のシェルがそれを実現する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>別々の人が作ったツールが、なんでこんなにきれいに組み合わさるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい質問。それを実現するためにUnixが何をしてるか、3つに分けて見ていこう。</div></div>
+    </div>
+
+    <details class="code"><summary>Unixの哲学（1978年）</summary>
+<pre><span class="cmt"># Unixの哲学（1978年）</span>
+1. 各プログラムは「1つのことだけ」をうまくこなす。
+   新しい仕事には、古いプログラムを複雑にせず、新しいものを作る
+2. 各プログラムの出力は、未知の別プログラムの入力になると想定する。
+   余計な情報で出力を散らかさない。厳密な列指向やバイナリ入力は避け、対話的入力にこだわらない
+3. ソフトは早く（理想は数週間で）設計・構築し、不細工な部分は捨てて作り直すのをためらわない
+4. 単純作業は人手でなくツールでやる。たとえそのツールを作って後で一部を捨てることになっても</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：1工程1役の小さな加工マシンを、ベルトでつなぐ</h4>
+      <p>Unixの哲学は、工場づくりの哲学そのもの。<b>1つのマシンは1つの加工だけをうまくこなす</b>（仕分けだけ、並べ替えだけ）。各マシンの出口は「次にどんなマシンが来ても受け取れる形」で出す。だから現場の人が<b>ベルトコンベア（パイプ）でマシンをつなぎ替える</b>だけで、いろんな製造ラインを即席で組める。マシンを巨大化させず、小さい専用機を組み合わせるのが勝ちパターンです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「1つのことをうまくやる小さな部品を組み合わせる」設計思想を理解できる。</li>
+        <li><code>sort</code> 単体は無力でも、合成すると強力になる理由がわかる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>コマンドの組み合わせやすさは設計の勝利（庭のホースの発想）。</li>
+        <li>1978年のUnixの哲学：1機能に集中・出力は次の入力前提・素早く作り直す・ツールで自動化。</li>
+        <li>小さなツールをシェルが合成して強力なジョブにする。</li>
+        <li>これを実現する仕組みは3つ（次の3項）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.1.2.1 -->
+  <div class="card" id="s10121">
+    <h3 class="blk">10.1.2.1 一様なインターフェース</h3>
+    <div class="lead">📌 <b>要するに</b>：合成力の秘密その1は「一様なインターフェース」。すべてを「順序付きバイトの並び＝<span class="term" data-tip="Unixではファイル・パイプ・デバイス・TCP接続まで、すべてが順序付きバイトの並びとして同じ顔で扱える。">ファイル</span>」として扱い、慣例で <code>\n</code> 区切りのASCIIテキストにそろえているので、どの出力もどの入力につなげる。美しくはない（<code>$7</code> のような位置指定）が、これほど相互接続できるソフト群はまれ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>組み合わせの秘密、1つ目は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>出力を別の入力にしたいなら、両者が<b>同じデータフォーマット</b>でなきゃいけない。どんな出力をどんな入力にもつなげたいなら、<b>全部</b>のプログラムに同じ入出力インターフェースを持たせる必要がある。Unixではそれが<b>ファイル（ファイルディスクリプタ）</b>。ファイルは「順序を持つバイトの並び」に過ぎない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部「バイトの並び」っていう同じ形にしてるから、つなげるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。実際のファイルも、プロセス間通信（Unixソケット、<code>stdin</code>、<code>stdout</code>）も、デバイス（<code>/dev/audio</code>）も、TCP接続も、ぜんぶ同じインターフェースで表せる。慣例として多くのプログラムはバイト列を<b>ASCIIテキスト</b>として扱い、<code>\n</code>（改行）で区切ったレコードのリストとみなす。みんな同じ区切りを使うから相互利用できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>完璧じゃないけど、十分すごい、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。美しくはない――URLを取るのに <code>{print $7}</code> って位置で書いたろ？ 理想は <code>{print $request_url}</code> と名前で取りたい。でも数十年経ってもUnixツールほどうまく組み合わさるソフトは少ない。メールの中身と通販履歴を分析ツールにパイプして結果をスプレッドシートに、なんて簡単にはできない。この「つながらなさ」がデータの分断を生むんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：どのマシンも同じ規格のトレイで受け渡す</h4>
+      <p>工場のどのマシンも、加工物を<b>同じ規格のトレイ（バイトの並び）</b>に載せて出し、次のマシンも同じトレイで受け取ります。だから出口と入口の形がいつも合っていて、どのマシンの後ろにどのマシンを置いても繋がる。トレイの仕切り（<code>$7</code> のような位置指定）は番号で呼ぶしかなく、ちょっと不便ですが、「全マシンが同じトレイ規格」というだけで、現場は自由に組み替えられるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「共通インターフェースに揃えると部品が自由に組み合わさる」という設計原則を理解できる。</li>
+        <li>なぜ異種システム間のデータ移動が難しいか（インターフェースが違うから）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>部品を自由につなぐには全部に同じ入出力インターフェースが要る。</li>
+        <li>Unixのインターフェースは「ファイル＝順序付きバイトの並び」。多種多様なものを同じ形で扱える。</li>
+        <li>慣例で <code>\n</code> 区切りのASCIIテキストに標準化されているので相互利用できる。</li>
+        <li>完璧ではない（位置指定の読みにくさ等）が、これほど合成しやすいソフトは例外的。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.1.2.2 -->
+  <div class="card" id="s10122">
+    <h3 class="blk">10.1.2.2 ロジックと結線の分離</h3>
+    <div class="lead">📌 <b>要するに</b>：秘密その2は「ロジックと結線の分離」。プログラムは <code>stdin</code>/<code>stdout</code> だけを使い、入力元・出力先を知らない（<span class="term" data-tip="部品同士のつながりがゆるく、後から自由につなぎ替えられること。">疎結合</span>・制御の反転）。だからシェル側で自由につなぎ替えられ、自作ツールもパイプラインに差し込める。ただし複数入出力やネットワーク接続をプログラム側で持つと柔軟さは下がる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目の秘密は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>標準入力（<code>stdin</code>）と標準出力（<code>stdout</code>）</b>の使い方だ。何も指定しなければ <code>stdin</code> はキーボード、<code>stdout</code> は画面。でもファイルから読んだりリダイレクトしたりできる。パイプを使えば、あるプロセスの <code>stdout</code> を別のプロセスの <code>stdin</code> につなげる――しかも中間データ全体をディスクに書かず、わずかなメモリバッファだけで。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>プログラム側は、入力がどこから来て出力がどこへ行くか、知らなくていいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが肝心。プログラムが特定のファイルパスを気にせず、ただ <code>stdin</code> と <code>stdout</code> を使うときが一番うまくいく。プログラムは入力元も出力先も知らない。これを<b>疎結合・遅延結合・制御の反転</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり「処理のロジック」と「どこにつなぐか（結線）」を分けてる、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り！ 自分で書いたプログラムも <code>stdin</code> から読んで <code>stdout</code> に書けば、OS付属ツールとパイプでつなげる。ユーザーエージェントをブラウザ名に変えるツールや、IPを国コードに変えるツールを書けば、すぐ差し込める。<code>sort</code> は相手がOS標準だろうが自作だろうが気にしない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>便利すぎますね。でも、何か制限はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。複数の入出力を扱うと複雑になる。出力をネットワーク接続にパイプはできない。プログラムが自分でファイルを開いたりサブプロセスを起動したりすると、そのI/Oは直接結線されて、つなぎ替えの柔軟さが下がる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：マシンは「投入口」と「排出口」しか知らない</h4>
+      <p>工場の各マシンは、自分の前後にどのマシンが来るか<b>知りません</b>。ただ手前の投入口から受け取り、奥の排出口へ出すだけ。だから現場監督（シェル）がベルトの繋ぎ先を自由に決められる。逆に、もしマシンが「材料は3番倉庫から自分で取りに行く」と勝手に動き出すと、ラインの組み替えがしにくくなる。<b>「何をするか」と「どこにつなぐか」を分ける</b>のがコツです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「処理の中身」と「つなぎ方」を分けると再利用・組み替えが楽になる、と理解できる。</li>
+        <li>自作プログラムを <code>stdin</code>/<code>stdout</code> 対応にすれば既存ツールと連携できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>プログラムは <code>stdin</code> から読み <code>stdout</code> に書き、入出力先を知らない（疎結合・遅延結合・制御の反転）。</li>
+        <li>だからシェルで自由に結線・組み替えでき、自作ツールも差し込める。</li>
+        <li>限界：複数入出力は複雑、ネットワーク接続は直接パイプできず、自前I/Oは柔軟さを下げる。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.1.2.3 -->
+  <div class="card" id="s10123">
+    <h3 class="blk">10.1.2.3 透過性と実験</h3>
+    <div class="lead">📌 <b>要するに</b>：秘密その3は「<span class="term" data-tip="何が起きているか見えやすいこと。">透過性</span>と実験のしやすさ」。入力を不変として扱うので何度でも安全に再実行でき、途中で <code>less</code> に流して確認したり、中間出力をファイルに保存して途中再開もできる。実験に最適。ただし最大の弱点は単一マシンでしか動かないこと。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目の秘密は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>透過性</b>だ。何が起きてるかがとても分かりやすい。入力ファイルは普通イミュータブル（不変）として扱うから、何度でも実行でき入力を壊さずオプションを試せる。パイプラインを好きな場所で止めて出力を <code>less</code> で確認できる。あるステージの出力をファイルに書いて次の入力にすれば、全体を再実行せず途中から再開できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>入力を壊さないから、何度でもやり直せるんですね。じゃあUnixツール最強ですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>待った、最大の弱点がある。Unixツールは<b>単一のマシン上でしか動かない</b>。ログが1台に収まらないくらい巨大になったら？ そこで登場するのが<b>Hadoop</b>みたいなツール群だ。次はそれをやろう。</div></div>
+    </div>
+
+    <details class="code"><summary>Unixツールの透過性（3つのポイント）</summary>
+<pre><span class="cmt"># Unixツールの透過性</span>
+- 入力ファイルは普通イミュータブル（不変）として扱う
+  → 何度でも実行でき、入力を壊さずオプションを試せる
+- パイプラインを好きな場所で止めて、その出力を less に流して中身を確認できる
+  → デバッグに便利
+- あるステージの出力をファイルに書き、次のステージの入力にできる
+  → 全体を再実行せず途中から再開できる</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：原材料は触らず、途中の半製品を取り出して検品できる</h4>
+      <p>このラインは<b>原材料に一切手を加えません</b>（不変）。だから何度ラインを流し直しても材料は減らず、設定を変えて試し放題。さらにベルトの途中で<b>半製品を1個取り出して検品（<code>less</code> で確認）</b>でき、途中の半製品を倉庫に置いておけば、次の日はそこから再開できる。実験には最高のラインです。ただし弱点は<b>このライン全体が1つの工場（1台のマシン）に収まる範囲でしか動かない</b>こと。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「入力を不変にして何度も実行する」が安全な実験・デバッグの基本だと分かる。</li>
+        <li>Unixツールの限界（単一マシン）を知り、分散ツールが必要になる場面を判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>入力をイミュータブルに扱う → 何度でも安全に再実行・オプション試行できる。</li>
+        <li>途中で出力を確認したり、中間出力をファイルに残して途中再開できる。</li>
+        <li>実験に最適だが、単一マシン上でしか動かないのが最大の制約。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.2 MapReduce ===== -->
+<section id="s102">
+  <div class="sec-head"><div class="sec-num">10.2</div><div><h2>MapReduceと分散ファイルシステム</h2><span class="tag">Unixツールの分散版 ― 数千台に広げる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：MapReduceはUnixツールの分散版で、数千台に広がる。入力を変えず出力を作る点はUnix同様だが、入出力先は分散ファイルシステム（Hadoopでは<b>HDFS</b>）。HDFSは特別なハード不要の<span class="term" data-tip="特別な共有設備を使わず、独立した普通のマシンを並べる方式。">シェアードナッシング</span>で、各マシンのディスクを持ち寄り、ネームノードが配置を管理、レプリケーションやイレイジャコーディングで耐障害性を確保。数万台・数百PB規模まで安くスケールする。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1台に収まらないログ……正直、想像つかないです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大企業だと普通にある。そこで<b>MapReduce</b>だ。Unixツールに似てるけど<b>数千台のマシンに分散</b>できる。1つのMapReduceジョブは1つのUnixプロセスみたいなもので、1つ以上の入力を取って1つ以上の出力を作る。入力は変えず、出力を作る以外の副作用もない。違うのは入出力先――Unixは <code>stdin</code>/<code>stdout</code> だけど、MapReduceは<b>分散ファイルシステム上のファイル</b>を読み書きする。HadoopではこれをHDFSと呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>HDFS……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>HDFS（Hadoop Distributed File System）</b>は、GoogleのGFSのオープンソース再実装。GlusterFSやQFS、Amazon S3やAzure Blob StorageみたいなオブジェクトストレージもHDFSに似てる。原則はどの分散ファイルシステムにも当てはまるよ。</div></div>
+    </div>
+
+    <h3 class="blk">HDFSの仕組み</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>HDFSって、どういう仕組みなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>HDFSは<b>シェアードナッシング</b>の原則。特別なハードを使わず、ふつうのネットワークでつながった、ディスク付きの汎用マシンを並べるだけ。反対は<b>共有ディスク</b>のアプローチ――NASやSANみたいに中央の高価なストレージにみんなでアクセスする方式で、特殊なネットワークも要る。HDFSは各マシンが自分のディスクを持ち寄る。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各マシンでデーモン（常駐プロセス）が動いて、他ノードからアクセスできるようにする。<b>ネームノード</b>という中央サーバーが「どのファイルブロックがどのマシンにあるか」を追跡する。全マシンのディスクを合わせて、概念的に1つの巨大なファイルシステムにするんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>マシンが壊れたらデータも消えませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>だから<b>レプリケーション</b>で複数マシンに同じデータをコピーしておく。あるいは<b>イレイジャコーディング（消失訂正符号）</b>――リードソロモン符号みたいに、完全なコピーよりムダを抑えつつ失われたデータを復元できる。RAIDに似てるが「特別なハードなしに普通のネットワークでやる」点が違う。執筆時点で最大のHDFSは<b>数万台</b>・合計<b>数百ペタバイト</b>。安いコモディティハードとOSSを使うから、専用ストレージよりずっと安い。</div></div>
+    </div>
+
+    <details class="code"><summary>HDFSの構成イメージ</summary>
+<pre><span class="cmt"># HDFSの構成イメージ</span>
+[ネームノード（中央サーバー）] ← どのファイルブロックがどのマシンにあるか追跡
+      │
+      ├─[マシン1: デーモン + ローカルディスク]
+      ├─[マシン2: デーモン + ローカルディスク]
+      ├─[マシン3: デーモン + ローカルディスク]   ← 全マシンのディスクを合わせて
+      └─ ...                                      概念的に1つの巨大なファイルシステムにする
+※耐障害性のため、各ファイルブロックは複数マシンにレプリケーション（複製）される</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：1つの工場に収まらないなら、工場団地をまるごと1つの倉庫扱いにする</h4>
+      <p>原材料が1工場に収まらないほど大量なら、<b>工場団地のあちこちの倉庫を持ち寄って、1つの巨大倉庫として扱います</b>（HDFS）。特別な中央倉庫を建てるのではなく、各工場が自前の普通の倉庫を出し合う（シェアードナッシング）。<b>団地の管理人（ネームノード）</b>が「どの荷物がどの倉庫にあるか」の台帳を持ちます。倉庫が1つ焼けても困らないよう、<b>同じ荷物を複数の倉庫に置いておく</b>（レプリケーション）のです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>1台に収まらないデータを「安い汎用マシンの集まり」で扱う考え方（シェアードナッシング）を理解できる。</li>
+        <li>HDFSと共有ディスク（NAS/SAN）の違いを説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>MapReduceジョブ＝分散版のUnixプロセス。入力不変・出力生成・副作用なし。</li>
+        <li>入出力先はHDFSなどの分散ファイルシステム（GFSのOSS再実装）。</li>
+        <li>HDFSはシェアードナッシング。各マシンのディスクを持ち寄り、ネームノードが配置管理。</li>
+        <li>耐障害性はレプリケーション or イレイジャコーディング。数万台・数百PB規模を安く実現。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.1 -->
+  <div class="card" id="s1021">
+    <div class="sec-head"><div class="sec-num">10.2.1</div><div><h2>MapReduceジョブの実行</h2><span class="tag">map → ソート（自動）→ reduce の4ステップ</span></div></div>
+
+    <div class="lead">📌 <b>要するに</b>：MapReduceの処理は「①レコード分割 → ②<span class="term" data-tip="各レコードからキーと値を取り出す関数。仕分け担当。">map</span>（キーと値を取り出す）→ ③キーでソート（フレームワークが自動）→ ④<span class="term" data-tip="同じキーの値をまとめて処理する関数。集計担当。">reduce</span>（同じキーの値をまとめて処理）」の4ステップ。ユーザーが書くのはmapperとreducerだけ。mapperは状態を持たず独立処理、reducerは同じキーの値を全部受け取って出力を作る。2回目のソートが要るなら別ジョブを連鎖させる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>肝心の「MapReduce」って、結局どう動くんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実はさっきのUnixのログ分析と<b>そっくり</b>なんだ。①入力をレコードに分割（1行＝1レコード）、②mapperでキーと値を取り出す（<code>awk '{print $7}'</code> ＝URLをキーに）、③キーでソート（1つめの <code>sort</code>）、④reducerでソート済みペアを処理（<code>uniq -c</code> ＝同じキーの連続数を数える）。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ステップ2（map）と4（reduce）が、きみがコードを書く部分。ステップ1はパーサがやる。ステップ3のソートは<b>MapReduceが裏で勝手にやる</b>――mapperの出力はreducerに渡る前に必ずソート済みになる。だからソートのコードは書かなくていい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ僕が書くのは mapper と reducer の2つだけ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、2つのコールバック関数だ。mapperは各レコードに1回呼ばれ、キーと値を取り出す（0個でも何個でも出せる、レコード間で状態を持たない）。reducerは「同じキーの値」を全部集めて、値のコレクションのイテレータと一緒に呼ばれ、出力レコードを作る。mapperが状態を持たず独立処理できるからこそ並列化できる。2回目のソートが要るなら<b>2つ目のジョブ</b>を作って1つ目の出力を入力にする。</div></div>
+    </div>
+
+    <h3 class="blk">MapReduceの4ステップ（Unixと対応）</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>入力をレコードに分割</h4><p>ログなら1行＝1レコード（<code>\n</code> 区切り）。入力フォーマットのパーサが担当。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>map ― キーと値を取り出す（あなたが書く）</h4><p>例：<code>awk '{print $7}'</code> ＝URLをキーに取り出す。状態を持たない。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>キーでソート（フレームワークが自動）</h4><p>例：1つめの <code>sort</code>。コードは書かなくてよい。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>reduce ― 同じキーの値をまとめて処理（あなたが書く）</h4><p>例：<code>uniq -c</code> ＝同じキーの連続数を数える。
+        <div class="branch ok">✅ 2回目のソートが要るなら別ジョブを連鎖させる。</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>4ステップと、mapper/reducerの役割</summary>
+<pre><span class="cmt"># MapReduceの4ステップ（Unixのログ分析と対応）</span>
+1. 入力ファイルを読み、レコードに分割    （例: 1行=1レコード、\n が区切り）
+2. mapper関数を呼び、各レコードからキーと値を取り出す （例: awk '{print $7}' = URLをキーに）
+3. すべてのキーと値のペアをキーでソート  （例: 1つめの sort）
+4. reducer関数を呼び、ソート済みペアを順に処理 （例: uniq -c = 同じキーの連続数を数える）
+
+<span class="cmt"># mapper と reducer の役割</span>
+Mapper : 各入力レコードに1回ずつ呼ばれ、キーと値を取り出す。
+         1レコードから0個でも何個でもキーと値ペアを出せる。状態を持たない（独立処理）
+Reducer: フレームワークが「同じキーの値」を全部集め、値のイテレータと一緒に呼ぶ。
+         出力レコードを生成する（例: 同じURLの出現回数）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：仕分け担当 → 並べ替えライン → 集計担当</h4>
+      <p>流れてくる原材料1個ずつに、<b>仕分け担当（mapper）</b>が「種類ラベル（キー）」を貼ります。次に<b>並べ替えライン（ソート）</b>が同じラベルを隣同士に集めます――これは工場が勝手にやってくれるので、あなたは指示しなくていい。最後に<b>集計担当（reducer）</b>が、同じラベルの材料をまとめて数えたり加工したりして完成品を出す。あなたが教えるのは「仕分けの仕方」と「集計の仕方」の2つだけです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>Unixのログ分析パイプラインとMapReduceを対応づけて理解できる。</li>
+        <li>mapper/reducerの役割分担（準備係と処理係）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>4ステップ：レコード分割 → map → ソート（自動）→ reduce。</li>
+        <li>ユーザーが書くのはmapper（キーと値を取り出す、状態なし）とreducer（同キーの値をまとめて出力）。</li>
+        <li>ソートはフレームワークが暗黙にやる。</li>
+        <li>2回目のソートが必要なら2つ目のジョブを連鎖させる。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.1.1 -->
+  <div class="card" id="s10211">
+    <h3 class="blk">10.2.1.1 MapReduceの分散実行</h3>
+    <div class="lead">📌 <b>要するに</b>：MapReduceは並列化コードを書かなくても自動で数千台に分散する。入力ブロックごとにmapタスク、計算は「データの近く」で実行（ローカリティ最適化）。mapの出力はキーのハッシュでreducerに振り分け、各mapがローカルでソートし、reducerがダウンロードしてマージする――この一連が<span class="term" data-tip="同じキーを同じリデューサーへ運ぶ工程（分割＋ソート＋コピー）。ランダム性はない。">シャッフル</span>。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Unixパイプと違って、MapReduceは何がすごいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ユーザーが並列化のコードを書かなくても<b>大量のマシンに自動で分散</b>してくれること。mapperもreducerも一度に1レコードしか処理しないし、データがどこから来てどこへ行くか知らなくていい。マシン間のデータ移動はぜんぶフレームワークが引き受ける。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>並列性は<b>パーティショニング（分割）</b>が基盤。入力はHDFSのディレクトリで、各ファイル（ブロック）が個別の<b>パーティション</b>として個別のmapタスクで処理される。各ファイルはだいたい数百MB。ポイントは<b>「データの近くに計算を持っていく」</b>――入力レプリカがあってRAM・CPUに余裕のあるマシンでmapタスクを動かす。ネットワーク越しのコピーが減る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データを動かすより、計算をデータのある場所に送るんですね。reduce 側は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>reduce側もパーティショニングされる。mapタスク数は入力ブロック数で決まるが、<b>reduceタスク数はジョブ作成者が設定</b>する。同じキーが必ず同じreducerに行くよう、フレームワークは<b>キーのハッシュ</b>で行き先を決める。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ソートは？ データが大きすぎて1台で並べられないのでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>だからステージを分ける。各mapタスクが出力をキーのハッシュでreducerごとに分け、各パーティションをソート済みファイルとして<b>自分のローカルディスク</b>に書く（SSTableに似てる）。書き終えたらreducer群が取りに来てダウンロードし、ソート順を保ったままマージする。同じキーのレコードを別々のmapperが出してても、マージ後は連続する。この「分けて・並べて・コピーする」一連が<b>シャッフル</b>だ。ただトランプと違って<b>ランダム性はない</b>。</div></div>
+    </div>
+
+    <details class="code"><summary>MapReduceのデータフロー（mapper 3つ・reducer 3つ）</summary>
+<pre><span class="cmt"># MapReduce のデータフロー</span>
+入力（HDFSのファイルブロック）
+ [ブロック1]→[map1]┐
+ [ブロック2]→[map2]┤→ 各 mapper がキーと値を出力
+ [ブロック3]→[map3]┘    │
+                         │ キーのハッシュで「どの reducer 行きか」を決める
+                         ▼ ＝＝＝ シャッフル（パーティショニング＋ソート＋コピー）＝＝＝
+                   [reduce1] [reduce2] [reduce3]
+                         │       │        │
+                         ▼       ▼        ▼
+                   出力ファイル（分散ファイルシステムへ）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：作業を材料の置き場へ送り、同じ種類を同じ集計台へ運ぶ</h4>
+      <p>材料を運ぶのは大変なので、<b>作業マニュアルのほうを材料の置いてある倉庫へ送り、その場で仕分け担当（map）を働かせます</b>（データの近くに計算を）。仕分け担当は種類ラベルを貼り、<b>ラベルのハッシュで「どの集計台（reducer）行きか」を決め、自分の手元で種類ごとに並べておきます</b>。集計担当が手すきになったら各倉庫へ取りに行き、複数倉庫から来た同じ種類を<b>並び順を保ったまま合流させる</b>。この「分けて・並べて・同じ集計台へ運ぶ」運搬作業がシャッフルです。デタラメに混ぜるわけではありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「データを動かさず計算を運ぶ」というローカリティ最適化の発想を理解できる。</li>
+        <li>シャッフル（パーティショニング＋ソート＋コピー）の中身を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>並列化はフレームワーク任せ。mapタスク数＝入力ブロック数、reduceタスク数は作成者が設定。</li>
+        <li>「データの近くに計算を持っていく」でネットワーク負荷を下げる。</li>
+        <li>同じキーは必ず同じreducerへ（キーのハッシュで決定）。</li>
+        <li>シャッフル＝各mapがローカルでソート→reducerがダウンロード→マージ。ランダム性はない。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.1.2 -->
+  <div class="card" id="s10212">
+    <h3 class="blk">10.2.1.2 MapReduceのワークフロー</h3>
+    <div class="lead">📌 <b>要するに</b>：単一ジョブの能力は限られるので、出力を次の入力にする<b>ワークフロー</b>として連鎖させる。Hadoopでは連鎖はディレクトリ名で暗黙に行う。出力は成功時のみ有効（失敗の部分出力は破棄）で、先行ジョブの成功後に後続が始まる。依存関係の管理にはOozie/Airflow等のワークフロースケジューラを使う（レコメンドだと50〜100ジョブも普通）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つのジョブで「人気ページTOP5」まで全部できるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、単一ジョブでできることは限られてる。1ジョブで「URLごとのページビュー数」は出せても「最も人気のURL」は出せない（2回目のソートが要る）。だからジョブを<b>連鎖させて「ワークフロー」にする</b>。1つの出力を次の入力にする。Hadoopにはワークフロー専用機能がないから、連鎖は<b>ディレクトリ名で暗黙に</b>やる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あれ、それってUnixパイプとは違いますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>するどい。連鎖したMapReduceは、Unixパイプより<b>「出力を一時ファイルに書き、次が読む」</b>のに近い。あと大事な点：<b>バッチジョブの出力は成功して終わったときだけ有効</b>。失敗ジョブの部分的な出力は捨てられる。だから後続ジョブは、入力を作る先行ジョブが<b>成功して終わったとき</b>だけ始められる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ジョブ同士の「先にこれが終わってから」を管理する仕組みは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>ワークフロースケジューラ</b>だ。Oozie、Azkaban、Luigi、Airflow、Pinballなど。レコメンドだとワークフローに<b>50〜100個</b>のジョブが含まれるのは普通だし、大組織では別チームが互いの出力を読み合う。Pig、Hive、Cascading、Crunch、FlumeJavaみたいな高レベルツールも複数ステージを自動でつなぐ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：工程表で「前の工程が完成検査に合格してから次へ」</h4>
+      <p>1台のマシンだけでは完成品まで作れません。だから<b>複数のラインを工程表（ワークフロー）でつなぎ</b>、前のラインの完成品を次のラインの原材料にします。ここで鉄則は<b>「前工程が完成検査に合格（成功）してから、次工程を始める」</b>こと。途中で失敗した半端な製品は捨てます。レコメンド工場では50〜100の工程が連なることもあり、その順番を管理するのが<b>生産管理係（Oozie/Airflow）</b>です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>複雑な分析は複数ジョブの連鎖（ワークフロー）になると理解できる。</li>
+        <li>ジョブの依存管理にワークフロースケジューラが要る理由を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>単一ジョブは能力限定。出力→入力で連鎖しワークフローにする。</li>
+        <li>Hadoopの連鎖はディレクトリ名で暗黙に行う（Unixパイプより「一時ファイル経由」に近い）。</li>
+        <li>出力は成功時のみ有効、先行ジョブ成功後に後続開始。</li>
+        <li>依存管理にワークフロースケジューラ（Oozie/Azkaban/Luigi/Airflow/Pinball）。50〜100ジョブも一般的。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.2.2 Reduce側での結合とグループ化 ===== -->
+<section id="s1022">
+  <div class="sec-head"><div class="sec-num">10.2.2</div><div><h2>Reduce側での結合とグループ化</h2><span class="tag">2つのデータを突き合わせる ― バッチは「全部いっぺんに」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：<span class="term" data-tip="関連する2つのデータを突き合わせること。2つの部品ラインを1つにする。">結合（join）</span>は関連の両側にアクセスしたいときに必要。MapReduceにはインデックスがなく、入力を全部読む（フルテーブルスキャン）。少数引きには重いが、大量集計の分析クエリではむしろ妥当。バッチの結合は「全レコードの関連を一気に見つける」処理。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数のデータをくっつける「結合（join）」って、MapReduceでどうやるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まず復習。データでは「あるレコードが他と関連を持つ」のが普通。リレーショナルでは<b>外部キー</b>、ドキュメントでは<b>ドキュメント参照</b>、グラフでは<b>辺</b>と呼ぶ。結合は、この関連の両側にアクセスしたいときに必要。非正規化で減らせるが、ゼロにはならない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>DBだとインデックスで速く引けますよね。MapReduceは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>MapReduceには（普通の意味の）<b>インデックスがない</b>。入力にファイル集合を渡すと中身を全部読む。DBでいう<b>フルテーブルスキャン</b>だ。少数だけ読みたいなら重すぎる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあMapReduceの結合は無駄が多いんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが誤解しやすい。<b>分析的なクエリ</b>では、そもそも大量レコードを集計したいことが多い。なら入力全体スキャンがむしろ妥当で、並列化できるなら理にかなってる。バッチの結合は「1人を引く」のでなく「<b>全ユーザーのデータを同時に処理する</b>」ものと考えるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：1個だけ探すのでなく、全数突き合わせ</h4>
+      <p>倉庫から特定の1個だけ取り出すなら索引（インデックス）が速い。でもバッチの結合は<b>「今日入荷した全部の材料を、別ラインの全部の部品と突き合わせて、対応するものをまとめて組み立てる」</b>作業です。どうせ全部を相手にするので、棚を端から端まで全部見る（フルスキャン）のが正解。これを大勢の作業員で手分けすれば速い。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>結合（外部キー/参照/辺）の本質と、なぜバッチで必要かを理解できる。</li>
+        <li>フルテーブルスキャンが「分析では妥当」な理由を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>関連はリレーショナル＝外部キー、ドキュメント＝参照、グラフ＝辺。結合は両側にアクセスしたいとき必要。</li>
+        <li>MapReduceはインデックスなし。入力を全部読む（フルテーブルスキャン）。</li>
+        <li>少数引きには重いが、大量集計の分析クエリには妥当（並列化できる）。</li>
+        <li>バッチの結合＝全レコードの関連を一気に見つける処理。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.2.1 -->
+  <div class="card" id="s10221">
+    <h3 class="blk">10.2.2.1 事例：ユーザーのアクティビティ分析</h3>
+    <div class="lead">📌 <b>要するに</b>：アクティビティログ（ファクト）にはユーザーIDしか入っておらず、年齢別分析にはユーザーDB（次元）との結合が要る。1件ごとにリモートDBへ問い合わせるのは「遅い・DBを潰す・<span class="term" data-tip="同じ入力でも毎回結果が変わりうること。再実行で答えがブレる。">非決定的</span>になる」の3点でダメ。正解はユーザーDBのコピーを同じ分散ファイルシステムに置き、ローカルで結合すること。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体例で見たいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>定番だ。左に「ユーザーがやったことのログ」＝<b>アクティビティイベント／クリックストリーム</b>。右に「ユーザーのデータベース」。スタースキーマでいうとログが<b>ファクトテーブル</b>、ユーザーDBが<b>次元</b>の一つ。「年齢グループごとの人気ページ」を出したいけど、ログには<b>ユーザーIDしか入ってない</b>。誕生日を全イベントに入れたらムダだから、ユーザーDBと結合する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>簡単なのは、イベント1個ずつ見て、そのユーザーIDをリモートのユーザーDBに毎回問い合わせる、ですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それは<b>やっちゃダメな例</b>。理由は3つ。①スループットがリモートDBへの往復時間に縛られて激遅。②大量クエリを並列に投げるとDBがパンク。③リモートDBのデータは処理中に変わるかもしれず、ジョブが<b>非決定的</b>になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあどうすれば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>計算は<b>できる限り1つのマシン内で完結</b>させる。だからユーザーDBの<b>コピー</b>を取って（バックアップからETLで）、アクティビティログと<b>同じ分散ファイルシステムに置く</b>。そうすればMapReduceで関連レコードを同じ場所にまとめて効率よく処理できる。</div></div>
+    </div>
+
+    <details class="code"><summary>結合したい2つのデータ</summary>
+<pre><span class="cmt"># 結合したい2つのデータ</span>
+[アクティビティイベントのログ]        [ユーザーのデータベース]
+ ・ユーザーID: 101, 見たURL: /商品A     ・ユーザーID: 101, 誕生日: 1995-04-01
+ ・ユーザーID: 102, 見たURL: /商品B     ・ユーザーID: 102, 誕生日: 2001-12-20
+ ・ユーザーID: 101, 見たURL: /商品C     ・...
+※イベントには「ユーザーID」しか入っていない（プロフィール全部は入れない=ムダだから）
+→ 年齢グループ別の人気ページを知るには、両者をユーザーIDで結合する必要がある</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：部品の伝票には「型番」だけ。詳細は型番台帳で引く</h4>
+      <p>ラインを流れる部品の伝票には<b>「型番（ユーザーID）」</b>しか書いてありません（詳細を全部書くとムダ）。年齢別の集計には<b>型番台帳（ユーザーDB）</b>と突き合わせる必要があります。ここで<b>1個ごとに本社の台帳室へ電話で問い合わせる</b>のは最悪――遅いし、台帳室がパンクするし、問い合わせ中に台帳が書き換わると答えがブレる。正解は<b>台帳のコピーを工場内に取り寄せて、手元で突き合わせる</b>ことです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ファクト×次元の結合という実務頻出パターンを理解できる。</li>
+        <li>「1件ずつリモート問い合わせ」がなぜダメかを3つの理由で説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>イベントログ（ファクト）はユーザーID中心、ユーザーDB（次元）と結合してプロフィールを得る。</li>
+        <li>1件ごとのリモート問い合わせはNG：遅い・DB過負荷・非決定的。</li>
+        <li>正解：DBのコピーを同じ分散ファイルシステムに置き、ローカルで結合する。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.2.2 -->
+  <div class="card" id="s10222">
+    <h3 class="blk">10.2.2.2 ソートマージ結合</h3>
+    <div class="lead">📌 <b>要するに</b>：アクティビティとユーザーDBの両方を「ユーザーIDをキー」にしてmapperが出力 → シャッフルで同じIDが隣り合う → reducerが結合。<span class="term" data-tip="reducerが見る順番を制御する仕組み。誕生日を先頭に並べるなど。">セカンダリソート</span>で誕生日を先頭に並べれば、reducerはそれを覚えて各イベントに年齢を付けられる。1ユーザー分ずつ処理するのでメモリ消費が小さくネットワーク不要。これがソートマージ結合。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「同じ場所にまとめる」って、具体的にMapReduceでどうやるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2種類のmapper群を使う。片方はアクティビティを処理して「ユーザーIDをキー、イベントを値」で出す。もう片方はユーザーDBを処理して「ユーザーIDをキー、誕生日を値」で出す。フレームワークがキーでパーティショニング・ソートすると、reducerの入力では<b>同じユーザーIDのイベントとユーザーレコードが隣り合う</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで誕生日を先頭にするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>MapReduceは、reducerがまず「ユーザーDBのレコード（誕生日）」を見て、次に「イベントをタイムスタンプ順」に見るよう並べられる。これが<b>セカンダリソート</b>。誕生日を先頭にすれば、reducerはそれをローカル変数に覚えて、続くイベントを順に処理しながら「閲覧URLと閲覧者の年齢」を出せる。1ユーザー分を一気に処理するから、<b>メモリに保持するユーザーレコードは1つだけ</b>で、ネットワークも要らない。これが<b>ソートマージ結合</b>だ。両側のソート済みリストをreducerがマージするからこの名前。</div></div>
+    </div>
+
+    <details class="code"><summary>ソートマージ結合の流れ（キー＝ユーザーID）</summary>
+<pre><span class="cmt"># ソートマージ結合の流れ（キー＝ユーザーID）</span>
+[アクティビティのmapper群] → (101, イベント) (102, イベント) ...
+[ユーザーDBのmapper群]    → (101, 誕生日)   (102, 誕生日)   ...
+                              │
+                              ▼ シャッフル（同じユーザーIDを同じreducerへ、ソート）
+reducer の入力（ユーザーID 101 のところに集まる）:
+   (101, 誕生日)         ← セカンダリソートで「誕生日が先頭」に来るよう並べる
+   (101, イベントA)
+   (101, イベントC)
+   → reducer は誕生日を変数に覚え、各イベントについて (URL, 閲覧者の年齢) を出力</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：型番ごとに材料を集め、台帳カードを先頭に置く</h4>
+      <p>2つのラインから出てくる材料に同じ<b>型番ラベル</b>を貼って、並べ替えラインで型番ごとにひとまとめにします。集計台には<b>「台帳カード（誕生日）」が先頭、続いて作業履歴（イベント）</b>が並ぶようにしておく（セカンダリソート）。集計担当はまず台帳カードを手元に控え、続く作業履歴1枚ずつに「年齢」を書き足していく。型番1つぶんを一気に片付けるので、手元に置く台帳カードは常に1枚だけ。電話で問い合わせる必要もありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ソートマージ結合の仕組み（両側を同じキーでソート→マージ）を説明できる。</li>
+        <li>セカンダリソートで「先に見たいレコードを先頭に」できると理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>両側のデータを同じキー（ユーザーID）でmapperが出力。</li>
+        <li>シャッフルで同キーが隣接、reducerがマージして結合（ソートマージ結合）。</li>
+        <li>セカンダリソートで誕生日を先頭に → reducerが覚えて各イベントに年齢を付与。</li>
+        <li>1ユーザーずつ処理 → メモリ消費小・ネットワーク不要。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.2.3 -->
+  <div class="card" id="s10223">
+    <h3 class="blk">10.2.2.3 関連するデータを同じ場所にまとめる</h3>
+    <div class="lead">📌 <b>要するに</b>：結合に必要なデータが「1回のreducer呼び出し」に集まるので、reducerはシングルスレッドの単純コードで高速・低メモリに処理できる。mapperのキーは「届け先アドレス」のように働き、物理的なネットワーク通信（データを正しいマシンへ）とアプリのロジック（データ処理）が分離される。だからアプリは部分的障害を気にせず済む。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>このやり方、何がそんなにありがたいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1ユーザー分の結合に必要なデータが全部「1回のreducer呼び出し」という同じ場所に集まること。事前に全部並べておくから、reducerは<b>シングルスレッドの単純なコード</b>で高スループット・低メモリで処理できる。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>面白い見方があってね。mapperはreducerに<b>「メッセージを送ってる」</b>と考えられる。mapperがキーと値を出すとき、キーは「値の届け先アドレス」みたいに働く。本物のネットワークアドレスじゃないけど「同じキーの値は同じ届け先（同じreducer呼び出し）に届く」のはアドレスのようだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>物理的な通信と、処理のロジックが分かれてる、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。「データを正しいマシンに送る」物理通信が、「用意できたデータを処理する」アプリのロジックから<b>分離</b>されてる。通信は全部MapReduceが面倒を見るから、アプリコードは他ノードのクラッシュみたいな<b>部分的障害</b>を気にしなくていい。MapReduceが失敗タスクを透過的にリトライしてくれる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：ラベルが「宛先伝票」。運搬は運送係に丸投げ</h4>
+      <p>仕分け担当が貼る<b>種類ラベルは、実は「宛先伝票」</b>です。同じラベルの材料は必ず同じ集計台に届く。だから集計担当は「自分の台に届いた材料を、淡々と1個ずつ処理する」だけでよく、頭を使うロジックがとても単純になる。<b>「正しい台へ運ぶ運搬作業」は運送係（フレームワーク）に丸投げ</b>。途中でトラックが1台故障しても運送係が積み直してくれるので、集計担当は故障を気にしません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「キー＝届け先アドレス」というメンタルモデルでMapReduceを捉えられる。</li>
+        <li>通信とロジックの分離が、障害耐性をフレームワーク側に押し込めている理由を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>結合に必要なデータが1回のreducer呼び出しに集まる → reducerは単純・高速・低メモリ。</li>
+        <li>mapperのキーは「値の届け先アドレス」として働く。</li>
+        <li>物理的な通信とアプリのロジックが分離される。</li>
+        <li>部分的障害はフレームワークが透過的にリトライで吸収。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.2.4 -->
+  <div class="card" id="s10224">
+    <h3 class="blk">10.2.2.4 GROUP BY</h3>
+    <div class="lead">📌 <b>要するに</b>：「同じ場所にまとめる」パターンはグループ化（<code>GROUP BY</code>）にも使える。mapperのキーをグループ化キーにするだけで実装は結合とほぼ同じ。各グループでCOUNT/SUM/上位k件などを集計する。代表例は<span class="term" data-tip="同じユーザーの全行動を1カ所に集めて行動の流れを明らかにすること。">セッション化</span>（A/Bテストやマーケ評価に使う）で、セッションIDやユーザーIDをキーにする。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結合以外にも、この「同じ場所にまとめる」パターンって使えますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>使える。代表が<b>グループ化</b>――SQLの <code>GROUP BY</code> だ。同じキーのレコードでグループを作り、各グループ内で集計する。各グループのレコード数を数える（COUNT(*)＝ページビュー）、値を合計する（SUM）、順位付けで上位 k 件を選ぶ、とかね。実装は結合とほぼ同じ――mapperが出すキーを「グループ化したいキー」にするだけ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>グループ化の具体的な使い道は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>代表が<b>セッション化（sessionization）</b>。特定ユーザーセッションの全アクティビティをまとめて行動の流れを明らかにする。「新バージョンを見た人は購買率が高いか（A/Bテスト）」「マーケ施策に価値があったか」を調べられる。ユーザーのイベントは複数Webサーバーに散らばるから、セッションのクッキー・ユーザーID・似た識別子を<b>グループ化のキー</b>にすれば、同じユーザーのイベントを1カ所に集めつつ分散できる。</div></div>
+    </div>
+
+    <details class="code"><summary>グループ化のあとの集計例</summary>
+<pre><span class="cmt"># グループ化のあとの集計例</span>
+- 各グループのレコード数を数える（SQLの COUNT(*)。ページビュー数の例がこれ）
+- フィールドの値を合計する（SQLの SUM(fieldname)）
+- 何らかの順位付け関数で上位 k 件を選ぶ</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：同じロット番号の作業記録を1カ所に集めて集計</h4>
+      <p>結合と同じ仕組みで、こんどはラベルを<b>「ロット番号（グループ化キー）」</b>にします。すると同じロットの作業記録が同じ集計台に集まり、台ごとに<b>個数を数えたり、重さを合計したり、上位を選んだり</b>できる。たとえば同じ作業者（セッション）の1日の動きを全部集めて「新しい手順の班は不良が少ないか」を比べる――これがセッション化です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>グループ化と結合がMapReduceでは同じ仕組みだと理解できる。</li>
+        <li>セッション化という実務分析（A/Bテスト等）の手段を知る。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>グループ化はmapperのキーをグループ化キーにするだけ。実装は結合と酷似。</li>
+        <li>各グループでCOUNT/SUM/上位k件などを集計。</li>
+        <li>代表例はセッション化（散らばったイベントをユーザー/セッション単位に集約）。</li>
+        <li>A/Bテストやマーケ施策評価に活用。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.2.5 -->
+  <div class="card" id="s10225">
+    <h3 class="blk">10.2.2.5 スキューの処理</h3>
+    <div class="lead">📌 <b>要するに</b>：1つのキーに大量データが集まる（<span class="term" data-tip="不均衡に大量のデータが結びつく1件のレコード。有名人など。">ホットキー／リンチピンオブジェクト</span>）と<span class="term" data-tip="特定の集計台だけに偏ること。ホットスポット。">スキュー</span>が起き、いちばん遅いreducerが全体を遅らせる。結合では Pig の skewed join、Crunch の sharded join、Hive（別ファイル＋map側結合）で緩和。グループ化は2ステージ集計で緩和する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>このパターン、弱点はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある。<b>1つのキーに大量のデータが結びつくと破綻する</b>。SNSだと普通のユーザーは数百人だが、有名人は数百万フォロワー。こういう不均衡なレコードを<b>リンチピンオブジェクト</b>や<b>ホットキー</b>と呼ぶ。これが1つのreducerに全部集まると大きな<b>スキュー（偏り、別名ホットスポット）</b>が起きて、そのreducerだけ極端に多く処理する羽目になる。ジョブは全reducerが終わって初めて完了するから、後続は<b>いちばん遅いreducer</b>が終わるまで始められない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1人の遅いreducerが全体の足を引っ張るんですね。どう緩和するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Pigの <b>skewed join</b> は、まずサンプリングでホットキーを見つけ、本番ではそのレコードを<b>複数reducerにランダム分散</b>する。代わりに相手側の該当レコードは、そのキーを処理する<b>全reducerに複製</b>する。Crunchの <b>sharded join</b> も似てるがサンプリングなしで明示指定。Hiveは別で、ホットキーを別ファイルに保存して<b>map側結合</b>を使う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>グループ化でホットキーがある場合は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>2ステージ</b>でやる。1段目はレコードをランダムなreducerに送り、ホットキーの<b>部分集合ごと</b>に集計してコンパクトな中間集計を出す。2段目で全reducerからの値をまとめてキーごとの最終値にする。</div></div>
+    </div>
+
+    <details class="code"><summary>スキュー（ホットキー）の緩和策</summary>
+<pre><span class="cmt"># スキュー（ホットキー）の緩和策</span>
+Pig の skewed join : まずサンプリングのジョブでどのキーがホットか判定。
+                     実際の結合では、ホットキーのレコードを「ランダムに選んだ複数の reducer」に分散。
+                     相手側の該当レコードは、そのキーを処理する全 reducer に複製する
+Crunch の sharded join : 同様だがサンプリングなし。ホットキーを明示指定する
+Hive の最適化      : ホットキーをメタデータで明示し、別ファイルに保存。
+                     結合時はホットキーには「map側結合」を使う（次セクション）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：1つの集計台に材料が山積みで詰まる</h4>
+      <p>有名人のような「材料が山ほど結びつくロット番号（ホットキー）」があると、<b>たった1つの集計台に材料が山積み</b>になって詰まります（スキュー）。他の台がとっくに終わっても、その1台が終わるまでライン全体が次に進めない。対策は、その山積みロットだけ<b>複数の台に分けて並行処理</b>し（相手の部品は各台にコピーして配る）、または<b>2段階（まず手分けして部分集計→最後に合算）</b>でさばくことです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ホットキーが分散処理の性能を壊す仕組みを理解できる。</li>
+        <li>skewed join / sharded join / 2ステージ集計という緩和策を選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ホットキー（有名人など）に大量データが集まるとスキュー（ホットスポット）が発生。</li>
+        <li>最遅reducerがジョブ全体を遅らせる。</li>
+        <li>結合の緩和：Pig skewed join（サンプリング＋ランダム分散＋相手側複製）、Crunch sharded join（明示）、Hive（別ファイル＋map側結合）。</li>
+        <li>グループ化の緩和：2ステージ集計（1段目でランダム分散して部分集計、2段目で統合）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.2.3 map側での結合 ===== -->
+<section id="s1023">
+  <div class="sec-head"><div class="sec-num">10.2.3</div><div><h2>map側での結合（map-side join）</h2><span class="tag">入力に前提を置けるなら、reducerもソートも省いて高速化</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：これまでの結合は結合ロジックをreducerでやる<b>reduce側結合</b>で、入力に前提が要らない反面、ソート・コピー・マージが重い。入力に前提を置けるなら、reducerもソートも持たない<b>map側結合</b>で高速化できる（各mapperが1ブロック読んで1ファイル書くだけ）。種類は3つ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきから「map側結合」って出てきますけど、reduce側と何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これまでの結合は、結合ロジックを<b>reducer</b>でやってた。だから<b>reduce側での結合</b>。mapperの役割は入力の準備だけ（キーと値を取り出し、パーティション割り当て、ソート）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>reduce側のいいところと悪いところは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>利点は<b>入力データに何も前提が要らない</b>こと。データの構造がどうであれ準備できる。欠点は、ソート・reducerへのコピー・マージが<b>全体としてすごく重い</b>こと。メモリバッファ量によっては、ステージごとにデータが何度もディスクに書かれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もっと速くできないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>入力に<b>特定の前提を置けるなら</b>、<b>map側での結合</b>で高速化できる。切り詰めたMapReduceジョブで、<b>reducerを持たず、ソートもしない</b>。各mapperが分散ファイルシステムから1ブロックを読んで1ファイルを書くだけ。種類は3つある。順に見よう。</div></div>
+    </div>
+
+    <h3 class="blk">reduce側 vs map側</h3>
+    <div class="grid2">
+      <div class="mini" style="border-color:#ffb45455"><div class="ic">🧰</div><h4>reduce側結合</h4><p>結合ロジックはreducer。入力に前提不要だが、ソート・コピー・マージが重い。</p><span class="pill">汎用だが重い</span></div>
+      <div class="mini" style="border-color:#5ee7a055"><div class="ic">⚡</div><h4>map側結合</h4><p>reducerもソートも持たず、各mapperが1ブロック読み1ファイル書くだけ。前提が要るが速い。</p><span class="pill">前提が要るが速い</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：あとで突き合わせる vs 最初から並べておく</h4>
+      <p><b>reduce側結合＝材料がバラバラのまま来るので、いったん全部並べ替えてから突き合わせる</b>（どんな材料でも対応できるが手間が重い）。<b>map側結合＝材料の置き方にあらかじめ約束事を作っておく</b>（例：型番順に並べてある、小さい台帳は各作業台に配ってある）。約束が守られていれば、並べ替えライン抜きで突き合わせられるので一気に速くなります。約束の種類が3つある、というわけです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>reduce側結合とmap側結合の使い分けの軸（入力に前提を置けるか）を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>reduce側結合：結合ロジックはreducer。入力に前提不要だが、ソート・コピー・マージが重い。</li>
+        <li>map側結合：reducerもソートも持たない。各mapperが1ブロック読み1ファイル書くだけで高速。</li>
+        <li>map側結合には入力データへの前提が必要。3種類ある。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.3.1 -->
+  <div class="card" id="s10231">
+    <h3 class="blk">10.2.3.1 ブロードキャストハッシュ結合</h3>
+    <div class="lead">📌 <b>要するに</b>：ブロードキャストハッシュ結合は「大きいデータ×小さいデータ」で、小さい方が各mapperのメモリに丸ごと載るときに使う。各mapperが小さい入力をメモリのハッシュテーブルに読み、大きい入力をスキャンしながら引く。小さい入力が全mapに配られるから「ブロードキャスト」。Pig/Hive/Cascading/Crunch/Impalaが対応。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つ目のmap側結合は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>ブロードキャストハッシュ結合</b>。使えるのは「<b>大きいデータに小さいデータを結合する</b>」場合。特に小さい方が<b>各mapperのメモリに丸ごと載るくらい小さい</b>のが条件。ユーザーDBがメモリに収まるなら、各mapperは起動時にまずユーザーDBを<b>メモリ内のハッシュテーブル</b>に読み込む。あとはアクティビティイベントをスキャンして、各イベントのユーザーIDをそのハッシュテーブルで引くだけ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「ブロードキャスト」って名前の由来は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きい入力のブロックごとにmapタスクが立つ。その各mapperが小さい入力を<b>丸ごと</b>読む。つまり小さい入力が全パーティションに「<b>ブロードキャスト（一斉配信）</b>」される。「ハッシュ」はハッシュテーブルの利用を指す。Pig（replicated join）、Hive（MapJoin）、Cascading、Crunch、Impalaでも使われる。小さい入力をメモリでなくローカルディスクの<b>リードオンリーのインデックス</b>に置く手もあって、よく使う部分はOSのページキャッシュに残るからメモリ並みに速い。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：薄い型番台帳を、全作業台にコピーして配る</h4>
+      <p>型番台帳（小さい入力）が薄くて<b>各作業台に1冊ずつ置けるくらい</b>なら、最初に台帳のコピーを<b>全作業台にばらまいて（ブロードキャスト）</b>おきます。あとは大量の材料（大きい入力）を端から流すだけ。作業台は手元の台帳を引くだけで突き合わせ完了。並べ替えラインも合流作業も要らず、とても速い。台帳が重ければ机の引き出し（ローカルディスク）に入れてもよく、よく使う頁は手元（ページキャッシュ）に残ります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「小さい方がメモリに載る」ときの最速結合を選べる。</li>
+        <li>ブロードキャスト/ハッシュという名前の意味を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>大きいデータに小さいデータを結合、小さい方が各mapperのメモリに載るのが条件。</li>
+        <li>各mapperが小さい入力をハッシュテーブルに読み、大きい入力をスキャンして引く。</li>
+        <li>小さい入力が全mapにブロードキャストされる。</li>
+        <li>メモリの代わりにローカルディスクのリードオンリーインデックスでも可（ページキャッシュで高速）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.3.2 -->
+  <div class="card" id="s10232">
+    <h3 class="blk">10.2.3.2 パーティション化ハッシュ結合</h3>
+    <div class="lead">📌 <b>要するに</b>：パーティション化ハッシュ結合は、両入力が同じ方法（同じキー・同じハッシュ関数・同じパーティション数）でパーティショニングされているとき、ハッシュ結合を各パーティションに独立適用する。各mapperは両入力から1パーティションずつ読めばよく、メモリ消費が小さい。Hiveのbucketed map joins。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>小さい入力でもメモリに載らないくらい大きかったら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで<b>パーティション化ハッシュ結合</b>。入力が<b>同じ方法でパーティショニングされてる</b>なら、ハッシュ結合を各パーティションごとに独立に適用できる。例えば両方を「ユーザーIDの最後の1桁」でパーティショニングすれば、両側に10個ずつパーティションができる。mapper3 はまず「IDが3で終わる全ユーザー」をハッシュテーブルに読み、「IDが3で終わる全アクティビティ」をスキャンする。結合相手は必ず同じ番号のパーティションにあるから、各mapperは両入力から<b>1パーティションだけ</b>読めばいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ハッシュテーブルに読むデータが小さくて済むんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、それが利点。ただし条件がある。両入力が<b>同じキー・同じハッシュ関数・同じ数のパーティション</b>を持つこと。入力が先行ジョブで生成されてグループ化済みなら妥当だ。Hiveでは <b>bucketed map joins</b> と呼ぶ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：両ラインを同じ末尾番号で10レーンに仕分けておく</h4>
+      <p>台帳が厚くて全作業台に配れないなら、<b>あらかじめ両方の材料を「型番の末尾0〜9」の10レーンに仕分けておきます</b>。すると「末尾3」の材料と「末尾3」の台帳は必ず同じレーンにあるので、3番レーンの担当は<b>末尾3の台帳だけ</b>を手元に置けばよく、台帳全部を抱えなくて済みます。条件は「両ラインを同じルールで、同じ数のレーンに仕分けてあること」です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>小さい入力もメモリに載らないときの結合手段を選べる。</li>
+        <li>「両入力を同じパーティショニングにそろえる」前提条件を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>両入力が同じパーティショニングなら、ハッシュ結合を各パーティションに独立適用。</li>
+        <li>各mapperは両入力から1パーティションだけ読む → ハッシュテーブルが小さくて済む。</li>
+        <li>条件：同じキー・同じハッシュ関数・同じパーティション数。</li>
+        <li>Hiveでは bucketed map joins。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.3.3 -->
+  <div class="card" id="s10233">
+    <h3 class="blk">10.2.3.3 map側マージ結合</h3>
+    <div class="lead">📌 <b>要するに</b>：map側マージ結合は、両入力が同じパーティショニングかつ同じキーでソート済みのとき使える。mapperが両入力を昇順に少しずつ読んでマッチさせる（reducerのマージ処理をmapでやる）。ソート済みなのでメモリに全部載せる必要がない。ソート済みデータが他用途にも使えるなら独立mapジョブにする価値がある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>map側結合の3つ目は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>map側マージ結合</b>。入力を同じ方法でパーティショニングするだけでなく、<b>同じキーでソート</b>もしてあるケース。この場合mapperは普通reducerがやるのと同じマージ処理を実行できる。両方の入力ファイルをキーの昇順に少しずつ読んで、同じキーのレコードをマッチさせるだけ。<b>ソート済みだからメモリに全部載せる必要がない</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それなら先行ジョブのreduceでやればよかったのでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>原則そうできた。でも、そのパーティショニング・ソート済みデータセットが<b>この結合以外の目的にも使われる</b>なら、マージ結合を独立したmapのみのジョブにするのが適切なこともある。再利用できるからね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：両方とも型番順に並んでいれば、横に流して突き合わせ</h4>
+      <p>2つのレーンが<b>どちらも型番の昇順にきれいに並んでいる</b>なら、2本のレーンを横に並べて<b>前から順に少しずつ流し、同じ型番が来たらその場で組み立てる</b>だけ。並んでいるので、全部を作業台に積み上げる必要がありません。この「並び」は前の工程が作ってくれたもので、他の用途にも使えるなら、突き合わせ作業を独立した小さな工程にしておくと再利用できて得です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>パーティショニング＋ソート済みのときのマージ結合を理解できる。</li>
+        <li>「中間データの再利用」のために独立ジョブにする判断ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>両入力が同じパーティショニング＋同じキーでソート済みのとき使える。</li>
+        <li>mapperが両入力を昇順に読みマッチ（reducerのマージ処理をmapで）。</li>
+        <li>ソート済みなのでメモリ量を問わない。</li>
+        <li>先行ジョブがソート済みを作る。他用途でも使うなら独立mapジョブにする価値あり。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.3.4 -->
+  <div class="card" id="s10234">
+    <h3 class="blk">10.2.3.4 map側での結合を行うMapReduceのワークフロー</h3>
+    <div class="lead">📌 <b>要するに</b>：結合の出力構造はmap側かreduce側かで変わる。reduce側は結合キーでパーティショニング・ソート、map側は大きい入力と同じレイアウト。map側結合は前提が多いので、物理レイアウト（パーティション数、キー）を知ることが最適化に重要。メタデータはHCatalogやHiveメタストアで管理。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結合の結果を次のジョブで使うとき、map側かreduce側かで何か変わりますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>出力の構造が変わる。<b>reduce側結合の出力</b>は結合キーでパーティショニング・ソートされてる。<b>map側結合の出力</b>は<b>大きい方の入力と同じように</b>パーティショニング・ソートされてる（大きい入力のブロックごとにmapタスクが立つから）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>下流のジョブを設計するとき、それを知っとかないといけないんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。map側結合は入力のサイズ・ソート・パーティショニングへの前提が多い。だから<b>分散ファイルシステム上のデータの物理レイアウトを知ること</b>が結合戦略の最適化に重要。エンコーディング形式やディレクトリ名だけじゃ足りない。<b>パーティション数、パーティショニングとソートに使われたキー</b>まで知る必要がある。Hadoopエコシステムでは、こういうメタデータは <b>HCatalog</b> や <b>Hive のメタストア</b> で管理される。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：完成した半製品の「並び方の仕様書」を次工程に渡す</h4>
+      <p>突き合わせ工程から出てくる半製品は、<b>やり方によって並び方が違います</b>。reduce側でやると「型番で仕分け・整列済み」、map側でやると「大きい方のラインの並びのまま」。次の工程の担当は、<b>どんな並びで・何レーンに・どのキーで仕分けてあるか</b>を知らないと最適に組めない。だから工場では<b>「並び方の仕様書（HCatalog／Hiveメタストア）」</b>を用意して、各工程に共有しておくのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>下流ジョブの設計に上流の結合方式が影響することを理解できる。</li>
+        <li>データの物理レイアウト（パーティション数・キー）の重要性を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>reduce側結合の出力＝結合キーでパーティショニング・ソート。</li>
+        <li>map側結合の出力＝大きい入力と同じパーティショニング・ソート。</li>
+        <li>map側結合は前提が多く、物理レイアウト（パーティション数・キー）の把握が最適化に必須。</li>
+        <li>メタデータはHCatalog / Hiveメタストアで管理。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.2.4 バッチワークフローの出力 ===== -->
+<section id="s1024">
+  <div class="sec-head"><div class="sec-num">10.2.4</div><div><h2>バッチワークフローの出力</h2><span class="tag">これは何のためにやっているのか ― 出力はレポートではない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：OLTPは少数レコード引き、分析クエリはレポート作成。バッチ処理はどちらでもなく、入力の大部分をスキャンする点では分析寄りだが、出力はレポートではなく別種の構造（検索インデックスやキー‐バリューストアなど）になることが多い。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いろんな結合を見てきましたけど……そもそも、こういう処理の結果ってどう使うんですか？ 何のためにやってるんでしたっけ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい問いだ。DBクエリではOLTP（トランザクション処理）と分析処理を区別したよね。OLTPはインデックスで少数レコードを引いてユーザーに見せる。分析クエリは多数レコードをスキャン・集計してレポート（グラフ、TOP10、カテゴリ別の数値）にする。レポートを見るのは判断するアナリストやマネージャだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バッチ処理はどっちなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>どっちでもない</b>。入力の大部分をスキャンする点では分析に近いけど、MapReduceワークフローは分析用SQLとは違う。バッチの出力は<b>レポートじゃなくて別種の構造</b>を持つことが多い。次でその例を見よう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：夜間ラインが作るのは「報告書」でなく「次に使う部品」</h4>
+      <p>窓口（OLTP）は注文の1品を出す。分析（レポート）は「今月の売れ筋グラフ」を作る。でも<b>夜間の大量生産ライン（バッチ）が作るのは、そのどちらでもありません</b>。原材料を全部なめる点は分析に似ていますが、できあがるのは報告書ではなく<b>「翌日の窓口でそのまま使える部品（検索インデックスやキー‐バリューストア）」</b>であることが多いのです。</p>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>OLTP＝少数レコード引きでユーザーに表示。分析＝多数スキャンしてレポート。</li>
+        <li>バッチはどちらでもなく、出力はレポートでなく別構造のことが多い。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.4.1 -->
+  <div class="card" id="s10241">
+    <h3 class="blk">10.2.4.1 検索インデックスの構築</h3>
+    <div class="lead">📌 <b>要するに</b>：バッチ出力の代表が検索インデックス。Googleは検索インデックスをMapReduce（5〜10ジョブ）で構築していた。mapperがドキュメントを分割、各reducerが担当分のインデックス（語→ドキュメントIDの<span class="term" data-tip="ある語を含む全ドキュメントIDのリスト。">ポスティングリスト</span>）を構築。一度作れば不変。更新は「全体を作り直して置換」か「Luceneのようにインクリメンタル」の2方式。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バッチ処理の出力の例、1つ目は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>検索インデックス</b>だ。Googleは元々、検索インデックスを作るためにMapReduceを使ってた。5〜10個のジョブのワークフローとしてね。今はもうこの目的では使ってないけど、検索エンジン構築のレンズで見るとMapReduceがよく分かる（今でもLucene/Solrのインデックス構築にHadoop MapReduceはいい方法だ）。Luceneみたいな全文検索は、ざっくり「語の辞書」――ある語を引くと、その語を含む全ドキュメントIDのリスト（<b>ポスティングリスト</b>）が見つかる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バッチでどう作るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>固定のドキュメント群なら効率的。mapperがドキュメントをパーティショニングし、各reducerが担当パーティションのインデックスを構築してファイルを分散ファイルシステムに書く。うまく並列化できて、検索（読み取りだけ）するインデックスファイルは一度作ったら変更されない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ドキュメントが追加・変更されたら、作り直しですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つ選択肢がある。①全体のインデックス付けを定期的に再実行して、完了したら古いのを丸ごと新しいので置き換える（演算はムダだが分かりやすい）。②<b>インクリメンタル（少しずつ）</b>に構築する。Luceneは新しいセグメントファイルを書いて、バックグラウンドで非同期にマージ・コンパクト化する。これは11章でさらに見る。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：完成品カタログの「索引」を夜間に刷る</h4>
+      <p>夜間ラインの仕事の1つが、<b>製品カタログの巻末索引（検索インデックス）を刷ること</b>です。「この語が載っている頁の一覧（ポスティングリスト）」を作る。各印刷班（reducer）が担当範囲の索引を刷って束ねる――並列で効率よく作れます。刷り上がった索引は読むだけ（不変）。中身が変わったら<b>索引を丸ごと刷り直して差し替える</b>か、<b>追補ページを少しずつ足してあとでまとめる（インクリメンタル）</b>。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>バッチで検索インデックスを作る流れを理解できる。</li>
+        <li>全再構築 vs インクリメンタルの違いとトレードオフを説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>検索インデックス＝語→ドキュメントIDのポスティングリスト。</li>
+        <li>バッチで構築：mapperが分割、reducerが担当分を構築、不変ファイルとして出力。</li>
+        <li>並列化しやすく、読み取り専用。</li>
+        <li>更新は全再構築＋置換、またはインクリメンタル（Luceneのセグメント＋マージ）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.4.2 -->
+  <div class="card" id="s10242">
+    <h3 class="blk">10.2.4.2 バッチ処理の出力としてのキー‐バリューストア</h3>
+    <div class="lead">📌 <b>要するに</b>：機械学習やレコメンドの出力はキー‐バリューストアになることが多い。バッチから本番DBへ1件ずつ書くのは「遅い・DBを潰す・<span class="term" data-tip="ジョブ成功なら全タスク反映、失敗なら出力ゼロ、という保証。">オールオアナッシング</span>保証が崩れる」のでダメ。正解はジョブ内で新しいDBファイルを作り、不変ファイルとして出力し、読み取り専用サーバーに<b>バルクロード</b>する（Voldemort等）。新旧の切り替えはアトミックで、戻すのも簡単（イミュータブル）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>検索インデックス以外の出力例は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>機械学習（スパムフィルタ、異常検出、画像認識のクラシファイア）やレコメンド（知人サジェスト、おすすめ商品、関連検索）の構築だ。出力はしばしば<b>何らかのデータベース</b>になる。「ユーザーIDで引くと友人サジェストを返す」「商品IDで引くと関連商品を返す」DBだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そのDBは、Webアプリから使うんですよね。どうやって書き戻すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>素朴なのはmapper/reducerから直接、本番DBに1レコードずつ書く方法。でもこれは<b>ダメ</b>。①1件ずつネットワークリクエストでスループット激落ち。②大量タスクが並列に書くとDBがパンクして他にも悪影響。③MapReduceの<b>オールオアナッシング</b>保証が崩れる――部分的に完了したジョブの結果が外から見えてしまう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあどうすれば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>検索インデックスと同じで、<b>まったく新しいDBをバッチジョブの内部で作り</b>、分散ファイルシステムの出力ディレクトリに書く。一度書いたファイルは不変で、読み取り専用サーバーへ<b>バルクロード（一括読み込み）</b>できる。Voldemort、Terrapin、ElephantDB、HBase bulk loadingが対応。mapperでキーを取り出してソートするのは元々インデックス構築の処理そのものだから相性がいい。読み取り専用で<b>WAL（書き込み先行ログ）すら要らない</b>。Voldemortは新ファイルをコピー中も古いファイルで処理を続け、終わったら<b>アトミックに</b>切り替える。問題が起きたら古いファイルに戻すのも簡単だ。</div></div>
+    </div>
+
+    <details class="code"><summary>バッチジョブから本番DBへ直接1件ずつ書くのがダメな理由</summary>
+<pre><span class="cmt"># バッチジョブから本番DBへ直接1件ずつ書くのがダメな理由</span>
+① レコードごとにネットワークリクエスト → 通常のバッチより何桁もスループットが落ちる
+② 大量タスクが並列に書き込む → DBが追いつかず、クエリ性能が落ち、他システムにも悪影響
+③ 中途半端な出力が外から見えてしまう → MapReduceの「オールオアナッシング」保証が崩れる</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：完成品を1個ずつ店に並べず、棚ごと差し替える</h4>
+      <p>夜間ラインの完成品（レコメンド結果）を、営業中の店の棚に<b>1個ずつ手で並べる</b>のは最悪――遅いし、店員（DB）が客対応できなくなるし、並べ途中の中途半端な棚を客に見られてしまう。正解は<b>工場内で完成した棚ごと一式を作っておき（不変ファイル）、店ではその棚を丸ごと差し替える（バルクロード）</b>こと。差し替えは一瞬（アトミック）で、不具合があれば古い棚に戻すだけ。古い棚は捨てずに残してあるから安心です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>バッチ出力を本番DBへ反映する正しい方法（バルクロード）を選べる。</li>
+        <li>「ジョブ内でDBファイルを作る」がMapReduceと相性が良い理由を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>機械学習/レコメンドの出力はキー‐バリューストアになりがち。</li>
+        <li>本番DBへ1件ずつ書くのはNG：遅い・DB過負荷・オールオアナッシング保証が崩れる。</li>
+        <li>正解：ジョブ内で新DBファイルを作り、不変ファイルとして出力、バルクロード（Voldemort/Terrapin/ElephantDB/HBase bulk loading）。</li>
+        <li>読み取り専用でWAL不要。切り替えはアトミック、ロールバックも容易。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.4.3 -->
+  <div class="card" id="s10243">
+    <h3 class="blk">10.2.4.3 バッチ処理の出力における哲学</h3>
+    <div class="lead">📌 <b>要するに</b>：バッチ出力の哲学はUnix譲り＝「入力は変えない、出力は丸ごと置換、副作用なし」。これにより、バグってもコードを戻して再実行で復旧でき（<span class="term" data-tip="人間がコードにバグを入れても、戻して再実行すれば直せる性質。">対人為的障害耐性</span>）、ロールバックが容易で開発が速まり、失敗タスクの自動リトライが安全、同じ入力を複数ジョブで使え、ロジックと結線を分離できる。Unixと違いHadoopは構造化フォーマット（Avro/Parquet）でパースを省ける。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バッチ処理の出力って、何か共通の考え方があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。冒頭のUnixの哲学がそのまま生きてる。プログラムは入力を読み出力を書く。その過程で<b>入力は変えない、以前の出力は新しい出力で完全に置き換える、それ以外の副作用はない</b>。だからコマンドを何度再実行しても、デバッグでいじっても、システムの状態が散らからない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①バグで出力が壊れても、コードを前のバージョンに戻して再実行すれば直る。これを<b>対人為的障害耐性（human fault tolerance）</b>と呼ぶ。読み書きするDBにはこの性質がない――バグのあるコードで悪いデータを書いたら、コードを戻してもDBは直らないだろ？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、たしかに。DBは一回書いたら戻せないけど、バッチは作り直せばいいんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。②ロールバックが簡単だから回復不能なダメージのリスクが小さく開発を速くできる（<b>回復不能性の最小化</b>）。③タスクが失敗してもフレームワークが自動リトライ――入力不変＆失敗出力破棄だから安全。④同じ入力を色んなジョブで使える。⑤Unix同様ロジックと結線を分離できる。あるチームは「1つのことをうまくやるジョブ」に集中し、別チームがどこでいつ実行するか決められる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>UnixとHadoop、同じ原則なんですね。違いはないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。Unixツールは型なしテキスト前提だから入力のパースが大量に要る（<code>{print $7}</code> みたいな位置指定）。Hadoopは構造化フォーマットを使えばこの価値の低い構文変換を省ける。スキーマベースで効率的にエンコードでき、スキーマを進化させられる <b>Avro</b> や <b>Parquet</b> がよく使われる。</div></div>
+    </div>
+
+    <details class="code"><summary>入力不変・出力置換のメリット</summary>
+<pre><span class="cmt"># 入力不変・出力置換のメリット</span>
+① コードにバグを入れて出力が壊れても、コードを戻して再実行すれば出力は再び正しくなる。
+   （古い出力を別ディレクトリに残し、そちらに切り替えるだけでもいい）
+   ※ 読み書きするDBにはこの性質がない＝対人為的障害耐性（human fault tolerance）
+② ロールバックが簡単 → 回復不能なダメージのリスクが減り、機能開発の速度を上げられる（回復不能性の最小化）
+③ タスクが失敗してもフレームワークが自動で再スケジュール・再実行。入力不変＆失敗出力破棄なので安全
+④ 同じ入力ファイル集合を、いろんなジョブの入力に使える（出力をモニタリングするジョブ含む）
+⑤ Unix同様、ロジックと結線を分離 → 関心の分離・コード再利用ができる</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：原材料はそのまま、完成品の山は丸ごと作り直せる</h4>
+      <p>このラインは<b>原材料に一切手を加えず、完成品の山は丸ごと新しく作り直す</b>方式。だから手順書（コード）に間違いを入れて不良品の山ができても、<b>手順書を前の版に戻して、もう一度原材料から作り直せば直ります</b>（対人為的障害耐性）。これが「一度書いたら戻せない帳簿（DB）」との決定的な違い。失敗した工程だけやり直すのも、原材料が無傷だから安全。同じ原材料を別の製品ラインにも使い回せます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「入力不変・出力置換」がバグ回復・実験・自動リトライをいかに楽にするか理解できる。</li>
+        <li>対人為的障害耐性・回復不能性の最小化という設計価値を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>哲学：入力不変・出力は完全置換・副作用なし。</li>
+        <li>バグってもコードを戻して再実行で復旧（対人為的障害耐性）。DBにはこの性質がない。</li>
+        <li>ロールバック容易で開発が速い（回復不能性の最小化）。失敗タスクの自動リトライが安全。</li>
+        <li>同じ入力を複数ジョブで再利用。ロジックと結線の分離。</li>
+        <li>Hadoopは構造化フォーマット（Avro/Parquet）でパースを省ける。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.2.5 Hadoopと分散DBの比較 ===== -->
+<section id="s1025">
+  <div class="sec-head"><div class="sec-num">10.2.5</div><div><h2>Hadoopと分散データベースとの比較</h2><span class="tag">Hadoopは「Unixの分散版」、MPP DBは「分析SQL特化」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Hadoopは<b>Unixの分散版</b>（HDFS＝ファイルシステム、MapReduce＝変わったUnixプロセス）。並列結合アルゴリズム自体は<span class="term" data-tip="massively parallel processing。複数マシンで分析SQLを並列実行するDB。">MPP（大規模並列処理）データベース</span>が10年以上前に実装済み。違いは、MPP DBが「分析SQLの並列実行に特化」なのに対し、MapReduce＋分散FSは「任意のプログラムを実行できる汎用OS」のようなもの。3つの観点で比較する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Hadoopって、結局DBと何が違うんですか？ 似てる気がしてきました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Hadoopは<b>Unixの分散版</b>みたいなもの。HDFSがファイルシステム、MapReduceが変わったUnixプロセス（mapとreduceの間で必ず <code>sort</code> が走る）。公開当時、MapReduceの論文は全く新しいものでもなかった。並列結合アルゴリズムは<b>MPPデータベース</b>で10年以上前に実装済み。Gammaデータベースマシン、Teradata、Tandem NonStopSQLが開拓者だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあMapReduceとMPP DBの一番の違いは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>MPP DBは「複数マシンでの<b>分析的なSQLクエリの並列実行</b>」に特化。一方MapReduce＋分散FSは「<b>任意のプログラムを実行できる、もっと汎用的なOS</b>」みたいなもの。この違いを3つの観点で見ていこう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：何でも作れる汎用工場 vs 特定製品に最適化した専用工場</h4>
+      <p>MPP DBは<b>「特定の製品を最高効率で作るよう、設備・段取り・検査が一体化した専用工場」</b>。決まった製品なら抜群に速い。Hadoopは<b>「どんな機械でも持ち込めて、何でも作れる汎用工場（＝OSのような土台）」</b>。専用工場ほど特化はしていないが、機械学習でも画像処理でも何でも載せられる柔軟さがある。次の3つの観点で、この違いを掘り下げます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Hadoop＝Unixの分散版（HDFS＋MapReduce）。並列結合自体はMPP DBが先行。</li>
+        <li>MPP DBは分析SQLの並列実行に特化、MapReduce＋分散FSは任意プログラムを動かす汎用OS的。</li>
+        <li>違いは3観点：ストレージの多様性／処理モデルの多様性／障害への備え。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.5.1 -->
+  <div class="card" id="s10251">
+    <h3 class="blk">10.2.5.1 ストレージの多様性</h3>
+    <div class="lead">📌 <b>要するに</b>：違いその1はストレージの多様性。DBは事前のモデリング必須だが、HDFSはただのバイト列なので何でも放り込める（<span class="term" data-tip="解釈を読み出す側に回す。書く時は生のまま。">スキーマオンリード</span>、寿司原則「データは生の方がいい」）。生のまま早く集める価値が高いことが多く、これが<span class="term" data-tip="生データをそのまま大量に集めておく場所。あとで解釈する。">データレイク</span>。Hadoopはこの柔軟さでETL（収集とモデリングを分離）にも使われる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つ目の観点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>ストレージの多様性</b>。DBは特定モデル（リレーショナルやドキュメント）に構造化が必要。でも分散FSのファイルは<b>ただのバイトの並び</b>だから、どんなモデルでもエンコーディングでも書ける。DBレコードでも、テキスト、画像、ビデオ、センサー値、疎な行列、特徴ベクトル、ゲノム配列でもいい。Hadoopは「無差別にデータをHDFSに書いて、処理方法は後で考える」可能性を開いた。MPP DBは逆で、独自フォーマットにインポートする前に注意深くモデリングが要る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>注意深くモデリングするほうが、品質が高くて良さそうですけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>純粋主義者ならそう思う。でも実際は、生のままでも<b>早く使えるようにするほうが価値がある</b>ことが多い。色んな部署のデータを1カ所に集めると、別々だったデータをまたいで結合できる。注意深いスキーマ設計は集中化を遅くするから、生のまま集めて後でスキーマを考える――これを<b>データレイク</b>や<b>エンタープライズデータハブ</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、データを解釈する手間は誰かが払うんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>手間の行き先が変わるんだ。生成側に変換を求める代わりに<b>解釈を消費側の問題にする</b>。これが<b>スキーマオンリード</b>。生成側と消費側が別チームで優先順位が違うときメリットになる。生のままダンプすれば変換を何種類もできる。これを<b>寿司原則</b>――「データは生の方がいい」と呼ぶ。だからHadoopはETLにも使われる。生の形でHDFSにダンプ→MapReduceでクリーンアップ・リレーショナル変換→MPPデータウェアハウスにインポート。モデリングをデータ収集から分離した独立ステップにできる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：とりあえず生の素材を全部倉庫に集める</h4>
+      <p>専用工場（MPP DB）は「決まった規格に整えた材料」しか受け付けません。汎用工場（Hadoop）は<b>「どんな生の素材でもとりあえず巨大倉庫（データレイク）に放り込んでおく」</b>。あとで使うときに、使う部署が自分の目的に合わせて加工する（スキーマオンリード＝寿司原則「素材は生がいい」）。早く一カ所に集まるので、別々だった素材を組み合わせて新しい製品を試せる。整える作業は、収集とは別の独立した工程に回せるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>スキーマオンライト（DB）とスキーマオンリード（Hadoop）の違いを説明できる。</li>
+        <li>データレイク／寿司原則の発想と、その向き不向きを理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>DBは事前モデリング必須、HDFSはただのバイト列で何でも保存可。</li>
+        <li>生のまま早く集める価値（データレイク、エンタープライズデータハブ）。</li>
+        <li>スキーマオンリード＝解釈を消費側に回す。寿司原則「データは生の方がいい」。</li>
+        <li>HadoopはETLにも活用（収集とモデリングを分離）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.5.2 -->
+  <div class="card" id="s10252">
+    <h3 class="blk">10.2.5.2 処理モデルの多様性</h3>
+    <div class="lead">📌 <b>要するに</b>：違いその2は処理モデルの多様性。MPP DBは<span class="term" data-tip="ストレージ・クエリ計画・実行が密に結合した一枚岩の作り。">モノリシック</span>でSQLには高性能だが、機械学習・画像解析などSQLで書けない処理には不向き。MapReduceは任意コードを実行でき、HiveのようなSQLエンジンも他の処理も載せられる。決定的なのは多様な処理モデルが同一クラスタの同じHDFSファイルにアクセスでき、データを動かさず使える点（HBaseもImpalaも共存）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目の観点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>処理モデルの多様性</b>。MPP DBは<b>モノリシック（一枚岩）</b>で、ストレージレイアウト・クエリプランニング・スケジューリング・実行が密に結合してる。だから狙ったクエリには非常に高性能で、SQLで表現力豊かに書けて、Tableauみたいなグラフィカルツールからも使える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いいことづくめに聞こえます。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>でも<b>あらゆる処理がSQLでうまく表現できるわけじゃない</b>。機械学習、レコメンド、全文検索の関連ランキング、画像解析……これらは汎用的な処理モデルが要る。特定アプリに強く結びつく処理（機械学習の特徴エンジニアリング、機械翻訳の自然言語モデル、不正検知のリスク推定）はクエリじゃなくコードを書く必要がある。MapReduceなら自分のコードを大規模データに実行できる。HDFSとMapReduceの上にSQLエンジンを作ることもできる――それがHive。でもSQLに向かない他の処理も書ける。Hadoopは<b>オープン</b>だから幅広いアプローチを実装できた。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>色んな処理モデルが、同じデータにアクセスできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが決定的に重要。様々な処理モデルがすべて<b>単一の共有クラスタ上で、同じHDFSのファイル群にアクセス</b>して動ける。処理ごとに別システムへインポートしなくていい。データを動かさず済むから、価値を取り出すのも新モデルを試すのも楽。例えばHBase（OLTPなランダムアクセスDB）とImpala（MPPスタイルの分析DB）――どちらもMapReduceは使わないがHDFSを使い、同じシステム内で共存・結合できる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：同じ倉庫の素材に、何種類もの加工機を当てられる</h4>
+      <p>専用工場は決まったライン一式（モノリシック）で、決まった製品には最速。でも別種の加工はできません。汎用工場（Hadoop）は<b>同じ巨大倉庫の素材に、SQL加工機（Hive）も、機械学習機も、画像処理機も、ランダムアクセス窓口（HBase）も、分析機（Impala）も、好きなだけ持ち込んで当てられる</b>。素材を別倉庫へ運ばずに、その場でいろんな加工を試せるのが強みです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>SQLで書ける処理／書けない処理の境界を理解できる。</li>
+        <li>「同じデータに多様な処理モデルでアクセスできる」Hadoopの強みを説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>MPP DBはモノリシックでSQLに高性能だが、機械学習・画像解析等には不向き。</li>
+        <li>MapReduceは任意コードを実行可。Hive（SQLエンジン）も他処理も載る。</li>
+        <li>Hadoopのオープン性で多様な処理モデルを実装できた。</li>
+        <li>同一クラスタの同じHDFSファイルに多様なモデルがアクセス（HBase・Impala共存）。データを動かさず使える。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.2.5.3 -->
+  <div class="card" id="s10253">
+    <h3 class="blk">10.2.5.3 頻繁な障害に備えた設計</h3>
+    <div class="lead">📌 <b>要するに</b>：違いその3は障害設計とメモリ/ディスク使用。MPP DBはノードクラッシュ時にクエリ全体を再実行し、データはメモリ優先。MapReduceはタスク単位でリトライし、頻繁にディスクに書く。これはMapReduceが「Googleの共有クラスタで低優先度バッチが高優先度に<span class="term" data-tip="高優先度の処理がリソースを欲しがると、低優先度の処理を強制終了させること。横取り。">プリエンプション（横取り）</span>される（約5%/時、ハード障害より1桁高い）」環境で生まれたため。利用率向上のための設計で、プリエンプションのない環境では妥当性が下がる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目の観点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>障害への備え方</b>と<b>メモリ/ディスクの使い方</b>だ。バッチは失敗しても即ユーザーに影響しないし再実行できるから、オンラインよりフォールトに敏感じゃない。MPP DBは、クエリ中にノードがクラッシュすると<b>クエリ全体を中断</b>して再投入か自動再実行する。クエリは数秒〜数分だからやり直しのコストも小さい。それにできる限りデータを<b>メモリ内</b>に保持して（ハッシュ結合など）ディスク読み取りを抑える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>MapReduceは違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>MapReduceは<b>個々のタスクの粒度</b>でリトライする。1つのmap/reduceタスクが失敗しても、そのタスクだけ再実行すればジョブ全体は影響されない。それと<b>頻繁にディスクに書く</b>。一部は耐障害性のため、一部はデータがメモリに収まらない前提のため。大量データを長時間処理するジョブでは少なくとも1タスクは失敗するから、1タスク失敗で全体やり直しはムダ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、そんなに頻繁にマシンが壊れるんですか？ ちょっと大げさな気が……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが面白い。多くのクラスタでマシン障害はそこまで頻繁じゃない。理由は<b>MapReduceが生まれた環境</b>にある。Googleではオンライン本番とオフラインバッチが<b>同じマシン群</b>で動く。各タスクはコンテナでリソースと<b>優先度</b>を持ち、高優先度がリソースを欲しがると低優先度は終了させられる――<b>プリエンプション（横取り）</b>だ。バッチは低優先度だから横取りされる。1時間動くタスクが横取りされるリスクは<b>約5%</b>で、ハード障害などより<b>1桁高い</b>。10分タスク100個のジョブなら、少なくとも1つが完了前に終了させられるリスクは<b>50%超</b>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、ハードが弱いんじゃなくて、わざと横取りできるようにしてるからなんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。いつでも終了できるようにするとクラスタの利用率を上げられる。だからMapReduceは「頻繁な予想外のタスク終了」に耐えるよう設計された。ただしOSSのクラスタスケジューラではプリエンプションはあまり使われてない。YARN、Mesos、Kubernetesは執筆時点で優先度による汎用プリエンプションを十分サポートしてない。だから横取りされない環境では、この設計判断の妥当性は下がる。次はMapReduceと違う設計判断をしたフレームワークを見よう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：昼の本番ラインが優先、夜間バッチは「すきま時間」を使う</h4>
+      <p>Googleの工場では、昼の本番ラインと夜間バッチが<b>同じ作業台を共有</b>します。バッチは「テーブルの下のごみを拾う」ような低優先度の仕事で、本番が作業台を欲しがると<b>途中でも追い出されます（プリエンプション＝横取り）</b>。1時間の作業が横取りされる確率は約5%――機械の故障よりずっと高い。だからバッチ工場は<b>「作業を細かく区切り、途中経過をこまめに棚（ディスク）に置き、追い出されたその工程だけやり直す」</b>設計になっているのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>タスク単位リトライとクエリ全体再実行の違いを理解できる。</li>
+        <li>MapReduceの「ディスク多用・タスク粒度リカバリ」が生まれた環境的理由（プリエンプション）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>MPP DBはクエリ全体を再実行、データはメモリ優先。</li>
+        <li>MapReduceはタスク粒度でリトライ、頻繁にディスクに書く。</li>
+        <li>理由：Googleの共有クラスタで低優先度バッチがプリエンプションされる（約5%/時、ハード障害より1桁高い）。</li>
+        <li>利用率を上げるための設計。プリエンプションのない環境では妥当性が下がる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.3 MapReduceを超えて ===== -->
+<section id="s103">
+  <div class="sec-head"><div class="sec-num">10.3</div><div><h2>MapReduceを超えて</h2><span class="tag">理解しやすい≠使いやすい ― 後継のツールたちへ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：MapReduceは数ある分散モデルの1つ。学習に有益なのは「動作が理解しやすい（シンプル）」から。ただし「シンプル＝使いやすい」ではなく、直接書くのは難しい（結合もゼロから実装）。だからPig/Hive等の高レベル抽象化が生まれたが、実行モデル自体の性能問題は残る。MapReduceは頑健（不安定な環境でも完遂）だが、処理によっては他ツールが桁違いに速い。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>MapReduce、すごいけど何だか難しそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実はそうなんだ。MapReduceは広く使われ2000年代終わりには過大評価もされたけど、数ある分散モデルの1つに過ぎない。時間をかけたのは<b>学習に有益</b>だから――分散ファイルシステム上のシンプルで明快な抽象化だからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>シンプル＝使いやすい、ってことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが落とし穴。ここでの<b>シンプル</b>は「<b>動作が理解しやすい</b>」って意味で「使いやすい」じゃない。むしろ逆で、複雑な処理をMapReduce APIで直接書くのはすごく大変。どんな結合アルゴリズムもゼロから自分で実装しないといけない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>だからPigとかHiveが出てきたんですね。MapReduceにいいところはないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Pig/Hive/Cascading/Crunchが抽象化として作られた。MapReduceを理解してれば簡単に学べる。でも実行モデル自体の問題は抽象化を重ねても直らず、処理によっては性能が貧弱。一方MapReduceは<b>頑健</b>――タスクが頻繁に終了させられる不安定な環境でも、大量データを最後までやり遂げる（遅くてもね）。この後、他の選択肢を見ていこう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：仕組みが単純な旧式ラインは、頑丈だが手組みが大変</h4>
+      <p>MapReduceは<b>「仕組みがむき出しで分かりやすい旧式ライン」</b>。見れば動きが理解できる（学習に最適）。でも<b>分かりやすい＝楽に使える、ではありません</b>。複雑な製品を作るには、配管や治具を全部自分で組む必要があって骨が折れる。だから<b>操作パネル（Pig/Hive）</b>が後付けされました。旧式ラインの長所は<b>頑丈さ</b>――作業台を頻繁に横取りされる過酷な現場でも、遅くても最後まで作り切る。ただし用途によっては新型ラインのほうが桁違いに速いのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「理解しやすい」と「使いやすい」を区別できる。</li>
+        <li>MapReduceの長所（頑健）と短所（性能・書きにくさ）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>MapReduceは学習に有益（動作が理解しやすい）。</li>
+        <li>シンプル＝理解しやすい、であって使いやすいではない（直接実装は大変）。</li>
+        <li>高レベルモデル（Pig/Hive/Cascading/Crunch）が登場したが実行モデルの性能問題は残る。</li>
+        <li>MapReduceは頑健（不安定環境でも完遂）だが、処理によっては他ツールが桁違いに速い。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.1 -->
+  <div class="card" id="s1031">
+    <div class="sec-head"><div class="sec-num">10.3.1</div><div><h2>中間的な状態の実体化</h2><span class="tag">中間結果を全部ファイルに書く ― その3つの欠点</span></div></div>
+
+    <div class="lead">📌 <b>要するに</b>：MapReduceは中間状態をファイルに完全に書き出す（<span class="term" data-tip="中間結果を先に計算してファイルに書き出すこと。半製品を倉庫に置く。">実体化</span>）。これはUnixパイプ（小さなバッファでストリーミング）と比べ3つの欠点がある：①後続は先行の全タスク完了を待つ（遅いタスクが全体を引っ張る）、②mapperが冗長、③一時データを複数ノードに複製するのは過剰。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>MapReduceの「実行モデルの問題」って、具体的には何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>すべてのMapReduceジョブは他から<b>独立</b>してる。外界とのやりとりは分散FS上の入出力ディレクトリだけ。出力を組織に広く公開したいデータなら妥当だ。でも多くは、ある出力が<b>同じチームの次の1ジョブの入力にしか使われない</b>と分かってる。この場合ファイルは単に「あるジョブから次へ渡す<b>中間状態</b>」に過ぎない。それをファイルに書くのが<b>実体化</b>だ。要求時に計算するんじゃなく先に計算して書いておく意味。一方Unixパイプは中間状態を完全には実体化せず、小さなバッファで<b>ストリーミング</b>する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>完全に実体化するMapReduceの欠点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3つ。①後続は先行の<b>全タスク</b>が終わるまで始められない。Unixパイプは同時に動いて出力をすぐ消費する。遅いタスク（<b>straggler task</b>）が1つあると全体が遅れる。②mapperは冗長なことが多い――reducerが書いたファイルを読み直すだけだったり。reducer同士を直接つなげればmapを省ける。③中間状態を分散FSに置くと複数ノードに複製される。一時データには過剰だ。</div></div>
+    </div>
+
+    <details class="code"><summary>中間状態を完全に実体化することの欠点（Unixパイプと比べて）</summary>
+<pre><span class="cmt"># 中間状態を完全に実体化することの欠点（Unixパイプと比べて）</span>
+① 後続ジョブは、先行ジョブの「全タスク」完了まで開始できない。
+   Unixパイプは同時にスタートでき出力をすぐ消費する。
+   遅いタスク（straggler task）が1つあると全体が引っ張られる
+② mapper が冗長になりがち。reducer が書いたファイルを読み直して次のソートに備えるだけなことが多い。
+   reducer 同士を直接つなげればmapステージを省ける場合がある
+③ 中間状態を分散ファイルシステムに保存＝複数ノードにレプリケーション。一時データにはたいてい過剰</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：半製品をいちいち倉庫に全部しまってから次工程へ</h4>
+      <p>MapReduceは、ある工程の<b>半製品を全部いったん倉庫にしまい、しまい終わってから次の工程を始めます</b>（実体化）。ベルトコンベア（Unixパイプ）なら、できたそばから次工程へ流せるのに。欠点は、①前工程の<b>最後の1個（のろまな作業＝straggler）</b>がしまわれるまで次が始められない、②倉庫から出してすぐまた並べ直すだけの<b>ムダな運搬係（冗長なmapper）</b>がいる、③一時的な半製品なのに<b>わざわざ複数の倉庫に複製してしまう</b>、の3つです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>実体化とストリーミングの違いを説明できる。</li>
+        <li>MapReduceの中間状態の扱いがなぜ非効率かを3点で言える。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>実体化＝中間状態を先に計算してファイルに書き出すこと。</li>
+        <li>MapReduceは中間状態を完全実体化、Unixパイプはストリーミング。</li>
+        <li>欠点①：後続が先行の全タスク完了待ち（straggler taskが全体を遅らせる）。</li>
+        <li>欠点②：mapperが冗長。欠点③：一時データの複数ノード複製は過剰。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.1.1 -->
+  <div class="card" id="s10311">
+    <h3 class="blk">10.3.1.1 データフローエンジン</h3>
+    <div class="lead">📌 <b>要するに</b>：<span class="term" data-tip="Spark/Tez/Flink。ワークフロー全体を1ジョブとして扱う高速エンジン。">データフローエンジン</span>（Spark/Tez/Flink）はワークフロー全体を1ジョブとして扱い、関数を<span class="term" data-tip="map/reduceを一般化した処理単位。各加工マシン。">オペレータ</span>として柔軟に構成する。MapReduceより速い理由は、ソートを必要時のみ・不要なmap省略・ローカリティ最適化・少ないI/O・待たずに開始・JVM再利用。同じコードを設定変更だけでエンジン切り替えできる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>その欠点、どう解決したんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>新しい実行エンジンが複数開発された。有名なのが<b>Spark</b>、<b>Tez</b>、<b>Flink</b>。共通点は「ワークフローを独立ジョブに分割せず、<b>ワークフロー全体を1つのジョブ</b>として扱う」こと。データの流れを明示的にモデル化するから<b>データフローエンジン</b>と呼ぶ。MapReduce同様、ユーザー定義関数を1スレッドで1レコードずつ呼ぶし、入力をパーティショニングして並列化する。でも関数はmapやreduceに厳密に縛られず柔軟に構成できる。これらを<b>オペレータ</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>たくさんメリットがありますね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。①ソートを必要な所だけ、②不要なmap省略、③ローカリティ最適化、④I/Oが少ない、⑤待たずに開始、⑥JVM再利用。データフローエンジンはMapReduceと同じ計算を実装でき、これらの最適化で普通ずっと速い。オペレータはmap/reduceの一般化だから、同じコードがどのエンジンでも動く。PigやHiveやCascadingは、コードを変えず<b>設定変更だけ</b>でMapReduceからTezやSparkに切り替えられる。Tezは薄いライブラリ（ノード間コピーはYARNのシャッフルサービス頼み）、SparkやFlinkは大きなフレームワーク（独自の通信レイヤ・スケジューラ・API）だ。</div></div>
+    </div>
+
+    <details class="code"><summary>オペレータの接続方法と、MapReduceに対するメリット</summary>
+<pre><span class="cmt"># データフローエンジンのオペレータ接続方法</span>
+① キーでパーティショニングしなおしてソート（MapReduceのシャッフルに相当）→ ソートマージ結合やグループ化
+② 複数入力を同じようにパーティショニングするが、ソートはしない → パーティション化ハッシュ結合
+③ ブロードキャストハッシュ結合 → 1つのオペレータの出力を結合オペレータの全パーティションに送る
+
+<span class="cmt"># データフローエンジンのMapReduceに対するメリット</span>
+① ソートのような重い処理を、毎回ではなく「実際に必要な所だけ」実行
+② mapperの処理を先行reduceオペレータに取り込める → 不要なmapタスクが消える
+③ 結合とデータ依存が明示的に宣言される → スケジューラがローカリティ最適化できる
+④ 中間状態はメモリかローカルディスクで十分 → HDFSへの書き込みよりI/Oが少ない
+⑤ オペレータは入力が整い次第すぐ実行開始 → 先行ステージ全体の完了を待たない
+⑥ 既存のJVMプロセスを再利用 → 起動オーバーヘッドが小さい（MapReduceはタスクごとに新JVM起動）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：工程表を一気通貫で組んだ新型ライン</h4>
+      <p>データフローエンジンは<b>「工程表を最初から最後まで1本のラインとして設計した新型ライン」</b>。各加工マシン（オペレータ）を自由な順で並べられます。旧式（MapReduce）と違って、①並べ替えは本当に必要な工程だけ、②ムダな運搬係を消し、③加工マシンを材料の近くに置き、④半製品を倉庫に複製せずメモリや手元に置き、⑤前工程の全完了を待たず材料が来たそばから動き、⑥マシンの電源を入れっぱなしで再利用する。だから普通ずっと速い。同じ作業手順を、設定を変えるだけで別のラインでも動かせます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>データフローエンジンがMapReduceより速い6つの理由を説明できる。</li>
+        <li>オペレータという柔軟な抽象を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>データフローエンジン（Spark/Tez/Flink）はワークフロー全体を1ジョブ化、関数をオペレータとして柔軟構成。</li>
+        <li>接続方法：パーティショニング＋ソート／ソートなしパーティショニング／ブロードキャスト。</li>
+        <li>速い理由：ソートは必要時のみ、不要なmap省略、ローカリティ最適化、I/O削減、待たず開始、JVM再利用。</li>
+        <li>同じコードを設定変更だけでエンジン切り替え可。Tezは薄いライブラリ、Spark/Flinkは大きなフレームワーク。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.1.2 -->
+  <div class="card" id="s10312">
+    <h3 class="blk">10.3.1.2 耐障害性</h3>
+    <div class="lead">📌 <b>要するに</b>：MapReduceは中間状態をHDFSに実体化するので再起動だけで耐障害性が得られる。データフローエンジンは中間状態をHDFSに書かないので、失われたデータを<b>再計算</b>する。そのため計算の<span class="term" data-tip="あるデータがどの入力からどのオペレータで作られたかの履歴。">系譜（lineage）</span>（SparkのRDD）やチェックポイント（Flink）を追跡する。再計算には<b>決定性</b>が重要で、非決定性（ハッシュ順、乱数、クロック）は固定シード等で除く。中間が小さい/CPU集中型なら実体化が安いこともある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>中間状態をHDFSに書かないなら、タスクが失敗したときどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>MapReduceは中間状態をHDFSに完全実体化するから耐障害性が簡単――失敗タスクを別マシンで再起動して同じ入力を読むだけ。でもSpark、Flink、Tezは中間をHDFSに書かないから別アプローチ。マシンが壊れて中間状態が失われたら、<b>他に残ってるデータから再計算</b>する（以前の中間状態か、HDFSの元の入力から）。だからフレームワークは「あるデータがどう計算されたか――どの入力パーティションを使い、どのオペレータを適用したか」を追跡する。Sparkは<b>RDD（耐障害性分散データセット）</b>で<b>系譜（lineage）</b>を追跡し、Flinkはオペレータ状態にチェックポイントを設けてやり直す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>再計算するとき、何か気をつけることは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>計算が<b>決定的（deterministic）</b>かどうかが重要。同じ入力なら常に同じ出力か、ってこと。すでに下流オペレータにデータを送った後で失われた場合に問題になる。再計算結果が元と違うと、下流は新旧の矛盾を解決できない。だからオペレータを<b>決定的</b>にするのがいい。でも非決定性は紛れ込む――ハッシュテーブルのイテレーション順、確率的アルゴリズムの乱数、システムクロックや外部データソース。<b>疑似乱数を固定のシードで生成</b>するなどして取り除く。あと、中間データがソースよりずっと小さい場合やCPU集中型の場合は、再計算より<b>実体化のほうが安上がり</b>なこともある。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：半製品が消えたら、レシピをたどって作り直す</h4>
+      <p>旧式ライン（MapReduce）は半製品を全部倉庫に置くので、作業台が壊れても倉庫から取り直すだけ。新型ライン（データフローエンジン）は倉庫に置かないので、半製品が消えたら<b>「どの材料から、どの加工で作ったか」のレシピ履歴（系譜）をたどって作り直します</b>。ここで大事なのは<b>毎回同じ材料・同じ手順なら同じ完成品になること（決定的）</b>。サイコロ任せ（乱数）や時計任せの工程があると作り直すたびに別物ができてしまうので、サイコロの目を固定（固定シード）しておくのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>再計算ベースの耐障害性（RDD系譜、チェックポイント）を理解できる。</li>
+        <li>決定的オペレータがなぜ重要かを説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>MapReduceは中間状態の実体化で耐障害性が容易（再起動＋読み直し）。</li>
+        <li>データフローエンジンは中間を書かず再計算（SparkはRDDの系譜、Flinkはチェックポイント）。</li>
+        <li>再計算には決定性が重要。非決定性（ハッシュ順・乱数・クロック）は固定シード等で除く。</li>
+        <li>中間が小さい/CPU集中型なら実体化のほうが安い場合もある。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.1.3 -->
+  <div class="card" id="s10313">
+    <h3 class="blk">10.3.1.3 実体化についての議論</h3>
+    <div class="lead">📌 <b>要するに</b>：MapReduceは中間を一時ファイルに書く、データフローエンジンはUnixパイプに近い（Flinkは<span class="term" data-tip="入力が完成する前から、できたぶんを次の工程に少しずつ渡す実行方式。">パイプライン実行</span>中心）。ソートは入力全体が要るので状態を溜めるが、他の多くはパイプライン化できる。最終出力は永続性のためHDFSに書く。最初の入力と最終出力はHDFS、入力不変・出力置換は同じで、改善点は「中間状態を全部ファイルに書かなくてよい」こと。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結局、MapReduceとデータフローエンジンの違いを一言でいうと？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Unixのたとえに戻ると、MapReduceは各コマンドの出力を<b>一時ファイルに書く</b>ようなもの、データフローエンジンはもっと<b>Unixのパイプに似てる</b>。特にFlinkは<b>パイプライン化された実行</b>を中心に作られてて、オペレータの出力を入力が完成する前に少しずつ次へ渡す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあソートはどうなるんですか？ さっき「最後まで読まないと並べられない」って話がありました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。ソートは厄介で、最後の入力レコードが最小キーで先頭に来るかもしれないから入力全体を見ないといけない。だからソートが要るオペレータは少なくとも一時的に状態を溜める。でも他の多くの部分はパイプライン的に実行できる。最終出力はユーザーが使えるよう<b>永続性のあるどこか</b>――たぶん再びHDFSに書かれる。だからデータフローエンジンを使っても、HDFS上の実体化データセットがジョブの最初の入力と最終出力になる。MapReduce同様、入力は不変、出力は完全置換。改善されたのは「<b>中間状態を全部ファイルシステムに書かなくてよくなった</b>」点なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：最初の原材料と最後の完成品は倉庫、途中はベルトで流す</h4>
+      <p>新型ラインでも、<b>最初の原材料と最後の完成品は、ちゃんと倉庫（HDFS）に置きます</b>（誰でも取りに来られるように）。違うのは<b>途中の半製品をいちいち倉庫にしまわず、ベルトでそのまま次工程へ流す</b>こと。ただし<b>並べ替え工程だけは「全部そろうまで待つ」必要</b>があるので一時的に材料を溜めます。原材料を無傷で残し、完成品を丸ごと作り直せる哲学は旧式と同じ。改善点は「途中の半製品を全部倉庫にしまわなくてよくなった」一点です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>パイプライン実行とソートの兼ね合いを理解できる。</li>
+        <li>データフローエンジンの改善点を一言で言える。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>MapReduce＝一時ファイル経由、データフローエンジン＝Unixパイプに近い（Flinkはパイプライン中心）。</li>
+        <li>ソートは入力全体が要るので状態を溜めるが、他はパイプライン化できる。</li>
+        <li>最初の入力と最終出力はHDFS、入力不変・出力置換は同じ。</li>
+        <li>改善点は中間状態を全部ファイルに書かなくてよいこと。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.3.2 グラフとイテレーティブな処理 ===== -->
+<section id="s1032">
+  <div class="sec-head"><div class="sec-num">10.3.2</div><div><h2>グラフとイテレーティブな処理</h2><span class="tag">グラフ全体の分析（PageRank等）と、繰り返しの非効率</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：バッチでグラフ全体を処理する（例：PageRankでページ人気を推定）には、辺を辿って情報を伝播し条件を満たすまで繰り返す（推移的閉包など）。MapReduceは1回パスなので、外部スケジューラで「1ステップ実行→終了判定→繰り返し」と<span class="term" data-tip="繰り返し。同じ処理を条件を満たすまで何度も回す。">イテレーティブ</span>に実装するが、毎回入力全体を読み直すので非効率。（データフローエンジンのDAGとグラフ処理の「グラフ」は別物なので注意。）</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バッチ処理で「グラフ」を扱うこともあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。2章ではグラフのOLTP的な使い方（条件にマッチする少数頂点を高速に見つける）を話した。今度は<b>バッチの文脈</b>――グラフ<b>全体</b>へのオフライン処理や分析だ。レコメンドやランキングでよく出る。有名なのが<b>PageRank</b>。Webページの人気を、他のページからのリンクをもとに推定して、検索結果の順序を決める式の一部に使われてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>グラフのアルゴリズムって、どういう動きをするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くは「一度に1つの辺を探索し、情報を伝播するために1つの頂点を隣の頂点と結合し、条件が満たされるまで繰り返す」――辺がなくなるまで、とかメトリクスが収束するまで、とか。2章では北米の全場所を「ある場所が別の場所の中にある」辺を追ってリスト化した。この種を<b>推移的閉包（transitive closure）</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それ、MapReduceでできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここが問題。グラフを分散FSに（頂点と辺のリストとして）置けるが、MapReduceは<b>データに1回パスを実行するだけ</b>だから「条件が満たされるまで繰り返す」をそのまま表現できない。だから<b>イテレーティブ</b>に実装する。でもMapReduceでこれをやると効率が悪い――イテレーティブな性質を考慮しないから、前回からグラフのほんの一部しか変わってなくても<b>毎回、入力全体を読んで新しい出力を完全に生成</b>しちゃう。</div></div>
+    </div>
+
+    <details class="code"><summary>イテレーティブな実装（外部スケジューラで繰り返す）</summary>
+<pre><span class="cmt"># イテレーティブな実装（外部スケジューラで繰り返す）</span>
+1. 外部スケジューラがバッチ処理を実行し、アルゴリズムの1ステップを実行する
+2. 完了したら、スケジューラはアルゴリズムが終わったか調べる
+   （終了条件: 追跡する辺がもうない／前回との変化が閾値以下、など）
+3. まだ終わってなければ、ステップ1に戻ってもう一度バッチ処理を繰り返す</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 補足 ― 紛らわしい2つの「グラフ」</h4>
+      <ul>
+        <li>データフローエンジン（Spark/Flink/Tez）は、ジョブ内のオペレータを<b>DAG（非循環有向グラフ）</b>に配置する。でもこれは「グラフ処理」とは別物。</li>
+        <li>データフローエンジンでは<b>オペレータからオペレータへのデータの流れ</b>がグラフ（データ自体はリレーショナルなタプル）。</li>
+        <li>一方グラフ処理では、<b>データそのもの</b>がグラフの形（頂点と辺）をしている。同じ「グラフ」でも意味が違う、不幸な名前の混乱。</li>
+      </ul>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：部品網の評判を、伝言を回しながら何周も計算する</h4>
+      <p>部品どうしが「この部品はあの部品に依存する」と網（グラフ）でつながっているとき、<b>各部品の評判（PageRank）を、つながり先へ伝言を回しながら計算します</b>。1周では決まらず、評判が落ち着くまで<b>何周も繰り返す</b>（推移的閉包）。旧式ライン（MapReduce）は1周ぶんしか回せないので、外の管理人が「もう1周」と何度も指示する。困るのは、ほんの一部しか変わっていなくても<b>毎周、部品網ぜんぶを倉庫から出し直して作り直す</b>ことです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>グラフのバッチ処理（PageRank等）とイテレーティブ実装を理解できる。</li>
+        <li>MapReduceでの繰り返し処理がなぜ非効率かを説明できる。</li>
+        <li>DAG（オペレータの流れ）とグラフ処理（データ自体がグラフ）を区別できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>バッチのグラフ処理＝グラフ全体の分析（PageRank等）。辺を辿り情報を伝播し収束まで繰り返す（推移的閉包）。</li>
+        <li>MapReduceは1回パスなので、外部スケジューラでイテレーティブに繰り返す。</li>
+        <li>毎回入力全体を読むので非効率。</li>
+        <li>注意：データフローエンジンのDAGとグラフ処理の「グラフ」は別概念。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.2.1 -->
+  <div class="card" id="s10321">
+    <h3 class="blk">10.3.2.1 Pregelの処理モデル</h3>
+    <div class="lead">📌 <b>要するに</b>：<span class="term" data-tip="bulk synchronous parallel。Pregelモデル。頂点が辺づたいにメッセージを送り合う。">Pregel（BSPモデル）</span>（Giraph/GraphX/Gellyで実装）は「頂点が辺に沿って他の頂点へメッセージを送る」発想。イテレーションごとに各頂点の関数が宛先メッセージを受け取って処理する（reducer呼び出しに類似）。MapReduceと違い頂点は状態をイテレーション間で記憶し、新着メッセージだけ処理。アクターモデルに似るが、状態とメッセージに耐障害性・永続性があり通信は固定ラウンドで進む。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>グラフ処理の効率を上げる方法は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>バルク同期並列（BSP）</b>モデルが広まった。Apache Giraph、SparkのGraphX API、FlinkのGelly APIで実装されてる。GoogleのPregel論文で有名だから<b>Pregel</b>モデルとも呼ぶ。考え方は、MapReduceで「mapperがreducerにメッセージを送る」のと同じ発想で、<b>ある頂点が他の頂点にメッセージを送れる</b>。普通メッセージはグラフの辺に沿って送られる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>reducerの呼び出しと似てるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>似てる。イテレーションのたびに、各頂点に対して関数が呼ばれ、その頂点宛の全メッセージが渡される。MapReduceとの違いは、Pregelでは<b>頂点が自分の状態をイテレーション間でメモリに記憶</b>してること。だから関数は新しく来たメッセージだけ処理すればいい。メッセージが来てない部分は何もしなくていい。頂点をアクターと考えれば<b>アクターモデル</b>に少し似てるが、違いは、頂点の状態とメッセージに<b>耐障害性と永続性</b>があり、通信が<b>固定されたラウンド</b>で進むこと。各イテレーションでフレームワークが前回の全メッセージを配信する。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：各部品が「伝言」を辺づたいに送り合う</h4>
+      <p>Pregelでは、部品網の<b>各部品（頂点）が自分の状態を覚えていて、つながり先（辺）へ伝言（メッセージ）を送り合います</b>。毎ラウンド、各部品は届いた伝言だけを読んで状態を更新する（reducerの呼び出しに似ている）。伝言が来ていない部品は何もしなくていいので、旧式のように<b>毎周ぜんぶ作り直す必要がない</b>。「各部品が手紙をやり取りする会社」みたいですが、手紙が無事に届く保証があり、皆が足並みをそろえて一斉に次のラウンドへ進む点が普通の会社と違います。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>Pregel（頂点中心、メッセージパッシング、状態記憶）の仕組みを理解できる。</li>
+        <li>MapReduceの繰り返しに対するPregelの優位（変化分だけ処理）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Pregel/BSPモデル（Giraph、SparkのGraphX、FlinkのGelly）。</li>
+        <li>頂点が辺に沿ってメッセージを送り、各イテレーションで頂点関数が宛先メッセージを処理。</li>
+        <li>頂点は状態をイテレーション間で記憶 → 新着メッセージだけ処理（毎回全読み込みしない）。</li>
+        <li>アクターモデルに類似。ただし状態・メッセージに耐障害性・永続性、通信は固定ラウンド。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.2.2 -->
+  <div class="card" id="s10322">
+    <h3 class="blk">10.3.2.2 耐障害性</h3>
+    <div class="lead">📌 <b>要するに</b>：Pregelはメッセージパッシングのみで通信し、バッチ化で待ち時間を減らす（待ちはイテレーション間だけ）。ネットワークがメッセージを落としても「次のイテレーションで<b>正確に一度だけ</b>処理」を保証。耐障害性はイテレーション終わりの全頂点状態の<span class="term" data-tip="その時点の完全な状態を永続ストレージに書き出して、障害時に戻れるようにすること。">チェックポイント</span>で実現し、障害時は最終チェックポイントまでロールバック（決定的＋メッセージログがあれば失われたパーティションだけ復旧可）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Pregelはなぜ速いんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>頂点が<b>メッセージパッシングでのみ通信</b>する（互いに直接クエリしない）から。メッセージはバッチ化できるから通信の待ち時間が減る。待ちが発生するのはイテレーションとイテレーションの間だけ。Pregelは「全メッセージが1イテレーションで送られ、次のイテレーションで配送される」のを保証するから、先行イテレーションが完了して全メッセージのコピーが終わるまで次は始まらない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ネットワークがメッセージを落としたり遅れたりしたら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>下位ネットワークがメッセージのドロップ・複製・無制限の遅延を起こしても、Pregelは「次のイテレーションでメッセージが<b>正確に一度だけ</b>行き先の頂点で処理される」のを保証する。MapReduce同様フレームワークが透過的に回復してくれるから、プログラミングモデルがシンプル。耐障害性は、定期的にイテレーションの終わりに<b>全頂点の状態をチェックポイント</b>する――永続ストレージに完全な状態を書き出す。ノードが壊れてメモリ状態が失われたら、最も単純には「計算全体を最後のチェックポイントまでロールバックして再開」。決定的でメッセージのログがあれば、失われたパーティションだけ選択的にリカバリもできる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：手紙はまとめて配り、毎ラウンドの終わりに全部品の状態を記録</h4>
+      <p>各部品は直接電話せず、<b>手紙（メッセージ）をまとめて出します</b>。だから待ち時間が少ない（待つのはラウンドの切れ目だけ）。手紙が途中で紛失・遅延・重複しても、運送係が<b>「次のラウンドで必ずきっかり一度だけ届ける」</b>と保証してくれる。さらにラウンドの終わりごとに<b>全部品の状態を台帳に記録（チェックポイント）</b>するので、作業台が壊れても直前の台帳まで巻き戻せばやり直せます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>Pregelの「正確に一度だけ処理」の保証とチェックポイント方式を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>メッセージパッシングのみで通信、バッチ化で待ち時間削減（待ちはイテレーション間のみ）。</li>
+        <li>ネットワーク障害があっても次イテレーションで正確に一度だけ処理を保証。</li>
+        <li>耐障害性はイテレーション終わりの全頂点状態チェックポイント。</li>
+        <li>障害時は最終チェックポイントまでロールバック（決定的＋ログがあれば部分復旧可）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.2.3 -->
+  <div class="card" id="s10323">
+    <h3 class="blk">10.3.2.3 並列実行</h3>
+    <div class="lead">📌 <b>要するに</b>：Pregelでは頂点は自分の動くマシンを知らず、宛先は頂点ID、パーティショニングはフレームワーク任せ。理想は通信の多い頂点を同居させることだが難しく、実際はID基準で割り当てるため通信オーバーヘッドが大きい（中間状態がグラフより大きくなることも）。だからグラフが1台のメモリ/ディスクに収まるなら単一マシン（GraphChi等）のほうが速いことが多く、収まらないときだけ分散する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>頂点は、自分がどのマシンで動いてるか知ってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>知らなくていい。頂点が他の頂点にメッセージを送るとき、宛先は単なる<b>頂点のID</b>。グラフのパーティショニング（どの頂点をどのマシンで動かすか、メッセージをどう配送するか）は全部フレームワークが決める。一度に1頂点だけ扱う（「頂点のように考える」）から、フレームワークはグラフをどうパーティショニングしてもいい。理想は「大量に通信する頂点同士を同じマシンに置く」ことだけど、その最適なパーティショニングを見つけるのは難しい。実際は頂点IDに基づいて単純に割り当てる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それだと通信が増えませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。グラフアルゴリズムはしばしば大量のマシン間通信のオーバーヘッドを抱える。中間状態（ノード間メッセージ）がグラフ本体より大きくなることもある。だから、ここが大事――<b>グラフが1台のメモリに収まるなら、単一マシンのアルゴリズム（シングルスレッドでも）が分散バッチ処理より速い</b>ことが多い。メモリより大きくても1台のディスクに収まるなら、GraphChiみたいなフレームワークで単一マシン処理が現実的。単一マシンに収まらないほど大きいときだけ分散を取らざるを得ない。効率的な並列化は今も研究が進む領域だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：手紙の配達コストが重い。小さい網なら1人でやるほうが速い</h4>
+      <p>部品はどの作業台にいるか気にせず、宛先は<b>部品の名前（ID）だけ</b>。誰をどの作業台に置くかは管理人任せです。理想は「よく手紙を交わす部品どうしを同じ台に置く」ことですが、それを見つけるのは難しい。結果、<b>台をまたぐ手紙の配達コストが膨らみ、配達物が部品網より大きくなる</b>ことすらある。だから<b>部品網が1つの机（1台のメモリ／ディスク）に載るなら、1人で全部やる（単一マシン）ほうが速い</b>ことが多く、載りきらないときだけ大勢に分散するのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>分散グラフ処理の通信オーバーヘッドという落とし穴を理解できる。</li>
+        <li>「収まるなら単一マシン、収まらないなら分散」という判断ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>頂点はマシンを意識せず宛先は頂点ID、パーティショニングはフレームワーク任せ。</li>
+        <li>理想は通信の多い頂点を同居だが困難。実際はID基準で割り当て、通信オーバーヘッドが大きい。</li>
+        <li>グラフが1台のメモリ/ディスクに収まれば単一マシン（GraphChi等）が速いことが多い。</li>
+        <li>収まらないときだけ分散（Pregel）。効率的並列化は研究途上。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 10.3.3 高レベルAPIと様々な言語 ===== -->
+<section id="s1033">
+  <div class="sec-head"><div class="sec-num">10.3.3</div><div><h2>高レベルAPIと様々な言語</h2><span class="tag">書きやすく・速く・領域を広げる ― MPP DBへの接近</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：バッチ処理の実行エンジンは成熟し（数PB・1万台規模）、注目はプログラミングモデル改善・効率改善・問題領域拡大へ。手書きMapReduceは大変なので高レベル言語/API（Hive/Pig/Cascading/Crunch、Spark/FlinkのAPIはFlumeJava由来）が普及。結合・グループ化・フィルタ・集計などリレーショナルなビルディングブロックで書け、インタラクティブに実験でき（Unixの哲学）、実行効率も上がる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最近は、バッチ処理ってもっと書きやすくなってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>なってる。MapReduceが広まって長い時間が経ち、実行エンジンは成熟した。今や数ペタバイトを1万台以上のクラスタに保存できるほど頑健。「物理的に運用する課題」がだいたい解決されたから、注目は別の所――<b>プログラミングモデルの改善、処理効率の改善、解決できる問題領域の拡大</b>に向かった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>書きやすくする工夫は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>手作業のMapReduceは労力が大きすぎたから、Hive、Pig、Cascading、Crunchみたいな高レベルの言語やAPIが広まった。Tezが出て、これら高レベル言語はコードを書き直さず新しいデータフローエンジンに移行できるメリットも得た。SparkやFlinkにも独自の高レベルデータフローAPIがあって、多くは<b>FlumeJava</b>から着想を得てる。<b>リレーショナルスタイルのビルディングブロック</b>で計算を表す――フィールド値による結合、キーによるグループ化、条件によるフィルタリング、カウントや合計などの集計だ。内部では本章で話した結合・グループ化アルゴリズムで実装される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コードが少なくて済む以外のメリットは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>インタラクティブに使える</b>こと。分析コードをシェルで少しずつ書いて、何度も実行して動作を見られる。データセットを調べ、処理アプローチを実験するのに役立つ。これもUnixの哲学を思い出させるだろ？ しかも人間の生産性だけじゃなく、マシンレベルの実行効率も改善してくれるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：手組みの治具から、ボタンひとつの操作パネルへ</h4>
+      <p>運用の物理的な苦労（巨大倉庫の管理）はほぼ解決したので、工場の関心は<b>「もっと楽に・速く・いろんな製品を作れること」</b>に移りました。昔は配管も治具も手組み（手書きMapReduce）で大変でしたが、今は<b>「結合」「グループ化」「絞り込み」「集計」のボタンが並んだ操作パネル（高レベルAPI）</b>で組める。しかも<b>少しずつ試して即その場で動きを確認できる（インタラクティブ）</b>――まさにUnixの実験しやすさの精神です。人もマシンも楽になりました。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>高レベルAPIの利点（コード量・移行性・対話的実験・効率）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>実行エンジンは成熟、注目はモデル改善・効率・問題領域拡大へ。</li>
+        <li>高レベル言語/API（Hive/Pig/Cascading/Crunch、Spark/Flink）。多くはFlumeJava由来。</li>
+        <li>リレーショナルなビルディングブロック（結合・グループ化・フィルタ・集計）で記述。</li>
+        <li>インタラクティブに実験可。人間の生産性とマシンの実行効率の両方を改善。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.3.1 -->
+  <div class="card" id="s10331">
+    <h3 class="blk">10.3.3.1 宣言的なクエリ言語への移行</h3>
+    <div class="lead">📌 <b>要するに</b>：結合を<span class="term" data-tip="「どうやるか」でなく「何がしたいか」を述べる書き方。最適な実行はオプティマイザが決める。">宣言的</span>に指定すれば、コストベースのオプティマイザ（Hive/Spark/Flink）が最適な結合アルゴリズムと順序を自動選択するので、全アルゴリズムを覚えなくてよい。ただしMapReduce系は関数コールバック中心で任意コード（＝豊富なライブラリ）を実行できる点がMPP DBとの差。フィルタ等も宣言的にすれば列指向ストレージやベクトル化（Spark=JVMバイトコード、Impala=LLVM）で高速化でき、MPP DBに近づく。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結合のアルゴリズム、たくさんありましたよね。毎回どれを使うか自分で選ぶんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが嬉しい点。結合を<b>コードとして書く</b>んじゃなく<b>リレーショナルなオペレータとして指定</b>すれば、フレームワークが入力の性質を分析して最適な結合アルゴリズムを<b>自動で選ぶ</b>。Hive、Spark、Flinkは<b>コストベースのクエリオプティマイザ</b>を持ってて、中間状態の量を最小化するよう結合の順序を入れ替えることさえできる。結合を<b>宣言的</b>に指定すれば、あの結合アルゴリズム全部を覚えなくていい。2章のクエリ言語の話と同じだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあMapReduceも完全にSQLみたいな宣言的なものなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、そこは違う。MapReduceとデータフローエンジンは<b>関数のコールバック</b>を中心に作られてる。各レコードやグループにユーザー定義関数（mapperやreducer）が呼ばれ、任意のコードを実行できる。この自由のおかげで、パース・自然言語解析・画像解析・数値処理・統計アルゴリズムで<b>既存ライブラリの巨大なエコシステム</b>を使える。DBにもユーザー定義関数はあるが、多くは使いにくいしMaven/npm/Rubygemsのような依存管理とうまく結合してない。任意コードを簡単に実行できる自由が、長らくMPP DBとMapReduce系の差だった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>宣言的なのは結合以外でも使えますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>使える。コールバックがシンプルなフィルタや一部フィールドの選択だけなら、レコードごとに関数を呼ぶのはCPUのムダ。<b>宣言的</b>に表現できれば、オプティマイザは<b>列指向ストレージ</b>を活かして必要な列だけ読める。Hive、SparkのDataFrame、Impalaは<b>実行のベクトル化</b>も使う――多重ループの内側で小さくデータを繰り返し処理してCPUキャッシュを活かし、関数呼び出しを避ける。SparkはJVMバイトコードを生成し、ImpalaはLLVMでネイティブコードを生成する。宣言性＋柔軟性で、バッチ処理はMPP DBに似てきた（性能も同等に）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：「こう組み立てたい」と頼めば、段取りは生産管理が最適化</h4>
+      <p>結合のやり方を一手ずつ指示する代わりに、<b>「この2ラインを型番で突き合わせたい」と希望（宣言）を出すだけ</b>にすれば、<b>生産管理AI（オプティマイザ）が在庫量を見て最適な突き合わせ方や順番を選んでくれます</b>。だから結合アルゴリズムを全部暗記する必要はない。一方この工場の強みは、<b>希望だけでなく「自前の特殊加工マシン（任意コード・既存ライブラリ）」も持ち込める</b>柔軟さ。希望ベースの絞り込みと特殊加工の両取りで、専用工場（MPP DB）に肩を並べてきたのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>宣言的指定でオプティマイザに最適化を任せる利点を理解できる。</li>
+        <li>関数コールバック（任意コード）と宣言的クエリのトレードオフを説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>宣言的に結合を指定 → コストベースオプティマイザが最適アルゴリズム・順序を自動選択。</li>
+        <li>MapReduce系は関数コールバック中心で任意コード（豊富なライブラリ）が使える点がMPP DBとの差。</li>
+        <li>フィルタ等を宣言的にすると列指向ストレージやベクトル化（Spark=JVMバイトコード、Impala=LLVM）で高速化。</li>
+        <li>宣言性＋柔軟性で、バッチ処理とMPP DBは性能・機能とも近づいている。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10.3.3.2 -->
+  <div class="card" id="s10332">
+    <h3 class="blk">10.3.3.2 様々な領域への特化</h3>
+    <div class="lead">📌 <b>要するに</b>：任意コードの拡張性は有益だが、繰り返し出る標準パターンには再利用できるビルディングブロックの価値もある。領域はBIレポーティング（MPP DB）にとどまらず、統計・数値処理＝機械学習（Mahout、MADlib）、空間アルゴリズム（k近傍法）、近似検索（ゲノム解析）へ拡大。高レベル宣言オペレータの増加とMPP DBの柔軟化で、両者は「データを保存・処理するシステム」として収束しつつある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>任意コードが書けるなら、何でも自分で書けばいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>拡張性は有益だけど、<b>標準的な処理パターンが繰り返し出てくる</b>一般ケースも多い。だから再利用できる共通のビルディングブロックの実装にも価値がある。MPP DBはビジネスインテリジェンスの分析やレポーティングに応えてきたけど、それはバッチ処理が使われる多くの領域の1つに過ぎない。統計・数値処理は機械学習（クラシフィケーション、レコメンド）に必要で、Mahoutが MapReduce/Spark/Flink 上に、MADlibが MPP DB（Apache HAWQ）内に実装してる。<b>空間アルゴリズム</b>――<b>k近傍法</b>は多次元空間で指定アイテムの近くを探す類似検索。<b>近似検索</b>はゲノム解析で重要で、同一じゃないけど似た文字列を検索する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どんどん広がってるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。バッチ処理エンジンが分散実行に使われる領域は広がり続けてる。バッチに高レベルの宣言的オペレータが増え、MPP DBがプログラミングしやすく柔軟になるにつれて、両者はどんどん似てきてる。結局のところ、どっちも「データを保存して処理するシステム」に過ぎないんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>バッチ処理エンジンが有益な領域の例</summary>
+<pre><span class="cmt"># バッチ処理エンジンが有益な領域の例</span>
+統計・数値処理アルゴリズム : 機械学習（クラシフィケーション、レコメンド）に必要。
+                            MahoutはMapReduce/Spark/Flink上で、MADlibはMPP DB（Apache HAWQ）内に実装
+空間アルゴリズム          : k近傍法（k-nearest neighbors）= 多次元空間で指定アイテムの近くを探す類似検索
+近似検索（Approximate search）: ゲノム解析で重要。同一でないが似た文字列の検索が必要</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏭 たとえ話：定番加工は共通装置に。工場は何でも作れる場所へ</h4>
+      <p>自前の特殊加工も組めますが、<b>「よく出る加工（機械学習・類似品探し・似たもの検索）」は、最初から共通装置として備え付けておく</b>と便利です。この工場が扱う製品は、昔ながらの集計レポート（MPP DB）だけでなく、機械学習（Mahout/MADlib）、似た品物探し（k近傍法）、ゲノムの似た配列探し（近似検索）へと広がっています。操作パネルが充実し、専用工場も柔軟になるにつれ、<b>結局どちらも「素材を保管して加工する場所」</b>として似通ってきたのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>バッチ処理が機械学習・空間・ゲノムなど多領域へ広がっていると理解できる。</li>
+        <li>バッチ処理エンジンとMPP DBの収束を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>任意コードの拡張性 vs 再利用ビルディングブロックの両方に価値。</li>
+        <li>領域拡大：統計・数値処理＝機械学習（Mahout、MADlib）、空間（k近傍法）、近似検索（ゲノム解析）。</li>
+        <li>バッチ処理とMPP DBは機能・性能とも収束しつつある。</li>
+        <li>結局どちらも「データを保存・処理するシステム」。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ（振り返り） ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で5つを言ってみる</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日はたっぷりでした……。ポイントを言ってみますね。1つ目、「バッチ処理は<b>入力をいじらず、出力を作る</b>」処理で、指標はスループット。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。だから何度でも安全に再実行できる。これがバッチ処理の安心の源だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「Unixの哲学＝<b>1つのことをうまくやる小さなツールを、一様なインターフェース（ファイル）でつなぐ</b>」。<code>sort</code> や <code>uniq -c</code> の組み合わせがその例。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。そして <code>uniq</code> は隣しか見ないから先に <code>sort</code> が要る、という細かい所まで覚えてたね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「MapReduceは<b>map → ソート（自動）→ reduce</b>」で、HDFS上で数千台に分散。シャッフルでデータを正しいreducerに集める。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>シャッフルにランダム性はない、ってのも大事だったね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「結合には<b>reduce側結合（前提不要だが重い）</b>と<b>map側結合（前提があれば速い）</b>がある」。ホットキーがあるとスキューに注意。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データのサイズと物理レイアウトを見て選ぶ、ってことだね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「MapReduceの後継が<b>データフローエンジン（Spark/Tez/Flink）</b>。中間状態を全部ファイルに書かず高速化。グラフは<b>Pregel</b>、書きやすさは<b>高レベルAPI＋宣言的クエリ</b>」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>完璧だ。バッチ処理は「入力が<b>有限</b>だから、いつか必ず完了する」のが特徴。次の11章では、入力が<b>終わらない</b>ストリーム処理を見ていくよ。今日の知識が土台になるからね。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① バッチの本質</h4><p>入力をいじらず出力を作る。指標はスループット。何度でも安全に再実行でき、これが安心の源。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② Unixの哲学</h4><p>1機能の小さなツールを一様なインターフェース（ファイル）でつなぐ。<code>sort</code>→<code>uniq -c</code>。uniqは隣しか見ない。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ MapReduce</h4><p>map→ソート（自動）→reduce。HDFS上で数千台に分散。シャッフルで同じキーを同じreducerへ（ランダム性なし）。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 結合</h4><p>reduce側（前提不要だが重い）とmap側（前提があれば速い）。ホットキーはスキューに注意。サイズと物理レイアウトで選ぶ。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>⑤ MapReduceを超えて</h4><p>データフローエンジン（Spark/Tez/Flink）、グラフはPregel、書きやすさは高レベルAPI＋宣言的クエリ。</p></div>
+    </div>
+    <div class="loopback">🧭 バッチは入力が「有限」だから必ず完了する。次の11章は入力が「終わらない」ストリーム処理へ</div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ「分かっていなかった部分」</span></div></div>
+
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>バッチ処理とは</div>
+      <p style="font-size:14px;margin:0">「バッチ処理」とは何か、サービス（オンライン）との違いを含めて、初めて聞く人に説明してください。性能をどんな指標で測るかにも触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">バッチ処理は、たまった大量の入力データをまとめて処理し、出力を作る仕組みです。ジョブには数分〜数日かかることもあり、人間が完了を待つことは普通ありません（深夜に1回など定期実行が多い）。一方サービス（オンライン）は、ユーザーのリクエストにできるだけ速く返事を返すもので、人が待っています。だから性能の指標が違い、サービスは「返事までの速さ＝レスポンスタイム」、バッチ処理は「決まった量を処理し終える量・速さ＝スループット」で測ります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ バッチ＝大量データをまとめて処理して出力を作る、人は完了を待たない（定期実行）と言えている ／ □ サービス（オンライン）＝即レスポンス、人が待つ、と対比できている ／ □ 指標の違い（バッチ＝スループット、サービス＝レスポンスタイム）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>Unixの哲学とパイプ</div>
+      <p style="font-size:14px;margin:0"><code>cat access.log | awk '{print $7}' | sort | uniq -c | sort -rn | head -n 5</code> は何をしていますか。とくに「<code>uniq</code> の前になぜ <code>sort</code> が必要か」を、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">これはログから「人気ページTOP5」を出すコマンドです。<code>awk '{print $7}'</code> で各行の7番目（URL）を取り出し、<code>sort</code> で並べ、<code>uniq -c</code> で同じURLをまとめて回数を数え、<code>sort -rn</code> で回数の多い順に並べ、<code>head -n 5</code> で上位5件を取ります。<code>uniq</code> は「隣り合う行」が同じかどうかしか見ないので、先に <code>sort</code> で同じURLを隣同士に集めておかないと、正しく数えられません。これがUnixの哲学＝小さなツールをパイプでつなぐ考え方の例です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 各ステージの役割（URL抽出→並べ→集計→並べ替え→上位取得）を説明できている ／ □ <code>uniq</code> は隣接行しか比較しないため、先に <code>sort</code> が必要、と説明できている ／ □ 「小さなツールをパイプでつなぐ」というUnixの哲学に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>reduce側結合とソートマージ結合</div>
+      <p style="font-size:14px;margin:0">MapReduceの「reduce側でのソートマージ結合」がどういう仕組みで2つのデータをくっつけるのか、順を追って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">両方のデータ（例：アクティビティログとユーザーDB）を、結合したいキー（例：ユーザーID）を取り出してmapperが出力します。フレームワークがキーでパーティショニングしてソートする（シャッフル）と、reducerの入力では同じユーザーIDのレコードが隣り合います。セカンダリソートでユーザーDBのレコード（誕生日）を先頭に並べておけば、reducerはそれを変数に覚え、続くアクティビティイベントを順に処理して「URLと年齢」を出力できます。両側のソート済みリストをreducerがマージして結合するので「ソートマージ結合」と呼びます。1ユーザー分ずつ処理するのでメモリ消費が小さいのが利点です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 両側を同じキー（ユーザーID）でmapperが出力する、と言えている ／ □ シャッフル（パーティショニング＋ソート）で同キーが隣り合うことに触れている ／ □ reducerがマージして結合する（＋セカンダリソートで先に見たいレコードを先頭に）と説明できている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>map側結合との使い分け</div>
+      <p style="font-size:14px;margin:0">reduce側結合とmap側結合（特にブロードキャストハッシュ結合）の違いと、どんなときにmap側結合が使えるかを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">reduce側結合は、結合の本処理をreducerで行い、ソート・コピー・マージという重い処理が要りますが、入力データに前提を置かなくても使えます。map側結合はreducerもソートも持たず、各mapperが入力を読んで出力を書くだけなので速いですが、入力データに前提が必要です。ブロードキャストハッシュ結合は「大きいデータに小さいデータを結合する」場合で、小さい方が各mapperのメモリに丸ごと載るときに使えます。各mapperが小さい方をメモリのハッシュテーブルに読み込み、大きい方をスキャンしながら引きます。小さい入力が全mapperに配られるので「ブロードキャスト」です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ reduce側＝前提不要だが重い、map側＝前提が要るが速い、と対比できている ／ □ ブロードキャストハッシュ結合の条件（小さい方がメモリに載る）を言えている ／ □ 各mapperが小さい方をハッシュテーブルに持ち、大きい方を引く仕組みに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>バッチ処理の出力の哲学</div>
+      <p style="font-size:14px;margin:0">バッチ処理が「入力をいじらず、出力を完全に置き換える」設計にすると、どんな良いことがありますか。とくにバグが入ったときの違いを、読み書きするデータベースと比べて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">入力を変えず副作用も出さないので、ジョブを何度でも安全に再実行できます。もしコードにバグが入って出力が壊れても、コードを前のバージョンに戻して再実行すれば出力は正しくなります（古い出力を残して切り替えるだけでもよい）。これを対人為的障害耐性と呼びます。読み書きするデータベースだと、バグのあるコードで悪いデータを書き込んでしまったら、コードを戻してもデータベースの中身は直りません。バッチ処理はロールバックが簡単なので回復不能なダメージのリスクが小さく、機能開発を速く進められます。失敗したタスクの自動リトライも安全です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 入力不変・出力置換なので何度でも安全に再実行できる、と言えている ／ □ バグ時にコードを戻して再実行すれば復旧する（対人為的障害耐性）と説明できている ／ □ 読み書きするDBは一度書いたデータがコードを戻しても直らない、という対比ができている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして体感する</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>手を動かしてUnixパイプを体験する</h4><p>自分のPCのログ（macOSなら <code>/var/log/</code>、なければ適当なテキスト）に <code>awk</code>・<code>sort</code>・<code>uniq -c</code>・<code>head</code> をつないで集計してみましょう。<code>man sort</code>・<code>man uniq</code> で <code>-c</code>・<code>-r</code>・<code>-n</code> のオプションを確認すると理解が深まります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>MapReduceを「Unixで再現」してみる</h4><p><code>awk '{print $7}'</code>（map）→ <code>sort</code>（シャッフル）→ <code>uniq -c</code>（reduce）という対応を、本章の図と見比べながら確認しましょう。これでMapReduceの4ステップが体に入ります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>Apache Sparkのチュートリアルを触る</h4><p>ローカルモードのSparkで、テキストファイルの単語数を数える「WordCount」を動かしてみましょう。本章の「mapper/reducer」「データフローエンジン」「高レベルAPI（DataFrame）」が実物として理解できます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>公式・定番資料で深掘りする</h4><p>Tom White『Hadoop: The Definitive Guide』（日本語版『Hadoop 第3版』）でHDFSとMapReduceの実装詳細を、Holden Karauら『Learning Spark』でデータフローエンジンの考え方を確認しましょう。元論文「MapReduce: Simplified Data Processing on Large Clusters」（Dean &amp; Ghemawat, 2004）も読みやすいです。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次章のストリーム処理（11章）へ進む</h4><p>本章のバッチ処理は「入力が有限」でした。次章は「入力が終わらない（無限の）ストリーム」を扱います。本章の結合・パーティショニング・耐障害性の考え方がそのまま土台になるので、続けて読むのがおすすめです。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『データ指向アプリケーションデザイン』第10章 図解 ／ たとえ話メタファー：🏭 工場の大量生産ライン（夜間にまとめて加工） ／ Unixツール・MapReduce・データフローエンジン</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7. エージェントアーキテクチャの拡張 ― やさしい図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ・ 第7章</span>
+  <h1>7. エージェントアーキテクチャの拡張<br>― ひとりで無理なら、振り返って・分担しよう</h1>
+  <p>6章で作った基本エージェントを2つの方向へ進化させます。①<b>リフレクション</b>（自分の答えを見直して直す）、②<b>マルチエージェント</b>（専門家チームで分担する）。その土台になる<b>サブグラフ</b>と、実用的な<b>スーパーバイザー</b>構成まで、未経験の方でも読み切れるようにかみくだきました。</p>
+  <div class="badge-row">
+    <span class="badge">📖 コードは飛ばしてOK</span>
+    <span class="badge">💬 会話で進む</span>
+    <span class="badge">📚 用語集つき</span>
+    <span class="badge">🗞️ たとえ話は「新聞社の編集部」で統一</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ（クリックで飛べます）</h2>
+  <a href="#intro">🎬 この章のあらすじ / 要するに / なぜ必要か</a>
+  <a href="#s71">7.1 リフレクションアーキテクチャ</a>
+  <a class="sub" href="#s71-loop">└ 生成→批評のループ（コード）</a>
+  <a class="sub" href="#s71-swap">└ 役割の入れ替えという裏技</a>
+  <a class="sub" href="#s71-var">└ バリエーション（最終ノード・外部裏付け）</a>
+  <a href="#s72">7.2 LangGraphのサブグラフ</a>
+  <a class="sub" href="#s721">└ 7.2.1 サブグラフを直接呼び出す</a>
+  <a class="sub" href="#s722">└ 7.2.2 関数でサブグラフを呼び出す</a>
+  <a href="#s73">7.3 マルチエージェントアーキテクチャ</a>
+  <a class="sub" href="#s73-4">└ 4つの接続のしかた</a>
+  <a class="sub" href="#s731">└ 7.3.1 スーパーバイザーアーキテクチャ</a>
+  <a href="#s74">7.4 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ（振り返り）</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コード。開かなくても本文だけで分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>生徒（ソラ）と先生（リク）の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話は「新聞社の編集部」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「新聞社の編集部」</b>に置きかえて説明します。記者・編集者・編集長が登場します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、身近な言葉で説明します。本文では初出の言葉に点線がついています。</p>
+  <div class="gl">
+    <div class="item"><div class="w">エージェント<span>agent</span></div><p>「考えて→道具を使って→また考える」を自分で繰り返すAI。新聞社でいう「自分で動ける記者」のイメージ。</p></div>
+    <div class="item"><div class="w">リフレクション<span>reflection</span></div><p>自分の出した答えを自分で見直して、批評→修正を繰り返すこと。原稿を書いて→直して→また書く、の流れ。</p></div>
+    <div class="item"><div class="w">システム1 / システム2</div><p>人の思考の2モード。直感的にパッと答えるのがシステム1、じっくり考え直すのがシステム2。リフレクションはシステム2を真似ます。</p></div>
+    <div class="item"><div class="w">LLM<span>大規模言語モデル</span></div><p>文章を読んで文章を返すAIの本体。エージェントの「頭脳」にあたります。</p></div>
+    <div class="item"><div class="w">ノード<span>node</span></div><p>処理を1つ担当する「係」。generateノード＝書く係、reflectノード＝批評する係。</p></div>
+    <div class="item"><div class="w">グラフ<span>graph</span></div><p>ノード（係）をどんな順番でつなぐかを描いた「作業フロー図」。</p></div>
+    <div class="item"><div class="w">サブグラフ<span>subgraph</span></div><p>別のグラフ（作業フロー）の中で部品として使う、もう1つの小さなグラフ。編集部の中の「専門チーム」。</p></div>
+    <div class="item"><div class="w">ステート<span>state</span></div><p>作業中にみんなで共有する「メモ帳」。途中経過や会話履歴を入れておきます。</p></div>
+    <div class="item"><div class="w">キー（ステートの）<span>key</span></div><p>メモ帳の中の「項目名」。同じ項目名を使えば別チームとも情報をやり取りできます。</p></div>
+    <div class="item"><div class="w">スキーマ<span>schema</span></div><p>メモ帳の「様式（どんな項目があるか）」。様式が違うと、そのままでは渡せず変換が必要。</p></div>
+    <div class="item"><div class="w">マルチエージェント<span>multi-agent</span></div><p>1体では大変な仕事を、複数の専門エージェントで分担して連携すること。</p></div>
+    <div class="item"><div class="w">スーパーバイザー<span>supervisor</span></div><p>「次はどの担当に動いてもらうか」を決める司令塔。新聞社の編集長にあたります。</p></div>
+    <div class="item"><div class="w">条件付きエッジ<span>conditional edge</span></div><p>「もし◯◯なら次はこっち」と、状況に応じて進む先を変える分岐の矢印。</p></div>
+    <div class="item"><div class="w">構造化出力<span>structured output</span></div><p>AIの答えを自由な文章ではなく「決まった様式（例：next＝researcher）」で受け取る仕組み。</p></div>
+    <div class="item"><div class="w">レイテンシー<span>latency</span></div><p>答えが返ってくるまでの待ち時間。何度も見直すほど長くなります。</p></div>
+    <div class="item"><div class="w">リンター / コンパイラ</div><p>書いたプログラムの間違いを自動でチェックしてくれる道具。校正係のような存在。</p></div>
+  </div>
+</div>
+
+<!-- ============ あらすじ・要するに・なぜ ============ -->
+<section id="intro">
+  <div class="sec-head">
+    <div class="sec-num">🎬</div>
+    <div><h2>この章のあらすじ・要するに・なぜ必要か</h2>
+    <span class="tag">基本エージェントを2方向に拡張する</span></div>
+  </div>
+
+  <div class="card">
+    <p class="lead"><b>あらすじ：</b>「エージェントって、自分の答えを見直したりしないんですか？」とソラ。リク先輩は「させられるよ。それが“<span class="term" data-tip="自分の出した答えを自分で見直し、批評→修正を繰り返すこと。">リフレクション</span>”だ」と答えます。この章では6章の基本エージェントを2方向に拡張します。①<b>リフレクション</b>＝LLMに自分の出力を振り返らせて批評させ、修正を繰り返す（著者と編集者のやり取りのよう）。②<b>マルチエージェント</b>＝1体では難しい問題を、複数の専門エージェントの連携で解く。土台となるLangGraphの<b>サブグラフ</b>も学び、最後に実用的な<b>スーパーバイザーアーキテクチャ</b>を実装します。</p>
+
+    <h3 class="blk">🎯 要するに</h3>
+    <p>基本エージェントは2つに拡張できます。<b>リフレクション</b>は、生成→批評→修正のループで、LLMを「じっくり考える（<span class="term" data-tip="人の思考のうち、理性的・内省的なモード。じっくり考え直すほう。">システム2</span>）」ように振る舞わせます。<b>マルチエージェント</b>は、アプリを複数の小さな独立エージェントに分割して連携させます。その実装の土台が<span class="term" data-tip="別のグラフ（作業フロー）の中で部品として使う小さなグラフ。">サブグラフ</span>（別のグラフの中で使うグラフ）。代表的な構成が、スーパーバイザーが「次にどのエージェントを動かすか」を決める<b>スーパーバイザーアーキテクチャ</b>です。</p>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：新聞社の編集部</h4>
+      <p>この章はぜんぶ<b>新聞社の編集部</b>でたとえます。<b>リフレクション</b>＝1人の記者が「自分で原稿を書いて→自分で校正して→直す」を繰り返すこと。<b>マルチエージェント</b>＝政治記者・経済記者・スポーツ記者など専門の記者を集めて、<b>編集長（スーパーバイザー）</b>が「次は誰に取材させるか」をさばくこと。<b>サブグラフ</b>＝編集部の中にある「写真部」のような専門チームです。</p>
+    </div>
+
+    <div class="why">
+      <h4>📌 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>なぜ学ぶ価値があるか：</b>LLMは一発で完璧な出力を出せないことが多く、自己批評で品質を上げられるから。</li>
+        <li>エージェントにツールやコンテキストを詰め込みすぎると、1体では処理しきれなくなるから。</li>
+        <li>計画・調査・数学など分野ごとに専門サブシステムを使いたい場面があるから。</li>
+        <li><b>できるようになること：</b>リフレクション（生成→批評→修正）を実装して出力品質を上げられる。</li>
+        <li>LangGraphのサブグラフを、ステート共有あり／なしの2通りで親グラフに組み込める。</li>
+        <li>マルチエージェントの構成（ネットワーク・スーパーバイザー・階層的・カスタム）を理解できる。</li>
+        <li>スーパーバイザーアーキテクチャを実装して、複数の専門エージェントを協調させられる。</li>
+      </ul>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>先生、6章でエージェントができました。でも、LLMって一発で完璧な答えを出せないですよね？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>その通り。だから拡張がある。2つ紹介しよう。①<b>リフレクション</b>＝LLMに過去の出力や意思決定を振り返らせて、内省させて、次の出力に反映させる。②<b>マルチエージェント</b>＝1体では難しい複雑・大規模な問題を、複数のエージェントの連携で解く。この章はこの2つを学ぶ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7.1 リフレクション ============ -->
+<section id="s71">
+  <div class="sec-head">
+    <div class="sec-num">7.1</div>
+    <div><h2>リフレクションアーキテクチャ</h2>
+    <span class="tag">生成と批評を交互に繰り返して、自分で原稿を磨く</span></div>
+  </div>
+
+  <div class="card">
+    <p class="lead"><b>要するに：</b>リフレクションは「<b>生成のプロンプト</b>」と「<b>批評・振り返りのプロンプト</b>」を交互に繰り返すループ。一発で出すのではなく、自己批評で何度もブラッシュアップして品質を上げます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span><b>リフレクション</b>は、生成のためのプロンプトと、修正や振り返りのためのプロンプトを、交互に繰り返すループだ。人間の創作プロセスを模している――この本の文章も、著者・査読者・編集者が何度もやり取りして仕上げたものだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>自己批評、ですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>そう。人間の思考のうち、反応的・本能的なものを<b>システム1</b>、理性的・内省的なものを<b>システム2</b>と捉えられる（ダニエル・カーネマンの『ファスト＆スロー』だね）。自己批評を正しく適用すると、LLMアプリをシステム2のような振る舞いに近づけられる。例として、3段落のエッセイを書く機能を作ろう。<code>generate</code>（生成）ノードと <code>reflect</code>（批評）ノードのループだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：原稿を磨く記者</h4>
+      <p><b>generateノード＝原稿を書く記者</b>、<b>reflectノード＝それを赤入れする校正担当</b>です。記者が初稿を出す→校正担当が「2段落目が浅い、もっと具体例を」と赤を入れる→記者が赤を反映して書き直す。これを数回くり返して締め切りまでに記事を仕上げる、その流れがリフレクションです。直感で殴り書きするシステム1ではなく、何度も推敲するシステム2の働き方です。</p>
+    </div>
+
+    <h3 class="blk" id="s71-loop">生成→批評のループ（しくみ）</h3>
+    <p>下のサイクルが、エッセイを仕上げるリフレクションの流れです。<b>generate</b>（書く）と <b>reflect</b>（批評）を行ったり来たりし、メッセージが一定数たまったら終了します。</p>
+
+    <div class="cycle">
+      <div class="node"><h4>① generate（生成）</h4><p>エッセイの草稿を書く。2回目以降は、もらった批評をふまえて修正版を書く。</p><span class="when">記者が原稿を書く</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② should_continue（判定）</h4><p>メッセージが6件を超えた？ → 超えたら<b>END（終了）</b>。まだなら<b>reflectへ</b>。</p><span class="when">締め切りが来たか確認</span></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ reflect（批評）</h4><p>教師の立場で、長さ・内容の深さ・文体などの改善点を出す。</p><span class="when">校正担当が赤入れ</span></div>
+    </div>
+    <div class="loopback">↩ ③の批評は②を通って①に戻り、3回の「生成→批評」を終えると最後に generate して完成。</div>
+
+    <p style="margin-top:16px">このコードは「エッセイを書く→批評する→直す」を3回くり返すループの設計図です。<b>generate</b>＝草稿を書く／批評をふまえ修正、<b>reflect</b>＝教師として批評、<b>should_continue</b>＝メッセージが6件を超えたら終了、を担当します。</p>
+
+    <details class="code">
+      <summary>Python ― リフレクション（エッセイ生成）のコード</summary>
+<pre><span class="cmt"># このコードがやること: エッセイを書くリフレクションのループ。</span>
+<span class="cmt">#  generate = エッセイの草稿を書く/批評をふまえて修正する。</span>
+<span class="cmt">#  reflect  = 教師として批評と改善案を出す。</span>
+<span class="cmt">#  should_continue = メッセージが6件を超えたら終了（3回の生成→批評で終わる）。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> AIMessage, BaseMessage, HumanMessage, SystemMessage
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> END, START, StateGraph
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+
+model = <span class="fn">ChatOpenAI</span>()
+
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    messages: Annotated[<span class="fn">list</span>[BaseMessage], add_messages]
+
+generate_prompt = <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたは優れた三段落のエッセイを執筆するエッセイアシスタントです。"</span>
+    <span class="str">"ユーザーのリクエストに対して最高のエッセイを生成してください。"</span>
+    <span class="str">"ユーザーから批評があった場合は、前回の試作の修正版を作成してください。"</span>)
+
+<span class="kw">def</span> <span class="fn">generate</span>(state: State) -&gt; State:
+    answer = model.<span class="fn">invoke</span>([generate_prompt] + state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [answer]}
+
+reflection_prompt = <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたはエッセイの提出物を採点する教師です。批評と改善のためのアドバイスをしてください。"</span>
+    <span class="str">"長さ、内容の深さ、文体などを含む詳細な改善項目を提案してください。"</span>)
+
+<span class="kw">def</span> <span class="fn">reflect</span>(state: State) -&gt; State:
+    <span class="cmt"># メッセージの役割を入れ替えて、LLMが自分の出力を「他人の提出物」として批評するようにする</span>
+    cls_map = {AIMessage: HumanMessage, HumanMessage: AIMessage}
+    translated = [reflection_prompt, state[<span class="str">"messages"</span>][<span class="num">0</span>]] + [
+        cls_map[msg.__class__](content=msg.content) <span class="kw">for</span> msg <span class="kw">in</span> state[<span class="str">"messages"</span>][<span class="num">1</span>:]
+    ]
+    answer = model.<span class="fn">invoke</span>(translated)
+    <span class="cmt"># 批評を、ジェネレーターにとっての「人間のフィードバック」として扱う</span>
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(content=answer.content)]}
+
+<span class="kw">def</span> <span class="fn">should_continue</span>(state: State):
+    <span class="kw">if</span> <span class="fn">len</span>(state[<span class="str">"messages"</span>]) &gt; <span class="num">6</span>:  <span class="cmt"># 3回繰り返し（各2メッセージ）で終了</span>
+        <span class="kw">return</span> END
+    <span class="kw">else</span>:
+        <span class="kw">return</span> <span class="str">"reflect"</span>
+
+builder = <span class="fn">StateGraph</span>(State)
+builder.<span class="fn">add_node</span>(<span class="str">"generate"</span>, generate)
+builder.<span class="fn">add_node</span>(<span class="str">"reflect"</span>, reflect)
+builder.<span class="fn">add_edge</span>(START, <span class="str">"generate"</span>)
+builder.<span class="fn">add_conditional_edges</span>(<span class="str">"generate"</span>, should_continue)
+builder.<span class="fn">add_edge</span>(<span class="str">"reflect"</span>, <span class="str">"generate"</span>)
+
+graph = builder.<span class="fn">compile</span>()</pre>
+    </details>
+
+    <h3 class="blk" id="s71-swap">役割の入れ替えという“裏技”</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span><code>reflect</code> で、メッセージの役割を入れ替えているのはなぜですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>鋭い。<code>reflect</code> ノードは、LLMに「ユーザーが書いたエッセイを批評している」と思わせている。逆に <code>generate</code> ノードは、その批評を「ユーザーから来た」と思わせている。これは、対話調整された多くのLLMが「人間とAIのメッセージのペア」で学習されているからだ。同じ人物からの連続メッセージが多いとパフォーマンスが悪化することがあるから、この“裏技”で役割を入れ替えているんだ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">✍️</div><h4>generateノードの視点</h4><p>「届いた批評は<b>ユーザーからのフィードバック</b>だ」と思って、それに応えて書き直す。</p><span class="pill">批評＝人間からの声</span></div>
+      <div class="mini"><div class="ic">🔍</div><h4>reflectノードの視点</h4><p>「これは<b>他人が提出したエッセイ</b>だ」と思って、教師の立場で遠慮なく赤を入れる。</p><span class="pill">自分の出力＝他人の提出物</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：あえて立場を入れ替える</h4>
+      <p>自分の書いた原稿は甘く見てしまいがち。そこで校正のときは「これは<b>他人が書いた原稿だ</b>」というつもりで赤を入れ、書き直すときは「<b>読者からの要望が届いた</b>」というつもりで応える。立場を入れ替えると、同じ人がやっても客観的に良くできる――そういう編集部の知恵です。</p>
+    </div>
+
+    <h3 class="blk" id="s71-var">バリエーション（止め方・他の応用）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>この例では生成→批評の回数があらかじめ決まっていて、最後に <code>generate</code> を実行して終わる――求められた修正にすべて対応するためだ。他の終了方法もある――<code>reflect</code> ステップが終了判断をして、コメントがなくなったらプロセスを終わらせる、とかね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>自己批評で、出力が良くなるんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>そう。バリエーションもある。①6章のエージェントにリフレクションステップを組み込んで、ユーザーへ出力を送る直前の最後のノードに置く（批評がユーザー自身から来たように見えて、介入なしに最終出力を改善できる。ただしレイテンシーは増える）。②<b>外部情報で裏付ける</b>――コード生成エージェントなら、リフレクションの前に生成コードをリンターやコンパイラに通して、検出されたエラーをリフレクションへの入力にする。適用できる場面ならぜひ試すといい、最終品質が上がるからね。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">⏱️</div><h4>止め方A：回数固定</h4><p>「生成→批評を3回やったら終わり」と最初から決める。最後は generate で締める。</p></div>
+      <div class="mini"><div class="ic">🛑</div><h4>止め方B：批評が判断</h4><p>reflect が「もう直すところなし」と判断したら終了する。</p></div>
+      <div class="mini"><div class="ic">🧰</div><h4>応用：外部で裏付け</h4><p>コードなら<span class="term" data-tip="プログラムの間違いを自動でチェックする道具。">リンター/コンパイラ</span>に通し、出たエラーを批評の材料にする。</p></div>
+    </div>
+
+    <div class="summary">
+      <h4>🔁 7.1のまとめ</h4>
+      <ul>
+        <li>リフレクション＝生成ノードと批評ノードのループ。LLMを内省的（システム2）に振る舞わせる。</li>
+        <li>reflectでは役割を入れ替えて、連続同種メッセージによる性能低下を避ける。</li>
+        <li>止め方は「回数固定」または「批評が終了判断」。最後はgenerateで締める例。</li>
+        <li>リンター等の外部情報で裏付けると効果的（ただしレイテンシーは増える）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7.2 サブグラフ ============ -->
+<section id="s72">
+  <div class="sec-head">
+    <div class="sec-num">7.2</div>
+    <div><h2>LangGraphのサブグラフ</h2>
+    <span class="tag">別のグラフの中で部品として使う、小さなグラフ</span></div>
+  </div>
+
+  <div class="card">
+    <p class="lead"><b>要するに：</b><span class="term" data-tip="別のグラフ（作業フロー）の中で部品として使う小さなグラフ。">サブグラフ</span>は「別のグラフの一部として使われるグラフ」。マルチエージェントの土台になる技術です。親グラフへの追加方法は<b>2通り</b>あります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>マルチエージェントの前に、それを可能にする技術概念――<b>サブグラフ</b>を学ぼう。サブグラフは「別のグラフの一部として使われるグラフ」だ。使い道は――①マルチエージェントシステムの構築、②ノードのセットを複数のグラフで再利用、③複数チームでグラフの異なる部分を独立して作業（インターフェース＝入出力スキーマさえ守れば、詳細を知らなくても親グラフを構築できる）。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>親グラフにサブグラフを追加する方法は2つある――①サブグラフを直接呼ぶノードを追加（親とサブグラフがステートのキーを共有、変換不要なとき）、②サブグラフを呼ぶ関数を持つノードを追加（スキーマが異なり、前後で変換が必要なとき）。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🤝</div><h4>使い道①</h4><p>マルチエージェントシステムを組み立てる土台にする。</p></div>
+      <div class="mini"><div class="ic">♻️</div><h4>使い道②</h4><p>ノードのまとまりを、いくつものグラフで再利用する。</p></div>
+      <div class="mini"><div class="ic">👥</div><h4>使い道③</h4><p>複数チームが独立作業。入出力の<span class="term" data-tip="メモ帳の様式（どんな項目があるか）。">スキーマ</span>さえ守ればOK。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：編集部の中の「写真部」</h4>
+      <p>大きな編集部（親グラフ）の中に、写真の専門チーム「写真部」（サブグラフ）があるイメージ。編集部は「どんな写真を、どの形式で渡すか」さえ取り決めておけば、写真部の内部のやり方をいちいち知らなくても仕事を頼めます。だから複数チームが独立して動けるのです。</p>
+    </div>
+
+    <!-- 7.2.1 -->
+    <h3 class="blk" id="s721">7.2.1 サブグラフを直接呼び出す</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>最も簡単なのは、サブグラフを直接ノードとして接続すること。親とサブグラフが<b>ステートのキーを共有</b>しているのが重要だ。共有キーがグラフ間の通信に使われる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>親もサブグラフも、同じキー <code>foo</code> を持つ</h4><p>共有している<span class="term" data-tip="メモ帳の中の項目名。同じ名前なら別チームとも情報をやり取りできる。">キー</span>が、そのまま2つのグラフの通信路になる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>サブグラフをそのままノードとして親に追加</h4><p>変換は不要。コンパイル済みのサブグラフを「subgraph」という名前のノードとして置くだけ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div></div><div class="body"><h4>共有キー以外は無視される</h4><p>共有していないキー（例：<code>bar</code>）を渡しても、相手側では使われない。</p><div class="branch ok">✅ スキーマがそろっている → そのままつなげる最短ルート</div></div></div>
+    </div>
+
+    <p style="margin-top:14px">このコードは、親グラフとサブグラフが同じ項目名 <code>foo</code> でやり取りする例です。サブグラフを「subgraph」という名前のノードとして親に<b>そのまま</b>くっつけます。</p>
+
+    <details class="code">
+      <summary>Python ― サブグラフを直接呼び出す</summary>
+<pre><span class="cmt"># このコードがやること: 親グラフとサブグラフが共有キー foo でやり取りする例。</span>
+<span class="cmt"># サブグラフを「subgraph」という名前のノードとして親に直接追加する。</span>
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> START, StateGraph
+<span class="kw">from</span> typing <span class="kw">import</span> TypedDict
+
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    foo: <span class="fn">str</span>  <span class="cmt"># このキーはサブグラフと共有されている</span>
+
+<span class="kw">class</span> <span class="fn">SubgraphState</span>(TypedDict):
+    foo: <span class="fn">str</span>  <span class="cmt"># このキーは親グラフと共有されている</span>
+    bar: <span class="fn">str</span>
+
+<span class="kw">def</span> <span class="fn">subgraph_node</span>(state: SubgraphState):
+    <span class="cmt"># 共有キー foo を通じて親グラフと通信できる</span>
+    <span class="kw">return</span> {<span class="str">"foo"</span>: state[<span class="str">"foo"</span>] + <span class="str">"bar"</span>}
+
+subgraph_builder = <span class="fn">StateGraph</span>(SubgraphState)
+subgraph_builder.<span class="fn">add_node</span>(subgraph_node)
+<span class="cmt"># ～省略～</span>
+subgraph = subgraph_builder.<span class="fn">compile</span>()
+
+<span class="cmt"># 親グラフ。コンパイル済みサブグラフをそのままノードとして追加する</span>
+builder = <span class="fn">StateGraph</span>(State)
+builder.<span class="fn">add_node</span>(<span class="str">"subgraph"</span>, subgraph)
+<span class="cmt"># ～省略～</span>
+graph = builder.<span class="fn">compile</span>()</pre>
+    </details>
+
+    <!-- 7.2.2 -->
+    <h3 class="blk" id="s722">7.2.2 関数でサブグラフを呼び出す</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>まったく異なるスキーマでサブグラフを定義したいときは、サブグラフを呼ぶ関数を持つノードを作る。その関数で、親のステートをサブグラフ用に変換して呼んで、返り値を親用に戻す。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>親は <code>foo</code>、サブグラフは <code>bar / baz</code>（様式が違う）</h4><p>そのままでは渡せない。間に「変換する係（node関数）」を置く。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>node関数で 親→サブグラフ へ変換して呼ぶ</h4><p><code>foo</code> の中身を <code>bar</code> に詰め替えてからサブグラフを実行する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div></div><div class="body"><h4>返り値を サブグラフ→親 へ戻す</h4><p>サブグラフが返した <code>bar</code> を、親の <code>foo</code> に詰め替えて返す。</p><div class="branch ng">⚠️ スキーマが違う → 直接つなげず、変換ノードを1枚はさむ必要がある</div></div></div>
+    </div>
+
+    <p style="margin-top:14px">このコードは、親（<code>foo</code>）とサブグラフ（<code>bar, baz</code>）で様式が違う場合に、間の関数 <code>node</code> でステートを詰め替えてからサブグラフを呼び、結果を親に戻す例です。</p>
+
+    <details class="code">
+      <summary>Python ― 関数でサブグラフを呼び出す</summary>
+<pre><span class="cmt"># このコードがやること: 親(foo)とサブグラフ(bar, baz)でスキーマが違う場合、</span>
+<span class="cmt"># node 関数の中でステートを変換してサブグラフを呼び、結果を親のステートに戻す。</span>
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    foo: <span class="fn">str</span>
+
+<span class="kw">class</span> <span class="fn">SubgraphState</span>(TypedDict):
+    bar: <span class="fn">str</span>  <span class="cmt"># 親グラフとは共有していない</span>
+    baz: <span class="fn">str</span>
+
+<span class="kw">def</span> <span class="fn">subgraph_node</span>(state: SubgraphState):
+    <span class="kw">return</span> {<span class="str">"bar"</span>: state[<span class="str">"bar"</span>] + <span class="str">"baz"</span>}
+
+subgraph_builder = <span class="fn">StateGraph</span>(SubgraphState)
+subgraph_builder.<span class="fn">add_node</span>(subgraph_node)
+<span class="cmt"># ～省略～</span>
+subgraph = subgraph_builder.<span class="fn">compile</span>()
+
+<span class="kw">def</span> <span class="fn">node</span>(state: State):
+    response = subgraph.<span class="fn">invoke</span>({<span class="str">"bar"</span>: state[<span class="str">"foo"</span>]})  <span class="cmt"># 親→サブグラフへ変換して呼ぶ</span>
+    <span class="kw">return</span> {<span class="str">"foo"</span>: response[<span class="str">"bar"</span>]}                    <span class="cmt"># サブグラフ→親へ戻す</span>
+
+builder = <span class="fn">StateGraph</span>(State)
+builder.<span class="fn">add_node</span>(node)  <span class="cmt"># コンパイル済みサブグラフでなく、変換する関数 node を追加</span>
+<span class="cmt"># ～省略～</span>
+graph = builder.<span class="fn">compile</span>()</pre>
+    </details>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔗</div><h4>直接呼ぶ（7.2.1）</h4><p>親とサブグラフが<b>キーを共有</b>。変換いらず。最短。</p><span class="pill">同じ様式のとき</span></div>
+      <div class="mini"><div class="ic">🔁</div><h4>関数で呼ぶ（7.2.2）</h4><p>様式が違うので、<b>変換ノード</b>を1枚はさんで詰め替える。</p><span class="pill">様式が違うとき</span></div>
+    </div>
+
+    <div class="summary">
+      <h4>🔁 7.2のまとめ</h4>
+      <ul>
+        <li>サブグラフ＝別のグラフの中で使うグラフ。マルチエージェントの土台。</li>
+        <li>追加方法は2つ。①直接ノード化（キー共有・変換不要）／②関数で呼ぶ（スキーマが違い変換が必要）。</li>
+        <li>直接呼ぶ場合、共有していないキーは無視される。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7.3 マルチエージェント ============ -->
+<section id="s73">
+  <div class="sec-head">
+    <div class="sec-num">7.3</div>
+    <div><h2>マルチエージェントアーキテクチャ</h2>
+    <span class="tag">1体で無理なら、専門エージェントに分けて連携する</span></div>
+  </div>
+
+  <div class="card">
+    <p class="lead"><b>要するに：</b>エージェントが大規模・複雑になると1体では限界が来ます。そこでアプリを複数の小さな独立エージェントに分割して連携させます。接続のしかたは<b>4種類</b>あります。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>エージェントが大規模化・複雑化すると問題が出る――①ツールが多すぎてエージェントが次に使うツールを間違える（6章で対処したね）、②コンテキストが複雑すぎて1体では追跡できない（プロンプトの長さや情報量がモデルの能力を超える）。それに、計画・調査・数学みたいな分野ごとに専用サブシステムを使いたいこともある。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>1体じゃ無理なら、分けるんですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>そう。アプリを複数の小さな独立エージェントに分割して、組み合わせる。各エージェントは、プロンプト＋LLM呼び出しみたいな単純なものから、ReActエージェントみたいな複雑なものまで。接続のしかたは4つある。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>⚠️ 1体だと起きる問題</h4>
+      <ul>
+        <li>ツールが多すぎて、次に使うツールをエージェントが間違える。</li>
+        <li>コンテキストが複雑すぎて、1体では追跡しきれない（情報量がモデルの能力を超える）。</li>
+        <li>計画・調査・数学など、分野ごとに専用のサブシステムを使いたい。</li>
+      </ul>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：1人で全紙面は書けない</h4>
+      <p>1人の記者に「政治も経済もスポーツも全部書け」と言うと、抱えきれず取材を取り違えます。だから新聞社は<b>政治部・経済部・運動部</b>と専門の記者に分け、連携して1つの新聞を作ります。これがマルチエージェントです。</p>
+    </div>
+
+    <h3 class="blk" id="s73-4">4つの接続のしかた</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🕸️</div><h4>ネットワーク</h4><p>すべてのエージェントが互いに通信できる。次にどのエージェントを動かすかも各自で決められる。</p><span class="pill">全員が直接やり取り</span></div>
+      <div class="mini"><div class="ic">🎩</div><h4>スーパーバイザー</h4><p>各エージェントは1つのスーパーバイザーとだけ通信。スーパーバイザーが次に呼ぶエージェントを決める。</p><span class="pill">司令塔がさばく</span></div>
+      <div class="mini"><div class="ic">🏛️</div><h4>階層的</h4><p>スーパーバイザーの上にさらにスーパーバイザーを持つ、複数階層の構成。スーパーバイザーの一般化。</p><span class="pill">司令塔の上に司令塔</span></div>
+      <div class="mini"><div class="ic">🧩</div><h4>カスタムワークフロー</h4><p>各エージェントが特定のサブセットとだけ通信。フローの一部は決定論的（あらかじめ決まった順番）。</p><span class="pill">自由設計＋一部固定</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：4つの編集部スタイル</h4>
+      <p><b>ネットワーク</b>＝記者全員が直接相談し合うフラットな編集部。<b>スーパーバイザー</b>＝編集長がいて、記者は編集長とだけ話す編集部。<b>階層的</b>＝編集長の上に総編集長がいる大新聞社。<b>カスタム</b>＝「速報はこの順で回す」と一部の手順が決まっている編集部、です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>次は、能力と使いやすさのバランスが良い<b>スーパーバイザーアーキテクチャ</b>を掘り下げよう。</div></div>
+    </div>
+
+    <!-- 7.3.1 -->
+    <h3 class="blk" id="s731">7.3.1 スーパーバイザーアーキテクチャ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>各エージェントをノードとしてグラフに追加して、次に呼ぶべきエージェントを決める<b>スーパーバイザーノード</b>も追加する。条件付きエッジで、スーパーバイザーの決定に基づいて適切なエージェントへ進める。まずスーパーバイザーノードを見よう。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>START → supervisor（編集長が登場）</h4><p>最初に必ずスーパーバイザーへ進む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>supervisor が次の担当を決める</h4><p><span class="term" data-tip="AIの答えを決まった様式で受け取る仕組み。">構造化出力</span>で <code>next</code> ＝ researcher / coder / FINISH のどれかを返す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>条件付きエッジで該当エージェントへ振り分け</h4><p><code>next</code> が researcher なら調査担当へ、coder ならコード担当へ。</p><div class="branch ok">✅ researcher / coder → 仕事をして supervisor に戻る</div><div class="branch ng">🏁 FINISH → ここで終了</div></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>各担当 → 再び supervisor</h4><p>仕事が終わったら毎回スーパーバイザーに戻り、「次どうするか」をまた決める。</p></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：編集長のさばき</h4>
+      <p><b>スーパーバイザー＝編集長</b>、<b>researcher＝調査記者</b>、<b>coder＝整理記者（紙面づくり担当）</b>です。編集長は「まず調査記者に裏取りを」「次は整理記者に紙面化を」と<b>次の担当を1人ずつ指名</b>します。担当が仕事を終えるたびに編集長に戻り、必要がなくなったら「FINISH（校了）」と告げて締めます。</p>
+    </div>
+
+    <p style="margin-top:14px">このコードは、スーパーバイザーが「次に動かす担当（researcher / coder）または FINISH（終了）」を<b>決まった様式</b>で決める部分です。<code>SupervisorDecision</code> という様式に従って判断します。</p>
+
+    <details class="code">
+      <summary>Python ― スーパーバイザーノード（次の担当を決める）</summary>
+<pre><span class="cmt"># このコードがやること: スーパーバイザーが「次に動かす作業者（researcher/coder）または FINISH」を</span>
+<span class="cmt"># 構造化出力で決める。SupervisorDecision のスキーマに従って判断する。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Literal
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="kw">class</span> <span class="fn">SupervisorDecision</span>(BaseModel):
+    next: Literal[<span class="str">"researcher"</span>, <span class="str">"coder"</span>, <span class="str">"FINISH"</span>]
+
+model = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+model = model.<span class="fn">with_structured_output</span>(SupervisorDecision)
+
+agents = [<span class="str">"researcher"</span>, <span class="str">"coder"</span>]
+
+system_prompt_part_1 = <span class="str">f"""あなたは、以下の作業者間の会話を管理するスーパーバイザーです: {agents}。
+ユーザーのリクエストに基づき、次に行う作業者を指示してください。それぞれの作業者はタスクを実行し、
+その結果とステータスを返します。作業が完了したら「FINISH」と返信してください。"""</span>
+
+system_prompt_part_2 = <span class="str">f"""上記の会話を踏まえて、次に行動すべき作業者は誰ですか？
+それとも終了しますか？ 次から選んでください: {', '.join(agents)}, FINISH"""</span>
+
+<span class="kw">def</span> <span class="fn">supervisor</span>(state):
+    messages = [
+        (<span class="str">"system"</span>, system_prompt_part_1),
+        *state[<span class="str">"messages"</span>],
+        (<span class="str">"system"</span>, system_prompt_part_2)
+    ]
+    <span class="kw">return</span> model.<span class="fn">invoke</span>(messages)</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>エージェントの名前って大事ですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>すごく大事だ。サブエージェントの名前はわかりやすく区別できる必要がある。<code>agent_1</code>、<code>agent_2</code> だと、LLMはどのエージェントがどのタスクに適しているか判断できない。必要なら各エージェントの役割や特徴をプロンプトに追加するといい。次に、リサーチャーとコーダーを統合したグラフを組む。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：肩書きをはっきりさせる</h4>
+      <p>名簿に「記者A」「記者B」とだけ書いてあったら、編集長は誰に何を頼めばいいか分かりません。<b>「調査記者」「整理記者」</b>と役割が分かる名前にしておくこと――それがエージェントの命名の鉄則です。</p>
+    </div>
+
+    <p style="margin-top:14px">このコードは、supervisor・researcher・coder の3つの担当をグラフにまとめ、スーパーバイザーの決定（<code>next</code>）に応じて振り分ける全体図です。各担当は仕事のあと、必ずスーパーバイザーに戻ります。</p>
+
+    <details class="code">
+      <summary>Python ― 3ノードを統合したグラフ</summary>
+<pre><span class="cmt"># このコードがやること: supervisor・researcher・coder の3ノードをグラフにし、</span>
+<span class="cmt"># スーパーバイザーの決定（state["next"]）に応じて条件付きエッジで振り分ける。</span>
+<span class="cmt"># 各エージェントは処理後、再びスーパーバイザーに戻る。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Literal
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, MessagesState, START
+
+model = <span class="fn">ChatOpenAI</span>()
+
+<span class="kw">class</span> <span class="fn">AgentState</span>(BaseModel):
+    next: Literal[<span class="str">"researcher"</span>, <span class="str">"coder"</span>, <span class="str">"FINISH"</span>]
+
+<span class="kw">def</span> <span class="fn">researcher</span>(state: AgentState):
+    response = model.<span class="fn">invoke</span>(<span class="str">"～省略～"</span>)
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [response]}
+
+<span class="kw">def</span> <span class="fn">coder</span>(state: AgentState):
+    response = model.<span class="fn">invoke</span>(<span class="str">"～省略～"</span>)
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [response]}
+
+builder = <span class="fn">StateGraph</span>(AgentState)
+builder.<span class="fn">add_node</span>(supervisor)
+builder.<span class="fn">add_node</span>(researcher)
+builder.<span class="fn">add_node</span>(coder)
+
+builder.<span class="fn">add_edge</span>(START, <span class="str">"supervisor"</span>)
+<span class="cmt"># スーパーバイザーの決定（next）に応じて、いずれかのエージェントへ進むか終了する</span>
+builder.<span class="fn">add_conditional_edges</span>(<span class="str">"supervisor"</span>, <span class="kw">lambda</span> state: state[<span class="str">"next"</span>])
+builder.<span class="fn">add_edge</span>(<span class="str">"researcher"</span>, <span class="str">"supervisor"</span>)
+builder.<span class="fn">add_edge</span>(<span class="str">"coder"</span>, <span class="str">"supervisor"</span>)
+
+supervisor = builder.<span class="fn">compile</span>()</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>この例では、進行状況が全部 <code>messages</code> リストに記録されるから、リサーチャーとコーダーは互いの作業を確認できる。別の方法もある――サブエージェント自体を1つのグラフにして内部ステートを持たせて、作業の概要だけ出力する、とかね。エージェントが処理を終えたら、再びスーパーバイザーにルーティングして、続けるか・どのエージェントに委譲するかを決める。各サブエージェント自身に「出力をユーザーに返すか」判断させることもできる（リサーチャーとスーパーバイザーの間のエッジを、リサーチャーが更新したステートのキーを読む条件付きエッジに置き換える）。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>6章のルーターに似てますけど、エージェント同士がスーパーバイザーを介して何度もやり取りするんですね。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>🔁 7.3 全体のまとめ（要するに＋この項のまとめ）</h4>
+      <ul>
+        <li><b>要するに：</b>拡張は2つ＝リフレクション（自己批評でシステム2のように振る舞う）と、マルチエージェント（複数の独立エージェントを連携）。土台はサブグラフ。代表構成はスーパーバイザー。</li>
+        <li>リフレクション：生成ノードと批評ノードのループ。役割を入れ替えて連続同種メッセージを避ける。回数固定や批評の終了判断で止める。外部情報で裏付けると効果的。</li>
+        <li>サブグラフ：別のグラフの中で使うグラフ。直接呼ぶ（キー共有）／関数で呼ぶ（スキーマが違い変換）の2通り。</li>
+        <li>マルチエージェント：1体で扱えない複雑さ・専門分野に対応。構成はネットワーク・スーパーバイザー・階層的・カスタム。</li>
+        <li>スーパーバイザー：構造化出力で次のエージェントを決め、条件付きエッジで振り分ける。エージェント名は区別しやすく。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7.4 まとめ ============ -->
+<section id="s74">
+  <div class="sec-head">
+    <div class="sec-num">7.4</div>
+    <div><h2>まとめ</h2>
+    <span class="tag">強力だが、まずは単純なものから始める</span></div>
+  </div>
+
+  <div class="card">
+    <p class="lead"><b>要するに：</b>リフレクションとマルチエージェントは強力な拡張ですが、新しいエージェントを作るときにいきなり使うべきではありません。<b>まず6章の単純なアーキテクチャから始める</b>のが原則です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>この章では、エージェントの2つの重要な拡張――リフレクションとマルチエージェント――を取り上げて、マルチエージェントの構成要素であるサブグラフも学んだ。ただし、これらは強力だけど、新しいエージェントを作るときにいきなり手を伸ばすべきじゃない。<b>まず6章の単純なアーキテクチャから始めるのがベスト</b>だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>シンプルから始める、ですね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>そう、本書を貫くテーマだ。次の8章は「LLMを最大限に活用するパターン」。5章でも触れた「信頼性と自律性のトレードオフ」をさらに深掘りする。エージェントやマルチエージェントを使うとき特に重要だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🗞️ たとえ話：いきなり大編集部にしない</h4>
+      <p>小さな記事を出すのに、最初から大編集部を組んで何重もの校正をかけると、人手も時間もかかりすぎます。まずは1人の記者でやってみて、それで足りないと分かってから専門部署や校正体制を足す――それが賢い新聞社のやり方です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>🔁 7.4のまとめ</h4>
+      <ul>
+        <li>拡張はリフレクションとマルチエージェント。サブグラフがマルチエージェントの土台。</li>
+        <li>強力だが、新しいエージェントはまず6章の単純なアーキテクチャから始める。</li>
+        <li>次章は信頼性と自律性のトレードオフ（エージェントで特に重要）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 章のまとめ ============ -->
+<section id="wrapup">
+  <div class="sec-head">
+    <div class="sec-num">🔁</div>
+    <div><h2>章のまとめ（弟子の振り返り）</h2>
+    <span class="tag">4つのポイントを自分の言葉で</span></div>
+  </div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>今日のポイントです。1つ目は「リフレクションは生成→批評→修正のループ。LLMをシステム2のように内省させる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>役割を入れ替える裏技、もあったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>2つ目は「サブグラフは別のグラフの中で使うグラフ。直接呼ぶ（キー共有）か、関数で呼ぶ（変換あり）」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>マルチエージェントの土台だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>3つ目は「マルチエージェントの構成はネットワーク・スーパーバイザー・階層的・カスタム」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>スーパーバイザーがバランス良い。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>4つ目は「スーパーバイザーが次のエージェントを決めて、条件付きエッジで振り分ける。でもまず単純なものから始める」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">師匠・リク</span>完璧だ。次は信頼性と自律性のトレードオフへ進もう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 理解度チェック ============ -->
+<section id="quiz">
+  <div class="sec-head">
+    <div class="sec-num">✏️</div>
+    <div><h2>章末の理解度チェック（全5問）</h2>
+    <span class="tag">自分の言葉で答えてみよう。詰まる問題こそ伸びしろ</span></div>
+  </div>
+
+  <div class="card">
+    <p style="color:var(--sub);font-size:14px;margin-top:0">この章を読み終わったあと、自分の言葉で答えてみてください。スラスラ書ける問題は理解できています。詰まる問題こそが「実は分かっていなかった部分」です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>リフレクション</div>
+      <p style="font-size:14px;margin:0">リフレクションアーキテクチャとは何ですか。なぜ出力品質が上がるのかを、人間のたとえを使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">リフレクションは、生成のためのプロンプトと、批評・振り返りのためのプロンプトを交互に繰り返すループ。エッセイの例なら、generateノードが草稿を書き、reflectノードが教師として批評し、それをふまえてgenerateが修正する、を繰り返す。これは、本の文章が著者・査読者・編集者のやり取りで仕上がるように、人間の創作プロセスを模している。一発で完璧な出力を出すのではなく、自己批評で内省的（システム2）に何度もブラッシュアップするので、品質が上がる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 生成と批評を交互に繰り返すループ、に触れている ／ □ 著者と編集者など人間の創作プロセスのたとえを使っている ／ □ 自己批評で品質が上がる、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>役割の入れ替え</div>
+      <p style="font-size:14px;margin:0">リフレクションの実装で、<code>reflect</code> ノードがメッセージの役割（AI/Human）を入れ替えているのはなぜですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">対話調整された多くのLLMは「人間とAIのメッセージのペア」で学習されているため、同じ人物（同じ役割）からの連続したメッセージが多いとパフォーマンスが悪化することがある。そこで <code>reflect</code> ノードでは役割を入れ替えて、LLMに「自分の出力（AIメッセージ）を、他人（人間）の提出物として批評している」と思わせる。逆に <code>generate</code> ノードでは、その批評を「ユーザーから来たフィードバック」として扱う。この“裏技”でパフォーマンスの悪化を防いでいる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ LLMは人間とAIのペアで学習され、連続同種メッセージで性能が落ちる、に触れている ／ □ 役割を入れ替えて自分の出力を他人の提出物として批評させる、に触れている ／ □ パフォーマンス悪化を防ぐため、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>サブグラフの2つの追加方法</div>
+      <p style="font-size:14px;margin:0">サブグラフを親グラフに追加する2つの方法を、どんなときに使うかを含めて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①サブグラフを直接ノードとして接続する方法：親グラフとサブグラフがステートのキーを共有しているときに使う。共有キーがグラフ間の通信に使われ、ステートの変換が不要。②サブグラフを呼ぶ関数を持つノードを追加する方法：親グラフとサブグラフのスキーマが異なるときに使う。その関数の中で、親のステートをサブグラフ用に変換して呼び、返り値を親用のステートに戻す。スキーマが違って変換が必要な場合に便利。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 直接接続＝キーを共有、変換不要、に触れている ／ □ 関数で呼ぶ＝スキーマが異なり変換が必要、に触れている ／ □ それぞれの使い分けに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>マルチエージェントの構成</div>
+      <p style="font-size:14px;margin:0">マルチエージェントの4つの構成（ネットワーク・スーパーバイザー・階層的・カスタム）のうち、スーパーバイザーとは何ですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">スーパーバイザーは、各エージェントが1つのスーパーバイザーエージェントとだけ通信する構成。スーパーバイザーが「次にどのエージェント（複数可）を呼ぶか」を決定する。ネットワーク（全員が互いに通信）よりも制御しやすく、階層的（スーパーバイザーの上にさらにスーパーバイザー）よりシンプルで、能力と使いやすさのバランスが良い。実装では、スーパーバイザーが構造化出力で次のエージェント（またはFINISH）を決め、条件付きエッジで該当エージェントへ振り分ける。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 各エージェントがスーパーバイザーとだけ通信する、に触れている ／ □ スーパーバイザーが次に呼ぶエージェントを決める、に触れている ／ □ 能力と使いやすさのバランスが良い、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>いつ拡張を使うか</div>
+      <p style="font-size:14px;margin:0">リフレクションやマルチエージェントは強力ですが、新しいエージェントを作るときにいきなり使うべきではないと言われます。なぜですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">これらの拡張はアーキテクチャを複雑にし、レイテンシーやコスト、デバッグの難しさを増やすから。リフレクションは生成・批評を繰り返すぶんレイテンシーが増え、マルチエージェントは複数エージェントの連携で複雑さが増す。多くの場合、6章で説明した単純なエージェントアーキテクチャで十分な性能が出る。だから、まず単純なものから始めて、それで足りないと分かったときに初めて拡張に手を伸ばすのがベスト（本書を貫く「最もシンプルに」の原則）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 拡張は複雑さ・レイテンシー・コストを増やす、に触れている ／ □ 多くの場合は単純なアーキテクチャで十分、に触れている ／ □ まず単純から始め、足りないときに拡張する、に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 次のステップ ============ -->
+<section id="next">
+  <div class="sec-head">
+    <div class="sec-num">🌱</div>
+    <div><h2>初心者がこの内容を理解するための次のステップ</h2>
+    <span class="tag">手を動かして確かめよう</span></div>
+  </div>
+
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔁</div><h4>リフレクションを動かす</h4><p>本章のエッセイ生成のリフレクションを写経し、繰り返し回数（<code>should_continue</code> のしきい値）を変えて、批評と修正がどう繰り返されるか観察しましょう。</p></div>
+      <div class="mini"><div class="ic">📝</div><h4>批評を読む</h4><p>各ループの <code>reflect</code> の出力（批評）を表示して、LLMが自分の出力をどう評価しているかを見てみましょう。</p></div>
+      <div class="mini"><div class="ic">🧩</div><h4>サブグラフを試す</h4><p>簡単なサブグラフを作り、「直接接続」と「関数で呼ぶ」の両方で親グラフに組み込んで、ステートの流れを確認しましょう。</p></div>
+      <div class="mini"><div class="ic">🎩</div><h4>スーパーバイザーを実装する</h4><p>researcher / coder の中身を簡単に埋めて、スーパーバイザーがどちらを呼ぶかをログで追いましょう。</p></div>
+      <div class="mini"><div class="ic">📚</div><h4>LangGraph公式のマルチエージェント</h4><p>LangGraph の「Multi-agent」概念ページ（langchain-ai.github.io の langgraph/concepts/multi_agent）で、スーパーバイザー・ネットワーク・階層的の図解を確認しましょう。</p></div>
+      <div class="mini"><div class="ic">🧭</div><h4>「まず単純に」を実践する</h4><p>自分が作りたいエージェントについて、本当にリフレクションやマルチエージェントが必要か、まず単純な6章のアーキテクチャで足りないかを考えてみましょう。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第7章「エージェントアーキテクチャの拡張」 ― 非エンジニア向け図解版<br>たとえ話はすべて「🗞️ 新聞社の編集部」で統一しています。コードはエンジニア向けの参考です（読み飛ばしてOK）。</p>
+
+</div>
+</body>
+</html>

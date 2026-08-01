@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第11章 ストリーム処理 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第11章</span>
+  <h1>ストリーム処理 ― 出来事を、起きるそばから次々さばく</h1>
+  <p>バッチ処理は「サイズが決まったデータ」をまとめて処理する。でも現実のデータは<b>止まらず流れ続ける</b>。終わりのないデータ（イベントの流れ）を生まれた瞬間に少しずつ処理する――それが<b>ストリーム処理</b>。新人ハルとベテラン カイ先輩の対話で、流れの運び方・DBとの関係・流れの処理の仕方を、ひとつずつ網羅して学びます。</p>
+  <div class="badge-row">
+    <span class="badge">📡 たとえ話は「ニュース速報の配信室」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a href="#s11">11.1 イベントストリームの転送</a>
+  <a class="sub" href="#s111">11.1.1 メッセージングシステム</a>
+  <a class="sub" href="#s1111">　└ 直接のメッセージング</a>
+  <a class="sub" href="#s1112">　└ メッセージブローカー</a>
+  <a class="sub" href="#s1113">　└ ブローカーとDBの比較</a>
+  <a class="sub" href="#s1114">　└ 複数のコンシューマ</a>
+  <a class="sub" href="#s1115">　└ 承認と再配信</a>
+  <a class="sub" href="#s112">11.1.2 パーティション化されたログ</a>
+  <a class="sub" href="#s1121">　└ ログの利用</a>
+  <a class="sub" href="#s1122">　└ 従来型とログの比較</a>
+  <a class="sub" href="#s1123">　└ コンシューマのオフセット</a>
+  <a class="sub" href="#s1124">　└ ディスク領域の利用</a>
+  <a class="sub" href="#s1125">　└ コンシューマがついて行けない</a>
+  <a class="sub" href="#s1126">　└ 古いメッセージのリプレイ</a>
+  <a href="#s12">11.2 データベースとストリーム</a>
+  <a class="sub" href="#s121">11.2.1 システムの同期の保持</a>
+  <a class="sub" href="#s122">11.2.2 変更データのキャプチャ</a>
+  <a class="sub" href="#s1221">　└ CDCの実装</a>
+  <a class="sub" href="#s1222">　└ 初期のスナップショット</a>
+  <a class="sub" href="#s1223">　└ ログのコンパクション</a>
+  <a class="sub" href="#s1224">　└ 変更ストリームのAPI</a>
+  <a class="sub" href="#s123">11.2.3 イベントソーシング</a>
+  <a class="sub" href="#s1231">　└ 現在の状態の導出</a>
+  <a class="sub" href="#s1232">　└ コマンドとイベント</a>
+  <a class="sub" href="#s124">11.2.4 状態・ストリーム・イミュータビリティ</a>
+  <a class="sub" href="#s1241">　└ イミュータブルの利点</a>
+  <a class="sub" href="#s1242">　└ 複数ビューの導出</a>
+  <a class="sub" href="#s1243">　└ 並行性の制御</a>
+  <a class="sub" href="#s1244">　└ イミュータビリティの限界</a>
+  <a href="#s13">11.3 ストリームの処理</a>
+  <a class="sub" href="#s131">11.3.1 ストリーム処理の利用</a>
+  <a class="sub" href="#s1311">　└ 複合イベント処理（CEP）</a>
+  <a class="sub" href="#s1312">　└ ストリーム分析</a>
+  <a class="sub" href="#s1313">　└ マテリアライズドビュー管理</a>
+  <a class="sub" href="#s1314">　└ ストリームでの検索</a>
+  <a class="sub" href="#s1315">　└ メッセージパッシングとRPC</a>
+  <a class="sub" href="#s132">11.3.2 時間に関する考察</a>
+  <a class="sub" href="#s1321">　└ イベントの時刻と処理の時刻</a>
+  <a class="sub" href="#s1322">　└ 準備完了の確認</a>
+  <a class="sub" href="#s1323">　└ どのクロックを使うか</a>
+  <a class="sub" href="#s1324">　└ ウィンドウの種類</a>
+  <a class="sub" href="#s133">11.3.3 ストリームの結合</a>
+  <a class="sub" href="#s1331">　└ ストリーム‐ストリーム結合</a>
+  <a class="sub" href="#s1332">　└ ストリーム‐テーブル結合</a>
+  <a class="sub" href="#s1333">　└ テーブル‐テーブル結合</a>
+  <a class="sub" href="#s1334">　└ 結合の時間依存</a>
+  <a class="sub" href="#s134">11.3.4 耐障害性</a>
+  <a class="sub" href="#s1341">　└ マイクロバッチとチェックポイント</a>
+  <a class="sub" href="#s1342">　└ アトミックなコミット再び</a>
+  <a class="sub" href="#s1343">　└ 冪等性</a>
+  <a class="sub" href="#s1344">　└ 障害後の状態の再構築</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全6問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードやスケッチです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">📡</div><div><b>たとえ話はぜんぶ「ニュース速報の配信室」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「出来事を起きた順に流し続けるニュース速報の配信室」</b>に置きかえて説明します。イベント＝1本の速報、流れを処理する＝速報をさばく、です。別の世界のたとえは混ぜません。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、ニュース速報の配信室のたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">ストリーム処理 <span>stream processing</span></div><p>終わりのないデータの流れを、生まれた端から少しずつ処理すること。<b>＝出来事を起きるそばから次々さばく配信室</b>。</p></div>
+    <div class="item"><div class="w">イベント <span>event</span></div><p>「ある時点で起きたこと」を表す、小さく自己完結した変わらない記録。<b>＝1本の速報原稿</b>。時刻印が付く。</p></div>
+    <div class="item"><div class="w">プロデューサ <span>producer</span></div><p>イベントを生み出す側（発行者・送信者）。<b>＝速報を出す記者</b>。</p></div>
+    <div class="item"><div class="w">コンシューマ <span>consumer</span></div><p>イベントを受け取って処理する側（購読者・受信者）。<b>＝速報を受け取る部署</b>。</p></div>
+    <div class="item"><div class="w">トピック <span>topic</span></div><p>関連するイベントをまとめたグループ。<b>＝ジャンル別の配信チャンネル</b>（スポーツ速報・経済速報など）。</p></div>
+    <div class="item"><div class="w">メッセージブローカー <span>message broker</span></div><p>イベントの流れを預かって仲介する専用システム。<b>＝速報の中継デスク</b>。</p></div>
+    <div class="item"><div class="w">パブリッシュ/サブスクライブ <span>pub/sub</span></div><p>発行する側と購読する側を多対多でつなぐモデル。<b>＝記者が出した速報を、複数の部署が好きに購読する</b>。</p></div>
+    <div class="item"><div class="w">ログベースのブローカー <span>log-based</span></div><p>速報を消さずに連番付きで台帳に残す中継デスク。<b>＝連番付きの速報台帳</b>（Kafka等）。</p></div>
+    <div class="item"><div class="w">パーティション <span>partition</span></div><p>1本の台帳を複数に分けて別マシンに置いたもの。<b>＝チャンネルを複数の窓口に分けて並行にさばく</b>。</p></div>
+    <div class="item"><div class="w">オフセット <span>offset</span></div><p>パーティション内で各速報に振られる連番。<b>＝台帳の行番号</b>。「どこまで読んだか」を表す。</p></div>
+    <div class="item"><div class="w">承認 <span>ack</span></div><p>「処理し終えた」という確認の合図。<b>＝部署が「対応完了」と中継デスクに返事する</b>。</p></div>
+    <div class="item"><div class="w">リプレイ <span>replay</span></div><p>過去の速報を巻き戻してもう一度処理すること。<b>＝台帳をさかのぼって読み直す</b>。</p></div>
+    <div class="item"><div class="w">変更データキャプチャ <span>CDC</span></div><p>DBの変更を観察して流れとして取り出す仕組み。<b>＝元帳の書き換えをそのまま速報化する</b>。</p></div>
+    <div class="item"><div class="w">イベントソーシング <span>event sourcing</span></div><p>出来事の履歴そのものを正本として残す設計。<b>＝起きた出来事の台帳を「真実」にする</b>。</p></div>
+    <div class="item"><div class="w">changelog <span>変更履歴</span></div><p>状態へのすべての変更を時系列に並べた追記ログ。<b>＝配信室がつけ続ける変更の台帳</b>。</p></div>
+    <div class="item"><div class="w">コマンド／イベント</div><p>コマンド＝まだ失敗しうる要求、イベント＝検証後の確定した事実。<b>＝「速報を出したい申請」と「確定して流れた速報」</b>。</p></div>
+    <div class="item"><div class="w">ウィンドウ <span>window</span></div><p>集計の対象にする時間の区切り。<b>＝「直近◯分のまとめ」を出すための時間の窓</b>。</p></div>
+    <div class="item"><div class="w">イベントの時刻／処理の時刻</div><p>イベントの時刻＝出来事が起きた時刻、処理の時刻＝速報を受け取った時刻。<b>＝事件発生時刻 vs デスクに届いた時刻</b>。</p></div>
+    <div class="item"><div class="w">ストリーム結合 <span>stream join</span></div><p>2つの流れを突き合わせて関連づけること。<b>＝2つの速報を照合する</b>。</p></div>
+    <div class="item"><div class="w">マテリアライズドビュー <span>materialized view</span></div><p>元データから導出して保存しておく、読みやすい結果。<b>＝速報から作る「まとめ表」</b>。</p></div>
+    <div class="item"><div class="w">冪等（べきとう） <span>idempotence</span></div><p>何回やっても1回と同じ結果になる操作。<b>＝同じ速報を二度さばいても結果が変わらない</b>。</p></div>
+    <div class="item"><div class="w">exactly-once <span>厳密に1回</span></div><p>障害があっても「ちょうど1回処理したかのよう」な結果になること（実態はeffectively-once＝事実上1回）。</p></div>
+    <div class="item"><div class="w">バックプレッシャー <span>backpressure</span></div><p>受け手が追いつかないとき送り手を止めて流量を抑える仕組み。<b>＝デスクが詰まったら記者の投稿を待たせる</b>。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>ツバサ社のハルは、前の章で「バッチ処理（まとめて一括処理）」を学んだばかり。ところが運用チームから「ユーザーの行動を1日後じゃなくて、もっとすぐ分析に反映できないか」という要望が来てしまった。1日ぶんを夜にまとめて処理する仕組みでは、どうしても結果が出るのが遅い。困ったハルは、夜のオフィスでカイ先輩に相談する。そこから始まるのは、データを「終わりのない流れ（ストリーム）」として、生まれた端から処理していくという新しい考え方――<b>ストリーム処理</b>の世界をめぐる長い対話だ。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：バッチ処理は「サイズが決まった有限のデータ」をまとめて処理する。でも現実のデータは止まらず流れ続けるので、「終わりのないデータ（イベントの流れ）」を生まれた瞬間に少しずつ処理したい。それが<b>ストリーム処理</b>。この章では、(1) イベントの流れをどう運ぶか（メッセージング、ログベースのブローカー）、(2) データベースの変更そのものを流れとして扱う考え方（CDC、イベントソーシング）、(3) その流れをどう処理するか（時刻の扱い、ウィンドウ、結合、耐障害性）を、ひとつずつ網羅していく。</div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：これから「ニュース速報の配信室」の話をします</h4>
+      <p>この章を通して、ストリーム処理＝<b>出来事を起きた順に流し続けるニュース速報の配信室</b>に置きかえて読みます。イベント＝<b>1本の速報原稿</b>、プロデューサ＝<b>速報を出す記者</b>、コンシューマ＝<b>速報を受け取る部署</b>、メッセージブローカー＝<b>速報の中継デスク</b>、トピック＝<b>ジャンル別の配信チャンネル</b>です。バッチ処理が「夕刊を1日1回まとめて刷る」なら、ストリーム処理は「出来事が起きるたびに速報を流し続ける」配信室です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>現実のデータは「昨日も今日も明日も増え続ける」もので、本当の意味で「完成」しない。バッチだけでは結果が遅すぎて、せっかちなユーザーやリアルタイム分析の要求に応えられない。</li>
+        <li>DB・キャッシュ・検索インデックスなど複数のシステムを「ずれなく同期させ続ける」には、流れとしての変更（ストリーム）を扱う技術が要る。これは現代のデータ基盤の中核。</li>
+        <li>用途（ロスを許すか、順序が大事か、再読み込みしたいか）に応じてメッセージの運び方を正しく選べるようになる。</li>
+        <li>「直近5分の平均」のような時間集計を、遅れて届くイベントまで考えて正しく計算でき、障害時も「ちょうど1回処理したかのよう」な結果（exactly-once）を保てるようになる。</li>
+      </ul>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、こないだ習ったバッチ処理、けっこう気に入ってたんですけど……運用チームから「1日待つのは遅い、もっと早く結果がほしい」って言われちゃって。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>王道の悩みだね。バッチって、入力のサイズが「ここまで」って決まってるのが大前提だったろ？ MapReduceの中心はソートだけど、入力を全部読み終わるまで出力を始められない。「入力が有限で、いつ読み終わったか分かる」ことに頼ってる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも現実のデータって、終わらないですよね。ユーザーは昨日も今日も明日もデータを作り続けるし……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにそこ。だからバッチは「1日ぶん」「1時間ぶん」って人工的に区切る。でもその区切りが遅延の原因になる。究極は「区切らず、イベントが起きるたびに連続的に処理する」こと。それが<span class="term" data-tip="終わりのないデータの流れを、生まれた端から少しずつ処理すること。">ストリーム処理</span>の発想なんだ。</div></div>
+    </div>
+
+    <p>ここでカイ先輩は「ストリーム（流れ）」という言葉を整理した。「時間とともに少しずつ使えるようになっていくデータ」のことで、Unixの標準入出力、遅延リスト、TCP接続、ネット経由の音声・ビデオ配信など、身近なところにたくさんある。この章で扱うのは特に<b>イベントストリーム（出来事の流れ）</b>だ。</p>
+
+    <details class="code"><summary>「ストリーム」が登場する身近な例（メモ）</summary>
+<pre><span class="cmt"># ストリーム（stream, 流れ）とは</span>
+<span class="cmt"># 「時間とともに少しずつ使えるようになっていくデータ」</span>
+- Unix の標準入力 stdin / 標準出力 stdout
+- プログラミング言語の遅延リスト（必要になったら計算される列）
+- ファイルシステムの API（例: Java の FileInputStream）
+- TCP 接続
+- インターネット経由の音声・ビデオ配信</pre>
+    </details>
+
+    <p>流れの章立てはこうだ。まず「流れをどうやって運ぶか（11.1 転送）」。次に「データベースと流れの関係（11.2）」。最後に「流れをどう処理するか（11.3）」。じっくりいこう。</p>
+  </div>
+</section>
+
+<!-- ===== 11.1 ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">11.1</div><div><h2>イベントストリームの転送</h2><span class="tag">流れを「どう運ぶか」 ― 速報をどう中継するか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ストリームではレコードを「イベント（＝1本の速報）」と呼ぶ。プロデューサ（記者）が生成し、コンシューマ（部署）が消費する。関連イベントは「トピック（チャンネル）」でまとめる。DBをポーリング（繰り返し問い合わせ）する手もあるが、遅延を減らそうとすると空振りが増えて無駄になる。新着を「通知」する専用ツール（メッセージングシステム）が必要。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バッチでは入出力が「ファイル」でした。ストリームだと何になるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>バッチでは入力がファイル（バイトの並び）で、それをレコードの並びにパースした。ストリームでは、そのレコードのことを<span class="term" data-tip="ある時点で起きたことを表す、小さく自己完結した変わらない記録。時刻印が付く。">イベント</span>と呼ぶ。中身はほぼ同じ。小さくて、自己完結してて、<span class="term" data-tip="immutable=一度作ったら変わらない。">イミュータブル（変わらない）</span>なオブジェクトで、たいてい起きた時刻のタイムスタンプを持ってる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バッチでは1つのファイルを複数のジョブが読みました。ストリームでも誰かが作って誰かが読むんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。生み出す側を<span class="term" data-tip="イベントを生み出す側。発行者・送信者とも。">プロデューサ</span>、消費する側を<span class="term" data-tip="イベントを受け取って処理する側。購読者・受信者とも。">コンシューマ</span>と呼ぶ。1つのイベントは一度生成され、複数のコンシューマに読まれうる。関連するイベント群は<span class="term" data-tip="関連するイベントをまとめたグループ。">トピック</span>やストリームとしてグループ化される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ単純に、プロデューサがDBに書いて、コンシューマがDBを定期的に見に行けばいいんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>原理的にはできる。コンシューマが定期的に<span class="term" data-tip="polling=繰り返し問い合わせて確認すること。">ポーリング</span>して「前回以降に新しいイベントある？」と聞く。でも遅延を減らそうとポーリングの頻度を上げると、「新しいイベントなし」の空振りが増えて無駄が大きくなる。だったら新着を<b>通知</b>するほうがいい。DBはこの通知が昔から苦手でね。だから通知に特化した専用ツール＝メッセージングシステムが発展してきたんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：掲示板を見に行く vs 速報を流してもらう</h4>
+      <p>各部署が「新しい情報ないかな」と何度も<b>掲示板を見に行く</b>のがポーリング。頻繁に見に行くほど「何もなかった」の空振りが増えて、足が疲れるだけ。それより、出来事が起きたら配信室から<b>速報を流して通知してもらう</b>ほうがずっと効率的。これがメッセージングシステムの発想です。</p>
+    </div>
+
+    <details class="code"><summary>イベントの例（メモ）</summary>
+<pre><span class="cmt"># イベントの例</span>
+- ユーザーが起こしたこと  : ページの閲覧、商品の購入
+- マシンが発生源のこと    : 温度センサーの計測値、CPU 利用率の定期計測
+- Web サーバーのログの各行（バッチの章で出てきた例）
+<span class="cmt">※ JSON やバイナリ形式などにエンコードして、ファイル追記・DB 挿入・ネットワーク送信ができる</span></pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「ポーリングは頻度を上げると無駄が増える」と理解すれば、低遅延が必要な場面で通知型を選べる。</li>
+        <li>イベントが「イミュータブルで自己完結」だと知れば、後で何度でも読み直せる設計の土台になる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ストリーム処理ではレコードを「イベント」と呼ぶ（小さく・自己完結・イミュータブル・タイムスタンプ付き）。</li>
+        <li>プロデューサが生成、コンシューマが消費。関連イベントはトピック／ストリームでまとめる。</li>
+        <li>ポーリングは低遅延化すると空振りが増えて非効率。新着の「通知」が望ましい。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.1 ===== -->
+<section id="s111">
+  <div class="sec-head"><div class="sec-num">11.1.1</div><div><h2>メッセージングシステム</h2><span class="tag">速報を部署たちに届ける仕組み</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：メッセージングシステムはイベントをコンシューマにプッシュ（押し出して届ける）する。複数対複数の発行/購読（pub/sub）モデル。区別の鍵は「送信が速すぎたらどうする（ドロップ／バッファ／バックプレッシャー）」と「クラッシュ時にメッセージを失うか」の2点。ロスを許せるか否かはアプリ次第。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>メッセージングシステムって、何をしてくれるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>プロデューサがメッセージを送ると、それがコンシューマたちに<b>プッシュ</b>される仕組みだ。Unixのパイプやネットワークのコネクションみたいな「直接つなぐ」やり方でも作れるけど、たいていはその上に拡張を加えてる。パイプやTCPは送信者と受信者がきっかり1対1だろ？ メッセージングシステムでは、複数のプロデューサが同じトピックに送れて、複数のコンシューマが1つのトピックを受信できる。この「発行する／購読する」モデルを<span class="term" data-tip="publish/subscribe=発行/購読。多対多でつなぐモデル。">パブリッシュ／サブスクライブ</span>モデルと呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>仕組みはいろいろある感じですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>唯一の正解はない。システムを見分けるには、2つの質問をするといい。「送信が速すぎたら？」と「クラッシュしたら失う？」だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：記者が速報を出しすぎたら、中継デスクはどうする？</h4>
+      <p>記者（プロデューサ）が速報を投げる速さに、受け取る部署（コンシューマ）がついていけないとき、配信室の取れる手は3つ。<b>(a) 捨てる（ドロップ）</b>、<b>(b) いったん溜める（バッファ）</b>、<b>(c) 記者に「ちょっと待って」と止めてもらう（バックプレッシャー）</b>。さらに「中継デスクが落ちたら溜めてた速報は消えるのか」も大事な質問です。</p>
+    </div>
+
+    <details class="code"><summary>メッセージングシステムを見分ける2つの質問</summary>
+<pre><span class="cmt"># 質問1: プロデューサがコンシューマの処理速度より速く送ったら？</span>
+  (a) ドロップ          : メッセージを捨てる
+  (b) バッファリング    : キューにためる（あふれたら? クラッシュ? ディスクに書く?）
+  (c) バックプレッシャー : 送信側をブロックして送らせない（フロー制御とも）
+  <span class="cmt"># 例) Unix のパイプや TCP は (c)。小さな固定バッファが一杯になると送信側が止まる</span>
+
+<span class="cmt"># 質問2: ノードがクラッシュ／一時オフラインになったら? メッセージは失われる?</span>
+  → 永続性が必要ならディスク書き出し＋レプリケーションが要る（その分コスト増）
+  → ロストを許せるなら、同じハードでも高スループット・低レイテンシにできる</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>メッセージって、失われても大丈夫なものなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリ次第だ。定期的に送られるセンサーの測定値なら、たまに1個落ちても次がすぐ来るから問題ないことが多い。でもイベントの個数を数えてるなら、ロスはカウンタが不正確になることに直結する。バッチは失敗したタスクを自動リトライして失敗した部分出力は捨てるから「障害が起きなかったのと同じ出力」になる。同じ保証をストリームでどう実現するか――それが章の後半のテーマだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分のアプリで「メッセージロスが致命的か」を判断でき、永続性のコストをかけるか決められる。</li>
+        <li>バックプレッシャーという概念を知ると、速い送信側に引きずられてシステムが崩れるのを防げる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>パブリッシュ／サブスクライブモデルは複数プロデューサ・複数コンシューマを許す。</li>
+        <li>送信過多への対処は3択：ドロップ／バッファリング／バックプレッシャー。</li>
+        <li>失われるかどうかはアプリ依存。カウント用途などは信頼性が重要。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.1.1 ===== -->
+<section id="s1111">
+  <div class="sec-head"><div class="sec-num">11.1.1.1</div><div><h2>プロデューサからコンシューマへの直接のメッセージング</h2><span class="tag">中継デスクを通さず、記者が部署へ直接届ける</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：中間ノードを挟まない直接メッセージング（UDPマルチキャスト、ZeroMQ、webhooksなど）はシンプルで低遅延だが、メッセージロスをアプリが意識せねばならず、送受信が常にオンラインである前提に弱い。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>間に何も挟まず、直接届けるやり方もあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。中間ノードを通さず、プロデューサとコンシューマが直接ネットワーク通信する。UDPマルチキャスト、ZeroMQのようなブローカーなしライブラリ、HTTP/RPCリクエスト（webhooksの発想）などだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>シンプルで良さそうですけど、弱点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>メッセージが失われる可能性をアプリのコードが意識しないといけない。基本「プロデューサもコンシューマもずっとオンライン」が前提だ。コンシューマが落ちてたら、その間のメッセージを見落とすかもしれない。プロデューサが再送できるプロトコルもあるけど、プロデューサ自身がクラッシュしたら、再送するはずだったバッファごと失われる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：記者が部署へ直接電話する</h4>
+      <p>中継デスクを通さず、記者が担当部署へ<b>直接電話</b>で速報を伝えるやり方です。速くてシンプルですが、部署が席を外していたら（オフライン）その速報は聞き逃される。記者が「もう一度かけ直す」つもりでメモを持っていても、記者自身が倒れたらメモごと消えてしまう。「相手が席にいる前提」に弱いのです。</p>
+    </div>
+
+    <details class="code"><summary>直接メッセージングの例</summary>
+<pre>- UDP マルチキャスト : 株式市場のフィードなど、低レイテンシ最重視の金融業界で広く使う
+                       UDP 自体は信頼できないが、ロスのリカバリはアプリ側で（プロデューサが再送）
+- ブローカーなしライブラリ : ZeroMQ や nanomsg。TCP や IP マルチキャスト上で pub/sub を実装
+- StatsD / Brubeck   : 信頼できない UDP でメトリクス収集。全メッセージ受信時のみ正確（＝近似になりがち）
+- HTTP / RPC リクエスト : コンシューマがサービスを公開していれば、プロデューサが直接プッシュ
+                         これが webhooks の発想（コールバック URL を登録し、イベント時にそこへ投げる）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>低遅延が命の金融などでは直接方式が有効だと判断できる。</li>
+        <li>「相手が落ちると見落とす」弱点を理解し、信頼性が要る場面ではブローカーを選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>直接メッセージングは中間ノードなしで通信（UDPマルチキャスト、ZeroMQ/nanomsg、HTTP/RPC、webhooks）。</li>
+        <li>ロスをアプリが意識する必要があり、耐えられる故障は限定的。</li>
+        <li>送受信のどちらかが落ちるとメッセージを失いやすい。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.1.2 ===== -->
+<section id="s1112">
+  <div class="sec-head"><div class="sec-num">11.1.1.2</div><div><h2>メッセージブローカー</h2><span class="tag">「相手が落ちても大丈夫」にする中継デスク</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：メッセージブローカーは「メッセージ専用DB」のような仲介役。プロデューサが書き込み、コンシューマが読み取る。クライアントの出入りやクラッシュに強く、永続性の責任はブローカーが負う。配送は非同期（待たずに別タイミングで進む）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「相手が落ちても大丈夫」にする方法は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="message broker=メッセージの仲介役。メッセージキューとも。">メッセージブローカー</span>を間に挟むんだ。要するに「メッセージの流れの扱いに特化した一種のデータベース」だ。サーバーとして動いて、プロデューサとコンシューマがクライアントとして接続する。データをブローカーに集中させることで、クライアントの出入り（接続・切断・クラッシュ）に楽に耐えられる。永続性の心配はブローカーに移る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>プロデューサは送ったら、どこまで待つんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ふつうは「ブローカーがバッファした」ところまでしか待たない。コンシューマが処理し終えるのは待たない。つまりコンシューマへの配送は<span class="term" data-tip="asynchronous=待たずに別タイミングで進む。">非同期</span>。たいてい1秒未満で届くけど、たまってると遅れることもある。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：中継デスクが速報を預かる</h4>
+      <p>記者が部署へ直接電話するのをやめ、いったん<b>中継デスク（ブローカー）に速報を預ける</b>方式です。部署が席を外していても、デスクが速報を保管しておいてくれる。記者は「デスクに渡した」時点で次の取材へ進める（非同期）。速報を失わない責任は、記者でも部署でもなく中継デスクが負います。</p>
+    </div>
+
+    <details class="code"><summary>メッセージブローカーを介したやり取り（スケッチ）</summary>
+<pre>[プロデューサ] ──書き込み──▶ [メッセージブローカー] ──読み取り──▶ [コンシューマ]
+                              （メッセージを保持）
+- プロデューサ: ブローカーにメッセージを書き込む
+- コンシューマ: ブローカーからメッセージを読み取って受信する
+<span class="cmt"># 低速なコンシューマがいても、ふつうブローカーは無制限にキューイング（設定次第）</span></pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ブローカーを挟めば、コンシューマが落ちてもメッセージが保持され、復帰後に処理できる。</li>
+        <li>「プロデューサはバッファされた時点で先に進める」非同期性を理解し、レスポンスを速く保てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>メッセージブローカー＝メッセージ流に特化したDB的な仲介役。</li>
+        <li>永続性はブローカー側に集約され、クライアントの出入りに強い。</li>
+        <li>配送は非同期で、通常は速いがバックログがあると遅れる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.1.3 ===== -->
+<section id="s1113">
+  <div class="sec-head"><div class="sec-num">11.1.1.3</div><div><h2>メッセージブローカーとデータベースの比較</h2><span class="tag">「聞かれたら答える」DB vs 「変化を教える」ブローカー</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ブローカーはDBに似るが、(1)配信成功で自動削除（長期保存に不向き）、(2)キューは短い前提、(3)検索はトピックのサブスクライブ、(4)クエリではなく変化の通知、という違いがある。旧来型はJMS/AMQP標準（RabbitMQ等）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ブローカーが「メッセージ専用DB」なら、ふつうのDBと何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>似てる部分もあって、XAやJTA（分散トランザクションの標準）で2相コミットに参加できるブローカーすらある。でも重要な違いが4つある。表で見よう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、DBは「聞かれたら答える」、ブローカーは「変化があったら教える」んですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい要約だ。ここまで説明したのは<b>旧来のメッセージブローカー</b>の姿で、JMSやAMQPという標準にまとまってる。実装としてはRabbitMQ、ActiveMQ、HornetQ、IBM MQ、Azure Service Bus、Google Cloud Pub/Subなどがある。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>観点</th><th>データベース</th><th>メッセージブローカー</th></tr>
+      <tr><td>(1) 保持の仕方</td><td>明示的に削除するまで保持</td><td>配信成功したら自動削除 → 長期保存に不向き</td></tr>
+      <tr><td>(2) 前提するデータ量</td><td>大量保存が前提</td><td>すぐ消す前提なので「キューは短い」想定。たまると遅い</td></tr>
+      <tr><td>(3) データの選び方</td><td>セカンダリインデックス等で多様に検索</td><td>パターンに合うトピックの部分集合をサブスクライブ</td></tr>
+      <tr><td>(4) 結果の鮮度</td><td>クエリ結果はある時点のスナップショット（再クエリが必要）</td><td>任意クエリ不可。だが新着が来たら通知する</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：資料室 vs 速報の中継デスク</h4>
+      <p>DBは<b>資料室</b>。聞きに行けば答えてくれるが、後で誰かが書き換えても教えてはくれない（自分で見に行く）。中継デスク（ブローカー）は<b>速報を流す係</b>。過去の資料は長く置かないが、新しい出来事が起きたらすぐ「変化があった」と教えてくれる。役割が逆なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「ブローカーは長期保存に向かない」と知れば、保存が要る用途で誤用しない。</li>
+        <li>DBの「聞かれたら答える」とブローカーの「変化を通知する」の役割分担を設計に活かせる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ブローカーはDBに似るが、配信成功で自動削除し、キューが短い前提。</li>
+        <li>検索はトピックのサブスクライブ、結果は「変化の通知」型。</li>
+        <li>旧来型はJMS/AMQP標準（RabbitMQ、ActiveMQ等）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.1.4 ===== -->
+<section id="s1114">
+  <div class="sec-head"><div class="sec-num">11.1.1.4</div><div><h2>複数のコンシューマ</h2><span class="tag">速報を複数の部署で分担 or 全員に配る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：複数コンシューマには (a) ロードバランシング（各メッセージを1つのコンシューマへ＝並列化）と (b) ファンアウト（各メッセージを全コンシューマへ＝ブロードキャスト）の2パターンがあり、組み合わせも可能。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つのトピックを複数のコンシューマで読むとき、どう配るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>主に2つのパターンがある。<b>ロードバランシング（負荷分散）</b>は各メッセージを「どれか1つ」のコンシューマへ。処理を分担して並列化できる（重い処理向き）。<b>ファンアウト（拡散配信）</b>は各メッセージを「すべての」コンシューマへ。独立した複数のコンシューマが同じ放送を別々に聴ける。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じ入力ファイルを複数のバッチジョブが読むのが (b) のファンアウトに近い感じですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。そして2つは組み合わせられる。独立した2つのコンシューマグループが同じトピックを購読し、各グループは集団として全メッセージを受け取りつつ、グループ内では1メッセージを1ノードだけが受け取る、という具合に。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：手分け処理 vs 全部署に同報</h4>
+      <p>大量の速報を<b>3つの部署で手分け</b>して、1本ずつ別々の部署が担当するのがロードバランシング（早くさばける）。一方、同じ速報を<b>全部署に同時に配る</b>のがファンアウト（経済部も社会部も同じ速報を別々の目的で見る）。組み合わせれば「速報を全グループに配りつつ、各グループ内では手分け」もできます。</p>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔀</div><h4>(a) ロードバランシング</h4><p>各メッセージはどれか1つのコンシューマへ。処理を分担し並列化（重い処理向き）。例：AMQPの同一キューを複数で消費、JMSの共有サブスクリプション。</p></div>
+      <div class="mini"><div class="ic">📣</div><h4>(b) ファンアウト</h4><p>各メッセージは全コンシューマへ。独立に同じ放送を聴ける。例：JMSのトピックサブスクリプション、AMQPのExchange対応付け。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「重い処理は分担したい」ならロードバランシング、「全員に同じ通知を配りたい」ならファンアウトと選べる。</li>
+        <li>2つを組み合わせて「グループ単位の配信＋グループ内の分担」を設計できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ロードバランシング：各メッセージを1コンシューマへ。処理を分担し並列化。</li>
+        <li>ファンアウト：各メッセージを全コンシューマへ。独立に同じ放送を聴ける。</li>
+        <li>2パターンは組み合わせ可能。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.1.5 ===== -->
+<section id="s1115">
+  <div class="sec-head"><div class="sec-num">11.1.1.5</div><div><h2>承認と再配信</h2><span class="tag">「対応完了」の返事と、来なかったときの再送</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：承認は「処理し終えた確認」。承認が来ないとブローカーは再配信する。ロードバランシングと再配信が組み合わさると、メッセージの順序が入れ替わりうる。順序が大事なら、コンシューマごとに別キューにする。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コンシューマが処理途中でクラッシュしたら、そのメッセージはどうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで<span class="term" data-tip="acknowledgement=処理し終えたという確認。">承認（ack）</span>を使う。クライアントは処理を終えたら明示的にブローカーに「終わった」と伝え、ブローカーはそのメッセージをキューから消す。承認が来なかったら（コネクション切れやタイムアウト）、ブローカーは「処理されなかった」とみなして別のコンシューマに<span class="term" data-tip="redelivery=承認が来なかったメッセージを別のコンシューマへ再送すること。">再配信</span>する。ただし、実際は処理済みなのに承認だけネットワークで失われることもある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>再配信って、何か副作用があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ロードバランシングと組み合わさると、メッセージの順序が変わるんだ。順序を守ろうとしても（JMSもAMQPも順序保持を要求してる）、ロードバランシング＋再配信が組み合わさると順序変化は避けられない。回避するにはコンシューマごとに別キューを使う（＝ロードバランシングを使わない）しかない。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：返事が来ないと別の部署へ回す</h4>
+      <p>中継デスクは、速報を渡した部署から「対応完了」の返事（承認）が来て初めて控えを消します。返事が来ないと「あの部署、倒れたかな」と判断して<b>別の部署へ回す（再配信）</b>。すると、手分け処理しているせいで、速報3が再配信で別の部署に回り、速報4より後に処理される――<b>送った順と処理した順がずれる</b>のです。順番が命の速報は、1部署が専任（別キュー）で順に処理するしかありません。</p>
+    </div>
+
+    <details class="code"><summary>再配信で順序が入れ替わる例（プロデューサが m1〜m5 を送信）</summary>
+<pre>時間 ──────────────────────────────▶
+コンシューマ1: m1 ........ m4   m3(再)  m5
+コンシューマ2: ... m2   m3(処理中にクラッシュ!) ✗
+
+- コンシューマ2 が m3 を処理中にクラッシュ（承認なし）
+- 同じころコンシューマ1 は m4 を処理していた
+- 承認されなかった m3 は後からコンシューマ1 へ再配信
+- 結果、コンシューマ1 の処理順は m4 → m3 → m5
+- → m3 と m4 がプロデューサの送信順とは違う順序で処理された</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>承認の仕組みを理解すれば、コンシューマのクラッシュでメッセージを失わない設計ができる。</li>
+        <li>「ロードバランシング＋再配信で順序が崩れる」と知り、因果関係のあるメッセージでは別キューを選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>承認：処理完了を伝え、ブローカーがメッセージを削除できるようにする。</li>
+        <li>承認が届かないと再配信。ただし「処理済みなのに承認だけロスト」もありうる。</li>
+        <li>ロードバランシング＋再配信は順序を入れ替える。順序が重要なら別キュー。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.2 ===== -->
+<section id="s112">
+  <div class="sec-head"><div class="sec-num">11.1.2</div><div><h2>パーティション化されたログ</h2><span class="tag">速報を消さずに「連番付きの台帳」に残す</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：旧来のブローカーは「メッセージは一時的」が前提で、配信後すぐ消す。受信が破壊的で再実行に弱く、後から来たコンシューマは過去を読めない。これに対し、DBの永続性とメッセージングの通知を合体させたのがログベースのブローカー。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでのブローカーって、配信したらメッセージを消しちゃうんですよね。なんだか「使い捨て」っぽい。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいところに気づいた。旧来のブローカーは、ディスクに書く永続型でさえ、配信したらすぐ消す。「メッセージングは一時的」という考えが中心にあるんだ。でもDBやファイルは逆で、消すまでずっと残る。AMQP/JMSは承認でメッセージが消える＝受信が破壊的だから、同じコンシューマを再実行しても同じ結果にならない。後から新しいコンシューマを足しても、登録時点以降しか受け取れない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>だったら「DBの永続性」と「メッセージングの低遅延な通知」を合体できないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それこそが<span class="term" data-tip="log-based message broker=速報を消さず連番付きで台帳に残すブローカー。Kafka等。">ログベースのメッセージブローカー</span>の発想なんだよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：その場で破り捨てる速報 vs 連番付きの速報台帳</h4>
+      <p>旧来の中継デスクは、部署に渡した速報の控えを<b>その場で破り捨てる</b>。後から来た新人部署は、昨日の速報を読めません。ログベースのブローカーは、すべての速報を<b>連番を振って台帳に書き残す</b>方式。読んでも消えないので、誰でも好きな番号からさかのぼって読み直せます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「受信が破壊的だと再実行できない」問題を理解し、再処理したい用途でログ型を選べる。</li>
+        <li>永続性と通知を両立させる発想（ログベース）の必要性が分かる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>旧来ブローカーはメッセージを一時的に扱い、配信後に削除（破壊的・再実行に弱い）。</li>
+        <li>後から来たコンシューマは過去のメッセージを読めない。</li>
+        <li>DBの永続性＋メッセージングの通知＝ログベースブローカーという発想。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.2.1 ===== -->
+<section id="s1121">
+  <div class="sec-head"><div class="sec-num">11.1.2.1</div><div><h2>メッセージストレージへのログの利用</h2><span class="tag">追記専用の台帳と、台帳を分ける「パーティション」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ログは「追記専用のレコードの並び」。プロデューサは末尾に追記、コンシューマは順に読む。スループットのためにログをパーティション化し、各メッセージにオフセット（パーティション内の連番）を振る。パーティション内は全順序だが、またぐ順序は保証なし。Kafka等が代表。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「ログ」ってここでは何のことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>単純に「追記だけができる、ディスク上のレコードの並び」だ。プロデューサがメッセージをログの末尾に追記して送り、コンシューマがログを先頭から順番（シーケンシャル）に読む。末尾まで読んだら、新しい追記の通知を待つ。Unixの「tail -f」（ファイル末尾の追記を監視）と基本的に同じ動きだよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1本のログだと、ディスク1台ぶんしか速度が出ない気がします。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで<span class="term" data-tip="partitioning=区分け。ログを複数に分けて別マシンに置く。">パーティション化</span>する。ログを複数のパーティションに分けて、別々のマシンに置く。各パーティションは独立に読み書きできるから、全体のスループットが上がる。トピックは「同じ種類のメッセージを扱うパーティションのグループ」と定義できる。各メッセージには単調増加する連番<span class="term" data-tip="offset=位置を示す連番。パーティション内でメッセージに振られる。">オフセット</span>が振られる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>実際の製品だと何がありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Apache Kafka、Amazon Kinesis Streams、TwitterのDistributedLogがこの方式だ。GoogleのCloud Pub/Subもアーキテクチャは似てる。全メッセージをディスクに書きつつ、パーティショニングで毎秒数百万メッセージ、レプリケーションで耐障害性を実現する。パーティション内は全順序だけど、複数パーティションをまたぐ順序は保証されない。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：窓口を増やして並行に台帳をさばく</h4>
+      <p>1冊の速報台帳に全員が書き込むと、1人の書記の手の速さが上限になります。そこで台帳を<b>窓口ごとに分冊（パーティション）</b>し、別の書記が並行に書く。各分冊の行には<b>行番号（オフセット）</b>が振られ、その分冊の中では順番がはっきり分かる。ただし「窓口Aの3行目と窓口Bの3行目、どちらが先か」はわからない――またぐ順序は保証されないのです。</p>
+    </div>
+
+    <details class="code"><summary>パーティション化されたログ（トピック = パーティションの集まり）</summary>
+<pre>プロデューサ ──追記──▶ [ ... | e1 | e2 | e3 | e4 | (末尾) ] ◀──順に読む── コンシューマ
+                       追記だけのレコードの並び（ログ）
+
+トピック「クリックイベント」
+  パーティション0: [ 0 | 1 | 2 | 3 | 4 ... ]  ← マシンA
+  パーティション1: [ 0 | 1 | 2 | 3 ... ]      ← マシンB
+  パーティション2: [ 0 | 1 | 2 | 3 | 4 | 5 ]  ← マシンC
+              <span class="cmt">↑ 箱の中の番号 = オフセット（そのパーティション内の連番）</span></pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>パーティション化で「1台のディスク」の限界を超えてスケールできると分かる。</li>
+        <li>オフセットの概念を理解し、「どこまで読んだか」を管理する設計につなげられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ログ＝追記専用のレコードの並び。コンシューマはシーケンシャルに読む。</li>
+        <li>パーティション化で複数マシンに分散し、スループットを上げる。</li>
+        <li>各メッセージにオフセット。パーティション内は全順序、またぐ順序は保証なし。</li>
+        <li>代表例：Kafka、Kinesis、DistributedLog。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.2.2 ===== -->
+<section id="s1122">
+  <div class="sec-head"><div class="sec-num">11.1.2.2</div><div><h2>従来のメッセージングとログの比較</h2><span class="tag">ログ型の長所と、粗い分担の弱点</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ログ方式はファンアウトが容易。ロードバランシングはパーティション単位の粗い割り当てで、(1)並列度がパーティション数で頭打ち、(2)重いメッセージで後続が詰まる、という欠点がある。重い処理・順序不問なら旧来型、高スループット・順序重視ならログ型。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ログ方式は、ファンアウトもロードバランシングもできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ファンアウトは簡単だ。複数コンシューマが互いに影響せず独立にログを読めて、読んでも消えないからね。ロードバランシングはちょっと粗い。個々のメッセージじゃなく、<b>パーティション全体</b>をコンシューマグループのノードに割り当てる。各ノードは割り当てられたパーティション内の全メッセージを、ふつう単一スレッドで順に読む。これには2つの欠点がある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、どっちを使えばいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>使い分けだ。1メッセージの処理が重くてメッセージ単位で並列化したい、順序はそこまで重要でないなら<b>JMS/AMQPスタイル（旧来型）</b>。スループットが高く、1メッセージは高速に処理でき、順序が重要なら<b>ログベース</b>だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：チャンネルごと丸ごと1部署に任せる</h4>
+      <p>ログ型の分担は、速報を1本ずつ配るのではなく、<b>「スポーツチャンネルは丸ごとA部署、経済チャンネルは丸ごとB部署」</b>とチャンネル単位で任せます。だから手分けできる部署の数は<b>チャンネルの数</b>が上限。しかも、1本だけ処理に時間のかかる速報があると、同じチャンネルの後続の速報がぜんぶ詰まって待たされます（先頭の詰まりが後続を止める）。</p>
+    </div>
+
+    <details class="code"><summary>パーティション単位ロードバランシングの欠点と使い分け</summary>
+<pre><span class="cmt"># 欠点</span>
+(1) 並列度の上限 = パーティション数
+    同じパーティションのメッセージは同じノードに行くので、
+    分担できるノード数はパーティション数までしか増やせない
+(2) ヘッドオブラインブロッキング
+    処理に時間がかかるメッセージが1つあると、
+    同じパーティション内のそれ以降のメッセージが滞る
+
+<span class="cmt"># 使い分けの目安</span>
+- JMS/AMQP（旧来型）: 1メッセージの処理が重く並列化したい / 順序はそこまで重要でない
+- ログベース        : スループットが高く、1メッセージは高速 / 順序が重要</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>並列度がパーティション数に縛られると知り、最初に十分なパーティション数を設計できる。</li>
+        <li>用途（順序重視か並列重視か）でブローカー方式を選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ログ方式はファンアウトが容易（読んでも消えない）。</li>
+        <li>ロードバランシングはパーティション単位＝並列度の上限はパーティション数。</li>
+        <li>重い1メッセージが後続を詰まらせる（ヘッドオブラインブロッキング）。</li>
+        <li>旧来型＝重い処理・順序不問、ログ型＝高スループット・順序重視。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.2.3 ===== -->
+<section id="s1123">
+  <div class="sec-head"><div class="sec-num">11.1.2.3</div><div><h2>コンシューマのオフセット</h2><span class="tag">「どこまで読んだか」を行番号で記録するだけ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ログ方式ではコンシューマのオフセットを記録するだけで「どこまで処理したか」が分かる（個別承認が不要）。これはDBレプリケーションのログシーケンス番号と同じ原理。ノード障害時は別ノードが最後のオフセットから再開し、記録漏れぶんは再処理される。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ログ方式だと、どこまで処理したか管理しやすそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。パーティションを順に処理するから、「現在のオフセットより小さいものは処理済み、大きいものは未処理」と一目で分かる。だからブローカーは個々のメッセージの承認を追跡しなくていい。定期的にコンシューマのオフセットを記録するだけ。管理のオーバーヘッドが減って、スループットを上げやすい。これは5章のシングルリーダーDBの<span class="term" data-tip="log sequence number=書き込みの進捗を表す連番。">ログシーケンス番号</span>にそっくりだ。ブローカーがリーダーDB、コンシューマがフォロワーみたいに振る舞う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コンシューマのノードが落ちたら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そのパーティションはグループ内の別ノードに割り当てられて、最後に記録されたオフセットから処理を再開する。もし落ちたノードがもっと先まで処理してたのにオフセットを記録してなかったら、そのぶんは再開後にもう一度処理される。この「二重処理」の対処は章の後半でやる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：しおりを挟んでおくだけ</h4>
+      <p>部署は速報台帳を読み進めながら、<b>「ここまで対応済み」というしおり（オフセット）</b>を挟むだけ。中継デスクは1本ずつの「対応完了の返事」を管理しなくていい。担当部署が倒れても、別の部署が<b>しおりの位置から読み再開</b>できます。ただし、倒れる直前にしおりを更新し忘れていたら、その間の速報はもう一度処理されます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「オフセット記録だけで進捗管理できる」ためスループットを上げやすいと理解できる。</li>
+        <li>障害復帰時に「記録漏れぶんが再処理される」と知り、後述の冪等性対策の必要性が見える。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>コンシューマのオフセットで進捗が分かり、個別の承認が不要。</li>
+        <li>DBレプリケーションのログシーケンス番号と同じ原理（ブローカー＝リーダー、コンシューマ＝フォロワー）。</li>
+        <li>ノード障害時は別ノードが最後のオフセットから再開。記録漏れぶんは再処理されうる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.2.4 ===== -->
+<section id="s1124">
+  <div class="sec-head"><div class="sec-num">11.1.2.4</div><div><h2>ディスク領域の利用</h2><span class="tag">台帳は「巨大な循環バッファ」、古いものから上書き</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ログはセグメントに分けて古いものを削除・アーカイブする「巨大な循環バッファ」。HDD 6TB・150MB/秒なら約11時間、実際は数日〜数週間ぶん残せる。全部ディスクに書くのでスループットはほぼ一定（メモリ優先型は履歴量に依存して遅くなる）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも追記し続けたら、いつかディスクが一杯になりますよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>なる。だからログをセグメント（区間）に分けて、古いセグメントは削除するかアーカイブに移す。実質、ログは「固定サイズで、一杯になったら古いものから消える<span class="term" data-tip="circular buffer/ring buffer=一杯になると古いものから上書きされる固定サイズのバッファ。">循環バッファ（リングバッファ）</span>」なんだ。ただしディスク上だから、すごく大きくできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>普通のメッセージングシステムと、何か違いがあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きく違う。ログは「どれだけ履歴を残すか」に関係なく全部ディスクに書くから、スループットがほぼ一定だ。一方、デフォルトでメモリに持ち、あふれたらディスクに書くタイプは、キューが短いうちは速いけど、ディスク書き込みが始まると一気に遅くなる。スループットが「どれだけ履歴を残すか」に依存しちゃうんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：壁一面の速報ボード、古い紙からはがす</h4>
+      <p>速報台帳は<b>壁一面の巨大なボード</b>。新しい速報を貼り続け、一杯になったら一番古い紙からはがして捨てます（循環バッファ）。ボードがとても大きいので、たいてい数日〜数週間ぶんの速報が貼ったまま残せる。しかも貼る作業の速さは「どれだけ古い紙を残しているか」に左右されず、いつも一定なのです。</p>
+    </div>
+
+    <details class="code"><summary>ログのバッファ容量の概算（本書執筆時点の典型値）</summary>
+<pre>- 大容量 HDD の容量          : 6 TB
+- シーケンシャル書き込み速度 : 150 MB/秒
+- 上限速度で書き続けて一杯にするまで : 約 11 時間
+→ つまり「約 11 時間ぶん」をバッファできる（超えたら古いメッセージを上書き）
+<span class="cmt">※ 実際はディスク帯域を使い切ることは稀なので、ふつうは数日〜数週間ぶん残せる</span>
+<span class="cmt">※ HDD やマシンを増やしてもこの「比率」は変わらない</span></pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「数日〜数週間ぶん残せる」と分かれば、コンシューマの遅れにどれだけ猶予があるか見積もれる。</li>
+        <li>ログ型のスループットが一定という性質を、性能予測に使える。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ログはセグメント分割＋古いもの削除で、実質「巨大な循環（リング）バッファ」。</li>
+        <li>HDD 6TB・150MB/秒で約11時間、実用上は数日〜数週間ぶん保持できる。</li>
+        <li>全部ディスクに書くのでスループットはほぼ一定。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.2.5 ===== -->
+<section id="s1125">
+  <div class="sec-head"><div class="sec-num">11.1.2.5</div><div><h2>プロデューサにコンシューマがついて行けない場合</h2><span class="tag">遅れすぎると読めないが、他には影響しない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ログ方式は「巨大だが固定サイズのバッファ」。コンシューマが遅れすぎると古いメッセージは読めなくなるが、遅れを監視して警告できるし猶予も大きい。1つのコンシューマが遅れても他に影響しないので、本番ログを実験用に消費しても安全。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コンシューマが遅れて、ログの古い部分が消されちゃったら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3択（ドロップ／バッファリング／バックプレッシャー）で言えば、ログ方式は「巨大だが固定サイズのバッファを使うバッファリング」だ。コンシューマが大きく遅れて、必要なメッセージが保持期間より古くなると読めなくなる。事実上、バッファに収まらない古いメッセージをドロップするわけだ。対策は、コンシューマが先頭からどれだけ遅れてるかを監視して、遅れが大きくなったら警告を出すこと。バッファが大きいから、運用担当者が直す時間は十分にある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もし1つのコンシューマが落ちたら、他に影響しますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここがログ方式の大きな利点でね。あるコンシューマが大きく遅れてメッセージを見落とし始めても、影響を受けるのはそのコンシューマだけ。他のコンシューマへのサービスは損なわれない。だから本番のログを、実験・開発・テスト・デバッグのために消費しても、本番サービスをあまり心配しなくていい。旧来型では、止めたコンシューマのキューにメッセージがたまって、動いてるコンシューマのメモリを奪っちゃうから対照的だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：ボードからはがれる前に読みに来て</h4>
+      <p>遅れがちな部署が、速報ボードの古い紙が<b>はがされる前に読みに来られなかった</b>ら、その速報は読めません。でもボードはとても大きいので猶予は十分。配信室は「あの部署、ずいぶん遅れてるぞ」と監視して警告を出せます。しかも、その部署が遅れても<b>他の部署はまったく困らない</b>。だから新しい実験部署が本番ボードを自由に読んで練習しても安全なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>コンシューマの遅れを監視・警告する運用設計ができる。</li>
+        <li>「コンシューマ同士が独立」と知り、本番ログを実験・開発に安全に使い回せる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ログ方式は巨大固定サイズのバッファ。遅れすぎると古いメッセージはドロップされる。</li>
+        <li>遅れを監視して警告でき、修正の猶予は大きい。</li>
+        <li>コンシューマ同士は独立で、1つが遅れても他に影響しない（実験消費が安全）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11.1.2.6 ===== -->
+<section id="s1126">
+  <div class="sec-head"><div class="sec-num">11.1.2.6</div><div><h2>古いメッセージのリプレイ</h2><span class="tag">台帳をさかのぼって、何度でも読み直す</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ログ方式の消費はリードオンリーで、副作用はオフセットの前進だけ。オフセットを巻き戻せば古いメッセージをリプレイ（再処理）でき、コードを直しながら何度でも繰り返せる。バッチ処理同様、実験やバグ回復が容易になる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>AMQP/JMSは受信が破壊的でしたよね。ログ方式は違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>全然違う。ログ方式の消費は「ファイルの読み取り」に近くて、ログを書き換えないリードオンリーの操作だ。メッセージを処理して生じる唯一の副作用は、コンシューマのオフセットが前進することだけ。しかもそのオフセットはコンシューマが制御してるから、自由にいじれる。だから<span class="term" data-tip="replay=過去のメッセージを巻き戻してもう一度処理すること。">リプレイ（再処理）</span>ができる。昨日のオフセットから処理を始めて出力を別の場所に書けば、昨日ぶんを再処理できる。コードを書き換えながら何度でも繰り返せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それ、バッチ処理に似てますね。入力を壊さずに何度も実験できる感じ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさに。リプレイができるおかげで、導出データが入力データと明確に分離される。実験を増やせるし、エラーやバグからの回復もしやすい。だからログベースのメッセージングは、組織内のいろんなデータフローをつなぐ道具としても優秀なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📡 たとえ話：しおりを昨日のページに戻して読み直す</h4>
+      <p>速報台帳は読んでも消えないので、部署は自分の<b>しおり（オフセット）を昨日のページまで戻して、もう一度読み直す</b>ことができます。集計の計算式を直してから昨日の速報を全部やり直し、正しいまとめ表を作り直す、なんてことが何度でもできる。元の台帳（入力）は無傷のまま。だから安心して実験できるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>バグを直してから過去のイベントを再処理し、正しい結果に作り直せる。</li>
+        <li>新しい導出ビューを「過去のログを最初から再生して」ゼロから構築できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ログ消費はリードオンリー。副作用はオフセット前進のみ。</li>
+        <li>オフセットを巻き戻してリプレイ（再処理）でき、コード修正と再実行を繰り返せる。</li>
+        <li>導出データと入力が分離され、実験・バグ回復が容易（組織のデータフロー結合に有用）。</li>
+      </ul>
+    </div>
+  </div>
+</section>

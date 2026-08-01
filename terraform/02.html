@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2章 Terraformをはじめよう — やさしい図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">詳解 Terraform 第3版 ・ 2章</span>
+  <h1>Terraformをはじめよう<br><span style="font-size:18px;color:var(--sub);font-weight:400">— 更地に小屋を1軒建てて、長屋＋門番のある街にするまで</span></h1>
+  <p>設計図（コード）を1枚書いて実行すると、クラウド上に本物の建物（サーバ）が建つ。1軒建てる → 住めるようにする → 設定を変えやすくする → 何戸も建てて長屋にする → 入り口に門番を置く → 最後に全部きれいに取り壊す、という流れを最初から最後まで一通り体験します。</p>
+  <p style="margin-top:14px;color:#bfe6ff"><b>プログラミング未経験でも大丈夫。</b>専門用語にはマウスを乗せると説明が出ます。コードは全部「読まなくてOK」の折りたたみ。たとえ話は全部「建築」の世界でそろえてあります。</p>
+  <div class="badge-row">
+    <span class="badge">🏗️ メタファー: 更地→小屋→家→長屋→門番</span>
+    <span class="badge">📦 全9セクション網羅</span>
+    <span class="badge">✏️ 理解度チェック5問</span>
+    <span class="badge">🔰 非エンジニアOK</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#s0">2.0 なぜAWSという土地で学ぶのか</a>
+  <a href="#s1">2.1 AWSアカウントのセットアップ（更地を借りる）</a>
+  <a href="#s2">2.2 Terraformのインストール（道具を手に入れる）</a>
+  <a href="#s3">2.3 サーバ1台のデプロイ（最初の小屋を1軒建てる）</a>
+  <a href="#s4">2.4 Webサーバ1台のデプロイ（小屋を住める家に）</a>
+  <a href="#s5">2.5 設定変更可能なWebサーバ（寸法を1か所で管理）</a>
+  <a href="#s6">2.6 Webサーバのクラスタ（1軒を長屋にする）</a>
+  <a href="#s7">2.7 ロードバランサのデプロイ（入り口に門番を置く）</a>
+  <a href="#s8">2.8 後片付け（街を更地に戻す）</a>
+  <a href="#s9">2.9 まとめ</a>
+  <a class="sub" href="#wrapup">🔁 章のまとめ（弟子の振り返り）</a>
+  <a class="sub" href="#quiz">✏️ 理解度チェック</a>
+  <a class="sub" href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方</h2>
+  <div class="rows">
+    <div class="row"><span class="gi">🟢</span><div><b>上から順に読むだけでOK</b><p>更地に小屋を建て、住める家にし、長屋＋門番のある街へ。物語の順に進みます。</p></div></div>
+    <div class="row"><span class="gi">💬</span><div><b>会話で学ぶ</b><p>青い吹き出しが弟子のハル、オレンジの吹き出しが師匠の棟梁。素朴な疑問から理解が進みます。</p></div></div>
+    <div class="row"><span class="gi">🟠</span><div><b>たとえ話はぜんぶ「建築」で統一</b><p>このページのたとえ話は、すべて<b>「更地に最初の1軒の小屋を建て、住める家にし、長屋（サーバ群）＋入り口の門番（ロードバランサ）まで増やす建築」</b>の世界の言葉だけで書いています。</p></div></div>
+    <div class="row"><span class="gi">🟡</span><div><b>コードは読み飛ばしてOK</b><p>黄色い「読まなくてOK」バッジ付きの折りたたみがコードです。閉じたまま進んでも内容は分かります。点線の用語はマウスを乗せると意味が出ます。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章で出てくる専門用語を、建築のたとえでやさしく言い換えました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">Terraform <span>テラフォーム</span></div><p>設計図（コード）を書くと、その通りにクラウド上に建物（サーバなど）を建ててくれる道具。</p></div>
+    <div class="item"><div class="w">AWS <span>エーダブリューエス</span></div><p>世界一大きな「貸し土地屋さん」。クラウド上の土地を貸してくれる。この本ではずっとここを使う。</p></div>
+    <div class="item"><div class="w">プロバイダ <span>provider</span></div><p>建物を建てる土地を貸す業者の指定。「AWSの、この地域に建てる」と宣言する部分。</p></div>
+    <div class="item"><div class="w">リソース <span>resource</span></div><p>建てる建物そのもの。サーバ・門・門番など、Terraformが作る物のこと。</p></div>
+    <div class="item"><div class="w">EC2インスタンス <span>aws_instance</span></div><p>クラウド上に建てる仮想のサーバ1台。この章でいう「小屋」。</p></div>
+    <div class="item"><div class="w">AMI <span>Amazon Machine Image</span></div><p>サーバの土台になるOSや初期状態の型。建物の「完成見本の型紙」。</p></div>
+    <div class="item"><div class="w">IAM <span>アイアム</span></div><p>誰が何をできるかを管理する仕組み。権限を絞った作業員アカウントを作るのに使う。</p></div>
+    <div class="item"><div class="w">VPC <span>仮想プライベートクラウド</span></div><p>AWSの広い土地の中に持つ、自分専用のフェンスで囲った敷地。建物はこの中に建つ。</p></div>
+    <div class="item"><div class="w">セキュリティグループ <span>security group</span></div><p>建物の出入りを管理する門（ファイアウォール）。どのポートに誰が入れるかを決める。</p></div>
+    <div class="item"><div class="w">入力変数 <span>variable</span></div><p>設計図に外から値を渡せる差し込み口。同じ値を1か所で管理するのに使う。</p></div>
+    <div class="item"><div class="w">出力変数 <span>output</span></div><p>設計図の外に値（サーバの住所など）を返す出口。</p></div>
+    <div class="item"><div class="w">データソース <span>data source</span></div><p>AWSから読み取り専用で情報を取り寄せる仕組み。建物は作らず、既存の情報を取得するだけ。</p></div>
+    <div class="item"><div class="w">ASG <span>Auto Scalingグループ</span></div><p>サーバの長屋を自動管理する大家。戸の起動・監視・建て替え・戸数調整を全部やってくれる。</p></div>
+    <div class="item"><div class="w">ロードバランサ <span>ELB / ALB</span></div><p>客を複数のサーバに公平に振り分ける「門番」。入り口を1つにまとめる。</p></div>
+    <div class="item"><div class="w">DRY原則 <span>Don't Repeat Yourself</span></div><p>同じ情報を繰り返し書くな、という原則。重複は直し忘れ事故のもと。</p></div>
+    <div class="item"><div class="w">Infrastructure as Code <span>IaC</span></div><p>インフラ（建物）をコード（設計図）として管理する考え方。コードがあれば何度でも再現できる。</p></div>
+  </div>
+</div>
+
+<!-- ========== 2.0 ========== -->
+<section id="s0">
+  <div class="sec-head"><div class="sec-num">2.0</div><div><h2>なぜAWSという土地で学ぶのか</h2><span class="tag">どこの土地を借りて練習するか</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Terraformはいろんなクラウドに使えるが、この本では一番人気で機能が豊富、しかも無料枠で練習できる<span class="term" data-tip="Amazon Web Services。世界一大きなクラウドの貸し土地屋さん。">AWS</span>という土地を使う。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ハル、ここが今日の現場だ。見てごらん。何もない更地だろう。お前が「設計図」を1枚書くだけで、この更地に勝手に小屋が建つ。道具の名前はTerraformだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>設計図を書くだけで建つ？魔法ですか？そもそもこの「更地」って、誰の土地なんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>魔法じゃない、仕組みだ。土地はAWSという世界一大きな「貸し土地屋さん」の区画だよ。TerraformはAzureやGoogle Cloud、自前の土地にも建てられるが、この本ではずっとAWSを使う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでAWSなんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>理由は3つだ。①シェア32%で一番人気、②建てられる建物の種類が豊富、③最初の1年は無料枠があってほぼタダで練習できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>人気で・道具が揃ってて・しかもタダ同然で練習できる土地だから、ってことですね！</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>家を建てる練習をするなら、まずどこの土地を借りるか決める。AWSは「日本一お客が多くて、建築資材も道具も何でも揃っていて、しかも最初の1年は地代タダ」という、練習にうってつけの貸し土地屋さん。だからこの本では、ずっとこの土地で建築の練習をする。</p></div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🖥️</div><h4>EC2</h4><p>仮想サーバを建てる。この章の「小屋」にあたる。</p><span class="pill">建物=サーバ</span></div>
+      <div class="mini"><div class="ic">🏘️</div><h4>ASG</h4><p>サーバの長屋をまとめて自動管理する。</p><span class="pill">長屋の大家</span></div>
+      <div class="mini"><div class="ic">🚪</div><h4>ELB</h4><p>複数の建物に客を振り分ける門番（ロードバランサ）。</p><span class="pill">入り口の門番</span></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>どのクラウドでも考え方は同じなので、AWSで覚えれば他にも応用できる。</li>
+      <li>無料枠の範囲で安心して練習できる。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li>Terraformは複数のクラウドに対応する道具。</li>
+      <li>この本ではAWSを使う。理由はシェア最大・機能豊富・無料枠あり。</li>
+      <li>EC2＝仮想サーバ、ASG＝サーバの長屋管理、ELB＝門番、と覚えておく。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.1 ========== -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">2.1</div><div><h2>AWSアカウントのセットアップ</h2><span class="tag">更地を借りる手続き</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>大家さんの鍵（<span class="term" data-tip="root user。土地の大家さん本人。ほぼ何でもできる強い権限を持つ。">ルートユーザ</span>）は最初の1回だけ。すぐに権限を絞った作業員（<span class="term" data-tip="IAMユーザ。権限を限定した作業員アカウント。">IAMユーザ</span>）を作り、その名札番号と合言葉（アクセスキー）を安全に保管する。建物は自分専用の敷地（デフォルトVPC）に建つ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>土地を借りるには、まず何をすればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>AWSの登録ページで申し込む。登録直後のお前は「ルートユーザ（土地の大家さん本人）」だ。これは土地のほぼ全部に手を出せる強い権限を持っている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>強いなら、ずっとそれを使えばいいじゃないですか。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そこが落とし穴だ。強すぎる鍵を毎日持ち歩くのは危ない。落としたら土地を全部乗っ取られる。だから大家さんの鍵を使う目的はただ1つ、「権限の限られた作業員アカウントを作ること」だけ。作ったらすぐ乗り換える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>作業員アカウントってどうやって作るんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="Identity and Access Management。誰が何をできるかを管理する仕組み。">IAM</span>というサービスを使う。IAMの画面 → ユーザー → ユーザーを追加 → 名前を入れて「プログラムによるアクセス」を選ぶ。これで新しい作業員ができる。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ただし作りたての作業員は何の権限もない。仕事をさせるには<span class="term" data-tip="IAMポリシー。何ができて何ができないかを書いたJSONの許可証。">IAMポリシー</span>という許可証を渡す。練習用なら<span class="term" data-tip="管理者権限の既製の許可証。">AdministratorAccess</span>という既製品を1枚付けるのが一番楽だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>許可証を付けたら完成ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「ユーザーの作成」を押すと身分証が2枚出る。<span class="term" data-tip="access key ID。作業員の名札番号。">アクセスキーID</span>と<span class="term" data-tip="secret access key。作業員の秘密の合言葉。画面を閉じると二度と表示されない。">シークレットアクセスキー</span>だ。画面を閉じると二度と表示されない。すぐ安全な場所に保管して、絶対に他人に見せるな。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>土地を借りた直後、お前の手には「敷地の何もかもを開けられるマスターキー（大家さんの鍵）」が握らされている。でもこの鍵を毎日工事に持って出るのは危険だ。落とせば敷地ごと乗っ取られる。だからこのマスターキーで最初にやるのは、「特定の工事だけできる作業員用の鍵を1本作ること」だけ。普段はその作業員の鍵で工事をする。作業員には「これとこれをしてよい」という許可証（IAMポリシー）を持たせ、その作業員の名札番号と合言葉は金庫にしまう。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、AWSの管理画面で行う「画面操作」の流れをメモしたものです（実際に打つコマンドではありません）。</p>
+    <details class="code"><summary>画面操作の流れ（参考）</summary><pre><span class="cmt"># AWSの管理画面でやる作業（コマンドではなく画面操作）の流れ</span>
+<span class="cmt"># 1. ルートユーザでログイン</span>
+<span class="cmt"># 2. IAM画面を開く → ユーザーを追加</span>
+<span class="cmt"># 3. AdministratorAccess の許可証を付ける</span>
+<span class="cmt"># 4. アクセスキーID と シークレットアクセスキー を保存する（二度と表示されない！）</span></pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>もう1つ覚えておくこと。この本の例はすべて、お前のアカウントの「デフォルトVPC」という区画の中に建つ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>VPCって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="Virtual Private Cloud。仮想的に区切られた自分専用の敷地。">VPC</span>だ。AWSの広い土地の中に、自分専用のフェンスで囲った敷地を持つようなもの。2013年以降のアカウントには最初から「デフォルトVPC（既定の敷地）」がある。指定しなければ建物は自動でそこに建つ。うっかり消したら、別のリージョンを使うか、管理画面で作り直せばいい。</div></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>強すぎる鍵を日常使いしないことで、乗っ取り被害を最小限にできる。</li>
+      <li>アクセスキーを用意しておくと、後でTerraformがAWSの土地に建物を建てられる。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li>ルートユーザ＝大家さん本人。作業員を作る目的だけに使う。</li>
+      <li>IAMユーザ＝権限を絞った作業員。IAMポリシー（許可証）を付けて初めて仕事ができる。</li>
+      <li>練習用なら<code>AdministratorAccess</code>を付けるのが一番簡単。</li>
+      <li>アクセスキーID／シークレットアクセスキーは二度と表示されないので即保管・他人に見せない。</li>
+      <li>建物はデフォルトVPC（自分専用の敷地）の中に建つ。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.2 ========== -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">2.2</div><div><h2>Terraformのインストール</h2><span class="tag">道具を手に入れる</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>Terraform本体を入れて<code>terraform</code>で動作確認する。AWSの名札番号と合言葉を<span class="term" data-tip="環境変数。ターミナルに一時的に貼っておく付箋のようなもの。">環境変数</span>（一時的な付箋）としてターミナルに貼ると、道具がAWSの土地を操作できるようになる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>土地は借りました。次は道具ですね。Terraform本体はどう手に入れるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>お前のパソコンの「道具の宅配屋さん（パッケージマネージャ）」を使うのが一番楽だ。MacならHomebrew、WindowsならChocolatey、Linuxは公式ドキュメントか手動ダウンロードだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ちゃんと使えるか、どう確かめるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ただ<code>terraform</code>と打ってみろ。使い方の一覧が出れば成功だ。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>土地は借りた。次は工具一式（Terraform本体）を手に入れる番だ。一番楽なのは「道具の宅配屋さん」に頼むこと。手に入れたら、まず工具を握って空振りしてみて、ちゃんと動くか確かめる。さらに、この工具で借りた土地に入るには「作業員の名札番号と合言葉」を工具に教えておく必要がある。これは作業現場の入り口に貼る付箋のようなもので、現場（ターミナル）を閉じると剥がれてしまう。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、MacのHomebrewでTerraform本体を取り寄せます。</p>
+    <details class="code"><summary>Macでインストール</summary><pre><span class="cmt"># MacのHomebrewでTerraformを取り寄せる</span>
+$ brew tap hashicorp/tap
+$ brew install hashicorp/tap/terraform</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、WindowsのChocolateyでTerraform本体を取り寄せます。</p>
+    <details class="code"><summary>Windowsでインストール</summary><pre><span class="cmt"># WindowsのChocolateyでTerraformを取り寄せる</span>
+$ choco install terraform</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>手動でも入れられる。公式サイトからOSに合ったZIPを落として展開すると<code>terraform</code>という1個の道具が出る。それを<code>PATH</code>という「どこからでも呼び出せる道具棚」に置く。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、道具がちゃんと使えるか確認します。使い方の一覧が出ればOKです。</p>
+    <details class="code"><summary>動作確認と主なコマンド一覧</summary><pre><span class="cmt"># 道具が使えるか確認する。使い方の一覧が出ればOK</span>
+$ terraform
+Usage: terraform [global options] &lt;subcommand&gt; [args]
+
+Main commands:
+  init          <span class="cmt">作業フォルダを他のコマンドが使えるよう準備する</span>
+  validate      <span class="cmt">設定が正しいか検査する</span>
+  plan          <span class="cmt">今の設定で必要になる変更を表示する</span>
+  apply         <span class="cmt">インフラを作成・更新する</span>
+  destroy       <span class="cmt">前に作ったインフラを取り壊す</span>
+(...)</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>道具は使えました。でもこの道具、どうやって私のAWSの土地に入るんですか？合言葉とか要りますよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いいところに気づいた。さっき保存したアクセスキーIDとシークレットアクセスキーを「環境変数」という形で道具に渡す。環境変数は、ターミナルに一時的に貼っておく付箋みたいなものだ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、AWSの名札番号と合言葉を、道具に渡すための付箋としてターミナルに貼ります（Mac・Linux）。</p>
+    <details class="code"><summary>認証情報を環境変数で渡す（Mac・Linux）</summary><pre><span class="cmt"># AWSの名札番号と合言葉を、道具に渡すための付箋として貼る</span>
+$ export AWS_ACCESS_KEY_ID=(あなたのアクセスキーID)
+$ export AWS_SECRET_ACCESS_KEY=(あなたのシークレットアクセスキー)</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、同じことをWindowsのコマンドプロンプトで行います。</p>
+    <details class="code"><summary>認証情報を環境変数で渡す（Windows）</summary><pre><span class="cmt"># Windowsの場合</span>
+$ set AWS_ACCESS_KEY_ID=(あなたのアクセスキーID)
+$ set AWS_SECRET_ACCESS_KEY=(あなたのシークレットアクセスキー)</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これ、パソコンを再起動したら消えちゃいませんか？他の渡し方もあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そのとおり。この付箋は今開いているターミナルだけのもの。再起動したら貼り直す。他にも<code>aws configure</code>で<code>$HOME/.aws/</code>に保存する方法や、IAMロールで認証する方法もある。詳しくは6章だ。今は環境変数で十分。</div></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>道具がないと設計図を実行できない。</li>
+      <li>認証情報を渡すことで、はじめて自分のAWSに建物を建てられる。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li>インストールはパッケージマネージャ（Homebrew/Chocolatey）か手動ダウンロードで行う。</li>
+      <li><code>terraform</code>と打って使い方が出れば成功。</li>
+      <li>アクセスキーは<code>AWS_ACCESS_KEY_ID</code>と<code>AWS_SECRET_ACCESS_KEY</code>という環境変数で渡す。</li>
+      <li>環境変数は今のターミナル限り。再起動したら貼り直す。</li>
+      <li>他にも<code>~/.aws/</code>の認証情報やIAMロールでの認証もできる（6章で詳説）。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.3 ========== -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">2.3</div><div><h2>サーバ1台のデプロイ</h2><span class="tag">更地に最初の小屋を1軒建てる</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b><code>.tf</code>ファイルに「欲しい建物」を<span class="term" data-tip="宣言型。「どう建てるか」ではなく「どんな建物が欲しいか」だけを書く方式。手順はTerraformが考える。">宣言型</span>で書き、<code>init</code>で準備、<code>plan</code>で予習、<code>apply</code>で建築する。Terraformは建てたものを覚えているので、設計図を変えると差分だけを反映する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いよいよ建てるんですね！設計図ってどう書くんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>設計図は拡張子<code>.tf</code>のファイルに、<span class="term" data-tip="HashiCorp Configuration Language。Terraform専用の設計図言語。">HCL</span>という言葉で書く。HCLは「宣言型言語」だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>宣言型？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「どう建てるか」じゃなく「どんな建物が欲しいか」だけ書けばいい言語だ。「小屋が1軒欲しい」と書けば、釘を打つ順番はTerraformが勝手に考える。手順を一つ一つ書く「手続き型」とは逆だ。書くエディタはメモ帳でもいいが、VS Codeなど多くが色付けに対応している（検索は「HCL」で）。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>普通の設計図は「まず基礎を打って、次に柱を立てて…」と手順を細かく書く（手続き型）。Terraformの設計図はそうじゃない。「ここに小屋を1軒、大きさはこれくらい」と<b>完成形の希望だけ</b>を書く（宣言型）。すると棟梁（Terraform）が、釘を打つ順番から何から全部考えて建ててくれる。お前は「欲しい家の姿」だけ伝えればいい。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、設計図の冒頭で「どの貸し土地屋（AWS）の、どの地域に建てるか」を宣言します。</p>
+    <details class="code"><summary>provider（業者と地域の宣言）</summary><pre><span class="cmt"># provider（プロバイダ）＝建物を建てる土地を貸す業者の指定</span>
+<span class="kw">provider</span> <span class="str">"aws"</span> {
+  region = <span class="str">"us-east-2"</span>   <span class="cmt"># ① 建てる地域。us-east-2 はアメリカ・オハイオ</span>
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>region</code>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="region。地理的に離れた土地のかたまり。例: us-east-2(オハイオ)、ap-northeast-1(東京)。">リージョン</span>（地域）だ。さらに各リージョンの中に<span class="term" data-tip="availability zone。略してAZ。同じ地域内の別々のデータセンタ。">アベイラビリティゾーン</span>という別々の建物群がある。この本は原文どおりus-east-2を使う（日本には東京・大阪リージョンもある）。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、建てたい建物（リソース）を書くときの一般的な型です。</p>
+    <details class="code"><summary>リソースの書き方（型）</summary><pre><span class="cmt"># 建物（リソース）を書くときの一般的な型</span>
+<span class="kw">resource</span> <span class="str">"&lt;プロバイダ&gt;_&lt;タイプ&gt;"</span> <span class="str">"&lt;名前&gt;"</span> {
+  [設定 ...]
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、更地に仮想サーバ（小屋）を1台建てる設計図です。</p>
+    <details class="code"><summary>サーバ1台を建てる設計図</summary><pre><span class="cmt"># 更地に仮想サーバ（EC2インスタンス）を1台建てる設計図</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami           = <span class="str">"ami-0fb653ca2d3203ac1"</span>   <span class="cmt"># ① 設計テンプレート。中身はUbuntu 20.04</span>
+  instance_type = <span class="str">"t2.micro"</span>                <span class="cmt"># ② 建物の大きさ。一番小さい無料枠サイズ</span>
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>ami</code>と<code>instance_type</code>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>ami</code>は<span class="term" data-tip="Amazon Machine Image。サーバを動かす土台のOSや初期状態の型。">AMI</span>。建物でいう「内装まで決まった完成見本の型紙」だ。注意点として<b>AMI IDは地域ごとに違う</b>。<code>region</code>を変えるなら自分で探して書き換える（自動取得は7章）。<code>instance_type</code>はサーバの大きさ。<code>t2.micro</code>はCPU1個・メモリ1GBの無料枠だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>引数って全部覚えなきゃダメですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>無理だよ。膨大にある。全部暗記する人間はいない。その都度<a href="#" style="color:var(--accent2)">公式ドキュメント</a>を見る。わしも何年もやってるが、いまだに1日に何度も見るよ。</div></div>
+    </div>
+
+    <h3 class="blk">ワークフロー: init → plan → apply</h3>
+    <p style="font-size:13.5px;color:var(--sub)">設計図ができたら、この3ステップで実行します。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">init</div><div class="line"></div></div><div class="body"><h4>準備する</h4><p>設計図を読んで「AWSを使うんだな」と判断し、AWS用のコードをネットから取り寄せて<code>.terraform</code>フォルダに置く。最初の1回。<span class="term" data-tip="idempotent。何回やっても結果が同じこと。">冪等</span>なので何度実行してもOK。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">plan</div><div class="line"></div></div><div class="body"><h4>予習する</h4><p>「設計図どおりに建てたら何が起きるか」を、建てる前に差分で見せる。<span class="up">+</span>は追加、<span class="down">-</span>は削除、<span style="color:var(--warn)">~</span>は変更。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">apply</div></div><div class="body"><h4>実行する</h4><p>本当に建てる。同じ差分を見せて「本当にやっていいか？」と聞き、<code>yes</code>で建築開始。</p></div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p><b>init</b>は工事の前に「この現場にはAWS用の専門工具が要るな」と判断して、その工具を倉庫から取り寄せて作業小屋に並べる準備作業。<b>plan</b>は、いきなり建て始める前に「この設計図だと小屋が1軒増えますよ。他は何も壊しませんよ」と<b>工事前に見積書を見せてくれる予習</b>。<b>apply</b>は見積に納得して「やってくれ（yes）」と言ってから実際に建てる本番工事だ。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、作業フォルダを準備します（AWS用のコードを取り寄せる）。</p>
+    <details class="code"><summary>terraform init</summary><pre><span class="cmt"># 作業フォルダを準備する（最初の1回。プロバイダのコードを取り寄せる）</span>
+$ terraform init
+
+Initializing the backend...
+Initializing provider plugins...
+- Reusing previous version of hashicorp/aws from the dependency lock file
+- Using hashicorp/aws v4.19.0 from the shared cache directory
+
+Terraform has been successfully initialized!</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>init</code>って何をしてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>terraform</code>本体にはAWSやAzureを操作する専門コードは入っていない。<code>init</code>は設計図を読んでAWS用のコードを取り寄せて<code>.terraform</code>に置く。取り寄せた情報は<code>.terraform.lock.hcl</code>という鍵ファイルに記録される（8章で詳説）。新しく始めたら<code>init</code>、何度やっても問題ない、とだけ覚えておけ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、実際に建てる前に「何が起きるか」を予習表示します。</p>
+    <details class="code"><summary>terraform plan</summary><pre><span class="cmt"># 実際に建てる前に、何が起きるかを予習する</span>
+$ terraform plan
+(...)
+Terraform will perform the following actions:
+
+  <span class="cmt"># aws_instance.example will be created</span>
+  <span class="num">+</span> resource <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+      <span class="num">+</span> ami                          = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+      <span class="num">+</span> arn                          = (known after apply)
+      <span class="num">+</span> instance_type                = <span class="str">"t2.micro"</span>
+      (...)
+  }
+
+Plan: 1 to add, 0 to change, 0 to destroy.</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>プラス（<code>+</code>）の記号がいっぱいですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>plan</code>の出力は<code>git</code>の差分にそっくりだ。<code>+</code>は作成、<code>-</code>は削除、<code>~</code>は変更。最後の<code>Plan: 1 to add, 0 to change, 0 to destroy</code>は「1個追加・0変更・0削除」。狙いどおり1台だけ建てようとしてる。<code>(known after apply)</code>は「実際に建ててみないと決まらない値」だ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、設計図を本当に実行して建て、最後に確認を求めます。</p>
+    <details class="code"><summary>terraform apply（確認まで）</summary><pre><span class="cmt"># 設計図を本当に実行して建てる</span>
+$ terraform apply
+(...)
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Only 'yes' will be accepted to approve.
+
+  Enter a value:</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>apply</code>は<code>plan</code>とほぼ同じものを出して、最後に確認してきますね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。だから<code>plan</code>はコードレビュー（10章）のような別チェックに使い、普段は<code>apply</code>を直接実行してその場で差分をレビューすればいい。<code>yes</code>と打ってEnterだ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、yesと打ったあとの建築の様子です。</p>
+    <details class="code"><summary>建築の実行ログ</summary><pre>  Enter a value: yes
+
+aws_instance.example: Creating...
+aws_instance.example: Still creating... [10s elapsed]
+aws_instance.example: Still creating... [20s elapsed]
+aws_instance.example: Creation complete after 38s [id=i-07e2a3e006d785906]
+
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>おめでとう。更地に小屋が1軒建った。EC2の管理画面を開けば本当に1台立っているのが確認できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも棟梁、この小屋、表札がないですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>よく気づいた。名前を付けるには<span class="term" data-tip="tag。建物に貼る名札。管理画面に表示される。">tags</span>（名札）を足す。もう一度<code>apply</code>してみろ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、小屋に「terraform-example」という表札（名札）を貼ります。</p>
+    <details class="code"><summary>tags（表札）を足す設計図</summary><pre><span class="cmt"># 小屋に「terraform-example」という表札（Nameタグ）を貼る</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami           = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  instance_type = <span class="str">"t2.micro"</span>
+
+  tags = {
+    Name = <span class="str">"terraform-example"</span>   <span class="cmt"># ① 管理画面に表示される建物の名前</span>
+  }
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、表札を足して再実行したときの様子です。今度は新築ではなく既存の小屋を「その場で更新」します。</p>
+    <details class="code"><summary>再apply（その場で更新）</summary><pre><span class="cmt"># 表札を足してから再実行。新築ではなく既存の小屋を「その場で更新」する</span>
+$ terraform apply
+
+aws_instance.example: Refreshing state...
+(...)
+  <span class="cmt"># aws_instance.example will be updated in-place</span>
+  ~ resource <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+        ami               = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+        instance_state    = <span class="str">"running"</span>
+      <span class="num">+</span> tags              = {
+          <span class="num">+</span> <span class="str">"Name"</span> = <span class="str">"terraform-example"</span>
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あれっ、<code>Refreshing state...</code>って出てます。今度は新築じゃなくて「その場で更新」なんですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ここが大事だ。Terraformは「自分が今まで何を建てたか」を全部覚えている。だから<code>apply</code>のとき<code>Refreshing state...</code>（今の状態を確認中）と出て、すでに小屋があると知っている。そして「設計図」と「実際に建っているもの」の差分だけを表示する。今回は表札を足すだけだから新築せずその場で貼る。これが宣言型の利点だ。</div></div>
+    </div>
+
+    <h3 class="blk">設計図をGitで管理する</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>設計図が動いたら、Gitでバージョン管理しよう。チームで共有でき、変更履歴を全部追え、デバッグ時にコミットログが助けになる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、設計図とロックファイルをGitに記録します。</p>
+    <details class="code"><summary>Gitで記録する</summary><pre><span class="cmt"># 設計図とロックファイルをGitで記録する</span>
+git init
+git add main.tf .terraform.lock.hcl
+git commit -m <span class="str">"Initial commit"</span></pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、Gitに入れないファイルを書いた <code>.gitignore</code> の中身です。</p>
+    <details class="code"><summary>.gitignore の中身</summary><pre><span class="cmt"># Gitで管理しないファイルを書いた .gitignore の中身</span>
+.terraform
+*.tfstate
+*.tfstate.backup</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでこれらは入れちゃダメなんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>.terraform</code>はただの作業フォルダだから記録する意味がない。<code>*.tfstate</code>はTerraformが「何を建てたか」を記録する<span class="term" data-tip="状態ファイル。Terraformが何を建てたかを記録するファイル。">状態ファイル</span>で、これをコミットすべきでない理由は3章で説明する。<code>.gitignore</code>自体は記録しておこう。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、物リスト自体をGitに記録します。</p>
+    <details class="code"><summary>.gitignore を記録</summary><pre><span class="cmt"># 物リスト自体は記録する</span>
+git add .gitignore
+git commit -m <span class="str">"Add a .gitignore file"</span></pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、GitHubの共有先(origin)を登録し、コミットを送受信します。</p>
+    <details class="code"><summary>GitHubと連携（push/pull）</summary><pre><span class="cmt"># 共有先(origin)としてGitHubのリポジトリを登録する</span>
+git remote add origin git@github.com:&lt;ユーザ名&gt;/&lt;リポジトリ名&gt;.git
+
+<span class="cmt"># 自分のコミットを共有先に送る(プッシュ)</span>
+git push origin main
+
+<span class="cmt"># 仲間が加えた変更を取り込む(プル)</span>
+git pull origin main</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>作業中は<code>git commit</code>と<code>git push</code>をこまめに。チームで協力できるだけでなく、インフラの全変更がコミットログに残り、デバッグが格段に楽になる（チーム運用は10章で詳説）。</div></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>「欲しい姿」だけ書けば手順はTerraformが考えるので、人為ミスが減る。</li>
+      <li><code>plan</code>で予習できるので、本番前に間違いを潰せる。</li>
+      <li>設計図をGit管理すれば履歴とチーム共有が手に入る。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li>設計図はHCLで書く宣言型。<code>provider</code>で土地、<code>resource</code>で建物を宣言する。</li>
+      <li><code>aws_instance</code>の主な引数は<code>ami</code>（OSの型）と<code>instance_type</code>（サーバの大きさ）。</li>
+      <li>ワークフローは<code>init</code>（準備）→<code>plan</code>（予習）→<code>apply</code>（実行）。</li>
+      <li>差分記号は<code>+</code>追加・<code>-</code>削除・<code>~</code>変更。<code>(known after apply)</code>は実行後に決まる値。</li>
+      <li>Terraformは状態を覚えているので、変更時は差分だけ反映（その場更新 or 置き換え）。</li>
+      <li>設計図とロックファイルはGit管理、<code>.terraform</code>と<code>*.tfstate</code>は<code>.gitignore</code>で除外。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.4 ========== -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">2.4</div><div><h2>Webサーバ1台のデプロイ</h2><span class="tag">小屋を人が住める家にする</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>素のサーバに<span class="term" data-tip="User Data。サーバが初回起動時に自動実行する仕込みスクリプト。">ユーザーデータ</span>で「初回起動時にWebサーバを立てる仕込み」を渡し、<span class="term" data-tip="security group。建物の出入りを管理する門・ファイアウォール。">セキュリティグループ</span>という門でポート8080を開け、参照でそれを小屋に取り付ける。仕込みを変えると小屋は丸ごと建て替えになる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>小屋は建ちましたが、ただの箱ですよね。中で何か動かしたいです。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>次はこの小屋でWebサーバを動かす。目標は「HTTPリクエストに応答する、できるだけシンプルなWeb」だ。例を単純にするため、いつでも「Hello, World」だけ返す超簡単なサーバを動かす。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>更地に建てた小屋は、まだ電気も水道も通っていない「ただの箱」だ。これを人が住める家にするには、引っ越し直後に呼び鈴が鳴ったら「いらっしゃい（Hello, World）」と応対できる住人を住まわせる必要がある。さらに、小屋には外との出入り口を管理する「門」を付けて、決まった入り口（ポート）だけ客を通すようにする。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、index.htmlに文字を書き、ポート8080で簡易Webサーバを立ち上げる仕込みスクリプトです。</p>
+    <details class="code"><summary>仕込みスクリプト（Hello, World を返す）</summary><pre><span class="cmt"># index.htmlに文字を書き、ポート8080で簡易Webサーバを立ち上げるスクリプト</span>
+#!/bin/bash
+echo <span class="str">"Hello, World"</span> &gt; index.html
+nohup busybox httpd -f -p 8080 &amp;</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>この呪文、何をしてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>1行目で<code>index.html</code>に「Hello, World」と書き込む。2行目で<code>busybox</code>（Ubuntuに最初から入る万能ツール）を起動し、ポート8080でWebサーバを立て、それを配る。<code>nohup</code>と末尾の<code>&amp;</code>は、スクリプトが終わってもサーバが裏で動き続けるためだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでポート80じゃなくて8080なんですか？普通のWebは80ですよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>鋭い。1024以下のポート（80もそう）で待ち受けるにはroot（管理者）権限が要る。侵入されたら侵入者もroot権限を得て危険だ。だからWebサーバは権限の限られた一般ユーザで動かすのがベストプラクティスで、結果1024より大きい8080などを使う。後半では門番でポート80を受けてサーバに流す方法も見る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>このスクリプト、どうやってサーバの中で実行するんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>普通はPackerでAMIを焼くが、今回は1行スクリプトだけなので、素のUbuntu AMIのまま、EC2の「ユーザーデータ（初回起動時に自動実行する仕込みスクリプト）」として渡す。設計図に<code>user_data</code>引数を足す。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、小屋を建てると同時に「初回起動でWebサーバを立ち上げる仕込み」を渡します。</p>
+    <details class="code"><summary>user_data を渡す設計図</summary><pre><span class="cmt"># 小屋を建てると同時に「初回起動でWebサーバを立ち上げる仕込み」を渡す</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami           = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  instance_type = <span class="str">"t2.micro"</span>
+
+  user_data = &lt;&lt;-EOF
+              #!/bin/bash
+              echo <span class="str">"Hello, World"</span> &gt; index.html
+              nohup busybox httpd -f -p 8080 &amp;
+              EOF
+
+  user_data_replace_on_change = <span class="kw">true</span>   <span class="cmt"># ① 仕込みを変えたら古い小屋を壊して新築し直す</span>
+
+  tags = {
+    Name = <span class="str">"terraform-example"</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>&lt;&lt;-EOF</code>って何ですか？<code>user_data_replace_on_change = true</code>は？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>&lt;&lt;-EOF</code>は<span class="term" data-tip="heredoc。複数行の文章をそのまま1つの文字列として書ける書き方。">ヒアドキュメント</span>。間を1つの長い文字列として渡せる。<code>user_data_replace_on_change</code>は、仕込みスクリプトが「初回起動時しか実行されない」ため必要だ。すでに動く小屋は起動済みなので仕込みを書き換えても反映されない。だから<code>true</code>にして「仕込みを変えたら古い小屋を壊して新築しろ」と指示する。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、ポート8080への外からのアクセスを許可する門（セキュリティグループ）を作ります。</p>
+    <details class="code"><summary>セキュリティグループ（門）</summary><pre><span class="cmt"># ポート8080への外からのアクセスを許可する門（セキュリティグループ）</span>
+<span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="str">"instance"</span> {
+  name = <span class="str">"terraform-example-instance"</span>
+
+  ingress {
+    from_port   = 8080            <span class="cmt"># ① 受け付け開始ポート</span>
+    to_port     = 8080            <span class="cmt"># ② 受け付け終了ポート（8080だけ許可）</span>
+    protocol    = <span class="str">"tcp"</span>           <span class="cmt"># ③ 通信の種類はTCP</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]   <span class="cmt"># ④ どのIPからのアクセスも許可</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>ingress</code>と<code>0.0.0.0/0</code>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="内向き（入ってくる）の通信を許可するルール。">ingress</span>は「内向き」の許可ルールだ。<code>0.0.0.0/0</code>は<span class="term" data-tip="CIDR block。IPアドレスの範囲を短く表す書き方。">CIDRブロック</span>の一種で「あり得るすべてのIP」を意味する。つまりこの門は、どこの誰でもポート8080に来てよい、という設定だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>門は作りました。でもこの門と小屋、どうつなぐんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>門のIDを小屋の<code>vpc_security_group_ids</code>に渡す。そのために「<span class="term" data-tip="expression。何らかの値を返す書き方。">式</span>」を学ぶ。これまでの<code>"ami-..."</code>や<code>5</code>は、一番単純な「<span class="term" data-tip="literal。値そのものを直接書いたもの。">リテラル</span>」という式だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>他の建物の情報を引っぱってくることもできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>できる。それが「<span class="term" data-tip="reference。他の場所の値を指し示す書き方。">参照</span>」だ。書き方は<code>&lt;PROVIDER&gt;_&lt;TYPE&gt;.&lt;NAME&gt;.&lt;ATTRIBUTE&gt;</code>。セキュリティグループは<code>id</code>属性を公開するので<code>aws_security_group.instance.id</code>と書く。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、属性を参照する書き方の一般的な型と、さっき作った門のIDを指し示す参照です。</p>
+    <details class="code"><summary>参照の書き方</summary><pre><span class="cmt"># 参照の書き方</span>
+&lt;PROVIDER&gt;_&lt;TYPE&gt;.&lt;NAME&gt;.&lt;ATTRIBUTE&gt;
+
+<span class="cmt"># さっき作った門のIDを指し示す参照</span>
+aws_security_group.instance.id</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、小屋に「この門を使え」と指示します。</p>
+    <details class="code"><summary>門を小屋に取り付ける設計図</summary><pre><span class="cmt"># 小屋に「この門を使え」と指示した設計図</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami                    = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  instance_type          = <span class="str">"t2.micro"</span>
+  vpc_security_group_ids = [aws_security_group.instance.id]   <span class="cmt"># ① 門を小屋に取り付ける</span>
+
+  user_data = &lt;&lt;-EOF
+              #!/bin/bash
+              echo <span class="str">"Hello, World"</span> &gt; index.html
+              nohup busybox httpd -f -p 8080 &amp;
+              EOF
+  user_data_replace_on_change = <span class="kw">true</span>
+
+  tags = {
+    Name = <span class="str">"terraform-example"</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>順番とか大丈夫なんですか？門より小屋が先にできちゃったら困りませんか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>心配ない。建物Aが建物Bを参照すると「<span class="term" data-tip="implicit dependency。参照から自動的に判断される前後関係。">暗黙的依存</span>」ができる。Terraformはこれを読み取って依存グラフ（依存の地図）を作り、正しい順番を自分で決める。今回は小屋が門のIDを参照してるので「門が先、小屋が後」。<code>terraform graph</code>で地図を見られる。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>「小屋に門を取り付ける」と設計図に書けば、棟梁（Terraform）は自然と「じゃあ門を先に作らないとな」と気づく。これが暗黙的依存だ。誰かに「先に門を作れ」と指示しなくても、設計図の中で小屋が門を指さしている（参照している）から、棟梁が建てる順番を自動で決めてくれる。しかも前後関係のない建物は同時に建てるから工事が早い。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、建物どうしの前後関係（依存グラフ）を表示します。出力はDOTというグラフ記述言語です。</p>
+    <details class="code"><summary>terraform graph（依存グラフ）</summary><pre><span class="cmt"># 建物どうしの前後関係（依存グラフ）を表示する</span>
+$ terraform graph
+
+digraph {
+  subgraph <span class="str">"root"</span> {
+    <span class="str">"[root] aws_instance.example"</span>
+    <span class="str">"[root] aws_security_group.instance"</span>
+    <span class="str">"[root] provider.aws"</span>
+    <span class="str">"[root] aws_instance.example"</span> -&gt; <span class="str">"[root] aws_security_group.instance"</span>
+    <span class="str">"[root] aws_security_group.instance"</span> -&gt; <span class="str">"[root] provider.aws"</span>
+    (...)
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>これはDOTというグラフ記述言語だ。GraphvizやGraphvizOnlineに貼ると絵になる。Terraformはこの地図をたどり、前後関係のない建物は同時並行で建てる。「欲しい物を書けば、最も効率のよい建て方をTerraformが判断する」、これが宣言型の素晴らしさだ。では<code>apply</code>だ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、門を新設し、既存の小屋を新しい仕込み入りの小屋で置き換える様子です。</p>
+    <details class="code"><summary>apply（置き換えの差分）</summary><pre><span class="cmt"># 門を新設し、既存の小屋を新しい仕込み入りの小屋で置き換える</span>
+$ terraform apply
+(...)
+  <span class="cmt"># aws_instance.example must be replaced</span>
+  -/+ resource <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+        ami                    = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+      ~ availability_zone      = <span class="str">"us-east-2c"</span> -&gt; (known after apply)
+        instance_type          = <span class="str">"t2.micro"</span>
+      <span class="num">+</span> user_data              = <span class="str">"c765373..."</span> <span class="cmt"># forces replacement</span>
+      ~ vpc_security_group_ids = [
+          - <span class="str">"sg-871fa9ec"</span>,
+        ] -&gt; (known after apply)
+    }
+
+  <span class="cmt"># aws_security_group.instance will be created</span>
+  <span class="num">+</span> resource <span class="str">"aws_security_group"</span> <span class="str">"instance"</span> {
+      <span class="num">+</span> name    = <span class="str">"terraform-example-instance"</span>
+      <span class="num">+</span> ingress = [ { from_port = 8080, to_port = 8080, protocol = <span class="str">"tcp"</span>, ... } ]
+    }
+
+Plan: 2 to add, 0 to change, 1 to destroy.</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>-/+</code>って記号が出てます。さっきの<code>~</code>（その場更新）とは違いますね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>-/+</code>は「置き換え」だ。原因は<code># forces replacement</code>という注記で分かる。今回は<code>user_data</code>を変えたので、古い小屋を取り壊して完全に新築する。これは「<span class="term" data-tip="immutable infrastructure。一度建てたら中をいじらず丸ごと建て替える考え方。">イミュータブルインフラ</span>」の一例だ。注意点として、置き換えの間はWebが使えない時間（ダウンタイム）が出る。停止時間なしの方法は5章だ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、建てたWebサーバに「ページちょうだい」とリクエストして動作を確認します。</p>
+    <details class="code"><summary>curl で動作確認</summary><pre><span class="cmt"># 建てたWebサーバに「ページちょうだい」とリクエストしてみる</span>
+$ curl http://&lt;EC2インスタンスのパブリックIP&gt;:8080
+Hello, World</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「Hello, World」が返ってきました！本当に動いてますね！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>最後にネットワークの注意を1つ。この本ではシンプルさのため、すべての建物をデフォルトVPCの「デフォルトサブネット」に置いている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>サブネットって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>VPC（敷地）は別々のIPアドレス帯を持つ複数の<span class="term" data-tip="subnet。敷地内をさらに区切った小区画。">サブネット</span>に分かれている。デフォルトVPCの小区画はすべて<span class="term" data-tip="public subnet。外の道路に面した区画。インターネットから到達できる。">パブリックサブネット</span>で、外からアクセスできる住所がつく。練習ならいいが本番では危険だ。本番ではサーバを外から届かない<span class="term" data-tip="private subnet。敷地の奥の非公開区画。">プライベートサブネット</span>に置き、道路に面した区画には門番だけを置く。</div></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>ユーザーデータを使えば、AMIを作らなくてもサーバ起動時に好きな初期設定ができる。</li>
+      <li>セキュリティグループで、誰がどのポートに入れるかを制御できる。</li>
+      <li>参照を使うと、建物どうしを結び付け、正しい建築順序を自動化できる。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li><code>user_data</code>＝初回起動時に走る仕込みスクリプト。変更時は<code>user_data_replace_on_change = true</code>で建て替え。</li>
+      <li><code>&lt;&lt;-EOF ... EOF</code>＝複数行文字列を書くヒアドキュメント。</li>
+      <li>セキュリティグループ＝出入りを管理する門。<code>ingress</code>で内向き許可、<code>0.0.0.0/0</code>で全IP許可、CIDRはIP範囲の表記。</li>
+      <li>式＝値を返す書き方。リテラル（値そのもの）と参照（他の場所の値を指す）がある。</li>
+      <li>参照<code>&lt;種類&gt;.&lt;名前&gt;.&lt;属性&gt;</code>で暗黙的依存ができ、Terraformが建築順を自動決定（<code>terraform graph</code>で確認）。</li>
+      <li><code>-/+</code>は置き換え（イミュータブルインフラ）、<code>~</code>はその場更新。置き換え中はダウンタイムが出る。</li>
+      <li>練習はパブリックサブネットでOKだが、本番はサーバをプライベートサブネットへ。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.5 ========== -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">2.5</div><div><h2>設定変更可能なWebサーバのデプロイ</h2><span class="tag">同じ寸法を1か所で管理する</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>同じ値の重複（<span class="term" data-tip="Don't Repeat Yourself。同じ情報を繰り返し書くな、という原則。">DRY違反</span>）は<span class="term" data-tip="input variable。設計図に外から値を渡せる差し込み口。">入力変数</span>でまとめる。変数には<code>description</code>/<code>default</code>/<code>type</code>/<code>validation</code>/<code>sensitive</code>が付けられる。<code>var.名前</code>で参照、文字列内なら<code>${...}</code>で補間。<span class="term" data-tip="output variable。設計図の外に値を返す出口。">出力変数</span>で結果を外に取り出せる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>棟梁、気づいたんですけど「8080」って、門の設定とユーザーデータの2か所に書いてますよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>よく気づいた。それは<span class="term" data-tip="DRY原則: Don't Repeat Yourself。同じ情報を繰り返すな。">DRY原則</span>に反している。同じ寸法を2か所に書くと、片方だけ直してもう片方を直し忘れる事故が起きる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうすれば1か所にまとめられるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「入力変数」を使う。設計図に外から値を渡せる差し込み口だ。<code>variable "NAME" { ... }</code>と書く。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>「窓の高さは120cm」という寸法を、玄関の図面と居間の図面の2か所に手書きすると、後で「やっぱり130cmに」と直すとき片方を直し忘れる。これがDRY違反だ。賢い大工は、寸法を「寸法表」に1つだけ書いて、各図面からはその寸法表を見るようにする。これが入力変数。直すときは寸法表の1か所を変えるだけで、全部の図面に反映される。</p></div>
+
+    <h3 class="blk">入力変数のパラメータ</h3>
+    <table class="t">
+      <tr><th>パラメータ</th><th>役割</th></tr>
+      <tr><td><code>description</code></td><td>この変数が何に使われるかの説明。<code>plan</code>/<code>apply</code>時にも表示されるので常に書くのがよい。</td></tr>
+      <tr><td><code>default</code></td><td>値が渡されなかったときの既定値。渡し方は<code>-var</code>・<code>-var-file</code>・環境変数<code>TF_VAR_&lt;名前&gt;</code>の3つ。どれもなければ対話的に聞かれる。</td></tr>
+      <tr><td><code>type</code></td><td>渡せる値の種類を縛る。string・number・bool・list・map・set・object・tuple・any。書かないとany扱い。常に付けるのがよい。</td></tr>
+      <tr><td><code>validation</code></td><td>型チェック以上の独自検査（最大・最小値など）。詳しくは8章。</td></tr>
+      <tr><td><code>sensitive</code></td><td><code>true</code>でその値をログに出さない。パスワードやAPIキーなどに付ける。詳しくは6章。</td></tr>
+    </table>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、入力変数の一般的な書き方の型です。</p>
+    <details class="code"><summary>入力変数の書き方</summary><pre><span class="cmt"># 入力変数の書き方</span>
+<span class="kw">variable</span> <span class="str">"NAME"</span> {
+  [CONFIG ...]
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、数・リスト・数のリストという型の例です。</p>
+    <details class="code"><summary>型の例（number / list / list(number)）</summary><pre><span class="cmt"># 数（number）であることを検証する変数</span>
+<span class="kw">variable</span> <span class="str">"number_example"</span> {
+  description = <span class="str">"Terraformの数値変数の例"</span>
+  type        = number
+  default     = <span class="num">42</span>
+}
+
+<span class="cmt"># 並び（list）であることを検証する変数</span>
+<span class="kw">variable</span> <span class="str">"list_example"</span> {
+  description = <span class="str">"Terraformのリストの例"</span>
+  type        = list
+  default     = [<span class="str">"a"</span>, <span class="str">"b"</span>, <span class="str">"c"</span>]
+}
+
+<span class="cmt"># 中身がすべて数のリスト</span>
+<span class="kw">variable</span> <span class="str">"list_numeric_example"</span> {
+  description = <span class="str">"Terraformの数値リストの例"</span>
+  type        = list(number)
+  default     = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、対応表（map）と、複数の項目をまとめた構造体型（object）の例です。</p>
+    <details class="code"><summary>型の例（map / object）</summary><pre><span class="cmt"># キーと値の対応表（中身は文字列）</span>
+<span class="kw">variable</span> <span class="str">"map_example"</span> {
+  description = <span class="str">"Terraformのマップの例"</span>
+  type        = map(string)
+  default = {
+    key1 = <span class="str">"value1"</span>
+    key2 = <span class="str">"value2"</span>
+    key3 = <span class="str">"value3"</span>
+  }
+}
+
+<span class="cmt"># 複数の項目をまとめた構造体型の変数</span>
+<span class="kw">variable</span> <span class="str">"object_example"</span> {
+  description = <span class="str">"Terraformの構造体型の例"</span>
+  type        = object({
+    name    = string         <span class="cmt"># ① 名前は文字列</span>
+    age     = number         <span class="cmt"># ② 年齢は数</span>
+    tags    = list(string)   <span class="cmt"># ③ タグは文字列の並び</span>
+    enabled = bool           <span class="cmt"># ④ 有効かは真偽値</span>
+  })
+  default = {
+    name    = <span class="str">"value1"</span>
+    age     = <span class="num">42</span>
+    tags    = [<span class="str">"a"</span>, <span class="str">"b"</span>, <span class="str">"c"</span>]
+    enabled = <span class="kw">true</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もし型に合わない値を入れたらどうなりますか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>試してみよう。<code>enabled</code>に真偽値ではなく文字列<code>"invalid"</code>を入れてみる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、わざと型違反させた例です（enabledに文字列を入れている）。</p>
+    <details class="code"><summary>型違反させた例</summary><pre><span class="cmt"># わざと型違反させた例（enabledに文字列を入れている）</span>
+<span class="kw">variable</span> <span class="str">"object_example_with_error"</span> {
+  description = <span class="str">"Terraformの構造体型でエラーを起こす例"</span>
+  type        = object({
+    name    = string
+    age     = number
+    tags    = list(string)
+    enabled = bool
+  })
+  default = {
+    name    = <span class="str">"value1"</span>
+    age     = <span class="num">42</span>
+    tags    = [<span class="str">"a"</span>, <span class="str">"b"</span>, <span class="str">"c"</span>]
+    enabled = <span class="str">"invalid"</span>   <span class="cmt"># ① boolが必要なのに文字列 → エラー</span>
+  }
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、上の設計図を実行したときに出る型エラーです。</p>
+    <details class="code"><summary>実行時の型エラー</summary><pre><span class="cmt"># 上のコードを apply すると型エラーで止まる（boolが必要なのに文字列だから）</span>
+$ terraform apply
+
+Error: Invalid default value for variable
+  on variables.tf line 78, in variable "object_example_with_error":
+  82:     enabled = "invalid"
+
+This default value is not compatible with the variable's type constraint: a
+bool is required.</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>このように、型に合わない値はTerraformがすぐ弾く。さて、Webサーバの例に戻ると、必要なのはポート番号を入れる変数1つだけだ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、ポート番号を入れる変数です。defaultがないので実行時に対話で聞かれます。</p>
+    <details class="code"><summary>server_port 変数（defaultなし）</summary><pre><span class="cmt"># ポート番号を入れる変数（defaultを書いていないので実行時に聞かれる）</span>
+<span class="kw">variable</span> <span class="str">"server_port"</span> {
+  description = <span class="str">"サーバがHTTPリクエストに使うポート番号"</span>
+  type        = number
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、defaultがないと実行時に値を聞かれる様子です。</p>
+    <details class="code"><summary>対話で値を聞かれる</summary><pre><span class="cmt"># defaultがないと実行時に値を聞いてくる</span>
+$ terraform apply
+
+var.server_port
+  サーバがHTTPリクエストに使うポート番号
+
+  Enter a value:</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>毎回聞かれるのは面倒です。聞かれないようにできますか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>3つやり方がある。①コマンドラインで<code>-var</code>、②環境変数<code>TF_VAR_&lt;名前&gt;</code>、③<code>default</code>値を書く。③が一番楽だ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、値の3つの渡し方（コマンドライン・環境変数・default）です。</p>
+    <details class="code"><summary>値の3つの渡し方</summary><pre><span class="cmt"># ① コマンドラインで値を渡す</span>
+$ terraform plan -var <span class="str">"server_port=8080"</span>
+
+<span class="cmt"># ② 環境変数で渡す</span>
+$ export TF_VAR_server_port=8080
+$ terraform plan
+
+<span class="cmt"># ③ default を付けておけば毎回聞かれない</span>
+<span class="kw">variable</span> <span class="str">"server_port"</span> {
+  description = <span class="str">"サーバがHTTPリクエストに使うポート番号"</span>
+  type        = number
+  default     = 8080
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>変数の値を設計図で使うときは「<span class="term" data-tip="variable reference。変数の値を指す書き方 var.&lt;名前&gt;。">変数参照</span>」を使う。書き方は<code>var.&lt;変数名&gt;</code>だ。門の<code>from_port</code>と<code>to_port</code>を<code>server_port</code>にしてみよう。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、門のポート番号を、ハードコードではなく変数で指定します。</p>
+    <details class="code"><summary>門のポートを変数参照に</summary><pre><span class="cmt"># 門のポート番号を、ハードコードではなく変数で指定する</span>
+<span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="str">"instance"</span> {
+  name = <span class="str">"terraform-example-instance"</span>
+  ingress {
+    from_port   = var.server_port   <span class="cmt"># ① 変数の値を参照</span>
+    to_port     = var.server_port   <span class="cmt"># ② 同じ変数を参照（1か所で管理）</span>
+    protocol    = <span class="str">"tcp"</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ユーザーデータの中の「8080」も同じ変数にしたいです。でも文字列の途中ですよね？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そういうときは「<span class="term" data-tip="interpolation。文字列の中に値を埋め込む書き方 ${...}。">補間</span>」を使う。書き方は<code>"${...}"</code>。波括弧の中に参照を書けば、Terraformがそれを文字列に変換して埋め込む。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、文字列の中に変数を埋め込みます（補間）。</p>
+    <details class="code"><summary>補間 ${...}</summary><pre><span class="cmt"># 文字列の中に変数を埋め込む（補間）</span>
+  user_data = &lt;&lt;-EOF
+              #!/bin/bash
+              echo <span class="str">"Hello, World"</span> &gt; index.html
+              nohup busybox httpd -f -p ${var.server_port} &amp;
+              EOF</pre></details>
+
+    <h3 class="blk">出力変数</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>入力変数の逆もある。「出力変数」だ。設計図の外に値を返す出口だ。<code>output "&lt;NAME&gt;" { value = &lt;VALUE&gt; }</code>と書く。<code>CONFIG</code>には<code>description</code>、<code>sensitive</code>、<code>depends_on</code>が書ける。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>CONFIG</th><th>役割</th></tr>
+      <tr><td><code>description</code></td><td>どんなデータが出るかの説明。常に書く。</td></tr>
+      <tr><td><code>sensitive</code></td><td><code>true</code>で<code>plan</code>/<code>apply</code>の最後に表示しない。秘密情報を含むとき。入力変数や機密属性を参照するなら出力にも必要。</td></tr>
+      <tr><td><code>depends_on</code></td><td>普段は参照から依存を自動判断するが、まれに手動でヒントを与える明示的な依存指定。</td></tr>
+    </table>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、出力変数の書き方の型と、WebサーバのパブリックIPを実行後に表示する例です。</p>
+    <details class="code"><summary>出力変数の書き方</summary><pre><span class="cmt"># 出力変数の書き方</span>
+<span class="kw">output</span> <span class="str">"&lt;NAME&gt;"</span> {
+  value = &lt;VALUE&gt;
+  [CONFIG ...]
+}
+
+<span class="cmt"># WebサーバのパブリックIPを実行後に表示する出力変数</span>
+<span class="kw">output</span> <span class="str">"public_ip"</span> {
+  value       = aws_instance.example.public_ip   <span class="cmt"># ① 小屋のパブリックIP属性を参照</span>
+  description = <span class="str">"Webサーバのパブリックなアドレス"</span>
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、何も建物を変えていないので作成は0件ですが、最後に出力が表示される様子です。</p>
+    <details class="code"><summary>apply の出力表示</summary><pre><span class="cmt"># 何も変えていないので作成は0件。だが最後に出力が表示される</span>
+$ terraform apply
+(...)
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+
+Outputs:
+public_ip = <span class="str">"54.174.13.5"</span></pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、変更を加えずに出力だけを一覧表示・取り出します。</p>
+    <details class="code"><summary>terraform output</summary><pre><span class="cmt"># 出力だけを一覧表示する</span>
+$ terraform output
+public_ip = <span class="str">"54.174.13.5"</span>
+
+<span class="cmt"># 特定の出力だけ取り出す</span>
+$ terraform output public_ip
+<span class="str">"54.174.13.5"</span></pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>これはスクリプトで便利だ。<code>apply</code>でデプロイ → <code>output public_ip</code>でIP取得 → <code>curl</code>で叩いて成功確認、という簡単な動作確認（<span class="term" data-tip="smoke test。最低限の動作確認テスト。">スモークテスト</span>）が組める。入力変数と出力変数は、設定可能で再利用可能なインフラコードを作る重要な機能だ（4章で詳説）。</div></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>同じ値を1か所で管理でき、直し忘れ事故を防げる。</li>
+      <li>型制約で、間違った種類の値を実行前に弾ける。</li>
+      <li>出力変数で、IPなどの結果をすぐ取り出せて自動化に使える。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li>DRY原則＝同じ情報を繰り返さない。重複は入力変数で解消する。</li>
+      <li>入力変数のパラメータ: <code>description</code>/<code>default</code>/<code>type</code>/<code>validation</code>/<code>sensitive</code>。</li>
+      <li>型: string・number・bool・list・map・set・object・tuple・any。型違反は実行前にエラー。</li>
+      <li>値の渡し方: <code>-var</code>、<code>-var-file</code>、<code>TF_VAR_&lt;名前&gt;</code>、<code>default</code>、対話入力。</li>
+      <li>参照は<code>var.&lt;名前&gt;</code>、文字列内は<code>${...}</code>の補間。</li>
+      <li>出力変数は<code>output</code>で定義。<code>terraform output</code>で表示。<code>sensitive</code>/<code>depends_on</code>も指定可。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.6 ========== -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">2.6</div><div><h2>Webサーバのクラスタのデプロイ</h2><span class="tag">1軒を何戸もの長屋にする</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>1台は<span class="term" data-tip="single point of failure。そこが壊れると全部止まる弱点。">単一障害点</span>。<span class="term" data-tip="Auto Scalingグループ。サーバの長屋を自動管理する仕組み。">ASG</span>（自動管理される長屋）で2〜10戸を維持する。各戸の仕様は起動設定で定義し、<code>create_before_destroy</code>で置き換えの行き詰まりを防ぐ。建てる小区画は<span class="term" data-tip="data source。プロバイダから読み取り専用で情報を取り寄せる仕組み。">データソース</span>で動的に取得する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1軒のWebサーバが動きました。でも、この小屋が壊れたらサービス全滅ですよね？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そのとおり。1台のサーバは「単一障害点」だ。故障や過負荷で誰もサイトを見られなくなる。解決策は、複数の小屋を「長屋（クラスタ）」にして、壊れた小屋を避けて客を流し、混み具合に応じて戸数を増減することだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>長屋を手で管理するの、大変そうです。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>だからAWSの「Auto Scalingグループ（ASG）」に任せる。ASGは各戸の起動、健康監視、壊れた戸の建て替え、混み具合に応じた戸数調整まで全部自動でやる。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>住める家が1軒だけだと、その家が火事になればおしまい（単一障害点）。そこで同じ間取りの戸をいくつも並べた「長屋」を建てる。長屋には腕利きの大家（ASG）を雇い、空き巣に入られた戸を建て替えたり、客が増えれば戸を増やし、減れば畳む、といった面倒を全部任せる。1戸が壊れても残りの戸が客を迎えられる。</p></div>
+
+    <h3 class="blk">1台 → 長屋への変化</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">⚠️</div><h4>変更前: 小屋1軒</h4><p>[客] → [小屋1軒]。壊れたら終わり。単一障害点。</p><span class="pill">脆い</span></div>
+      <div class="mini"><div class="ic">🏘️</div><h4>変更後: 長屋（ASG管理）</h4><p>[客] → [ASGが管理する長屋: 2〜10戸]。1戸壊れても残りが対応、自動で建て替え。</p><span class="pill">止まらない</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ASGを作る第一歩は「<span class="term" data-tip="launch configuration。長屋の各戸をどう建てるかの共通仕様書。">起動設定</span>」だ。<code>aws_launch_configuration</code>は<code>aws_instance</code>とほぼ同じだが、タグは使えず、<code>user_data_replace_on_change</code>も不要、2つの引数名が違う（<code>ami</code>→<code>image_id</code>、<code>vpc_security_group_ids</code>→<code>security_groups</code>）。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、長屋の各戸の共通仕様書（起動設定）です。</p>
+    <details class="code"><summary>起動設定（各戸の共通仕様書）</summary><pre><span class="cmt"># 長屋の各戸の共通仕様書（起動設定）</span>
+<span class="kw">resource</span> <span class="str">"aws_launch_configuration"</span> <span class="str">"example"</span> {
+  image_id        = <span class="str">"ami-0fb653ca2d3203ac1"</span>           <span class="cmt"># ① aws_instanceのamiに相当</span>
+  instance_type   = <span class="str">"t2.micro"</span>
+  security_groups = [aws_security_group.instance.id]      <span class="cmt"># ② vpc_security_group_idsに相当</span>
+
+  user_data = &lt;&lt;-EOF
+              #!/bin/bash
+              echo <span class="str">"Hello, World"</span> &gt; index.html
+              nohup busybox httpd -f -p ${var.server_port} &amp;
+              EOF
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、長屋を管理する大家（ASG）本体です。2〜10戸を維持します。</p>
+    <details class="code"><summary>ASG本体</summary><pre><span class="cmt"># 長屋を管理する大家（ASG）。2〜10戸を維持する</span>
+<span class="kw">resource</span> <span class="str">"aws_autoscaling_group"</span> <span class="str">"example"</span> {
+  launch_configuration = aws_launch_configuration.example.name   <span class="cmt"># ① どの仕様書で建てるか</span>
+  min_size = <span class="num">2</span>    <span class="cmt"># ② 最低でも2戸</span>
+  max_size = <span class="num">10</span>   <span class="cmt"># ③ 最大10戸まで</span>
+
+  tag {
+    key                 = <span class="str">"Name"</span>
+    value               = <span class="str">"terraform-asg-example"</span>
+    propagate_at_launch = <span class="kw">true</span>   <span class="cmt"># ④ このタグを各戸にも引き継ぐ</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これで完成じゃないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>1つ問題がある。ASGは起動設定の「名前」を参照している。起動設定はイミュータブル（変更不可）なので、仕様書を変えるとTerraformは作り替えようとする。普通は「古いものを削除→新しいものを作成」の順だが、ASGが古い仕様書をまだ参照してるので削除できず、行き詰まる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうやって解決するんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「<span class="term" data-tip="lifecycle。建物の作成・更新・削除のされ方の設定。">ライフサイクル</span>」を使う。<code>create_before_destroy</code>を<code>true</code>にすると置き換えの順番が逆になり、「新しい仕様書を先に作る→古いものを削除」になって行き詰まりが解消する。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、起動設定にライフサイクル設定を足して、置き換え順を「先に作ってから壊す」にします。</p>
+    <details class="code"><summary>create_before_destroy</summary><pre><span class="cmt"># 起動設定に置き換え順「先に作ってから壊す」を足す</span>
+<span class="kw">resource</span> <span class="str">"aws_launch_configuration"</span> <span class="str">"example"</span> {
+  image_id        = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  instance_type   = <span class="str">"t2.micro"</span>
+  security_groups = [aws_security_group.instance.id]
+  user_data = &lt;&lt;-EOF
+              #!/bin/bash
+              echo <span class="str">"Hello, World"</span> &gt; index.html
+              nohup busybox httpd -f -p ${var.server_port} &amp;
+              EOF
+
+  <span class="cmt"># Autoscaling Groupがある起動設定を使った場合に必須</span>
+  lifecycle {
+    create_before_destroy = <span class="kw">true</span>   <span class="cmt"># ① 先に新しいものを作ってから古いものを壊す</span>
+  }
+}</pre></details>
+
+    <h3 class="blk">データソースでサブネットを取り寄せる</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>もう1つ足すパラメータがある。<code>vpc_zone_identifier</code>だ。長屋の各戸をどのサブネット（小区画）に建てるかをASGに指示する。各サブネットは別々のAZ（別々のデータセンタ）にあるので、複数にまたがって建てれば、いくつかのデータセンタが障害を起こしてもサービスを続けられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>サブネットの一覧を直接書けばいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>それもできるが、メンテナンス性とポータビリティに欠ける。代わりに「データソース」を使う。これは実行のたびにAWSから取り寄せる読み取り専用の情報だ。何かを作るわけではなく、AWSのAPIに問い合わせて情報を取り、設計図で使えるようにするだけ。書き方は<code>data "&lt;PROVIDER&gt;_&lt;TYPE&gt;" "&lt;NAME&gt;" { ... }</code>。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>長屋の戸をどの区画に建てるか。区画番号を1つ1つ図面に手書きすると、別の現場に図面を持っていったとき番号が合わない。そこで現場ごとに役所（AWS）の窓口へ行き「この敷地に使える区画を全部教えて」と<b>その場で問い合わせる</b>。これがデータソース。何も建てず、ただ最新の情報を読み取ってくるだけ。だから図面はどの現場でもそのまま使える。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、データソースの書き方の型と、デフォルトの敷地（VPC）情報を取り寄せる例です。</p>
+    <details class="code"><summary>データソース（VPC情報を取り寄せる）</summary><pre><span class="cmt"># データソースの書き方</span>
+<span class="kw">data</span> <span class="str">"&lt;PROVIDER&gt;_&lt;TYPE&gt;"</span> <span class="str">"&lt;NAME&gt;"</span> {
+  [CONFIG ...]
+}
+
+<span class="cmt"># デフォルトの敷地（デフォルトVPC）の情報を取り寄せる</span>
+<span class="kw">data</span> <span class="str">"aws_vpc"</span> <span class="str">"default"</span> {
+  default = <span class="kw">true</span>   <span class="cmt"># ① 「デフォルトVPCを探せ」という検索条件</span>
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、データソースから値を取り出す書き方の型と、取り寄せたVPCのIDを取り出す例です。</p>
+    <details class="code"><summary>データソースから値を取り出す</summary><pre><span class="cmt"># データソースから値を取り出す書き方</span>
+data.&lt;PROVIDER&gt;_&lt;TYPE&gt;.&lt;NAME&gt;.&lt;ATTRIBUTE&gt;
+
+<span class="cmt"># 取り寄せたVPCのIDを取り出す</span>
+data.aws_vpc.default.id</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、そのVPC内のサブネット（小区画）一覧を取り寄せます。</p>
+    <details class="code"><summary>サブネット一覧を取り寄せる</summary><pre><span class="cmt"># デフォルトVPCの中にある小区画（サブネット）一覧を取り寄せる</span>
+<span class="kw">data</span> <span class="str">"aws_subnets"</span> <span class="str">"default"</span> {
+  filter {
+    name   = <span class="str">"vpc-id"</span>                    <span class="cmt"># ① 「vpc-idで絞り込む」</span>
+    values = [data.aws_vpc.default.id]   <span class="cmt"># ② そのVPCのIDを条件にする</span>
+  }
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、取り寄せたサブネット一覧をASGに渡し、複数のデータセンタに戸を建てさせます。</p>
+    <details class="code"><summary>ASGにサブネットを渡す</summary><pre><span class="cmt"># 取り寄せたサブネット一覧をASGに渡し、複数のデータセンタに戸を建てさせる</span>
+<span class="kw">resource</span> <span class="str">"aws_autoscaling_group"</span> <span class="str">"example"</span> {
+  launch_configuration = aws_launch_configuration.example.name
+  vpc_zone_identifier  = data.aws_subnets.default.ids   <span class="cmt"># ① どの小区画に建てるか</span>
+  min_size = <span class="num">2</span>
+  max_size = <span class="num">10</span>
+
+  tag {
+    key                 = <span class="str">"Name"</span>
+    value               = <span class="str">"terraform-asg-example"</span>
+    propagate_at_launch = <span class="kw">true</span>
+  }
+}</pre></details>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>1台故障してもサービスが止まらない（可用性が上がる）。</li>
+      <li>混み具合に応じて戸数が自動で増減する（スケーラビリティ）。</li>
+      <li>データソースで環境に合わせた値を自動取得でき、ハードコードを避けられる。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li>1台のサーバは単一障害点。クラスタ（長屋）で冗長化する。</li>
+      <li>ASG＝起動・監視・建て替え・戸数調整を自動でやる長屋の大家。</li>
+      <li>起動設定＝各戸の共通仕様書。<code>ami</code>→<code>image_id</code>、<code>vpc_security_group_ids</code>→<code>security_groups</code>に名前が変わる。</li>
+      <li>起動設定はイミュータブル。<code>lifecycle { create_before_destroy = true }</code>で「先に作ってから壊す」に。</li>
+      <li>複数サブネット（複数AZ）に分散すればデータセンタ障害に耐える。</li>
+      <li>データソースは読み取り専用の情報取得。<code>data.&lt;種類&gt;.&lt;名前&gt;.&lt;属性&gt;</code>で値を使う。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.7 ========== -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">2.7</div><div><h2>ロードバランサのデプロイ</h2><span class="tag">入り口に1人の門番を置く</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>各サーバに別々の住所があると不便なので、入り口に<span class="term" data-tip="load balancer。客を複数のサーバに公平に振り分ける門番。">門番（ALB）</span>を置き、客を健康な戸に振り分ける。ALBはリスナ・リスナルール・ターゲットグループから成る。ASGと連携させ、健康診断をELB方式にすると、不調な戸を自動で建て替えられる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>長屋はできました。でも各戸にそれぞれ住所（IP）がありますよね。お客さんに「どの戸に行けばいい」って伝えればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そこが問題だ。エンドユーザには1つの入り口だけ知らせたい。解決策は、客を各戸に振り分ける「ロードバランサ（門番）」を置き、ユーザにはその門番の住所（DNS名）だけアクセスさせること。これもAWSがやってくれる。<span class="term" data-tip="Elastic Load Balancing。AWSのロードバランササービス。">ELB</span>というサービスだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>門番にも種類があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>3種類ある。今回のWebサーバは特別な性能要件のないHTTPアプリなので、ALBが最適だ。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>長屋の各戸にバラバラの住所を客に教えるのは不親切だし、戸は増えたり減ったりする。そこで長屋の入り口に1人の門番（ロードバランサ）を立たせる。客は門番の場所だけ覚えればよく、門番が「今いちばん空いている健康な戸」へ案内する。具合の悪い戸には客を通さない。門番自身も複数人で交代制（複数台）なので、1人が休んでも入り口が閉まることはない。</p></div>
+
+    <h3 class="blk">3種類のロードバランサ</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🌐</div><h4>ALB</h4><p>HTTP/HTTPSの振り分けに最適。アプリケーション層（レイヤ7）で動く。今回はこれ。</p><span class="pill">L7・HTTP向き</span></div>
+      <div class="mini"><div class="ic">⚡</div><h4>NLB</h4><p>TCP・UDP・TLS向き。超高速にスケールし、秒間数百万リクエストまで。トランスポート層（レイヤ4）。</p><span class="pill">L4・超高速</span></div>
+      <div class="mini"><div class="ic">🕰️</div><h4>CLB</h4><p>ALB/NLBより前からある旧型。HTTP/HTTPS/TCP/TLSを扱えるが機能が少ない。</p><span class="pill">旧型</span></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ALBって1個の部品ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いや、いくつかの部品からできている。<span class="term" data-tip="listener。客を待ち受ける受付窓口。">リスナ</span>（受付窓口）・<span class="term" data-tip="listener rule。行き先を決める振り分け規則。">リスナルール</span>（振り分け規則）・<span class="term" data-tip="target group。客を受け取るサーバ群。健康診断も行う。">ターゲットグループ</span>（受け取るサーバ群＋健康診断）だ。</div></div>
+    </div>
+
+    <h3 class="blk">ALBの部品の流れ</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">①</div><div class="line"></div></div><div class="body"><h4>リスナ（受付窓口）</h4><p>特定のポート（例: 80）とプロトコル（例: HTTP）で客を待ち受ける。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">②</div><div class="line"></div></div><div class="body"><h4>リスナルール（振り分け規則）</h4><p>来た客のパス（<code>/foo</code>など）やホスト名を見て、合えば指定のターゲットグループに送る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">③</div></div><div class="body"><h4>ターゲットグループ（受け取るサーバ群）</h4><p>門番から客を受け取るサーバの集まり。健康診断を行い、合格したサーバだけに客を送る。</p></div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、門番本体（ALB）を作ります。</p>
+    <details class="code"><summary>ALB本体</summary><pre><span class="cmt"># 門番本体（ALB）を作る</span>
+<span class="kw">resource</span> <span class="str">"aws_lb"</span> <span class="str">"example"</span> {
+  name               = <span class="str">"terraform-asg-example"</span>
+  load_balancer_type = <span class="str">"application"</span>                  <span class="cmt"># ① 種類はアプリケーション(ALB)</span>
+  subnets            = data.aws_subnet_ids.default.ids <span class="cmt"># ② どの小区画で動くか</span>
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>subnets</code>はデフォルトVPCの全サブネットを使う。AWSの門番は1台でなく、別々のサブネット（別々のデータセンタ）で動く複数台で構成される。トラフィックに応じて台数を増減し、1台ダウンしても<span class="term" data-tip="failover。障害時に自動で別系統へ切り替えること。">フェイルオーバ</span>する。だから難しい設定なしにスケーラビリティと高可用性が手に入る（本番ではEC2はプライベート、ALBはパブリックに分けることが多い）。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、門番の受付窓口（リスナ）です。ポート80でHTTPを待ち受けます。</p>
+    <details class="code"><summary>リスナ（受付窓口）</summary><pre><span class="cmt"># 門番の受付窓口（リスナ）。ポート80でHTTPを待ち受ける</span>
+<span class="kw">resource</span> <span class="str">"aws_lb_listener"</span> <span class="str">"http"</span> {
+  load_balancer_arn = aws_lb.example.arn   <span class="cmt"># ① どの門番の窓口か</span>
+  port              = <span class="num">80</span>                   <span class="cmt"># ② 待ち受けるポート</span>
+  protocol          = <span class="str">"HTTP"</span>               <span class="cmt"># ③ 待ち受けるプロトコル</span>
+
+  <span class="cmt"># デフォルトではシンプルな404ページを返す</span>
+  default_action {
+    type = <span class="str">"fixed-response"</span>
+    fixed_response {
+      content_type = <span class="str">"text/plain"</span>
+      message_body = <span class="str">"404: page not found"</span>
+      status_code  = <span class="num">404</span>
+    }
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>この窓口はポート80でHTTPを待ち受け、どのルールにも合わない客には素っ気ない404を返す。ところでALBもデフォルトでは出入りを許さないので、門番用の門（セキュリティグループ）が要る。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、門番(ALB)用の門です。客からのポート80を受け、健康診断のため全ポートへ出ていけます。</p>
+    <details class="code"><summary>ALB用のセキュリティグループ（門）</summary><pre><span class="cmt"># 門番(ALB)用の門。客からのポート80を受け、健康診断のため全ポートへ出ていける</span>
+<span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="str">"alb"</span> {
+  name = <span class="str">"terraform-example-alb"</span>
+
+  <span class="cmt"># インバウンドHTTPリクエストを許可</span>
+  ingress {
+    from_port   = <span class="num">80</span>
+    to_port     = <span class="num">80</span>
+    protocol    = <span class="str">"tcp"</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]   <span class="cmt"># ① どのIPからのポート80も許可</span>
+  }
+
+  <span class="cmt"># アウトバウンドリクエストをすべて許可</span>
+  egress {
+    from_port   = <span class="num">0</span>
+    to_port     = <span class="num">0</span>
+    protocol    = <span class="str">"-1"</span>            <span class="cmt"># ② -1 はすべてのプロトコルの意味</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]   <span class="cmt"># ③ どこへでも出ていける（健康診断のため）</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>egress</code>って何ですか？さっきは<code>ingress</code>でしたよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>ingress</code>が「内向き」なら<span class="term" data-tip="外向き（出ていく）の通信を許可するルール。">egress</span>は「外向き」だ。門番は各戸に健康診断のリクエストを送る必要があるので、全ポートへ出ていける許可を与える。この門をALBに取り付ける。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、作った門を門番(ALB)に取り付けます。</p>
+    <details class="code"><summary>門をALBに取り付ける</summary><pre><span class="cmt"># 作った門を門番(ALB)に取り付ける</span>
+<span class="kw">resource</span> <span class="str">"aws_lb"</span> <span class="str">"example"</span> {
+  name               = <span class="str">"terraform-asg-example"</span>
+  load_balancer_type = <span class="str">"application"</span>
+  subnets            = data.aws_subnets.default.ids
+  security_groups    = [aws_security_group.alb.id]   <span class="cmt"># ① ALB用の門を取り付ける</span>
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、客を受け取るサーバ群(ターゲットグループ)と、その健康診断ルールです。</p>
+    <details class="code"><summary>ターゲットグループ（受け取るサーバ群＋健康診断）</summary><pre><span class="cmt"># 客を受け取るサーバ群(ターゲットグループ)と、その健康診断ルール</span>
+<span class="kw">resource</span> <span class="str">"aws_lb_target_group"</span> <span class="str">"asg"</span> {
+  name     = <span class="str">"terraform-asg-example"</span>
+  port     = var.server_port            <span class="cmt"># ① 戸に送るポート（変数で指定）</span>
+  protocol = <span class="str">"HTTP"</span>
+  vpc_id   = data.aws_vpc.default.id     <span class="cmt"># ② どの敷地のサーバか</span>
+
+  health_check {
+    path                = <span class="str">"/"</span>      <span class="cmt"># ③ 「/」に診断リクエストを送る</span>
+    protocol            = <span class="str">"HTTP"</span>
+    matcher             = <span class="str">"200"</span>    <span class="cmt"># ④ 200が返れば健康とみなす</span>
+    interval            = <span class="num">15</span>       <span class="cmt"># ⑤ 15秒ごとに診断</span>
+    timeout             = <span class="num">3</span>        <span class="cmt"># ⑥ 3秒以内に返事がなければ失敗</span>
+    healthy_threshold   = <span class="num">2</span>        <span class="cmt"># ⑦ 2回連続成功で「健康」</span>
+    unhealthy_threshold = <span class="num">2</span>        <span class="cmt"># ⑧ 2回連続失敗で「不調」</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>このターゲットグループは、定期的に各戸へHTTPリクエストを送り、<code>matcher</code>（200 OK）に合う戸だけ<code>healthy</code>とみなす。返事がおかしい戸は<code>unhealthy</code>とされ、自動で客を送らなくなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>門番は、どの戸に客を送ればいいって、どうやって知るんですか？長屋の戸は増えたり減ったりしますよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いい質問だ。<code>aws_lb_target_group_attachment</code>で静的リストを貼ることもできるが、ASGの戸はいつでも増減するので静的リストではダメだ。代わりにASGとALBの連携を使う。ASGに戻って<code>target_group_arns</code>でターゲットグループを指定する。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、ASGの戸を自動的にターゲットグループに登録させる連携設定です。</p>
+    <details class="code"><summary>ASGとALBの連携</summary><pre><span class="cmt"># ASGの戸を、自動的にターゲットグループに登録させる連携設定</span>
+<span class="kw">resource</span> <span class="str">"aws_autoscaling_group"</span> <span class="str">"example"</span> {
+  launch_configuration = aws_launch_configuration.example.name
+  vpc_zone_identifier  = data.aws_subnets.default.ids
+
+  target_group_arns = [aws_lb_target_group.asg.arn]   <span class="cmt"># ① 戸を自動でこの群に登録</span>
+  health_check_type = <span class="str">"ELB"</span>                          <span class="cmt"># ② 健康診断はELB方式を使う</span>
+
+  min_size = <span class="num">2</span>
+  max_size = <span class="num">10</span>
+
+  tag {
+    key                 = <span class="str">"Name"</span>
+    value               = <span class="str">"terraform-asg-example"</span>
+    propagate_at_launch = <span class="kw">true</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>health_check_type = "ELB"</code>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>健康診断のやり方の指定だ。デフォルトの<code>EC2</code>は最小限で、「VMがダウンか疎通不能」のときだけ不調とみなす。<code>ELB</code>に変えると、ターゲットグループの診断結果を使い、不調な戸を自動で建て替えるよう大家(ASG)に指示する。「動いてはいるが返事ができない」戸も建て替えられる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、振り分け規則(リスナルール)です。来た客をすべてターゲットグループに転送します。</p>
+    <details class="code"><summary>リスナルール（振り分け規則）</summary><pre><span class="cmt"># 振り分け規則(リスナルール)。来た客をすべてターゲットグループに転送する</span>
+<span class="kw">resource</span> <span class="str">"aws_lb_listener_rule"</span> <span class="str">"asg"</span> {
+  listener_arn = aws_lb_listener.http.arn   <span class="cmt"># ① どの受付窓口の規則か</span>
+  priority     = <span class="num">100</span>                       <span class="cmt"># ② 規則の優先順位</span>
+
+  condition {
+    path_pattern {
+      values = [<span class="str">"*"</span>]   <span class="cmt"># ③ どんなパスでも合致（すべて受ける）</span>
+    }
+  }
+  action {
+    type             = <span class="str">"forward"</span>
+    target_group_arn = aws_lb_target_group.asg.arn   <span class="cmt"># ④ ターゲットグループへ転送</span>
+  }
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、表示する出力を、個別サーバのIPではなく門番のDNS名に置き換えます。</p>
+    <details class="code"><summary>出力をALBのDNS名に</summary><pre><span class="cmt"># 表示するのは個別サーバのIPではなく、門番のDNS名にする</span>
+<span class="kw">output</span> <span class="str">"alb_dns_name"</span> {
+  value       = aws_lb.example.dns_name   <span class="cmt"># ① 門番の入り口アドレス</span>
+  description = <span class="str">"ロードバランサのドメイン名"</span>
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、applyが完了すると門番の入り口アドレスが表示される様子と、そのアドレスを叩いた結果です。</p>
+    <details class="code"><summary>apply後の出力と動作確認</summary><pre><span class="cmt"># applyが完了すると門番の入り口アドレスが表示される</span>
+Outputs:
+alb_dns_name = <span class="str">"terraform-asg-example-123.us-east-2.elb.amazonaws.com"</span>
+
+<span class="cmt"># 門番のアドレスを叩くと、長屋のどれかの戸が応答する</span>
+$ curl http://&lt;alb_dns_name&gt;
+Hello, World</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>戸が起動してALBに健康と認識されるまで数分かかる。管理画面で2戸起動・ALB・ターゲットグループが見え、両方の戸が<code>Healthy</code>になるのを待つ（通常1〜2分）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「Hello, World」が出ました！しかも棟梁、アクセスするたびに違う戸が応答してるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。ALBが客を順に振り分けている。試しに1戸を「終了」させても、ALBのURLは200 OKを返し続ける。ALBが故障を検知してその戸への振り分けを止めるからだ。さらに戸が減ったのをASGが検知して新しい戸を建て直す（<span class="term" data-tip="self-healing。壊れた部分を自動で修復すること。">自己回復</span>）。<code>desired_capacity</code>（希望戸数）を足して<code>apply</code>すればサイズも変えられる。</div></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>ユーザに知らせる入り口を1つにできる。</li>
+      <li>故障した戸を自動で避け、自動で建て替えるので、止まらないサービスになる。</li>
+      <li>客を均等に振り分け、混雑に強くなる。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li>ロードバランサ＝客を複数サーバに振り分ける門番。AWSではELBサービス。</li>
+      <li>3種類: ALB（HTTP/HTTPS・L7）、NLB（TCP/UDP/TLS・L4・超高速）、CLB（旧型）。HTTPアプリにはALB。</li>
+      <li>ALBの部品: リスナ（受付窓口）・リスナルール（振り分け規則）・ターゲットグループ（受け取るサーバ群＋健康診断）。</li>
+      <li>ALB用のセキュリティグループは<code>ingress</code>でポート80、<code>egress</code>で全ポート（健康診断用）を許可。</li>
+      <li>ASGの<code>target_group_arns</code>で戸を自動登録、<code>health_check_type = "ELB"</code>で診断結果に基づき建て替え。</li>
+      <li>リスナルールで条件に合う客をターゲットグループへ<code>forward</code>。出力はALBのDNS名にする。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.8 ========== -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">2.8</div><div><h2>後片付け</h2><span class="tag">街を更地に戻す</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>練習を終えたら<code>terraform destroy</code>で全リソースを取り壊し、課金を止める。取り消しはできないので最後に確認が出る。設計図さえ残しておけば、<code>apply</code>でいつでも再現できる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>練習が終わったら、建てたものはどうすればいいんですか？放っておくとお金がかかりますよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そのとおり。試し終えたら全部取り壊して課金を止める。Terraformは自分が建てたものを全部覚えているので、後片付けは簡単だ。<code>terraform destroy</code>を実行するだけ。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話</h4><p>練習で建てた長屋も門番も、置いておくだけで地代がかかる。練習が済んだら、棟梁（Terraform）に「全部取り壊して更地に戻せ」と一声かける。棟梁は自分が建てた建物を全部台帳で覚えているので、正しい順番で残らず解体してくれる。ただし<b>解体に「やっぱり元に戻す」ボタンはない</b>から、最後に「本当にいいか？」と念を押される。設計図さえ手元に残しておけば、また同じ街をいつでも建て直せる。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、建てたものをすべて取り壊し、最後に確認を求めます。</p>
+    <details class="code"><summary>terraform destroy</summary><pre><span class="cmt"># 建てたものをすべて取り壊す</span>
+$ terraform destroy
+(...)
+Terraform will perform the following actions:
+
+  <span class="cmt"># aws_autoscaling_group.example will be destroyed</span>
+  - resource <span class="str">"aws_autoscaling_group"</span> <span class="str">"example"</span> { (...) }
+  <span class="cmt"># aws_launch_configuration.example will be destroyed</span>
+  - resource <span class="str">"aws_launch_configuration"</span> <span class="str">"example"</span> { (...) }
+  <span class="cmt"># aws_lb.example will be destroyed</span>
+  - resource <span class="str">"aws_lb"</span> <span class="str">"example"</span> { (...) }
+  (...)
+
+Plan: 0 to add, 0 to change, 8 to destroy.
+
+Do you really want to destroy all resources?
+  There is no undo. Only 'yes' will be accepted to confirm.
+
+  Enter a value:</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「There is no undo（取り消しはできない）」って書いてあります。怖いですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。<code>destroy</code>に「元に戻す」機能はない。だから最後に壊す対象を全部表示して<code>yes</code>を求めてくる。<b>本番環境で<code>destroy</code>を実行することはほぼない</b>と覚えておけ。練習なら問題ないので確認して<code>yes</code>を押せ。Terraformは依存グラフを作り、正しい順番で可能な限り並行して全部壊す。1〜2分でアカウントはまたきれいになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>せっかく作ったコードも消さなきゃダメですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いや、設計図（コード）は消すな。この本ではこの例をどんどん発展させていく。リソース（建物）はいつ<code>destroy</code>してもいい。すべての情報はコードに書かれているという<span class="term" data-tip="Infrastructure as Code。インフラをコードとして管理すること。">Infrastructure as Code</span>のおかげで、<code>apply</code>を実行すればまた全部再現できるからだ。ただし最新の変更はGitにコミットしておけ。</div></div>
+    </div>
+
+    <div class="why"><h4>💡 なぜこれが必要か</h4><ul>
+      <li>使わないリソースを残すと無駄な課金が続く。<code>destroy</code>で一掃できる。</li>
+      <li>コードを残しておけば、壊しても<code>apply</code>で完全に復元できる。</li>
+    </ul></div>
+    <div class="summary"><h4>📌 この項のまとめ</h4><ul>
+      <li><code>terraform destroy</code>で全リソースを取り壊す。取り消し不可なので確認プロンプトが出る。</li>
+      <li>本番で<code>destroy</code>することはほぼない。</li>
+      <li>設計図（コード）は消さない。IaCのおかげで<code>apply</code>で再現可能。</li>
+      <li>最新の変更はGitにコミットしておく。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ========== 2.9 ========== -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">2.9</div><div><h2>まとめ</h2><span class="tag">この章で掴んだ基本の流れ</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>宣言型・<code>plan</code>・変数/参照/依存という3つの柱で、Terraformの基本ワークフローが理解できた。次章以降でステートとモジュールを学び、さらに発展させていく。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ハル、今日でTerraformの基本の流れが一通り掴めたな。宣言型言語で「欲しいインフラ」を簡単に書ける。<code>plan</code>で変更を検証してデプロイ前にバグを潰せる。変数・参照・依存で、コードの重複をなくし、高度に設定できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、これでもう完璧ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いや、まだ表面をなぞっただけだ。3章では「Terraformは何を建てたかをどう記録しているのか（ステート）」を学ぶ。これはコードの構造に重大な影響を与える。4章では、Terraformモジュールで再利用可能なインフラを作る方法を見ていく。今日の更地から長屋＋門番までの旅は、その出発点なんだ。</div></div>
+    </div>
+
+    <h3 class="blk">この章でたどった旅（建築の道のり）</h3>
+    <div class="cycle">
+      <div class="node"><h4>🏗️ 更地</h4><p>AWSの土地を借り、道具を用意する。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>🏠 小屋1軒</h4><p>サーバを1台建てる（init→plan→apply）。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>🏡 住める家</h4><p>ユーザーデータと門でWebサーバ化。</p></div>
+    </div>
+    <div class="cycle">
+      <div class="node"><h4>📐 寸法表</h4><p>変数で重複をまとめ、出力で結果を取り出す。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>🏘️ 長屋</h4><p>ASGで2〜10戸を自動管理する。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>🚪 門番</h4><p>ALBで入り口を1つにし、健康な戸へ振り分ける。</p></div>
+    </div>
+    <div class="loopback">そして最後は 🧹 destroy で更地に戻す（コードは残す → いつでも再現可能）</div>
+  </div>
+</section>
+
+<!-- ========== wrapup ========== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で5つ復習する</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日習ったこと、自分の言葉で言ってみます。1つ目、「Terraformは宣言型。欲しい建物を書けば、建て方はTerraformが考える」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。手順ではなく結果を書く。だから人為ミスが減る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「ワークフローは init で準備、plan で予習、apply で実行」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>よし。<code>plan</code>は本番前の最後の予習だ。差分を見て安心してから<code>apply</code>する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「変数で重複をなくし（DRY）、参照で建物どうしをつなぐと依存関係が自動で決まる」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そのとおり。<code>var.名前</code>で値を差し込み、<code>&lt;種類&gt;.&lt;名前&gt;.&lt;属性&gt;</code>で他の建物を指す。順番はTerraformが判断する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「1台は単一障害点。ASGで長屋にして、ALBという門番が客を振り分ける」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>完璧だ。ASGは戸を自動で建て替え、ALBは健康な戸だけに客を流す。止まらないサービスの基本形だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目、「最後は destroy で更地に戻す。でもコードは残す。apply でいつでも再現できるから」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>その通り。それがInfrastructure as Codeの力だ。よく覚えたな。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== quiz ========== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック</h2><span class="tag">自分の言葉で答えてみよう（全5問）</span></div></div>
+  <div class="card">
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>init・plan・applyの役割</div>
+      <p>Terraformで設計図を実行するとき使う<code>init</code>・<code>plan</code>・<code>apply</code>の3つは、それぞれ何をするコマンドですか。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans"><code>init</code>は作業フォルダを準備するコマンドで、設計図を読んで必要なプロバイダ（AWSなど）のコードを取り寄せる。新しく始めるときに使い、何度実行しても結果は同じ。<code>plan</code>は「この設計図を適用すると何が起きるか」を実際に変える前に予習で見せる。<code>apply</code>は本当に変更を実行する。実行前に同じ差分を見せて<code>yes</code>の確認を求める。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">
+        ・<code>init</code>＝準備・プロバイダのコード取り寄せ、と説明できている<br>
+        ・<code>plan</code>＝変更前の予習・差分の表示、と説明できている<br>
+        ・<code>apply</code>＝実際に変更を実行・確認を求める、と説明できている
+      </div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>変数を使う理由（DRY原則）</div>
+      <p>ポート番号などの値を入力変数にまとめるのはなぜですか。まとめないとどんな問題が起きますか。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">同じ値を複数の場所に直接書くと、片方だけ直してもう片方を直し忘れる事故が起きるから。これはDRY原則（同じ情報を繰り返さない）に反する。入力変数で1か所にまとめれば、変えるときも1か所だけ直せばよく、矛盾やミスを防げる。型制約を付ければ間違った種類の値も実行前に弾ける。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">
+        ・値の重複が直し忘れ・矛盾を生むと説明できている<br>
+        ・DRY原則（繰り返さない）に触れている<br>
+        ・1か所で管理できる利点を述べている
+      </div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>単一障害点とASG・ALB</div>
+      <p>サーバ1台だけで運用する危険性と、それをASGとALBでどう解決するかを説明してください。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">サーバ1台は単一障害点で、それが故障したり過負荷になると、サービス全体が止まってしまう。ASG（Auto Scalingグループ）を使えば複数のサーバを長屋のように束ねて自動管理し、壊れた戸を自動で建て替え、混み具合に応じて戸数を増減できる。ALB（ロードバランサ）を入り口に置けば、ユーザは1つのアドレスにアクセスするだけでよく、ALBが健康なサーバだけに客を振り分ける。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">
+        ・1台＝単一障害点で全体が止まるリスクを説明できている<br>
+        ・ASGが冗長化・自動建て替え・戸数調整をする点に触れている<br>
+        ・ALBが入り口を1つにし、健康なサーバに振り分ける点に触れている
+      </div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>データソースとは何か</div>
+      <p>Terraformの「データソース」とは何ですか。リソースとの違いも含めて説明してください。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">データソースは、実行のたびにプロバイダ（AWSなど）から取り寄せる読み取り専用の情報のこと。<code>data</code>ブロックで書く。リソースが建物を「作る」のに対し、データソースは何も作らず、既存の情報（VPCのIDやサブネット一覧など）を取得して設計図の中で使えるようにするだけ。これを使うと、サブネット一覧などを直接書かずに環境に合わせて自動取得でき、メンテナンスしやすくなる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">
+        ・読み取り専用の情報取得であると説明できている<br>
+        ・リソース（作成する）との違いに触れている<br>
+        ・ハードコードを避けられる利点に触れている
+      </div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>destroyとコードの関係</div>
+      <p><code>terraform destroy</code>で全部のリソースを消しても、設計図（コード）を残しておけば困らないのはなぜですか。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">Infrastructure as Code（インフラをコードとして管理すること）の考え方のおかげで、すべてのインフラの情報が設計図に書かれているから。リソースを<code>destroy</code>で消しても、<code>terraform apply</code>を実行すれば設計図どおりに全部再現できる。だから練習で課金を止めたいときは安心して<code>destroy</code>してよく、コードさえ残してGitにコミットしておけば、いつでも同じ環境を作り直せる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">
+        ・コードにすべての情報が書かれている点を説明できている<br>
+        ・<code>apply</code>で再現できる点に触れている<br>
+        ・IaCの利点として述べられている
+      </div></details>
+    </div>
+
+  </div>
+</section>
+
+<!-- ========== next ========== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>次のステップ</h2><span class="tag">この内容を理解するための実践アドバイス</span></div></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>実際に写経して動かす（最も効果的）</h4><p>AWSの無料利用枠でアカウントを作り、この章の<code>main.tf</code>を写経して<code>init</code>→<code>plan</code>→<code>apply</code>→<code>destroy</code>まで一通り動かしてみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>公式ドキュメントを眺める</h4><p>Terraform公式の<code>aws_instance</code>ページを開き、<code>ami</code>や<code>instance_type</code>以外にどんな引数があるか眺めてみる（registry.terraform.io/providers/hashicorp/aws/latest/docs）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>依存グラフを絵で見る</h4><p><code>terraform graph</code>を実行し、出力をGraphvizOnline（dreampuf.github.io/GraphvizOnline）に貼って、建物どうしの依存関係を絵で見てみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>わざと型エラーを起こす</h4><p>変数の<code>type</code>をわざと間違った値（boolに文字列など）にして<code>apply</code>し、どんなエラーが出るか体験してみる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>サンプルコードと見比べる</h4><p>余裕があれば、サンプルコード（github.com/brikis98/terraform-up-and-running-code）を眺め、自分の写経と見比べてみる。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">詳解 Terraform 第3版 ・ 2章「Terraformをはじめよう」 — 非エンジニア向けやさしい図解版<br>たとえ話はすべて「更地に小屋を建て、住める家にし、長屋＋門番のある街に育てる建築」の世界で統一しています。</p>
+
+</div>
+</body>
+</html>

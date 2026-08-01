@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第4章 エンコーディングと進化 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第4章</span>
+  <h1>エンコーディングと進化</h1>
+  <p>「ちょっと項目を足しただけなのに、なんで事故るの？」――データを<b>メモリの中の形</b>と<b>外に出すバイトの並び</b>の間で変換する<b>エンコーディング</b>、そして新旧のコードとデータが混ざっても壊れない<b>前方/後方互換性</b>を、新人ハルとベテラン カイ先輩の対話で根っこから学びます。</p>
+  <div class="badge-row">
+    <span class="badge">📮 たとえ話は「郵便・荷造りと翻訳」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a class="sub" href="#s0">この章の導入 ― 変化するアプリと2方向の互換性</a>
+  <a href="#s41">4.1 データエンコードのフォーマット</a>
+  <a class="sub" href="#s411">4.1.1 言語固有のフォーマット</a>
+  <a class="sub" href="#s412">4.1.2 JSON、XML、バイナリ</a>
+  <a class="sub" href="#s4121">　└ バイナリエンコーディング</a>
+  <a class="sub" href="#s413">4.1.3 ThriftとProtocol Buffers</a>
+  <a class="sub" href="#s4131">　└ フィールドタグとスキーマの進化</a>
+  <a class="sub" href="#s4132">　└ データ型とスキーマの進化</a>
+  <a class="sub" href="#s414">4.1.4 Avro</a>
+  <a class="sub" href="#s4141">　└ ライター/リーダーのスキーマ</a>
+  <a class="sub" href="#s4142">　└ スキーマの進化の規則</a>
+  <a class="sub" href="#s4143">　└ ライターのスキーマとは何か</a>
+  <a class="sub" href="#s4144">　└ 動的に生成されたスキーマ</a>
+  <a class="sub" href="#s4145">　└ コード生成と動的型付き言語</a>
+  <a class="sub" href="#s415">4.1.5 スキーマのメリット</a>
+  <a href="#s42">4.2 データフローの形態</a>
+  <a class="sub" href="#s421">4.2.1 データベース経由</a>
+  <a class="sub" href="#s4211">　└ 異なる値が異なる時刻に</a>
+  <a class="sub" href="#s4212">　└ アーカイブストレージ</a>
+  <a class="sub" href="#s422">4.2.2 サービス経由：RESTとRPC</a>
+  <a class="sub" href="#s4221">　└ Webサービス</a>
+  <a class="sub" href="#s4222">　└ RPCの問題</a>
+  <a class="sub" href="#s4223">　└ 現在のRPCの方向性</a>
+  <a class="sub" href="#s4224">　└ RPCのエンコーディングと進化</a>
+  <a class="sub" href="#s423">4.2.3 メッセージパッシング</a>
+  <a class="sub" href="#s4231">　└ メッセージブローカー</a>
+  <a class="sub" href="#s4232">　└ 分散アクターフレームワーク</a>
+  <a href="#wrapup">🔁 章のまとめ（弟子の振り返り）</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">📮</div><div><b>たとえ話はぜんぶ郵便・荷造りで統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「郵便・荷造りと翻訳（送り手と受け手）」</b>に置きかえて説明します。エンコード＝荷造り、デコード＝開封、スキーマ＝荷札の書式です。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、郵便・荷造りのたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">エンコーディング <span>encoding</span></div><p>メモリの中の形を、外に送れるバイトの並びに変えること。<b>＝荷造り・梱包</b>。シリアライゼーション／マーシャリングとも。</p></div>
+    <div class="item"><div class="w">デコーディング <span>decoding</span></div><p>受け取ったバイトの並びを、メモリの中の形に戻すこと。<b>＝開封</b>。パース／デシリアライゼーション／アンマーシャリングとも。</p></div>
+    <div class="item"><div class="w">スキーマ <span>schema</span></div><p>データの「形・項目の決まり」。<b>＝荷札・送り状の書式</b>。何という項目がどんな型で並ぶかの取り決め。</p></div>
+    <div class="item"><div class="w">後方互換性 <span>backward</span></div><p>新しいコードが、古いコードが書いたデータを読める。<b>＝新しい局員が、昔の手書き送り状も読める</b>。比較的簡単。</p></div>
+    <div class="item"><div class="w">前方互換性 <span>forward</span></div><p>古いコードが、新しいコードが書いたデータを読める。<b>＝昔の局員が、未来の新書式の荷物も壊さず扱える</b>。難しい。</p></div>
+    <div class="item"><div class="w">ローリングアップグレード <span>rolling upgrade</span></div><p>全部一斉でなく少しずつ更新すること。<b>＝郵便局を1か所ずつ改装し、配送は止めない</b>。</p></div>
+    <div class="item"><div class="w">進化性 <span>evolvability</span></div><p>システムが変化に楽に対応できる性質。<b>＝書式を変えても配送網が壊れない</b>こと。</p></div>
+    <div class="item"><div class="w">フィールド <span>field</span></div><p>データの1つ1つの項目。<b>＝荷札の各記入欄</b>（宛名・品名など）。</p></div>
+    <div class="item"><div class="w">フィールドタグ <span>field tag</span></div><p>各項目につける数字の「背番号」。<b>＝記入欄に振った番号</b>。名前でなく番号で識別する。</p></div>
+    <div class="item"><div class="w">JSON / XML / CSV</div><p>テキストで人間が読めるデータ形式。<b>＝手書きの送り状</b>。広く使われ、組織間でのやり取りに向く。</p></div>
+    <div class="item"><div class="w">バイナリ形式</div><p>機械向けにコンパクトに詰めた形式。<b>＝規格化された梱包伝票</b>。小さくて速いが人間には読めない。</p></div>
+    <div class="item"><div class="w">Protocol Buffers / Thrift / Avro</div><p>スキーマ必須のバイナリ形式。<b>＝規格化された梱包伝票の各方式</b>。フィールド名を荷物から追い出して小さくする。</p></div>
+    <div class="item"><div class="w">ライター/リーダーのスキーマ</div><p>書くとき用と読むとき用の書式。<b>＝荷造りした人の書式と、開封する人が持つ書式</b>。Avroの考え方。</p></div>
+    <div class="item"><div class="w">データフロー <span>dataflow</span></div><p>データがプロセス間を流れる道。<b>＝郵便の配送経路</b>。DB経由・サービス呼び出し・メッセージの3つ。</p></div>
+    <div class="item"><div class="w">REST / RPC</div><p>ネットワーク越しにサービスを呼ぶ方式。RPCは<b>＝遠くの窓口へ電話で頼む</b>。RESTはHTTPの上の設計哲学。</p></div>
+    <div class="item"><div class="w">メッセージブローカー</div><p>メッセージを一時的にためて配る中継地点。<b>＝郵便局の仕分け所</b>。メッセージキュー／メッセージ指向ミドルウェアとも。</p></div>
+    <div class="item"><div class="w">冪等性 <span>idempotence</span></div><p>同じ操作を何回やっても結果が変わらない性質。<b>＝同じ荷物を2回届けても二重課金にならない仕組み</b>。</p></div>
+    <div class="item"><div class="w">デフォルト値</div><p>項目が書かれていないときに補う初期値。<b>＝荷札の空欄を埋める既定の値</b>。互換性の鍵。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>新人エンジニアのハルは、リリース済みのアプリに「ユーザー情報に"あだ名"の項目を1つ足したい」と言われて喜んで対応した。ところが、新バージョンを3台中1台にだけ反映した瞬間、まだ古いままの2台が新しいデータを読めずにエラーを吐き、逆に古いサーバーが書き戻したデータからは"あだ名"が消えてしまった。「項目1個足しただけなのに、なんでこんなに事故るんですか……」と頭を抱えるハル。そこへカイ先輩がやってきて、「それは"データの形（フォーマット）の進化"の話なんだよ」と切り出します。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：プログラムはデータを「メモリの中の形」と「外に出すバイトの並び」の2通りで扱う。両者を変換するのが<b>エンコーディング</b>（外に出す）と<b>デコーディング</b>（読み込む）。アプリは時間とともに変化し、その途中では新旧のコードと新旧のデータが必ず混在する。だから形式選びは「どれだけコンパクトか」だけでなく「新旧が混ざっても壊れないか（<b>互換性</b>）」で決まる。この章は、代表的なエンコーディング形式・互換性の保ち方・データが流れる3つの経路を、ていねいに言葉にする回。</p>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：これから「郵便・荷造りと翻訳」の話をします</h4>
+      <p>この章を通して、データを送ることを<b>荷物を郵送すること</b>に置きかえて読みます。メモリの中のデータ＝<b>家の中の品物</b>、エンコード＝<b>荷造り・梱包</b>、デコード＝<b>開封</b>、スキーマ＝<b>荷札・送り状の書式</b>、後方/前方互換＝<b>古い箱と新しい箱を、送り手と受け手の双方が読める</b>こと。配送経路（DB・サービス呼び出し・メッセージ）は<b>郵便の届け方</b>です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>変化に強くなる</b>：アプリは必ず変化する。全部止めて一斉入れ替えは無理なので、新旧バージョンが共存しても壊れない設計が要る。</li>
+        <li><b>選び分けられる</b>：JSON/XML/CSV とバイナリ形式（Thrift/Protocol Buffers/Avro）を、用途に応じて選び分けられる。</li>
+        <li><b>互換性を判断できる</b>：「このスキーマ変更は前方互換か？後方互換か？」を自分で判断し、データを壊さずにフィールドを足したり消したりできる。</li>
+        <li><b>無停止デプロイができる</b>：ローリングアップグレード（無停止の段階的更新）を前提にした、変化に強いシステムを設計できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== この章の導入 ===== -->
+<section id="s0">
+  <div class="sec-head"><div class="sec-num">📮</div><div><h2>この章の導入 ― 変化するアプリと2方向の互換性</h2><span class="tag">新旧が同居するから、両方向の互換性が要る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：アプリは必ず変化し、変化の途中では新旧のコードとデータが必ず共存する。だから<b>後方互換性</b>（新コードが古データを読める）と<b>前方互換性</b>（古コードが新データを読める）の両方が要る。後方は比較的簡単、前方は「未知を無視する」ぶん難しい。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、聞いてください。「あだ名の項目を足して」って言われて足したら、新バージョンを3台中1台にだけ反映した瞬間、古い2台が新データを読めずエラー。しかも古い2台が更新したら"あだ名"が消えました。項目1個足しただけなのに！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>あー、それは"通過儀礼"みたいなものだね。きみは今、<b>スキーマの進化</b>と<b>互換性</b>っていう、データシステムの一番大事なテーマにぶつかったんだ。アプリは時間とともに必ず変わる。1章で言った<span class="term" data-tip="システムが変化に楽に対応できる性質。">進化性</span>の続きなんだよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで一斉に反映できないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つのケースがある。1つはサーバー側。新バージョンを数ノードずつ反映して、問題ないか確かめながら徐々に全ノードへ広げる。これが<span class="term" data-tip="全部一斉でなく少しずつ更新すること。サービスを止めずにデプロイできる。">ローリングアップグレード</span>。サービスを止めずにデプロイできて、進化性が高まる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もう1つは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>クライアント側のアプリだ。スマホアプリみたいにユーザーの手元で動くものは、しばらくアップデートしてくれないかも。古いバージョンが世の中に残り続ける。だからどっちにしても、<b>新旧のコードとデータがシステムの中で同居する</b>んだ。</div></div>
+    </div>
+
+    <h3 class="blk">2方向の互換性（この章で一番大事な2語）</h3>
+    <div class="analogy">
+      <h4>📮 たとえ話：新人局員と古参局員が、同じ仕分け所で働く</h4>
+      <p>郵便局を1か所ずつ改装している最中は、<b>新しい書式を覚えた局員</b>と<b>昔の書式しか知らない局員</b>が同じ仕分け所で一緒に働きます。新人局員は昔の手書き送り状も読めなきゃいけない（<b>後方互換</b>）。古参局員は、新人が作った未来の新書式の荷物も、壊さずに次へ回せなきゃいけない（<b>前方互換</b>）。この両方が成り立って初めて、配送は止まりません。</p>
+    </div>
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a055"><div class="ic">⬅️</div><h4>後方互換性（backward）</h4><p>新しいコードが、古いコードが書いたデータを読める。<br><b>＝新人局員が昔の送り状も読める</b>。比較的簡単。</p></div>
+      <div class="mini" style="border-color:#ffb45455"><div class="ic">➡️</div><h4>前方互換性（forward）</h4><p>古いコードが、新しいコードが書いたデータを読める。<br><b>＝古参局員が未来の新書式も扱える</b>。難しい。</p></div>
+    </div>
+
+    <details class="code"><summary>ホワイトボードのメモ</summary>
+<pre><span class="cmt"># 2方向の互換性（この章で一番大事な2語）</span>
+後方互換性(backward compatibility)
+    : 新しいコードが、古いコードが書いたデータを読める
+前方互換性(forward compatibility)
+    : 古いコードが、新しいコードが書いたデータを読める</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「後方」と「前方」、どっちがどっち？ 紛らわしいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>視点を「いま動いてる新しいコード」に置くといい。<b>後方</b>互換は「後ろ（過去）に手を伸ばす」――新コードが過去のデータを読む。<b>前方</b>互換は「前（未来）から来るものを受け止める」――古コードが、まだ知らない未来のデータを読む。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どっちが難しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>後方は簡単。新コードを書く人は過去の形式を知ってるからね。難しいのは前方。古いコードは「新コードが足した未知の部分」を、壊さずに<b>無視</b>しなきゃいけない。知らないものをうまく無視するのって、意外と難しいんだ。きみの事故は、まさに前方互換が壊れてた。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ローリングアップグレードやクライアント更新の遅れを前提にすれば、「一斉切り替え」に頼らない安全なデプロイができる。</li>
+        <li>互換性を「後方／前方」の2軸で語れると、変更の安全性を具体的に評価できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>アプリは進化する。変更時は新旧のコードとデータが同居する。</li>
+        <li>後方互換性＝新コードが古データを読める（比較的簡単）。</li>
+        <li>前方互換性＝古コードが新データを読める（未知を無視する必要があり難しい）。</li>
+        <li>ローリングアップグレードで無停止デプロイができ、進化性が高まる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1 ===== -->
+<section id="s41">
+  <div class="sec-head"><div class="sec-num">4.1</div><div><h2>データエンコードのフォーマット</h2><span class="tag">メモリの中の形と、外に出すバイトの並びは別物</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：メモリの中の形（ポインタでつながれた構造）と、外に出すバイトの並びは別物。前者から後者への変換が<b>エンコーディング</b>（＝シリアライゼーション／マーシャリング）、逆が<b>デコーディング</b>（＝パース／デシリアライゼーション／アンマーシャリング）。暗号化とは無関係。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも「エンコーディング」って何なんですか？ 言葉は聞くけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>プログラムは、データを少なくとも2つの違う表現で扱うんだ。1つは<b>メモリの中の表現</b>（オブジェクト・リスト・ツリーなど。中身はポインタでつながれてる）。もう1つは<b>外に出すときの表現</b>（ファイルやネットワークで送る、自己完結したバイト列）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ポインタって、メモリ上の住所みたいなものですよね。確かに他のマシンに送っても意味ないか……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。だから変換が要る。メモリの形→バイトの並びが<b>エンコーディング</b>（別名シリアライゼーション、マーシャリング）。逆向きが<b>デコーディング</b>（パース、デシリアライゼーション、アンマーシャリング）。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>注意が2つ。「シリアライゼーション」はトランザクション（7章）で別の意味でも使うから、本書では一貫して<b>エンコーディング</b>と呼ぶ。そして<b>エンコーディングは暗号化とは無関係</b>。日本だと文字コードの話と思われがちだけど、それも別の話だよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：家の中の品物と、宅配の箱</h4>
+      <p>家の中の品物は、棚やリビングに自由な形で置かれています（メモリの中の形）。でもそのまま遠くへは送れない。<b>箱に詰めて荷札を貼る</b>のが荷造り＝エンコード。受け取った人が<b>箱を開けて棚に戻す</b>のが開封＝デコード。「家の中の置き方」と「箱の中の詰め方」はまったくの別物――だから両者の変換がどうしても必要なんです。</p>
+    </div>
+
+    <details class="code"><summary>データの2つの表現（メモ）</summary>
+<pre><span class="cmt"># データの2つの表現</span>
+1. メモリの中の表現
+   : オブジェクト・構造体・リスト・配列・ハッシュテーブル・ツリーなど
+     CPUが効率よくアクセスできる形。中身は「ポインタ」でつながれている
+2. 外に出すときの表現（バイトの並び）
+   : ファイルに書く・ネットワークで送るときの自己完結したバイト列（例: JSON）
+     ポインタは他プロセスには無意味なので、メモリ内の形とはまったく別物</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「メモリ内の形」と「バイト列の形」を分けて考えられると、保存・通信のときに何が起きているかが見える。</li>
+        <li>エンコード／デコードという言葉を正確に使い分けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>メモリ内表現はポインタを使い、CPU効率を優先した形。外に出すときは自己完結したバイト列に変える。</li>
+        <li>エンコーディング＝メモリ→バイト列、デコーディング＝バイト列→メモリ。</li>
+        <li>本書では用語の衝突を避けて「エンコーディング」で統一。暗号化とは別物。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.1 ===== -->
+<section id="s411">
+  <div class="sec-head"><div class="sec-num">4.1.1</div><div><h2>言語固有のフォーマット</h2><span class="tag">手軽だが、言語ロックイン・セキュリティの穴</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：言語固有のエンコーディング（pickle、Marshal、Serializableなど）は手軽だが、言語に縛られ、セキュリティの穴になり、バージョニングも効率も後付け。一時的な用途以外では使わないほうがよい。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>言語に最初から付いてる保存機能、ありますよね。Pythonの<b>pickle</b>とか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、Javaには<code>java.io.Serializable</code>、Rubyには<code>Marshal</code>、Pythonには<code>pickle</code>。サードパーティでもJavaの<code>Kryo</code>とか。最小限のコードでメモリ上のオブジェクトを保存・復元できて、すごく便利だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>便利なら、それでいいんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、根の深い問題がいくつもある。一時的な用途以外では使わないほうがいい。特にこわいのが<b>セキュリティの穴</b>。復元時に任意のクラスをインスタンス化できてしまう。攻撃者に任意のバイト列をデコードさせられると、任意コードのリモート実行などの危険があるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：自社だけで通じる「社内符丁の荷札」</h4>
+      <p>言語固有の形式は、<b>自社の人だけが読める社内符丁で書いた荷札</b>のようなもの。自社内なら一瞬で書けて便利ですが、よその会社（別の言語）には読めず取引できません。しかも、その符丁には「箱を開けたら勝手に中の機械が動き出す」仕掛けまで仕込めてしまう（任意コード実行）――悪意ある送り主に悪用されたら大事故。だから、ごく一時的な荷物以外には使わないのが賢明です。</p>
+    </div>
+
+    <details class="code"><summary>言語固有のエンコーディングの問題点</summary>
+<pre><span class="cmt"># 言語固有のエンコーディングの問題点</span>
+- 言語に縛られる   : 特定言語と密結合し、他言語で読むのが難しい
+- セキュリティの穴 : 復元時に任意のクラスを作れる → 任意コードのリモート実行の危険
+- バージョニングが後付け : 前方/後方互換の面倒に目をつぶりがち
+- 効率が後付け     : Javaの組み込みは遅くてサイズも悪いことで有名</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「手軽だから」で言語固有形式を本番データに使う危険（言語ロックイン・セキュリティ・互換性欠如）を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>言語固有形式は最小コードで保存・復元でき便利。</li>
+        <li>だが言語ロックイン、任意コード実行のリスク、互換性と効率の弱さがある。</li>
+        <li>一時的な用途以外では非推奨。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.2 ===== -->
+<section id="s412">
+  <div class="sec-head"><div class="sec-num">4.1.2</div><div><h2>JSON、XML、様々なバイナリフォーマット</h2><span class="tag">人間が読めるが、数値・バイナリ・スキーマに弱点</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：JSON・XML・CSVはテキストで人間が読めて広く使われるが、数値の曖昧さ（精度や整数/小数の区別）、バイナリ非対応（Base64で33%増）、スキーマの複雑さや不在といった問題がある。それでも組織間のデータ交換には十分で、合意が取れていれば形式の美しさや効率は二の次。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>言語に依存しない標準形式となると、JSONとかXMLですよね。テキストだから人間が読めるのがいい。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。広く知られてサポートされてる。でも同じくらい嫌われてもいる（笑）。XMLは「冗長で無駄に複雑」と批判されがち。JSONが人気なのはWebブラウザが最初からサポートしてるのと、XMLよりシンプルだから。CSVも言語非依存だけど表現力は弱い。可読性は長所だけど、微妙な問題がいくつかあるんだ。まず<b>数値の曖昧さ</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>精度が指定できないと、何が困るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きな数で壊れる。2の53乗はIEEE 754の倍精度では正確に表せない。実例があってね。<b>Twitter</b>はツイートのIDに64ビットの数値を使ってる。これが2の53乗を超えるから、APIが返すJSONには同じIDが<b>2つ</b>入ってる。1つはJSONの数値型、もう1つは10進数の<b>文字列型</b>。JavaScript側で正確にパースできないことへの回避策なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じIDを2回入れるって、すごい力技……。次の問題は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>バイナリ文字列</b>だ。JSONとXMLは生のバイト列をサポートしない。だから回避策としてバイナリを<b>Base64</b>でエンコードして文字列にする。でもこれ、手が込んでるうえにデータサイズが<b>33%増える</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマはあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>XML SchemaとJSON Schemaがある。強力だけど複雑で習得が大変。JSONのツールはスキーマを使わないものが多い。CSVにはスキーマがなく、各列・各行の意味はアプリ任せ。値にカンマや改行が入ったときのエスケープも曖昧で、全パーサが正しく実装してるわけじゃない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>欠点だらけですね。それでも使われるのはなぜ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くの目的には十分なんだ。特に<b>組織から組織へのデータ交換</b>の形式として、これからも広く使われる。中身について合意さえできてればいい。むしろ「複数の組織が何かに合意する」こと自体が、他のどんな懸念より難しいんだよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：手書きの送り状は、誰でも読めるが書き方がバラバラ</h4>
+      <p>JSON/XML/CSVは<b>手書きの送り状</b>です。誰でも読めて、どの郵便局でも受け付けてくれる（相互運用）のが最大の強み。でも手書きゆえに弱点も。重さの欄に「1337」と書いても、それが数値なのか文字なのか曖昧（数値の曖昧さ）。写真など現物は荷札には貼れず、コピーを取って添える羽目になり、かさばる（バイナリ→Base64で33%増）。それでも、複数の会社が「この欄に何を書くか」さえ合意できれば、世界中でやり取りできる――その合意の取りやすさこそが価値なんです。</p>
+    </div>
+
+    <details class="code"><summary>数値エンコーディングの曖昧さ</summary>
+<pre><span class="cmt"># 数値エンコーディングの曖昧さ</span>
+- XMLとCSV : 数値と「たまたま数字だけの文字列」を区別できない（外部スキーマがなければ）
+- JSON     : 文字列と数値は区別するが、整数と浮動小数点を区別せず、精度も指定できない
+             → 2の53乗超は不正確に。Twitterは同じIDを「数値」と「文字列」の2つで返す</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>JSONの大きな数のワナ（2の53乗超で精度が落ちる）を知り、IDを文字列で扱うなどの回避ができる。</li>
+        <li>テキスト形式の長所（可読性・相互運用）と短所（曖昧さ・サイズ）を踏まえて選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>JSON/XML/CSVはテキストで可読・広く普及。組織間交換に向く。</li>
+        <li>数値の曖昧さ（JSONは整数/小数を区別せず精度指定不可、2の53乗超で不正確）。</li>
+        <li>バイナリ非対応でBase64を使うとサイズ33%増。スキーマは強力だが複雑、CSVは曖昧。</li>
+        <li>欠点はあるが多くの用途に十分。合意の取りやすさが最大の価値。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.2.1 ===== -->
+<section id="s4121">
+  <div class="sec-head"><div class="sec-num">4.1.2.1</div><div><h2>バイナリエンコーディング</h2><span class="tag">スキーマが無いと、結局フィールド名を全部入れる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：組織内ではコンパクトでパースの速いバイナリ形式が選べる。JSON/XML向けのバイナリ（MessagePackなど）もあるが、スキーマを持たないモデルのままだとフィールド名を全部データに含める必要があり、テキストJSONとサイズがほとんど変わらない（66 vs 81バイト）。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>組織の中だけで使うデータなら、もっと効率的にできそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。組織内なら「最小公倍数的な形式を使わなきゃ」という圧力が弱まる。コンパクトでパースが速い形式を選べる。データが小さいうちは利点も小さいけど、テラバイト級になると形式選択の影響は巨大だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>JSON用のバイナリ形式とかあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。JSON向けに<b>MessagePack、BSON、UBJSON、Smile</b>など、XML向けに<b>WBXML、Fast Infoset</b>。でもテキストほど広く普及しなかった。これらはデータ型を拡張してるけど、JSON/XMLのデータモデル自体は変えてない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>モデルを変えないと、何が起きるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>スキーマを持たないままだから、<b>全フィールド名をデータの中に含めなきゃいけない</b>。たとえばこのレコードをバイナリにしても、どこかに<code>userName</code>、<code>favoriteNumber</code>、<code>interests</code>という文字列が入るんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>例4-1 この章を通して使うサンプルレコード（JSON）</summary>
+<pre><span class="cmt">// 例4-1 このあと色々なバイナリ形式でエンコードする</span>
+{
+    <span class="str">"userName"</span>: <span class="str">"山田"</span>,
+    <span class="str">"favoriteNumber"</span>: <span class="num">1337</span>,
+    <span class="str">"interests"</span>: [<span class="str">"昼寝"</span>, <span class="str">"ハッキング"</span>]
+}</pre>
+    </details>
+
+    <details class="code"><summary>MessagePackでエンコードした先頭バイトの読み方</summary>
+<pre><span class="cmt"># MessagePackでエンコードした先頭バイトの読み方</span>
+1. 0x83  上位4ビット=0x80 → 「このあとオブジェクトが来る」
+         下位4ビット=0x03 → 「フィールドが3つある」
+2. 0xa8  上位4ビット=0xa0 → 「このあと文字列が来る」
+         下位4ビット=0x08 → 「長さは8バイト」
+3. 続く8バイト = フィールド名 "userName" をASCIIで表現
+4. 0xa6 + 6文字 = フィールド値（プレフィックスのあとに値が続く）。以降も同様</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>フィールド名が丸ごと入ってるんですね。サイズは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>このバイナリで<b>66バイト</b>。空白を抜いたテキストJSONが<b>81バイト</b>だから、わずかに短いだけ。この程度の節約のために「人間が読めなくする」価値があるかは微妙なんだ。でもこのあと見せる方法だと、同じレコードがたった<b>32バイト</b>になる。鍵は「スキーマを別に持って、フィールド名をデータから追い出す」ことだよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：荷札に毎回「宛名:」「品名:」と書き直す無駄</h4>
+      <p>スキーマを持たないバイナリは、箱を小さくしたつもりでも、<b>荷札のラベル名（「宛名:」「品名:」「重さ:」）を毎回フルで書き込んでいる</b>状態。箱の素材を変えても、ラベル名の文字数は減らないので大して小さくなりません（66バイト ≒ 81バイト）。本当に小さくするコツは、ラベル名を<b>共通の書式表（スキーマ）に追い出して、荷物には値だけ詰める</b>こと。次の節でその技を見ます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「バイナリ＝必ず小さい」ではなく、スキーマの有無こそがサイズを決めると理解できる。</li>
+        <li>データ規模が大きいほど形式選択の影響が効いてくると判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>組織内では効率的なバイナリ形式を選べる。規模が大きいほど効果大。</li>
+        <li>JSON/XML用バイナリ（MessagePack等）は普及が限定的。</li>
+        <li>スキーマを持たないとフィールド名をデータに含める必要があり、テキストとサイズがほぼ同じ。</li>
+        <li>スキーマを別に持てば劇的に小さくできる（次節）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.3 ===== -->
+<section id="s413">
+  <div class="sec-head"><div class="sec-num">4.1.3</div><div><h2>ThriftとProtocol Buffers</h2><span class="tag">スキーマ必須。フィールド名でなく「背番号」を埋める</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ThriftとProtocol Buffersはスキーマ必須のバイナリ形式。スキーマからコードを生成して使う。フィールド名の代わりに<b>フィールドタグ（背番号）</b>を埋め込むのでコンパクト。Thriftには冗長なBinaryProtocol(59B)と詰めたCompactProtocol(34B)があり、protobufは33B。<code>required</code>/<code>optional</code>はエンコードには影響せず、実行時チェックに使われる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマを別に持つ形式って、具体的には？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>代表が<b>Apache Thrift</b>と<b>Protocol Buffers（protobuf）</b>だ。どちらも同じ原理。protobufはGoogle、ThriftはFacebookが作って、2007〜2008年にオープンソース化された。どちらもスキーマが必須で、Thriftは<span class="term" data-tip="Interface Definition Language。インターフェース定義言語。データの形を書く専用の言語。">IDL</span>で書く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマの中の<code>1</code>、<code>2</code>、<code>3</code>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが<span class="term" data-tip="各フィールドにつける数字の背番号。データの意味の要。">フィールドタグ</span>。フィールドの「背番号」みたいなもの。あとで効いてくるから覚えておいて。両ツールには、スキーマから各言語のコードを生成するツールがあって、アプリはその生成コードを呼んでエンコード・デコードする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>実際にエンコードすると、どんなバイト列に？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Thriftには2つのフォーマットがある。<b>BinaryProtocol</b>と<b>CompactProtocol</b>。BinaryProtocolだと<b>59バイト</b>。大きな違いは、<b>フィールド名(userName等)が無い！</b> 代わりにフィールドタグの数値(1,2,3)が入る。CompactProtocolは同じ内容を<b>34バイト</b>に詰める。protobufは形式が1つだけで<b>33バイト</b>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマを別に持つだけで、81→33バイトまで縮むんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。最後に1つ注意。スキーマの<code>required</code>／<code>optional</code>は<b>エンコード結果には影響しない</b>。バイナリの中に「必須かどうか」を示す部分は無い。<code>required</code>が効くのは実行時のチェックだけ。値が無ければ失敗するから、バグ捕まえに役立つ程度だね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：荷札に「番号で記入」する規格化伝票</h4>
+      <p>ThriftやprotobufはJP式の<b>規格化された梱包伝票</b>。「①宛名」「②重さ」「③同梱品」と、記入欄に最初から<b>番号（背番号＝フィールドタグ）</b>が振ってあります。送り手も受け手も同じ伝票書式（スキーマ）を手元に持っているので、荷物には<b>番号と値だけ</b>を書けばよく、「宛名:」「重さ:」というラベル名を毎回書かずに済む。だから箱がぐっと小さくなる（81→33バイト）んです。</p>
+    </div>
+
+    <details class="code"><summary>Thrift のスキーマ定義（IDL）</summary>
+<pre><span class="cmt">// Thrift のスキーマ定義（IDL）</span>
+<span class="kw">struct</span> <span class="fn">Person</span> {
+  <span class="num">1</span>: <span class="kw">required</span> string userName,       <span class="cmt">// タグ1番、必須の文字列</span>
+  <span class="num">2</span>: <span class="kw">optional</span> i64 favoriteNumber,    <span class="cmt">// タグ2番、省略可の64ビット整数</span>
+  <span class="num">3</span>: <span class="kw">optional</span> list&lt;string&gt; interests <span class="cmt">// タグ3番、省略可の文字列リスト</span>
+}</pre>
+    </details>
+
+    <details class="code"><summary>Protocol Buffers のスキーマ定義</summary>
+<pre><span class="cmt">// Protocol Buffers のスキーマ定義</span>
+<span class="kw">message</span> <span class="fn">Person</span> {
+    <span class="kw">required</span> string user_name       = <span class="num">1</span>;  <span class="cmt">// タグ1番、必須</span>
+    <span class="kw">optional</span> int64  favorite_number = <span class="num">2</span>;  <span class="cmt">// タグ2番、省略可</span>
+    <span class="kw">repeated</span> string interests       = <span class="num">3</span>;  <span class="cmt">// タグ3番、繰り返し（複数値）</span>
+}</pre>
+    </details>
+
+    <details class="code"><summary>サイズ比較とフォーマットの工夫</summary>
+<pre><span class="cmt"># Thrift BinaryProtocol（59バイト）</span>
+- 各フィールドに型アノテーション + 必要なら長さ
+- フィールド名が無い！ 代わりにフィールドタグの数値(1,2,3)が入る
+
+<span class="cmt"># Thrift CompactProtocol（34バイト）の工夫</span>
+1. フィールドの型とタグ番号を「1バイト」に詰める
+2. 可変長整数（1337は8バイトでなく2バイト。最上位ビットで「まだ続くか」を示す）
+
+<span class="cmt"># サイズ比較（同じサンプルレコード）</span>
+テキストJSON(空白なし)   : 81 バイト
+MessagePack              : 66 バイト
+Thrift BinaryProtocol    : 59 バイト
+Thrift CompactProtocol   : 34 バイト
+Protocol Buffers         : 33 バイト
+Avro（次節）             : 32 バイト ← 最小</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>スキーマを外に出してフィールドタグで参照する仕組みが、サイズ削減の本質だと理解できる。</li>
+        <li>IDLでスキーマを書き、各言語のコードを生成する開発フローをイメージできる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Thrift（Facebook）とProtocol Buffers（Google）はスキーマ必須のバイナリ形式。</li>
+        <li>フィールド名でなくフィールドタグ（数値の背番号）を埋め込むので小さい。</li>
+        <li>Thrift: BinaryProtocol(59B)とCompactProtocol(34B)。protobuf: 単一形式(33B)。</li>
+        <li><code>required</code>/<code>optional</code>はエンコードに影響せず、実行時の値チェックに使われる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.3.1 ===== -->
+<section id="s4131">
+  <div class="sec-head"><div class="sec-num">4.1.3.1</div><div><h2>フィールドタグとスキーマの進化</h2><span class="tag">番号は変えない・使い回さない、必須は後から足さない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：フィールドタグがデータの意味を決めるので、名前は変えられてもタグ番号は変えられない。新フィールドは新タグ番号で追加でき、古コードは未知タグを型情報を頼りに読み飛ばす（前方互換）。後方互換のため、追加フィールドは必須にせずデフォルト値を持たせる。削除はoptionalのみ可、タグ番号の使い回しは禁止。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いよいよ僕が事故ったところですね。Thriftやprotobufは互換性をどう保つんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>エンコードされたレコードは、フィールドをただ繋げただけ。各フィールドはタグ番号(1,2,3)とデータ型で識別される。値が無いフィールドは含まれない。つまり<b>フィールドタグがデータの意味の要</b>。だから名前は変えられるけど、<b>タグ番号は変えられない</b>。変えたら既存データが全部おかしくなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>新しいフィールドを足すには？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>新しいタグ番号</b>を使えば足せる。古いコード（その番号を知らない）が新データを読むと、認識できないタグのフィールドは<b>単純に無視</b>する。型アノテーションを見れば何バイト読み飛ばせばいいか分かるからね。これで前方互換が保たれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あっ、僕のJSONのときは「無視」できずに壊れたんだ。タグ番号と型情報があるから読み飛ばせるんですね。後方互換は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各フィールドがユニークなタグ番号を持つかぎり、新コードは常に古データを読める。ただし<b>落とし穴が1つ</b>。<b>新しく追加するフィールドは必須(required)にできない</b>。必須にすると、古コードはそのフィールドを書いてないから、新コードが読むときのチェックが失敗する。だから後から足すフィールドは「必須にしない」か「デフォルト値を指定する」。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>削除のときは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>削除は追加と逆で、互換の扱いが入れ替わる。削除できるのは<b>optionalのフィールドだけ</b>。そして<b>同じタグ番号を使い回しちゃダメ</b>。古いタグを含むデータがどこかに残ってるかもしれず、新コードはそのタグを無視しないといけないからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「番号は使い回さない、必須は後から足さない・消せない」――メモします！</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：記入欄の番号は永久欠番にする</h4>
+      <p>規格化伝票の<b>欄の番号（背番号）は、一度決めたら絶対に意味を変えない</b>のが鉄則。ラベル名（「あだ名」など見出し）は書き換えてOKですが、番号は不変。新項目は<b>新しい番号</b>で足せば、その番号を知らない古い局員は「知らない欄だな」と<b>そっと飛ばして</b>くれる（前方互換）。ただし新欄を「必ず記入」にすると、昔の送り手は空欄で出すので受付で弾かれる――だから新欄はデフォルト値つきの任意欄に。消した欄の番号は<b>永久欠番</b>にして二度と別の意味に使い回さない。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「フィールド追加・削除・改名」のそれぞれで互換性が壊れる条件を判断できる。</li>
+        <li>タグ番号の管理ルール（変えない・使い回さない）を守って安全にスキーマを進化させられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>タグ番号は変更・使い回し不可。フィールド名は変更可（データはタグで参照するため）。</li>
+        <li>追加: 新タグ番号を使う。古コードは未知タグを型情報で読み飛ばす（前方互換）。</li>
+        <li>後方互換のため、追加フィールドは必須にせずデフォルト値を持たせる。</li>
+        <li>削除: optionalのみ削除可、タグ番号は再利用しない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.3.2 ===== -->
+<section id="s4132">
+  <div class="sec-head"><div class="sec-num">4.1.3.2</div><div><h2>データ型とスキーマの進化</h2><span class="tag">型変更は危険な向きがある。protobufのrepeatedの妙</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：型変更は可能なこともあるが精度低下・切り詰めのリスクがある（32→64ビットで、古コードが新データを読むと桁あふれ）。protobufはリスト型を持たず<code>repeated</code>マーカーで表し、optional→repeatedへの進化ができる。Thriftは専用リスト型を持ちネストしたリストを扱えるが、単一値→複数値の進化はうまくできない。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>フィールドの「型」を変えるのは？ 32ビット整数を64ビットにしたいとか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「できる場合もある」けど、精度低下や切り詰めのリスクがある。32→64ビットだと、新コードが古データを読むのは問題ない（足りないビットを0で埋める）。でも逆向き――古コードが新データを読むと、64ビットの値を32ビットの変数に入れることになる。収まらなければ<b>切り詰められる</b>んだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リストの扱いは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここがThriftとprotobufで面白い違い。Protocol Buffersは<b>リスト型を持たない</b>。代わりにフィールドに<code>repeated</code>マーカーを付ける。<code>repeated</code>なフィールドは、同じタグ番号がレコード中に複数回現れるだけ。だから<code>optional</code>（値1つ）を<code>repeated</code>（複数値）に変更できる。古データを読む新コードは要素0個か1個のリストを見て、新データを読む古コードはリストの<b>最後の要素だけ</b>を見る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Thriftは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Thriftには専用のリスト型があって要素の型をパラメータに取る。だから「単一値→複数値」の進化はうまく扱えない。でも代わりに<b>ネストしたリスト</b>（リストの中のリスト）をサポートできる利点がある。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：大きな荷物を小さな受取箱に入れると、はみ出す</h4>
+      <p>型を大きくする（32→64ビット）のは、<b>受取箱を大きくする</b>ようなもの。新しい大箱なら古い小荷物は余裕で入る。でも逆に、新しい大荷物を昔のままの<b>小さな受取箱</b>に入れようとすると、はみ出した分が切り落とされる（桁あふれ）。protobufの<code>repeated</code>は「同じ番号の欄を何度でも書いてよい」ルールなので、最初は1個だけ書いていた欄を、あとから複数個書く欄へ無理なく広げられるんです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>型変更が「読む方向」によって安全/危険になることを判断できる。</li>
+        <li>protobufの<code>repeated</code>の特性（単一値からの進化）を活かした設計ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>型変更は可能なこともあるが、精度低下・切り詰めに注意（特に古コードが新データを読む方向）。</li>
+        <li>protobufはリスト型なし、<code>repeated</code>で表現。optional→repeatedの進化が可能。</li>
+        <li>Thriftは専用リスト型あり。ネストしたリストは可だが単一値→複数値の進化は不得手。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.4 ===== -->
+<section id="s414">
+  <div class="sec-head"><div class="sec-num">4.1.4</div><div><h2>Avro</h2><span class="tag">タグ番号も型情報も無い、最小の32バイト</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Avroはスキーマ必須のバイナリ形式で、サンプルが32バイトと最小。protobuf/Thriftと違ってタグ番号が無く、データには型情報すら入らず値が連結されているだけ。だから読むときは「書いたときと同じスキーマ」を順番どおりに当てて型を判断する必要がある。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>32バイトで最小だった<b>Avro</b>、気になります。何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>Apache Avro</b>もバイナリ形式だけど違いが面白い。ThriftがHadoopのユースケースに合わなかったので、2009年にHadoopの副プロジェクトとして生まれた。スキーマ言語が2つあって、人間用の<b>Avro IDL</b>と、機械が読むJSONベースのもの。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あれ、<b>タグ番号がない</b>ですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが最大の違い。このスキーマでサンプルをエンコードすると<b>32バイト</b>――これまでで最小。バイト列を見ても、フィールドや型を示すものが<b>何も無い</b>。あるのは連結された値だけ。文字列は「長さ＋UTF-8バイト」だけど、それが文字列だと示すものすら無い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、型情報も背番号も無い！？ どうやって読むんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これがミソ。<b>スキーマに現れる順番どおりにフィールドを読み、スキーマを見て各フィールドの型を判断する</b>。つまり読むコードは、<b>データが書かれたときとまったく同じスキーマ</b>を使わないと正しくデコードできない。リーダーとライターのスキーマがズレると読めなくなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じスキーマじゃないと読めない……？ それじゃ進化させたら読めなくなりませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい疑問だ。そこがAvroの巧妙なところで、次で説明する。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：荷札の無い箱に、品物だけをきっちり順番に詰める</h4>
+      <p>Avroは究極のミニマル梱包。<b>箱の中には品物を決まった順番で隙間なく詰めるだけ</b>で、荷札もラベルも一切貼りません。だから箱は最小（32バイト）。ではどう開封するのか？――送り手と受け手が<b>同じ「詰め順表（スキーマ）」</b>を持っていて、「1番目は名前、2番目は番号…」と表を見ながら順に取り出すのです。表が無ければ、ただのバイトの羅列で意味不明。次の節で、表が新旧で食い違っても橋渡しできる仕組みを見ます。</p>
+    </div>
+
+    <details class="code"><summary>Avro IDL のスキーマ定義</summary>
+<pre><span class="cmt">// Avro IDL のスキーマ定義</span>
+<span class="kw">record</span> <span class="fn">Person</span> {
+    string userName;                            <span class="cmt">// 文字列</span>
+    <span class="kw">union</span> { null, long } favoriteNumber = null; <span class="cmt">// null または long（既定はnull）</span>
+    <span class="kw">array</span>&lt;string&gt; interests;                    <span class="cmt">// 文字列の配列</span>
+}</pre>
+    </details>
+
+    <details class="code"><summary>Avro スキーマの JSON 表現</summary>
+<pre><span class="cmt">// Avro スキーマの JSON 表現</span>
+{
+    <span class="str">"type"</span>: <span class="str">"record"</span>,
+    <span class="str">"name"</span>: <span class="str">"Person"</span>,
+    <span class="str">"fields"</span>: [
+        {<span class="str">"name"</span>: <span class="str">"userName"</span>, <span class="str">"type"</span>: <span class="str">"string"</span>},
+        {<span class="str">"name"</span>: <span class="str">"favoriteNumber"</span>, <span class="str">"type"</span>: [<span class="str">"null"</span>, <span class="str">"long"</span>], <span class="str">"default"</span>: null},
+        {<span class="str">"name"</span>: <span class="str">"interests"</span>, <span class="str">"type"</span>: {<span class="str">"type"</span>: <span class="str">"array"</span>, <span class="str">"items"</span>: <span class="str">"string"</span>}}
+    ]
+}</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>Avroが最小サイズになる理由（タグ番号も型情報もデータに入れない）を理解できる。</li>
+        <li>「リーダーとライターのスキーマ」という、次節の鍵となる概念に入っていける。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Avro（2009年、Hadoop副プロジェクト発）はスキーマ必須のバイナリ形式で最小（32B）。</li>
+        <li>スキーマ言語はAvro IDLとJSONベースの2種。タグ番号は無い。</li>
+        <li>データには型情報すら無く値が連結されているだけ。読むには書いたときと同じスキーマが要る。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.4.1 ===== -->
+<section id="s4141">
+  <div class="sec-head"><div class="sec-num">4.1.4.1</div><div><h2>ライターのスキーマとリーダーのスキーマ</h2><span class="tag">書くとき用と読むとき用は、別でよい（互換性さえあれば）</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Avroは「ライターのスキーマ（書くとき）」と「リーダーのスキーマ（読むとき）」を区別する。両者は同一でなくてよく、互換性があればよい。読むときにライブラリが両者を並べて見比べ、フィールドを名前でマッチさせ、リーダーに無いフィールドは無視し、ライターに無いフィールドはデフォルト値で補う。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「書いたときと同じスキーマが要る」なら、進化できなくないですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで2つのスキーマを区別する。書くときに使うのが<b>ライターのスキーマ</b>、読むときに使うのが<b>リーダーのスキーマ</b>。ライターのスキーマはアプリにコンパイル時に組み込んでもいいし、リーダーのスキーマはアプリが依存してビルド時にコード生成されることもある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>別々でいいんですか？ さっき「同じじゃないと読めない」って……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここがAvroの鍵。両者は<b>同一である必要はなく、互換性さえあればいい</b>。読むとき、Avroのライブラリが両方を<b>並べて見比べて</b>差異を解決し、ライターのスキーマからリーダーのスキーマへデータを変換する。解決方法はAvro仕様で厳密に定義されてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>名前でマッチさせるから順序が自由、リーダーに無ければ無視、ライターに無ければデフォルト値で補う。これなら新旧で形が違っても橋渡しできますね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：送り手の詰め順表と、受け手の取り出し表を照合する</h4>
+      <p>送り手は<b>自分の詰め順表</b>で箱に品物を入れ、受け手は<b>自分の取り出し表</b>で開けます。表が少し違っても大丈夫。受け手のもとで「照合係（Avroライブラリ）」が両方の表を<b>並べて見比べ</b>、品名で対応づけます。受け手の表に無い品物はそのまま脇に置き（無視）、受け手が期待してるのに箱に無い品物は<b>あらかじめ決めた予備（デフォルト値）</b>で埋める。こうして書式違いを吸収するんです。</p>
+    </div>
+
+    <details class="code"><summary>Avro のスキーマ解決（差異の埋め方）</summary>
+<pre><span class="cmt"># Avro のスキーマ解決（ライターとリーダーの差異の埋め方）</span>
+- フィールドの順序が違っても OK   → 名前でマッチさせるため
+- ライターにあってリーダーに無い   → そのフィールドを無視する
+- リーダーが期待するがライターに無い → リーダーのデフォルト値を補う</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「同じスキーマでないと読めない」と「進化できる」の矛盾が、リーダー/ライター分離で解けると分かる。</li>
+        <li>フィールドを名前でマッチさせる仕組み（順序自由・無視・デフォルト補完）を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>書くとき＝ライターのスキーマ、読むとき＝リーダーのスキーマ。</li>
+        <li>両者は同一不要、互換性があればよい。読むときライブラリが差異を解決。</li>
+        <li>名前でマッチ（順序自由）、リーダーに無いフィールドは無視、ライターに無いフィールドはデフォルト値で補う。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.4.2 ===== -->
+<section id="s4142">
+  <div class="sec-head"><div class="sec-num">4.1.4.2</div><div><h2>スキーマの進化の規則</h2><span class="tag">デフォルト値があるフィールドだけ追加・削除できる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Avroの前方互換は「ライター新・リーダー旧」、後方互換は「リーダー新・ライター旧」。互換を保って追加・削除できるのはデフォルト値を持つフィールドだけ。nullにはunion型を使い、デフォルト値はunionの先頭の選択肢でなければならない。改名はエイリアスで後方互換のみ保たれ、union選択肢の追加も後方互換のみ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Avroでの前方/後方互換は、具体的にどういう状況を指すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>スキーマの新旧で整理すると、<b>前方互換</b>＝ライターが新スキーマ・リーダーが古スキーマで読める。<b>後方互換</b>＝リーダーが新スキーマ・ライターが古スキーマで読める、だ。互換を保ったまま追加・削除できるのは<b>デフォルト値を持つフィールドだけ</b>。サンプルの<code>favoriteNumber</code>はデフォルト値が<code>null</code>になってるよね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>デフォルト値なしで足すとどうなりますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ダメな2パターン。デフォルト値なしの新フィールドを「追加」すると、新リーダーが古ライターのデータを読めない＝<b>後方互換が壊れる</b>。デフォルト値なしのフィールドを「削除」すると、古リーダーが新ライターのデータを読めない＝<b>前方互換が壊れる</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマに<code>union { null, long }</code>ってありましたけど、あれは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>union型</b>だ。Avroは「どんな変数もnullを受け入れる」わけじゃない。nullにできるようにしたければunion型を使う。<code>union { null, long, string }</code>なら数値・文字列・nullのいずれか。デフォルト値に<code>null</code>を指定できるのは<code>null</code>がunionの<b>先頭</b>の選択肢のときだけ（Avro固有の制約）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部nullにできるより面倒くさそう……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>少し冗長だけど、「nullにできる/できない」を明示できてバグ防止になる。トニー・ホーアが「nullは10億ドルの間違い」と言ったの有名だろ。だからAvroには<code>optional</code>/<code>required</code>が無くて、union型とデフォルト値があるんだ。改名はリーダーに<b>エイリアス（別名）</b>を持たせて古い名前にマッチさせる――だから改名は<b>後方互換は保たれるが前方互換は壊れる</b>。union型に選択肢を追加するのも同じく後方互換のみ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：空欄には「予備の値」を決めておく</h4>
+      <p>Avroで安全に欄を増やす唯一の方法は、<b>その欄に「もし空ならコレ」という予備（デフォルト値）を必ず決めておく</b>こと。予備があれば、昔の送り手が書かずに出しても、受け手が予備で埋めて読めます。予備の無い必須欄を勝手に増やすと、片方が読めなくなって配送が止まる。また「空でもOK」にしたい欄は、最初から<b>「中身 or 空」という選べる欄（union型）</b>として設計し、その先頭に「空」を置いておきます。</p>
+    </div>
+
+    <details class="code"><summary>互換性が壊れるケース</summary>
+<pre><span class="cmt"># Avro における互換性の定義</span>
+前方互換性: ライター=新スキーマ、リーダー=古スキーマ で読める
+後方互換性: リーダー=新スキーマ、ライター=古スキーマ で読める
+
+<span class="cmt"># 互換性が壊れるケース</span>
+- デフォルト値なしの新フィールドを「追加」 → 後方互換が壊れる
+- デフォルト値なしのフィールドを「削除」   → 前方互換が壊れる</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>Avroでフィールドを足す/消すときに、デフォルト値の有無で互換性が決まると判断できる。</li>
+        <li>union型とデフォルト値の制約（先頭の選択肢）を守って、nullを安全に扱える。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>前方互換＝ライター新/リーダー旧、後方互換＝リーダー新/ライター旧。</li>
+        <li>追加・削除できるのはデフォルト値を持つフィールドのみ。</li>
+        <li>nullはunion型で表現。デフォルト値はunionの先頭の選択肢に限る。<code>optional</code>/<code>required</code>は無い。</li>
+        <li>改名はエイリアスで後方互換のみ、union選択肢の追加も後方互換のみ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.4.3 ===== -->
+<section id="s4143">
+  <div class="sec-head"><div class="sec-num">4.1.4.3</div><div><h2>そもそもライターのスキーマとは何なのか？</h2><span class="tag">読む側はどうやって「書いたときの書式」を知るか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リーダーがライターのスキーマを知る方法は使い方次第。大きなファイルなら先頭に1回だけ書く（オブジェクトコンテナファイル）、DBならレコードにバージョン番号を付けてスキーマDBから引く、ネットワークなら接続時にネゴシエーションする。スキーマのバージョン管理はドキュメントと互換性チェックに役立つ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>読む側はどうやって「書いたときのライターのスキーマ」を知るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。スキーマを全レコードに付ければ確実だけど、それじゃダメ。スキーマのほうがレコードよりずっと大きくなって、バイナリ化で節約した分が全部パーになる。答えはAvroの使われ方による。3つの典型例があるよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ファイルなら先頭に1回、DBならバージョン番号で引く、ネットワークなら最初に握手する、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。スキーマのバージョンを管理するDB（<b>スキーマレジストリ</b>）は、どのユースケースでも役立つ。ドキュメントの役割を果たすし、互換性チェックもできる。バージョン番号は単純なインクリメントでも、スキーマのハッシュ値でもいい。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：詰め順表をどこに置くか、配送方法で変える</h4>
+      <p>「詰め順表（スキーマ）」を毎回箱に同梱すると、表のほうが品物より大きくなって本末転倒。そこで配送方法で置き場所を変えます。<b>同じ書式の荷物を満載した大型トラック便</b>なら、表は荷台の先頭に1枚だけ貼る。<b>個別配送の倉庫（DB）</b>なら、各荷物に版番号シールを貼り、倉庫の台帳から該当版の表を引く。<b>窓口どうしの直通電話（ネットワーク）</b>なら、通話開始時に「今日はこの版でいくよ」と取り決める、というわけです。</p>
+    </div>
+
+    <details class="code"><summary>ライターのスキーマを共有する3つの方法</summary>
+<pre><span class="cmt"># ライターのスキーマを共有する3つの方法</span>
+1. 大量レコードの大きなファイル（Hadoopで一般的）
+   - ファイルの先頭に「一度だけ」ライターのスキーマを書く
+   - これを「オブジェクトコンテナファイル」と呼ぶ
+2. 個別にレコードが書かれるDB
+   - 各レコードの先頭にバージョン番号を付け、スキーマ一覧をDBに保存
+   - 番号からライターのスキーマを引いてデコード（例: LinkedInのEspresso）
+3. ネットワーク経由でレコードを送る
+   - 接続確立時にスキーマのバージョンをネゴシエーション（例: Avro RPC）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「スキーマをどこに置くか」を、ファイル/DB/ネットワークの状況に応じて選べる。</li>
+        <li>スキーマレジストリ（バージョン管理DB）の価値（互換性チェック・ドキュメント化）を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>スキーマを全レコードに含めると無駄が大きい。共有方法は使い方次第。</li>
+        <li>ファイル: 先頭に1回（オブジェクトコンテナファイル）。DB: バージョン番号でレジストリから引く。</li>
+        <li>ネットワーク: 接続時にネゴシエーション。バージョンは整数かハッシュ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.4.4 ===== -->
+<section id="s4144">
+  <div class="sec-head"><div class="sec-num">4.1.4.4</div><div><h2>動的に生成されたスキーマ</h2><span class="tag">タグ番号が無いから、スキーマの自動生成と好相性</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Avroはタグ番号が無いため、動的生成スキーマと相性がいい。DBの内容をダンプする際、リレーショナルスキーマからAvroスキーマを自動生成でき、DBスキーマが変わっても新スキーマを生成し直すだけ。Thrift/protobufだとタグ番号の手作業割り当て（再利用回避の注意）が必要で、動的生成は設計目標外。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Avroにタグ番号が無いのが利点って言ってましたけど、なんで数字が無いだけで嬉しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>動的に生成されたスキーマ</b>との相性がいいんだ。リレーショナルDBの中身をファイルにダンプしたいとする。Avroなら、リレーショナルなスキーマからAvroスキーマを簡単に生成できる。各テーブルがレコードのスキーマ、各列がフィールド、列名がフィールド名にマップされる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>DBのスキーマが変わったら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>列が1つ増えて1つ消えたとしよう。新しいDBスキーマから新しいAvroスキーマを生成して、それでエクスポートするだけ。エクスポート処理は変更を気にしなくていい。フィールドは名前で同定されるから、更新後のライタースキーマを古いリーダースキーマと照らし合わせ続けられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Thriftやprotobufでやると？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>タグ番号の割り当てを<b>手作業</b>でやる羽目になりがち。DBスキーマが変わるたびに、列名→フィールドタグのマッピングを手で更新する（過去のタグ番号を誤って再利用しないよう細心の注意が要る）。スキーマの動的生成はThrift/protobufでは設計目標じゃなく、Avroでは設計目標だったんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：品名で照合するから、棚の番号を振り直さなくていい</h4>
+      <p>倉庫の棚割り（DBスキーマ）が変わって品目が増減したとき、Avroは<b>品名で照合する</b>方式なので、新しい棚割りから詰め順表を作り直すだけで済みます。一方Thrift/protobufは<b>棚に振った背番号</b>で管理するので、棚が変わるたびに人が番号を割り当て直し、「前に使った番号を二度と別の品に使わない」よう神経をすり減らす。だからAvroは、自動でどんどん書式が変わる現場（DBダンプ）に向いているんです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>DBダンプやデータパイプラインで、スキーマ変更に強い自動化ができる（Avro）。</li>
+        <li>タグ番号の手動管理がなぜ面倒か（再利用事故）を理解し、形式選択に活かせる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Avroはタグ番号が無く、動的生成スキーマと好相性。</li>
+        <li>DBスキーマからAvroスキーマを自動生成でき、変更時も再生成するだけ。フィールドは名前で同定。</li>
+        <li>Thrift/protobufはタグ番号の手動割り当てが必要で、動的生成は設計目標外。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.4.5 ===== -->
+<section id="s4145">
+  <div class="sec-head"><div class="sec-num">4.1.4.5</div><div><h2>コード生成と動的型付き言語</h2><span class="tag">Avroはコード生成なしでも使える「自己記述型」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Thrift/protobufはコード生成に依存し、静的型付き言語（Java等）では型チェックやIDE補完が効いて有益。動的型付き言語ではコード生成は意味が薄く邪魔にもなる。Avroはコード生成なしでも使え、オブジェクトコンテナファイルは自己記述型なので、Apache Pigのような動的処理言語と好相性。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Thriftやprotobufは「コード生成」が前提でしたよね。Avroは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Thriftとprotobufはコード生成に依存する。スキーマから好きな言語の実装コードを生成する。Java・C++・C#みたいな<b>静的型付き言語</b>では有益でね。効率的なインメモリ構造が使えるし、型チェックやIDEの自動補完が効く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>動的型付き言語（JavaScript・Ruby・Python）だと？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>コンパイル時の型チェッカーが無いから、コード生成にあまり意味がない。むしろ嫌われがち（明示的なコンパイル手順を避けたい）。さらに動的生成スキーマの場合、コード生成はデータアクセスの邪魔にすらなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Avroはコード生成しなくていいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>静的型付き言語向けにコード生成も<b>できる</b>けど、まったくしなくても使える。オブジェクトコンテナファイル（ライタースキーマが埋め込まれてる）があれば、Avroライブラリで開いてJSONを見るみたいに中身を見られる。必要なメタデータが全部入ってるから、このファイルは<b>自己記述型</b>なんだ。Apache Pigみたいな動的処理言語と相性抜群だよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：表が貼ってある箱は、誰でもその場で開けられる</h4>
+      <p>Thrift/protobufは、開封前に<b>受け手の言語に合わせた専用の開封器具（生成コード）を用意</b>しておく方式。Javaのような几帳面な相手には、開封器具が「中身の型」を保証してくれて便利。一方Avroのオブジェクトコンテナファイルは、<b>箱の蓋に詰め順表そのものが貼ってある自己記述の箱</b>。だから専用器具を作らなくても、その場で蓋を見て中身を読める――身軽に扱いたい動的な現場（Pig等）にぴったりです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>言語が静的か動的かでコード生成の価値が変わると理解し、形式を選べる。</li>
+        <li>Avroの「自己記述型ファイル」が、スキーマを意識しないデータ処理を可能にすると分かる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Thrift/protobufはコード生成依存。静的型付き言語で型チェック・補完が効き有益。</li>
+        <li>動的型付き言語ではコード生成は意味が薄く、邪魔になることも。</li>
+        <li>Avroはコード生成なしでも使える。オブジェクトコンテナファイルは自己記述型でPig等と好相性。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1.5 ===== -->
+<section id="s415">
+  <div class="sec-head"><div class="sec-num">4.1.5</div><div><h2>スキーマのメリット</h2><span class="tag">スキーマは「常に最新のドキュメント」になる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Protocol Buffers/Thrift/AvroのスキーマはXML/JSON Schemaよりシンプルで広く普及した。考え方は古く、1984年のASN.1にも通じる。スキーマベースのバイナリは、コンパクト・スキーマが常に最新のドキュメントになる・デプロイ前に互換性チェックできる・静的型付き言語で型チェックができる、という利点がある。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結局、スキーマってどんなメリットがあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まず、これらのスキーマ言語はXML SchemaやJSON Schemaよりずっとシンプル。詳細なバリデーション規則はサポートしないぶん、実装も使い方も簡単で、すごく多くの言語でサポートされるまで育った。考え方は新しくなくて、1984年に標準化された<b>ASN.1</b>とも多くの共通点がある。ASN.1のバイナリエンコーディング(DER)は今でもSSL証明書(X.509)に使われてて、タグ番号によるスキーマ進化もサポートしてた。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>DB自身も独自のバイナリ形式を持ってるって聞きました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。多くのリレーショナルDBは独自のネットワークプロトコルを持ち、レスポンスをインメモリ構造に変換する<b>ドライバ</b>（ODBCやJDBC API）がベンダーから提供される。テキストもバイナリも有効な選択肢だけど、スキーマベースのバイナリには優れた性質がいくつもあるよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマ自体がドキュメントになって、しかも必ず最新、っていいですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが大きい。スキーマの進化は、スキーマレスのJSON DBが提供するのと同じような柔軟性を持ちながら、データに関する保証を高め、より優れたツールを提供してくれるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：書式表が「生きた取扱説明書」になる</h4>
+      <p>スキーマベースのバイナリでは、開封に<b>必ず書式表（スキーマ）が要る</b>ので、書式表はいつも実物の荷物と一致しています。手書きの取扱説明書はすぐ実態とズレますが、こちらは<b>使うたびに照合される「生きた取扱説明書」</b>。しかも書式表どうしを見比べれば、荷物を送り出す前に「この新書式は古い受け手でも読めるか？」を<b>事前にチェック</b>できる。これが手書き送り状（JSON）には無い大きな強みです。</p>
+    </div>
+
+    <details class="code"><summary>スキーマベースのバイナリエンコーディングの利点</summary>
+<pre><span class="cmt"># スキーマベースのバイナリエンコーディングの利点</span>
+- 「バイナリJSON」よりずっとコンパクト（フィールド名をデータに含めない）
+- スキーマがドキュメントの役割を果たす（デコードに必須なので常に最新が保証）
+- スキーマのDBを管理すれば、前方/後方互換性をデプロイ前にチェックできる
+- 静的型付き言語では、コード生成でコンパイル時の型チェックができる</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>スキーマが「常に最新のドキュメント」「互換性チェックの土台」になる価値を理解できる。</li>
+        <li>テキスト形式とバイナリ形式を、用途と組織の事情で選び分けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>これらのスキーマ言語はXML/JSON Schemaよりシンプルで広く普及。考え方はASN.1(1984)に遡る。</li>
+        <li>バイナリの利点: コンパクト、スキーマが最新ドキュメントになる、デプロイ前の互換性チェック、型チェック。</li>
+        <li>スキーマ進化はスキーマレスDB並みの柔軟性に加え、データの保証とツールの良さをもたらす。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2 ===== -->
+<section id="s42">
+  <div class="sec-head"><div class="sec-num">4.2</div><div><h2>データフローの形態</h2><span class="tag">互換性は「エンコードする側」と「デコードする側」の関係</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：互換性とは「エンコードするプロセス」と「デコードするプロセス」の関係。データがプロセス間を流れる代表的な経路は、DB経由・サービス呼び出し（REST/RPC）経由・非同期メッセージパッシング経由の3つ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>形式の話は分かりました。次は「データがどう流れるか」ですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。メモリを共有しない別プロセスにデータを送るにはバイト列にエンコードしなきゃいけない。前方/後方互換性は進化性にとって重要で、互換性とは結局「エンコードするプロセス」と「デコードするプロセス」の関係なんだ。データの流れ方は色々あるから、この章では一般的な3つの経路を見る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>経路ごとに、必要な互換性も違ってきそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにそこを見ていくよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：荷物の3つの届け方</h4>
+      <p>同じ「荷物を相手に届ける」でも、届け方は3通り。①<b>貸倉庫に預けて、相手（や未来の自分）が後で取りに来る</b>＝DB経由。②<b>遠くの窓口へ電話して、その場で受け答えする</b>＝サービス呼び出し（REST/RPC）。③<b>郵便局の仕分け所に投函して、相手が好きなときに受け取る</b>＝メッセージパッシング。どの届け方でも「荷造りする人」と「開封する人」がいて、その間で書式が合っている必要があります。</p>
+    </div>
+
+    <details class="code"><summary>データがプロセス間を流れる3つの経路</summary>
+<pre><span class="cmt"># データがプロセス間を流れる3つの経路</span>
+1. データベース経由         （4.2.1）
+2. サービス呼び出し経由     （4.2.2 REST と RPC）
+3. 非同期メッセージパッシング経由（4.2.3 メッセージキュー・アクター）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>互換性を「エンコード側とデコード側の関係」として捉えられる。</li>
+        <li>3つの経路ごとに、どちら向きの互換性が必要かを見抜く準備ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>互換性はエンコード側とデコード側の関係として捉える。</li>
+        <li>主なデータフロー: DB経由、サービス呼び出し経由、メッセージパッシング経由。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.1 ===== -->
+<section id="s421">
+  <div class="sec-head"><div class="sec-num">4.2.1</div><div><h2>データベース経由でのデータフロー</h2><span class="tag">保存は「将来の自分へのメッセージ」。未知フィールドの保全に注意</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：DBでは書く側がエンコード、読む側がデコードする。自分が後で読むだけでも後方互換が要り、複数プロセス（ローリングアップグレード中の新旧コード）が混在するので前方互換も頻繁に要る。落とし穴は、古コードが新フィールドを含むレコードを読んで書き戻すと未知フィールドが失われうること。問題を認識していれば防げる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まずDB経由。誰がエンコード・デコードするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DBに書き込むプロセスがエンコードし、読み取るプロセスがデコードする。アクセスするプロセスが1つだけなら、書いた自分が後で読むだけ。この場合、DBへの保存は<b>将来の自分自身へのメッセージ送信</b>と考えられる。だから明らかに<b>後方互換性</b>が要る。将来の自分が、過去の自分が書いたものを読めないと困るからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数のプロセスがアクセスする場合は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが普通。複数のアプリや、同じサービスの複数インスタンスがアクセスする。ローリングアップグレード中は更新済みと未更新が共存する。つまり<b>新コードと古コードがDBに混在アクセスする</b>。新コードが書いた値を、まだ動いてる古コードが後で読むかもしれない。だから<b>前方互換性</b>も頻繁に必要になる。でも、ここにもう1つ落とし穴があるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>また落とし穴ですか……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにきみが最初にハマったやつ。新コードが新フィールドを書く。その後、新フィールドを知らない<b>古コード</b>がそのレコードを読み、更新して書き戻す。望ましいのは「古コードは新フィールドを理解できなくても、手をつけずに残す」こと。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも僕のときは新フィールドが消えました……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこなんだ。Thrift/protobuf/Avroは「未知フィールドの保全」をサポートしてる。でも<b>アプリレベルの配慮が必要</b>な場合がある。DBの値をアプリのモデルオブジェクトにデコードして、後でエンコードし直すと、その変換の途中で未知フィールドが<b>失われる</b>ことがある。解決は難しくない。<b>この問題を認識してさえいればいい</b>んだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：知らない同梱品を、勝手に捨てないで</h4>
+      <p>DBは<b>みんなで使う貸倉庫</b>。新人が「あだ名カード」という新しい同梱品を箱に入れて預けます。あとから昔の係員がその箱を取り出し、中身を入れ替えて戻すとき、<b>見覚えのない「あだ名カード」をそのまま戻すべき</b>なのに、いったん自分の作業台（モデルオブジェクト）に品物を並べ替えた拍子に、知らないカードを脇に落としてしまう――これが未知フィールドの消失。係員が「知らない品物も触らず戻す」と心がければ防げます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>DBアクセスで前方・後方の両互換性がなぜ必要かを説明できる。</li>
+        <li>デコード→再エンコードで未知フィールドを失う事故を、設計で防げる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>DBは書く側がエンコード、読む側がデコード。保存は「将来の自分へのメッセージ」。</li>
+        <li>後方互換は当然必要。新旧コードの混在で前方互換も頻繁に必要。</li>
+        <li>古コードが新フィールドを含むレコードを読み書き戻す際、未知フィールドの保全に注意（特にモデルへの詰め替え時）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.1.1 ===== -->
+<section id="s4211">
+  <div class="sec-head"><div class="sec-num">4.2.1.1</div><div><h2>異なる値が異なる時刻に書き込まれるケース</h2><span class="tag">データはコードよりも長生きする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：DBには異なる時刻に書かれた値が同居し、「データはコードより長生きする」。古いデータを書き直すマイグレーションは大規模だと負担なので避けられ、多くのリレーショナルDBはnullデフォルトの列追加などを既存データを書き換えずに行う。スキーマ進化により、内部は混在でも単一スキーマのように扱える。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>DBって、いつでも好きな値を更新できますよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。5ミリ秒前に書いた値と5年前に書いた値が、同じDBに同居しうる。サーバーサイドのアプリは数分で置き換わるけど、DBの中身は別。5年前のデータは、明示的に書き直さない限り当時のエンコーディングのまま残る。これを<b>「データはコードよりも長生きする」</b>と言うんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>古いデータを新しいスキーマに合わせて書き直せばいいのでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それを<b>マイグレーション</b>と言う。できるけど、大規模データだと大きな負担だから、たいていのDBは避ける。多くのリレーショナルDBは、デフォルト値<code>null</code>の列を足すような単純な変更なら、既存データを書き換えずにできる。古い行を読むとき、列が欠けてたらDBが<code>null</code>を補うんだ。ただしMySQLは例外で、しばしばテーブル全体を書き直す。LinkedInのEspressoはストレージにAvroを使って進化ルールを活かしてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり、中身は色んな時代のスキーマでも……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>スキーマの進化のおかげで、下のストレージに色んなバージョンのデータが混在してても、DB全体が<b>単一のスキーマでエンコードされているかのように</b>扱えるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：倉庫には何十年も前の荷物が眠っている</h4>
+      <p>貸倉庫（DB）には、<b>昨日預けた荷物も、20年前に預けたままの荷物も同居</b>しています。倉庫の係員（コード）は何度も入れ替わるのに、奥の古い荷物は当時の梱包のまま。全部を今の書式に詰め直す（マイグレーション）のは大仕事なので普通はしません。代わりに、古い荷札に欄が足りなければ係員が<b>その場で既定値を補って</b>読みます。だから倉庫全体を「今の書式で揃っている」かのように扱えるんです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「データはコードより長生きする」前提で、古いデータの読み取りを設計できる。</li>
+        <li>マイグレーションを避けつつ列を追加する仕組み（null補完）を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>異なる時刻の値が同居。データはコードより長生きする。</li>
+        <li>マイグレーションは大規模だと避ける。多くのDBはnull列追加を書き換えなしで行う（MySQLは例外）。</li>
+        <li>スキーマ進化により、内部が混在でも単一スキーマのように扱える（例: EspressoはAvro利用）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.1.2 ===== -->
+<section id="s4212">
+  <div class="sec-head"><div class="sec-num">4.2.1.2</div><div><h2>アーカイブストレージ</h2><span class="tag">スナップショットは最新スキーマで一貫エンコード</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：バックアップやデータウェアハウス用のスナップショットは、元が混在スキーマでも最新スキーマで一貫してエンコードするのが普通。一度書いたら変更しないので、Avroのオブジェクトコンテナファイルや、分析向けの列指向フォーマット（Parquet）が適する。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バックアップとかデータウェアハウスへのコピーは、どう扱うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DBからスナップショットを取ることがあるよね。元のDBに色んな時期のスキーマが混在してても、ダンプは<b>最新のスキーマで一貫してエンコード</b>するのが普通。どうせコピーするんだから、一貫した形にすればいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ダンプにはどんな形式が向いてますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ダンプは一度に書き出して、その後は変更されない。だから<b>Avroのオブジェクトコンテナファイル</b>が適してる。あるいは分析向けの<b>列指向フォーマット（Parquetなど）</b>もこういうエンコードに向いてる。アーカイブの活用は10章でさらに論じるよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：倉庫の中身を、まとめて今の書式で写し取る</h4>
+      <p>倉庫の中身を丸ごと別の保管庫（バックアップやデータウェアハウス）へ移すときは、<b>古い荷物も全部いったん今の最新書式で梱包し直して</b>から運びます。一度詰めたら開けて入れ替えることはないので、開封不要でぎっしり積める梱包方式（Avroコンテナや、分析しやすい列ごとにまとめるParquet）が向いているんです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>アーカイブは最新スキーマで一貫エンコードすればよいと判断できる。</li>
+        <li>用途（一度書いて変更しない・分析用）に合った形式（Avroコンテナ・Parquet）を選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>スナップショットは最新スキーマで一貫してエンコードする。</li>
+        <li>一度書いたら変更しないので、Avroオブジェクトコンテナファイルや列指向のParquetが適する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.2 ===== -->
+<section id="s422">
+  <div class="sec-head"><div class="sec-num">4.2.2</div><div><h2>サービス経由でのデータフロー：RESTとRPC</h2><span class="tag">サーバーがAPIを公開し、クライアントが呼ぶ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ネットワーク通信はクライアントとサーバーの2役が一般的で、サーバーが公開するAPIをサービスと呼ぶ。クライアントはブラウザ・ネイティブアプリ・Ajax・他のサーバーなど多様。サービスはDBに似るがアプリ固有APIに制約されカプセル化できる。マイクロサービスの狙いは各サービスの独立デプロイ・進化で、そのためにAPIバージョン間の互換性が必須。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>次はネットワーク越しの通信ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一番一般的なのは<b>クライアント</b>と<b>サーバー</b>の2役。サーバーがネットワークにAPIを公開し、クライアントが接続してリクエストを出す。このサーバーが公開するAPIを<b>サービス</b>と呼ぶ。Webもそうで、ブラウザがWebサーバーに<code>GET</code>でHTML等をダウンロードし、<code>POST</code>でデータを送る。みんなが標準(HTTP・URL・TLS等)に合意してるから、どのブラウザでもどのサイトにもアクセスできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>クライアントってブラウザだけじゃないですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もちろん。ネイティブアプリもリクエストを出すし、ブラウザ内のJSアプリも<code>XMLHttpRequest</code>でHTTPクライアントになる（これが<b>Ajax</b>）。この場合レスポンスはHTMLじゃなくJSONなどでエンコードされる。サーバーが別のサーバーのクライアントになることもよくある。大きなアプリを機能領域ごとに小さなサービスに分けるこの作り方は、昔<b>SOA</b>、最近は<b>マイクロサービスアーキテクチャ</b>と呼ばれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>サービスってDBと似てません？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>似てる。でもDBは任意のクエリ言語で問い合わせできるけど、サービスが公開するのは<b>アプリ固有のAPI</b>だけ。許される入出力はビジネスロジックが事前に決めた範囲だけ。この制約で<b>カプセル化</b>ができる。マイクロサービスの狙いは各サービスを<b>独立してデプロイ・進化</b>させること。新旧バージョンのサーバーとクライアントが混在するから、エンコーディングはAPIのバージョン間で<b>互換性を保たねばならない</b>。まさにこの章のテーマだね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：専門窓口に電話して用件を頼む</h4>
+      <p>サービス呼び出しは、<b>遠くの専門窓口に電話する</b>ようなもの。窓口（サーバー）は「受け付ける用件の一覧（API）」を公開していて、こちら（クライアント）は決まった用件しか頼めません。何でも検索できる図書館（DB）と違い、窓口は「この手続きだけ」と用件を絞る――これがカプセル化。各窓口を別々のチームが運営し、他の窓口と足並みを揃えずに業務を更新したい。だから「昔の頼み方」も「新しい返答」も双方が理解できる互換性が要るのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>クライアント/サーバー/サービスの関係と、サービスがDBと違う点（API制約・カプセル化）を説明できる。</li>
+        <li>マイクロサービスで独立デプロイを成立させる鍵が互換性だと理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>サーバーがAPI（サービス）を公開し、クライアントがリクエストする。クライアントは多様。</li>
+        <li>サービスはDBに似るが、アプリ固有APIに制約されカプセル化できる。</li>
+        <li>マイクロサービスは独立デプロイ・進化が狙いで、APIバージョン間の互換性が必須。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.2.1 ===== -->
+<section id="s4221">
+  <div class="sec-head"><div class="sec-num">4.2.2.1</div><div><h2>Webサービス</h2><span class="tag">RESTは設計哲学、SOAPはXMLベースのプロトコル</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：HTTPを使うサービスがWebサービス。3つの状況（ユーザーデバイス・組織内・組織間）で使われる。代表的アプローチはRESTとSOAPで哲学が正反対。RESTはプロトコルでなくHTTPの上の設計哲学（URLでリソース識別・HTTP機能を活用）でRESTfulと呼ばれる。SOAPはXMLベースのプロトコルでWSDLとWS-*に依存し複雑、ツール依存が強く小規模では衰退。RESTfulは手軽でOpenAPI/Swaggerで記述・文書化できる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>HTTPを使うサービスを「Webサービス」と呼ぶんですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。でもこの名前は誤解を招く。Webだけで使うものじゃないからね。3つの状況（①ユーザーのデバイス上のクライアントアプリから、②同一組織内のサービス間で、③他組織のサービスへ）で使われる。代表的な作り方は<b>REST</b>と<b>SOAP</b>で、哲学がほぼ正反対。信者同士がよく熱い論争をする（笑）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RESTって、プロトコルですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、RESTは<b>プロトコルじゃなくて設計哲学</b>。HTTPの原理の上に作る。リソースの識別にURLを使い、キャッシュ制御・認証・コンテントタイプのネゴシエーションにHTTPの機能を使う。組織間のサービス結合ではSOAPより広く使われ、マイクロサービスと結びつけられる。RESTの原理で設計したAPIを<b>RESTful</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>SOAPは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>SOAPはネットワークAPIのための<b>XMLベースのプロトコル</b>。HTTP経由が普通だけど、HTTPの機能をほぼ使わないことを目標にしてる。代わりに<b>WS-*</b>という広範で複雑な関連標準が山ほどある。APIは<b>WSDL</b>というXMLベースの言語で記述し、コード生成できる。でも人間が読むようには設計されてなくて、ツール・コード生成・IDEに強く依存する。ベンダー間の相互運用性でしばしば問題が起きるから、大企業ではまだ使われるけど小規模では支持を失ってる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RESTfulはもっと手軽ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。コード生成や自動ツールの必要性が低い。<b>OpenAPI（Swaggerとも）</b>みたいなAPI定義フォーマットを使えば、RESTfulなAPIを記述してドキュメントを生成することもできる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：標準の郵送ルールに乗るREST、専用便のSOAP</h4>
+      <p>RESTは、<b>誰もが使う標準の郵送ルール（住所＝URL、配達証明や速達指定＝HTTPの機能）にそのまま乗る</b>考え方。普通のはがきや封筒の感覚で、ブラウザやcurlですぐ試せます。一方SOAPは、独自の<b>専用便と分厚い専用伝票（WSDLとWS-*）</b>。送るには専用の機材と訓練が要り、業者が違うと伝票が噛み合わないことも。大企業の専用ラインでは残りますが、身軽に始めたい小さな会社からは敬遠されています。</p>
+    </div>
+
+    <details class="code"><summary>Webサービスが使われる3つの状況</summary>
+<pre><span class="cmt"># Webサービスが使われる3つの状況</span>
+1. ユーザーのデバイス上のクライアントアプリ → サービスへ HTTP リクエスト
+   （スマホのネイティブアプリ、Ajax の JS アプリ。通常は公開インターネット経由）
+2. 同一組織内で、あるサービスが別のサービスへリクエスト
+   （同一データセンター内のマイクロサービス。支えるソフトを「ミドルウェア」とも）
+3. 他組織が所有するサービスへリクエスト（通常インターネット経由）
+   （クレジットカード処理、OAuth による公開 API など）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>RESTとSOAPの哲学の違いを理解し、状況に応じて選べる。</li>
+        <li>WSDL/WS-*の複雑さとRESTfulの手軽さを踏まえてAPI設計を判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Webサービス＝HTTPを使うサービス。3状況（デバイス・組織内・組織間）で使われる。</li>
+        <li>RESTはプロトコルでなく設計哲学（URL・HTTP機能活用）。設計準拠がRESTful。</li>
+        <li>SOAPはXMLベースのプロトコル。WSDLとWS-*に依存し複雑、相互運用性に難。小規模で衰退。</li>
+        <li>RESTfulは手軽で、OpenAPI/Swaggerで記述・文書化できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.2.2 ===== -->
+<section id="s4222">
+  <div class="sec-head"><div class="sec-num">4.2.2.2</div><div><h2>リモートプロシージャコール（RPC）の問題</h2><span class="tag">ネットワークはローカル関数とは根本的に違う</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：RPCはリモート呼び出しをローカル関数呼び出しのように見せる（場所の透過性）。だが両者は根本的に違う――予測不能・タイムアウトで結果不明・リトライでの二重実行（冪等性が必要）・レイテンシのばらつき・引数のエンコード・言語間の型変換。だからローカルと同一視しすぎるのは無理がある。RESTはネットワークであることを隠さない点が魅力。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RPCって聞いたことありますけど、何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Webサービスは、ネットワーク越しにAPIを呼ぶ技術の長い歴史の最新版。過去にはEJBやJavaのRMI、DCOM、CORBAなどがあった。これらは全部、1970年代からある<b>RPC（リモートプロシージャコール）</b>の概念に基づく。リモートのサービスへのリクエストを、<b>同じプロセス内の関数・メソッド呼び出しと同じように見せよう</b>とする。この抽象化を<b>場所の透過性</b>と呼ぶ。便利そうだろ？ でも根本的な問題がある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>タイムアウトで「届いたかも分からない」のは怖いですね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。8章で詳しく論じるけど、これは分散システムの本質的な難しさだ。だから「リモートとローカルを同じものに見せようとしすぎる」のは意味をなさない。RESTの魅力の一部は、<b>自分がネットワークプロトコルであることを隠そうとしない</b>点にある。とはいえ、人々がREST上にRPCライブラリを作るのは止められないみたいだけどね（笑）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：隣の部屋に頼むのと、遠くの窓口に電話するのは違う</h4>
+      <p>場所の透過性は「<b>遠くの窓口への電話</b>を、<b>隣の部屋の同僚に声をかける</b>のと同じ感覚で扱おう」という発想。でも電話は別物です。回線が切れて相手に届いたかすら分からない（タイムアウト）。「もう一度」とかけ直すと、実は1回目が通っていて<b>二重に発注</b>される（冪等性が要る）。声をかけるなら一瞬の返事も、電話だと待たされる（レイテンシのばらつき）。しかも口頭の内容を全部<b>文字に起こして読み上げ</b>ないと伝わらない（引数のエンコード）。RESTは「これは電話ですよ」と隠さない点が誠実なんです。</p>
+    </div>
+
+    <details class="code"><summary>ネットワークリクエストがローカル関数呼び出しと根本的に違う点</summary>
+<pre><span class="cmt"># ネットワークリクエストがローカル関数呼び出しと根本的に違う点</span>
+- 予測可能性 : ローカルは制御下。ネットワークは予測不能（消失・低速・利用不可）。リトライ要
+- 終わり方   : ネットワークは「タイムアウト」で結果なく戻りうる（届いたかすら不明）
+- リトライの危険 : 1回目が実は届いていた場合、リトライで二重実行 → 冪等性が必要
+- レイテンシのばらつき : ネットワークは遅く変動も大（1ms未満が過負荷で数秒に）
+- 引数の渡し方 : ローカルはポインタを渡せる。ネットワークは全部バイト列にエンコード
+- 言語間の型変換 : 別言語かもしれず型変換が要る（例: 2の53乗超のJavaScriptの問題）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ネットワーク呼び出しの落とし穴（タイムアウト・二重実行・型変換）を意識した設計ができる。</li>
+        <li>リトライに冪等性が必要な理由を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>RPCは場所の透過性を狙うが、ネットワークはローカル関数と根本的に違う。</li>
+        <li>予測不能、タイムアウトで結果不明、リトライの二重実行（冪等性が要る）、レイテンシのばらつき、引数のエンコード、言語間の型変換。</li>
+        <li>リモートとローカルの同一視は無理がある。RESTはネットワークであることを隠さない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.2.3 ===== -->
+<section id="s4223">
+  <div class="sec-head"><div class="sec-num">4.2.2.3</div><div><h2>現在のRPCの方向性</h2><span class="tag">RPCは健在。RESTは公開API、RPCは組織内向け</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：RPCは健在で、各エンコーディング上にフレームワークがある（gRPC、Finagle、Rest.liなど）。新世代は「リモートはローカルと違う」と明確にし、future/promiseやストリーム、サービスディスカバリを提供。カスタムRPCは高性能だが、RESTfulは実験・デバッグの容易さ、広いサポート、巨大なエコシステムが利点。RESTは公開APIで支配的、RPCは組織内サービス間に向く。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>問題だらけなら、RPCはもう使われないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、なくなってない。この章で扱った全エンコーディングの上に、色んなRPCフレームワークが作られてる。protobufを使うのが<b>gRPC</b>、<b>Finagle</b>はThrift、<b>Rest.li</b>はHTTP上のJSON。新世代は「リモートはローカルと違う」ことを<b>明確にする</b>ようになった。FinagleやRest.liは<b>future（promise）</b>で失敗しうる非同期動作をカプセル化し、gRPCは<b>ストリーム</b>で1回の呼び出しでリクエストとレスポンスの列を扱える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>サービスディスカバリって？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>クライアントが特定サービスのIPアドレスとポート番号を見つけられる機能。6.5でまた論じる。で、カスタムRPCとRESTどっちがいいか――バイナリ形式のカスタムRPCはREST上のJSONより性能が出せる。でもRESTfulには性能以外の大きな利点があるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>使い分けがあるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。RESTは<b>公開API</b>のスタイルとして支配的になった。一方RPCフレームワークの焦点は<b>同一組織内のサービス間</b>リクエスト（普通は同じデータセンター内）に向いてるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：社内便の高速ライン、世間向けは標準郵便</h4>
+      <p>カスタムRPCは、<b>同じ会社の建物どうしを結ぶ専用の高速社内便</b>。規格をそろえられる身内向けなら、最速・最軽量で運べます。でも社外のお客さん（公開API）相手には、誰もが受け取れて、curlという普通の道具で試せて、配送・追跡・検問（ロードバランサ・モニタリング・ファイアウォール）の道具がそろった<b>標準郵便（RESTful）</b>が無難。だから「公開はREST、組織内はRPC」と使い分けるのです。</p>
+    </div>
+
+    <details class="code"><summary>RESTful API の（性能以外の）利点</summary>
+<pre><span class="cmt"># RESTful API の（性能以外の）利点</span>
+- 実験とデバッグが楽（ブラウザや curl でリクエストでき、コード生成も追加ソフトも不要）
+- 主要な言語・プラットフォームがすべてサポート
+- 巨大なツールのエコシステム
+  （サーバー、キャッシュ、ロードバランサ、プロキシ、ファイアウォール、
+   モニタリング、デバッグ、テストツールなど）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>公開APIならREST、組織内ならRPC、という使い分けの判断ができる。</li>
+        <li>future/promiseやストリームといった新世代RPCの概念を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>RPCは健在。各エンコーディング上にフレームワーク（gRPC=protobuf、Finagle=Thrift、Rest.li=JSON）。</li>
+        <li>新世代はfuture/promise、ストリーム、サービスディスカバリでリモートの違いを明示。</li>
+        <li>カスタムRPCは高性能、RESTfulは実験・デバッグ容易・広いサポート・巨大エコシステム。</li>
+        <li>RESTは公開APIで支配的、RPCは組織内サービス間向け。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.2.4 ===== -->
+<section id="s4224">
+  <div class="sec-head"><div class="sec-num">4.2.2.4</div><div><h2>RPCのデータエンコーディングと進化</h2><span class="tag">サーバー先・クライアント後の更新を仮定できる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：RPCでは「サーバーが先、クライアントが後」で更新されると仮定でき、保つべきはリクエストの後方互換とレスポンスの前方互換。互換性の特性はエンコーディングから引き継がれる（Thrift/gRPC/Avro RPCは各ルール、SOAPはXMLスキーマ、RESTはオプション追加なら互換維持）。組織間ではアップグレードを強制できず長期の互換性が要り、壊す変更時は複数バージョンを並行メンテ。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RPCの進化性、つまり互換性はどう考えるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>クライアントとサーバーを独立にデプロイできるのが重要。DB経由と比べると、サービス間は1つの仮定でシンプルにできる。すなわち<b>サーバーが先に更新され、クライアントは後から更新される</b>と考えていい。すると保つべきは<b>リクエストの後方互換性</b>と<b>レスポンスの前方互換性</b>だけになる。互換性の特性は、使うエンコーディングから引き継がれるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>組織をまたぐAPIだと、互換性はもっと大変そうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。組織間だとサービス提供者はクライアントを制御できず、アップグレードを強制できない。だから互換性を<b>長期間、おそらく期限なしで</b>保たないといけない。壊す変更が必要なら、提供者は<b>複数バージョンのAPIを並行メンテ</b>することになる。RESTfulならURL内かHTTPの<code>Accept</code>ヘッダにバージョン番号を入れるのが一般的だよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：窓口が先に新方式、利用者は後から慣れる</h4>
+      <p>RPCの世界では、たいてい<b>窓口（サーバー）が先に新しいやり方を覚え、利用者（クライアント）は後からついてくる</b>。だから窓口は「まだ古い頼み方をしてくる利用者の依頼」を理解でき（リクエストの後方互換）、利用者は「窓口の新しい返答」を壊さず受け取れればよい（レスポンスの前方互換）。ただし<b>よその会社の利用者</b>には更新を強制できないので、窓口は古い頼み方を<b>いつまでも</b>受け付け、どうしても変えたいときは新旧の受付ラインを並行運用するのです。</p>
+    </div>
+
+    <details class="code"><summary>RPC方式ごとの互換性</summary>
+<pre><span class="cmt"># RPC方式ごとの互換性</span>
+- Thrift / gRPC(protobuf) / Avro RPC
+    : それぞれのエンコーディング形式の互換性ルールに従って進化できる
+- SOAP
+    : リクエスト/レスポンスをXMLスキーマで指定。進化はできるが落とし穴あり
+- RESTful API
+    : レスポンスはJSON、リクエストはJSONかパラメータ。
+      オプションのパラメータ追加やレスポンスへの新フィールド追加は互換性を保つ変更</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「サーバー先・クライアント後」という仮定から、必要な互換性の向きを導ける。</li>
+        <li>組織間APIで長期互換と複数バージョン並行メンテの必要性を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>サーバー先・クライアント後の更新を仮定でき、リクエストは後方互換・レスポンスは前方互換が要る。</li>
+        <li>互換性はエンコーディングから引き継がれる（Thrift/gRPC/Avro RPC、SOAPはXMLスキーマ、RESTはオプション追加で互換維持）。</li>
+        <li>組織間は強制更新不可で長期互換が必要。壊す変更時は複数バージョン並行メンテ。</li>
+        <li>バージョン管理はURL・Acceptヘッダ・APIキー連携など（合意は無い）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.3 ===== -->
+<section id="s423">
+  <div class="sec-head"><div class="sec-num">4.2.3</div><div><h2>メッセージパッシングによるデータフロー</h2><span class="tag">RPCとDBの中間。ブローカーを経由して非同期で送る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：非同期メッセージパッシングはRPCとDBの中間。メッセージブローカー（メッセージキュー）という中継地点を経由する。利点はバッファによる信頼性向上・再配信・送信側が宛先を知らなくてよい・複数受信側へ配信・送受信の論理的分離。RPCと違い通常は単方向で非同期（送ったら忘れる）。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目の経路、非同期メッセージパッシングですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これはRPCとDBの<b>中間</b>。メッセージが低レイテンシで届く点はRPCに似てる。でも直接接続で送るんじゃなく、一時的に保存する<b>メッセージブローカー（メッセージキュー、メッセージ指向ミドルウェアとも）</b>という中継地点を経由する点はDBに似てる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>わざわざブローカーを挟むメリットは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いくつもある。受信側が停止/過負荷でもバッファになり信頼性が上がる。受信側がクラッシュしても再配信でき消失を防ぐ。送信側が受信側のIP/ポートを知らなくていい。1メッセージを複数の受信側に送れる。送信側と受信側が論理的に分離される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RPCとの違いは、ほかにも？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きいのは、メッセージパッシングは普通<b>単方向</b>。送信側はリプライを受け取らないと考えるのが普通。レスポンスは別チャネルで返す。この通信パターンは<b>非同期</b>――送ったら忘れる、なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：仕分け所のポストに投函して、あとは任せる</h4>
+      <p>メッセージブローカーは<b>郵便局の仕分け所</b>。相手の家に直接届けに行く（RPC）のではなく、<b>ポストに投函</b>すれば、相手が留守でも仕分け所が預かってくれて、後で確実に届けてくれます（バッファ・再配信）。相手の住所を細かく知らなくても、宛先カテゴリさえ書けば届く。送り手は投函したら<b>あとは振り返らない（非同期・単方向）</b>。返事がほしければ、相手が別便で送り返します。</p>
+    </div>
+
+    <details class="code"><summary>直接RPCに比べたメッセージブローカーの利点</summary>
+<pre><span class="cmt"># 直接RPCに比べたメッセージブローカーの利点</span>
+- 受信側が停止/過負荷でも、ブローカーがバッファになり信頼性が上がる
+- 受信側がクラッシュしてもメッセージを再配信でき、消失を防げる
+- 送信側が受信側のIPアドレス/ポート番号を知らなくていい（クラウドで特に有益）
+- 1つのメッセージを複数の受信側に送れる
+- 送信側と受信側が論理的に分離される（送信側は発行するだけ）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ブローカーを挟む利点（バッファ・再配信・分離）を理解し、直接RPCと使い分けられる。</li>
+        <li>非同期・単方向というメッセージパッシングの性質を踏まえた設計ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>メッセージパッシングはRPCとDBの中間で、メッセージブローカーを経由する。</li>
+        <li>利点: バッファで信頼性向上、再配信、宛先を知らなくてよい、複数受信側、送受信の分離。</li>
+        <li>通常は単方向・非同期（送ったら忘れる）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.3.1 ===== -->
+<section id="s4231">
+  <div class="sec-head"><div class="sec-num">4.2.3.1</div><div><h2>メッセージブローカー</h2><span class="tag">プロデューサがキュー/トピックへ、ブローカーがコンシューマへ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：メッセージブローカーは昔は商用、今はRabbitMQ・Kafka等のOSSが人気。プロデューサがキュー/トピックに送り、ブローカーがコンシューマ/サブスクライバへの配達を保証する。トピックは一方通行だが連鎖やリプライキューでRPC的にも使える。エンコーディング形式は任意で、前方/後方互換があれば独立デプロイが柔軟。再発行時は未知フィールドの保全に注意。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>メッセージブローカーって、どんな製品があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>昔はTIBCO、IBM WebSphere、webMethodsみたいな商用が主流。最近は<b>RabbitMQ、ActiveMQ、HornetQ、NATS、Apache Kafka</b>みたいなOSSの人気が高い。11章で詳しく比較するよ。使い方はおおまかに、あるプロセスが名前付きの<b>キュー</b>または<b>トピック</b>にメッセージを送り、ブローカーがそのキュー/トピックの1つ以上の<b>コンシューマ</b>または<b>サブスクライバ</b>に届くことを保証する。1つのトピックに多くのプロデューサとコンシューマが関わりうる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トピックは一方通行ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、トピックが提供するのは一方通行のデータフローだけ。ただしコンシューマが別のトピックへ展開したり（連鎖）、元の送信側が消費するリプライキューへ展開したり（RPCに似たリクエスト/レスポンス型）できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>エンコーディング形式は決まってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、ブローカーは普通、特定のデータモデルを強制しない。メッセージは多少のメタデータを持つただのバイト列だから、任意の形式が使える。前方/後方互換を持つなら、パブリッシャとコンシューマを<b>任意の順序で独立に</b>変更・デプロイできて柔軟。ただしコンシューマがメッセージを別トピックへ<b>再発行</b>する場合は、DBで話したのと同じで<b>未知フィールドの保全</b>に注意だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：宛先カテゴリの私書箱に投函、複数人が受け取れる</h4>
+      <p>プロデューサは「営業通知」などの<b>名前のついた私書箱（キュー/トピック）</b>に手紙を投函します。仕分け所（ブローカー）は、その私書箱を購読している<b>受取人（コンシューマ/サブスクライバ）全員</b>に確実に配ります。中身の書式は自由なので、送り手と受け手は別々のタイミングで更新できる。ただし、受け取った手紙を<b>別の私書箱へ転送する</b>ときは、知らない同梱物を落とさないよう（未知フィールドの保全）気をつけます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>キュー/トピック・プロデューサ/コンシューマの基本構造を説明できる。</li>
+        <li>ブローカー経由でも互換性と未知フィールド保全が重要だと理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ブローカーは昔は商用、今はRabbitMQ/Kafka等のOSSが人気。</li>
+        <li>プロデューサがキュー/トピックへ送り、ブローカーがコンシューマ/サブスクライバへ配達を保証。</li>
+        <li>トピックは一方通行だが連鎖・リプライキューでRPC的にも使える。形式は任意、互換性があれば独立デプロイ可。</li>
+        <li>再発行時は未知フィールドの保全に注意。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2.3.2 ===== -->
+<section id="s4232">
+  <div class="sec-head"><div class="sec-num">4.2.3.2</div><div><h2>分散アクターフレームワーク</h2><span class="tag">ブローカーとアクターモデルを統合。互換性は依然必要</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：アクターモデルはスレッドの代わりにロジックをアクターに包み、非同期メッセージで通信する並行処理モデル（配信は保証されない）。分散アクターフレームワークはこれを複数ノードに広げ、メッセージブローカーとアクターモデルを統合したもの。メッセージが単一プロセス内でも失われうると前提するため、RPCより場所の透過性がうまく働く。ローリングアップグレードには前方/後方互換が必要で、Akka・Orleans・Erlang OTPで扱いが異なる。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「アクターモデル」って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>アクターモデル</b>は、単一プロセス内の並行処理のモデル。スレッド（とそれに伴うレース条件・ロック・デッドロック）を直接扱う代わりに、ロジックを<b>アクター</b>にカプセル化する。各アクターは1つのクライアントやエンティティを表し、共有しないローカルな状態を持ち、<b>非同期メッセージ</b>で他のアクターと通信する。配信は保証されず、エラー状況ではメッセージは失われる。各アクターは1度に1メッセージしか処理しないからスレッドの心配は不要だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「分散」アクターフレームワークは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>このモデルでアプリを複数ノードにスケールさせるもの。送信側と受信側が同じノードか別ノードかは問わない。別ノードなら、メッセージは透過的にバイト列にエンコードされ、ネットワークで送られ、向こうでデコードされる。アクターモデルは「単一プロセス内でさえメッセージは失われうる」と前提してるから、RPCより場所の透過性がうまくいく。基本的に<b>メッセージブローカーとアクタープログラミングモデルを1つに統合</b>したものなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ローリングアップグレードのときは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>やっぱり前方/後方互換性を気にする必要がある。新バージョンのノードから古バージョンのノードへ（逆へも）メッセージが送られるからね。Akka・Orleans・Erlang OTPで扱いが異なるよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>アクターでも、結局は互換性から逃げられないんですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📮 たとえ話：手紙でしかやり取りしない事務員たち</h4>
+      <p>アクターは<b>それぞれ個室にこもり、手紙（非同期メッセージ）でしか連絡しない事務員</b>。机（状態）は共有しないので、同時作業の混乱（レース条件）が起きません。手紙は途中で紛失することもあると最初から割り切っているのがポイント。分散版は、その事務員たちを<b>別々の建物（ノード）にも配置</b>したもの。建物間は郵送になるだけで、やり方は同じ。だから「同じ建物の隣室か、遠くの建物か」を意識せずに済む。ただし、建物を1つずつ改装（ローリングアップグレード）するなら、新旧の事務員が手紙をやり取りできる書式の互換が要ります。</p>
+    </div>
+
+    <details class="code"><summary>分散アクターフレームワークのメッセージエンコーディングの扱い</summary>
+<pre><span class="cmt"># 分散アクターフレームワークのメッセージエンコーディングの扱い</span>
+- Akka
+    : デフォルトはJavaの組み込みシリアライゼーション（互換性なし）。
+      Protocol Buffers等に置き換え可。そうすればローリングアップグレードもできる
+- Orleans
+    : デフォルトはカスタム形式で、ローリングアップグレード非対応。
+      新デプロイは「新クラスタを立て、トラフィックを移し、古クラスタを落とす」手順。
+      Akka同様プラグインも使える
+- Erlang OTP
+    : レコードのスキーマ変更が驚くほど難しい。ローリングアップグレードは可能だが要注意。
+      実験的な新データ型 maps（2014年 R17 導入）で将来は容易になるかも</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>アクターモデルの考え方（共有しない状態・非同期メッセージ）を説明できる。</li>
+        <li>分散アクターでもローリングアップグレード時に互換性が要ると理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>アクターモデルはロジックをアクターに包み、非同期メッセージで通信（配信は保証されない）。</li>
+        <li>分散アクターフレームワークはこれを複数ノードへ広げ、ブローカーとアクターモデルを統合。</li>
+        <li>メッセージは単一プロセス内でも失われうると前提するため、RPCより場所の透過性が良い。</li>
+        <li>ローリングアップグレードには互換性が必要。Akka/Orleans/Erlang OTPで扱いが異なる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ（振り返り） ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で要点を言ってみる</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日で、最初に僕がやらかした事故の意味がやっと分かりました。データには「メモリの中の形」と「外に出すバイト列の形」があって、その変換が<b>エンコーディング／デコーディング</b>。効率だけじゃなく、アーキテクチャやデプロイの選択肢まで左右するんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>うん。互換性については？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><b>ローリングアップグレード</b>で少しずつ更新したいから、その間は新旧コードが混在する。だから全データを<b>後方互換（新コードが古データを読める）</b>と<b>前方互換（古コードが新データを読める）</b>の両方を保ってエンコードしないといけない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>形式ごとの特徴は？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>言語固有(pickle等)は1言語に縛られ互換性も欠きがち。JSON/XML/CSVは広く使われるけど数値やバイナリが曖昧。Thrift・protobuf・Avroのスキーマ付きバイナリは、コンパクトで互換ルールが明確、ドキュメントや型チェックにも役立つ。ただしデコードしないと人間に読めない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データフローの3経路は？ そして結論は？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>DB経由・RPC/REST・メッセージパッシングの3つ。どれも「送る側がエンコード、受ける側がデコード」。結論は、ちょっと注意を払えば前方/後方互換もローリングアップグレードも十分実現できる。僕、もう「あだ名フィールド」で事故りません！</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① エンコード/デコード</h4><p>メモリの形⇄バイト列。荷造りと開封。効率だけでなくアーキテクチャやデプロイも左右する。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 2方向の互換性</h4><p>後方＝新コードが古データを読める（簡単）。前方＝古コードが新データを読める（難しい）。ローリングアップグレードで両方要る。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 形式の選択</h4><p>言語固有は危険。JSON/XML/CSVは可読だが曖昧。Thrift/protobuf/Avroはスキーマでコンパクト＆互換が明確。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 3つのデータフロー</h4><p>DB経由（保存＝未来への手紙）、サービス呼び出し（REST/RPC）、メッセージパッシング（ブローカー/アクター）。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>⑤ 注意すれば実現できる</h4><p>未知フィールドを保全し、互換ルールを守れば、無停止デプロイと素早い進化が両立する。</p></div>
+    </div>
+    <div class="loopback">🧭 「新旧コードが混在しても壊れないか？」を羅針盤に、次の章から分散データの世界へ</div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ「分かっていなかった部分」</span></div></div>
+
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>前方互換性と後方互換性</div>
+      <p style="font-size:14px;margin:0">「前方互換性」と「後方互換性」の違いを、ローリングアップグレード中に新旧コードが混在する状況を例に、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">後方互換性は「新しいコードが、古いコードが書いたデータを読めること」、前方互換性は「古いコードが、新しいコードが書いたデータを読めること」です。ローリングアップグレードでは新旧のコードが同時に動くので、両方が必要になります。新コードは過去のデータ形式を知っているので後方互換は比較的簡単ですが、前方互換は、古コードが「まだ知らない新しい部分」を壊さずに無視しなければならないため難しくなります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 後方互換＝新コードが古データを読める、前方互換＝古コードが新データを読める、と説明できている ／ □ ローリングアップグレードで新旧コードが混在するため両方が要る、と述べている ／ □ 前方互換のほうが難しい（未知を無視する必要がある）と指摘している</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>フィールドタグとスキーマ進化（Thrift/protobuf）</div>
+      <p style="font-size:14px;margin:0">Thriftやprotobufで、スキーマにフィールドを安全に「追加」するときのルールを2つ挙げ、なぜそのルールが互換性を保つのかを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①新しいフィールドには新しいタグ番号を使う：古コードは未知のタグ番号を、型アノテーションを頼りに読み飛ばせるので前方互換が保たれます。②追加するフィールドは必須（required）にせず、デフォルト値を持たせる：必須にすると、古コードはそのフィールドを書かないため、古コードが書いたデータを新コードが読むときのチェックが失敗し、後方互換が壊れるからです。なお、既存のタグ番号は変更・使い回ししてはいけません。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 新タグ番号を使う＋古コードが未知タグを読み飛ばせる（前方互換）と説明している ／ □ 追加フィールドは必須にせずデフォルト値を持たせる＋理由（後方互換）を述べている ／ □ タグ番号は変更・使い回し不可に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>Avroのリーダー/ライターのスキーマ</div>
+      <p style="font-size:14px;margin:0">Avroは「タグ番号が無く、データに型情報も入らない」のに、なぜスキーマを進化させられるのですか。リーダーのスキーマとライターのスキーマという言葉を使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Avroではデータを書くときのスキーマ（ライターのスキーマ）と、読むときのスキーマ（リーダーのスキーマ）を区別します。両者は同一である必要はなく、互換性さえあればよいという考え方です。読むとき、Avroライブラリが両方のスキーマを並べて見比べ、フィールドを名前でマッチさせて差異を解決します。リーダーに無いフィールドは無視し、ライターに無いフィールドはリーダーのスキーマのデフォルト値で補います。これにより、データ自体に型情報が無くても、新旧で形の違うスキーマの間を橋渡しでき、進化が可能になります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ライターのスキーマ（書くとき）とリーダーのスキーマ（読むとき）を区別している ／ □ 両者は同一不要で互換性があればよく、読むときに差異を解決すると述べている ／ □ 名前でマッチ／無視／デフォルト値で補完、という解決方法に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>RPCがローカル関数呼び出しと違う理由</div>
+      <p style="font-size:14px;margin:0">RPC（リモートプロシージャコール）を「ローカルの関数呼び出しと同じように見せる」ことの問題点を、3つ挙げて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①予測可能性：ローカル呼び出しは自分の制御下で成否が決まりますが、ネットワークは消失や相手の不調など制御外の理由で失敗し、予測できません。②タイムアウトと二重実行：ネットワークはタイムアウトで結果が分からず、リクエストが届いたかも不明。リトライすると、実は届いていた場合にアクションが二重実行されるため、冪等性の仕組みが必要です。③レイテンシと引数：ネットワークは遅くて変動が大きく、引数はすべてバイト列にエンコードして送る必要があり、別言語間では型変換の問題（例: 2の53乗超のJavaScriptの問題）も起きます。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 予測不能（制御外の失敗）に触れている ／ □ タイムアウトで結果不明・リトライの二重実行（冪等性が必要）に触れている ／ □ レイテンシのばらつき／引数のエンコード／言語間の型変換のいずれかに触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>3つのデータフローと互換性の向き</div>
+      <p style="font-size:14px;margin:0">データフローの3経路（DB経由、サービス呼び出し、メッセージパッシング）のうち、サービス呼び出し（RPC）で「サーバーが先、クライアントが後に更新される」と仮定すると、どちら向きの互換性が必要になりますか。理由とともに答えてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">リクエストの後方互換性とレスポンスの前方互換性が必要です。サーバーが先に新しくなるので、まだ古いクライアントが送ってくる古いリクエストを、新しいサーバーが読めなければなりません（リクエストの後方互換）。一方、新しいサーバーが返す新しいレスポンスを、まだ古いクライアントが読めなければなりません（レスポンスの前方互換）。この仮定のおかげで、DB経由のように両方向すべてを気にするより議論がシンプルになります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ リクエストの後方互換・レスポンスの前方互換、と答えている ／ □ サーバー先・クライアント後という仮定から理由を導いている ／ □ DB経由より仮定でシンプルにできる点に触れていれば加点</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして体感する</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>手元のレコードをいろいろな形式でエンコードしてみる</h4><p>簡単なJSONレコードを用意し、MessagePack・Protocol Buffers・Avroなどでエンコードして実際のバイト数を比べてみましょう。フィールド名が入る/入らないでサイズがどう変わるか体感できます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>スキーマ変更で互換性を壊してみる</h4><p>protobufかAvroでスキーマを書き、「フィールドを必須で追加」「タグ番号を使い回す」など"やってはいけない変更"をわざと行い、古いスキーマで読めなくなる様子を確認しましょう。失敗から学ぶのが一番速いです。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>JSONの大きな数のワナを再現する</h4><p>JavaScript（ブラウザのコンソールでも可）で <code>9007199254740993</code>（2の53乗+1）を表示し、数値が丸められることを確認しましょう。Twitterがなぜ文字列でIDを返すのか実感できます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>REST APIをcurlで叩いてみる</h4><p>公開APIを<code>curl</code>で叩き、レスポンスのJSONを観察しましょう。「ブラウザやcurlだけで実験・デバッグできる」というRESTfulの利点を体感できます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次章へ</h4><p>続く章ではレプリケーションやパーティショニングなど分散データの話に入ります。複数ノードでデータをやり取りする以上、この章の「互換性」と「ローリングアップグレード」が随所で効いてきます。常に「新旧コードが混在しても壊れないか？」を意識しながら読み進めてください。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『データ指向アプリケーションデザイン』第4章 図解 ／ たとえ話メタファー：📮 郵便・荷造りと翻訳（送り手と受け手） ／ エンコーディングと進化（前方/後方互換性）</p>
+
+</div>
+</body>
+</html>

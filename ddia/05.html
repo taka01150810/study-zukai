@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第5章 レプリケーション ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第5章</span>
+  <h1>レプリケーション ― 同じデータを複数のマシンに持つ</h1>
+  <p>「DBが1台だけだと、それが落ちたら全部おしまい？」「投稿したコメントが消える、というクレームの正体は？」――同じデータのコピーを複数のマシンに置く<b>レプリケーション</b>と、コピーがズレている間に起きる不思議な現象を、新人ハルとベテラン カイ先輩の対話で根っこから学びます。</p>
+  <div class="badge-row">
+    <span class="badge">📰 たとえ話は「新聞社の本社と支局（記事の配信）」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a class="sub" href="#s0">レプリケーションとは何か（章の導入）</a>
+  <a href="#s51">5.1 リーダーとフォロワー</a>
+  <a class="sub" href="#s511">5.1.1 同期と非同期のレプリケーション</a>
+  <a class="sub" href="#s512">5.1.2 新しいフォロワーのセットアップ</a>
+  <a class="sub" href="#s513">5.1.3 ノード障害への対処</a>
+  <a class="sub" href="#s514">5.1.4 レプリケーションログの実装</a>
+  <a href="#s52">5.2 レプリケーションラグにまつわる問題</a>
+  <a class="sub" href="#s521">5.2.1 自分が書いた内容の読み取り</a>
+  <a class="sub" href="#s522">5.2.2 モノトニックな読み取り</a>
+  <a class="sub" href="#s523">5.2.3 一貫性のあるプレフィックス読み取り</a>
+  <a class="sub" href="#s524">5.2.4 レプリケーションラグへの対処方法</a>
+  <a href="#s53">5.3 マルチリーダーレプリケーション</a>
+  <a class="sub" href="#s531">5.3.1 ユースケース</a>
+  <a class="sub" href="#s532">5.3.2 書き込みの衝突の処理</a>
+  <a class="sub" href="#s533">5.3.3 レプリケーションのトポロジー</a>
+  <a href="#s54">5.4 リーダーレスレプリケーション</a>
+  <a class="sub" href="#s541">5.4.1 ノードダウン時の書き込み</a>
+  <a class="sub" href="#s542">5.4.2 クォーラムの一貫性の限界</a>
+  <a class="sub" href="#s543">5.4.3 いい加減なクォーラム</a>
+  <a class="sub" href="#s544">5.4.4 並行書き込みの検出</a>
+  <a href="#wrapup">🔁 章のまとめ（弟子の振り返り）</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードやメモです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">📰</div><div><b>たとえ話はぜんぶ新聞社で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「新聞社の本社と支局（記事の配信）」</b>に置きかえて説明します。データ＝記事、システム＝新聞社、リーダー＝本社、フォロワー＝支局です。別の世界のたとえは混ぜません。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、新聞社のたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">レプリケーション <span>replication</span></div><p>同じデータのコピーを複数のマシンに置くこと。新聞社でいうと<b>本社の紙面を各支局へ配り、同じ新聞を刷る</b>こと。</p></div>
+    <div class="item"><div class="w">レプリカ <span>replica</span></div><p>コピーを保存する各マシン（ノード）。<b>＝各支局・本社</b>。</p></div>
+    <div class="item"><div class="w">リーダー <span>leader</span></div><p>書き込み（編集）を受け付ける唯一のマシン。マスター/プライマリとも。<b>＝編集権を持つ本社</b>。</p></div>
+    <div class="item"><div class="w">フォロワー <span>follower</span></div><p>リーダーの変更を受け取って同じコピーを作るマシン。<b>＝本社の紙面を受け取って同じ新聞を刷る支局</b>。</p></div>
+    <div class="item"><div class="w">同期 / 非同期</div><p>同期＝支局の「受け取りました」を待ってから完了とする。非同期＝待たずに進む。<b>支局の確認を待つ/待たない</b>。</p></div>
+    <div class="item"><div class="w">レプリケーションログ</div><p>リーダーがフォロワーに送る「変更の記録（変更ストリーム）」。<b>＝本社から支局へ送る『差し替え原稿の束』</b>。</p></div>
+    <div class="item"><div class="w">フェイルオーバー <span>failover</span></div><p>リーダーが落ちたとき、フォロワーを新リーダーに昇格させる切り替え。<b>＝本社が機能停止し、支局を臨時本社に昇格</b>。</p></div>
+    <div class="item"><div class="w">レプリケーションラグ</div><p>リーダーの変更がフォロワーに届くまでの時間差。<b>＝本社の紙面が支局に届くまでの遅れ</b>。</p></div>
+    <div class="item"><div class="w">結果整合性 <span>eventual consistency</span></div><p>一時的にズレても、待てばいつか全レプリカが同じになること。<b>＝いずれ全支局が同じ紙面に</b>。</p></div>
+    <div class="item"><div class="w">マルチリーダー</div><p>複数のマシンが書き込みを受け付ける構成。<b>＝複数の本社が同時に編集する</b>。</p></div>
+    <div class="item"><div class="w">リーダーレス</div><p>リーダーを置かず、どのマシンも直接書き込みを受ける構成。<b>＝各支局が本社なしで直接やり取りする</b>。</p></div>
+    <div class="item"><div class="w">クォーラム <span>quorum</span></div><p>「成功」と見なすのに必要な過半数の同意数。<b>＝過半数の支局の同意</b>。書き込みは _w_ 台、読み取りは _r_ 台。</p></div>
+    <div class="item"><div class="w">衝突 / 衝突解決</div><p>同じ記事が別々の場所で違う内容に書き換えられること、とその調停。<b>＝食い違った記事の調停</b>。</p></div>
+    <div class="item"><div class="w">LWW <span>last write wins</span></div><p>最後の書き込みを勝たせる。タイムスタンプで1つだけ残し他は捨てる。<b>＝一番新しい原稿だけ採用</b>。</p></div>
+    <div class="item"><div class="w">事前発生 <span>happens-before</span></div><p>ある操作が別の操作を「知っている／前提にしている」関係。知らなければ「並行」。</p></div>
+    <div class="item"><div class="w">バージョンベクトル</div><p>キー×レプリカごとのバージョン番号の集合。並行書き込みと上書きを区別する道具。</p></div>
+    <div class="item"><div class="w">CRDT</div><p>並行編集を自動でうまくマージできるデータ構造のファミリ（衝突のない複製データ型）。</p></div>
+    <div class="item"><div class="w">いい加減なクォーラム <span>sloppy quorum</span></div><p>本来の担当でない到達可能なノードに一時的に書く仕組み。<b>＝鍵をなくしたとき隣の家に泊めてもらう</b>。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>ツバサ社のサービスがじわじわ成長し、ユーザーが増えてきた。ある日ハルは「DBが1台しかないと、そのDBが落ちたらサービス全部止まるんじゃ……？」という不安にぶつかる。さらに「画面を更新したら、さっき自分が投稿したコメントが消えてる」というユーザーからの問い合わせまで来た。カイ先輩は「それ、ぜんぶ<b>レプリケーション</b>の話だよ」と言って、同じデータを複数のマシンにコピーして持つ仕組みと、そこから生まれる不思議な落とし穴を、ホワイトボードに図を描きながら教えていく。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：<b>レプリケーション</b>とは「同じデータのコピーを、ネットワークでつながった複数のマシンに置いておくこと」。これをやると、①ユーザーの近くにデータを置いて速くでき、②一部が壊れても動き続けられ、③読み取りを分担してたくさんさばける。ただし、コピーを「変更」しはじめた瞬間に難しさが爆発する。この章は、変更をどう全コピーに行き渡らせるかの<b>3つの方式（シングルリーダー／マルチリーダー／リーダーレス）</b>と、コピーがズレている間に起きる気持ち悪い現象（レプリケーションラグ）への対処を学ぶ回。</div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：これから「新聞社の本社と支局」の話をします</h4>
+      <p>この章を通して、データ＝<b>記事</b>、システム＝<b>新聞社</b>、レプリカ＝<b>各支局や本社</b>、リーダー＝<b>編集権を持つ本社</b>、フォロワー＝<b>本社の紙面を受け取って同じ新聞を刷る支局</b>に置きかえて読みます。レプリケーションとは「本社で組んだ紙面を、全国の支局へ配って、どこでも同じ新聞を刷れるようにすること」。読者（ユーザー）は近くの支局で新聞を買えるし、本社が一時的に動けなくなっても支局が新聞を出せる。これが、この章ぜんぶを貫く世界です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>高可用性を語れる</b>：DBが1台だと、その1台が落ちた瞬間にサービスが全停止する。コピーを持つ仕組みを知らないと「高可用性」を語れない。</li>
+        <li><b>現場の怪奇現象を直せる</b>：「自分が書いたはずのデータが見えない」「時間が巻き戻ったように見える」はほぼ全部レプリケーションラグが原因。原因を知れば直せる。</li>
+        <li><b>全DBに通用する共通知識</b>：PostgreSQL・MySQL・MongoDB・Cassandra・Riak……ほぼすべての分散DBがこの章の3方式のどれかを使う。1度理解すれば全部に通用する。</li>
+        <li><b>トレードオフで選べる</b>：「同期か非同期か」「リーダーは1つか複数か」を選べ、一貫性モデルでユーザー体験の不具合を防ぎ、クォーラム（_w_ + _r_ &gt; _n_）を自分で設計できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 0 レプリケーションとは何か ===== -->
+<section id="s0">
+  <div class="sec-head"><div class="sec-num">📰</div><div><h2>レプリケーションとは何か（章の導入）</h2><span class="tag">なぜ同じデータを複数の場所に置くのか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：レプリケーション＝同じデータのコピーを複数のマシン（レプリカ）に持つこと。目的はレイテンシ低減・可用性向上・読み取りスループット向上の3つ。データが変化しないなら簡単だが、<b>変更をどう全コピーに伝えるか</b>が難しさの源。方式はシングルリーダー・マルチリーダー・リーダーレスの3つ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、うちのDBって1台ですよね。これ、その1台が壊れたら全部おしまいじゃないですか……？ あと「投稿したコメントが消える」ってクレームも来てて。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>お、いいテーマを2つ同時に拾ったね。どっちも<b>レプリケーション</b>――同じデータのコピーを複数のマシンに持つ話だ。じっくりいこう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも、なんでわざわざ同じデータを複数の場所に置くんですか？ 1か所にあれば管理も楽そうなのに。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>理由は大きく3つある。書き出すね。</div></div>
+    </div>
+
+    <h3 class="blk">レプリケーションを行う3つの理由</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">⚡</div><h4>レイテンシを下げる</h4><p>データを地理的にユーザーの近くに置く（東京の人は東京のコピーから読む）。</p><span class="pill">近くで読む</span></div>
+      <div class="mini"><div class="ic">🛡️</div><h4>可用性を高める</h4><p>一部のマシンが壊れても、残りのコピーで動き続ける。</p><span class="pill">壊れても続く</span></div>
+      <div class="mini"><div class="ic">📈</div><h4>スループットを高める</h4><p>読み取りクエリを処理するマシンを増やしてスケールアウトする。</p><span class="pill">読みを分担</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：なぜ全国に支局を置くのか</h4>
+      <p>新聞社が支局を全国に置くのは、①読者の近くで新聞を配れて<b>速い</b>（レイテンシ）、②本社が火事になっても支局が新聞を出せる<b>安心</b>（可用性）、③朝刊を読みたい大勢を複数の支局で<b>分担してさばける</b>（スループット）から。1か所に集約すると管理は楽でも、この3つの利点を全部失います。</p>
+    </div>
+
+    <details class="code"><summary>ホワイトボードのメモ：3つの理由</summary>
+<pre><span class="cmt"># レプリケーションを行う3つの理由</span>
+レイテンシを下げる   : データを地理的にユーザーの近くに置く（東京の人は東京のコピーから読む）
+可用性を高める       : 一部のマシンが壊れても、残りのコピーで動き続ける
+スループットを高める : 読み取りクエリを処理するマシンを増やしてスケールアウトする</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コピーするだけならコピペ1回で終わりじゃないですか。何がそんなに難しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこなんだ。データが<b>ずっと変わらない</b>なら簡単だよ。最初に1回コピーすれば終わり。問題は、データが<b>変更され続ける</b>こと。誰かが書き込むたびに、その変更を全部のコピーに行き渡らせなきゃいけない。この「変更の伝え方」こそがこの章の主役なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>変更を全コピーに伝える方法、ですか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。広く使われている方式が3つある。<b>シングルリーダー</b>、<b>マルチリーダー</b>、<b>リーダーレス</b>。ほぼ全部の分散データベースがこの3つのどれかを使ってる。同期でやるか非同期でやるか、壊れたコピーをどう扱うか、みたいな細かいトレードオフもたくさんある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんだか難しそうですけど……新しい話なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>原理自体は1970年代からほとんど変わってない。ネットワークの基本的な制約が変わってないからね。ただ、長らく「DBは1台で動くもの」って前提の人が多くて、分散DBが普通に使われ出したのは割と最近。だから<b>結果整合性</b>みたいな話には誤解が多いんだ。後半でちゃんとやろう。あと用語を1つ。コピーを保存する各ノードのことを<b>「レプリカ」</b>と呼ぶよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「なぜコピーを持つのか」を3つの目的で説明でき、自分のシステムがどれを狙うのか整理できる。</li>
+        <li>難しさの本質が「変更の伝播」にあると分かると、後の議論の焦点がブレない。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>レプリケーション＝複数のマシンに同じデータのコピーを保つこと。</li>
+        <li>目的はレイテンシ低減・可用性向上・スループット向上。</li>
+        <li>難しさは「変化するデータの変更をどう全コピーへ伝えるか」から生じる。</li>
+        <li>主要な方式はシングルリーダー・マルチリーダー・リーダーレスの3つ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.1 リーダーとフォロワー ===== -->
+<section id="s51">
+  <div class="sec-head"><div class="sec-num">5.1</div><div><h2>リーダーとフォロワー</h2><span class="tag">書き込みは1台に集約、読み取りはみんなで分担</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：シングルリーダー方式では、1台を<b>リーダー</b>に決めて書き込みを全部そこに集め、リーダーが変更ログを<b>フォロワー</b>たちに送って同じ順序で適用させる。読み取りはどのレプリカからでもできる。PostgreSQL・MySQL・MongoDB・Kafkaなど非常に多くのシステムが採用。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まず1つ目の「シングルリーダー」ですね。どういう仕組みですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「全部のデータが全部のレプリカに行き渡ってると保証するには？」という疑問への、一番よく使われる答えが<b>リーダーベースレプリケーション</b>だ。<b>アクティブ／パッシブ</b>とか<b>マスター‐スレーブ</b>とも呼ばれる。</div></div>
+    </div>
+
+    <h3 class="blk">リーダーベースレプリケーションの動き</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>レプリカの1つを「リーダー」に指定</h4><p>マスター/プライマリとも。書き込みたいクライアントは必ずリーダーにリクエストを送り、リーダーはまず自分のローカルストレージに書き込む。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>他のレプリカは「フォロワー」</h4><p>リードレプリカ/スレーブ/セカンダリ/ホットスタンバイとも。リーダーは変更を「レプリケーションログ（変更ストリーム）」として全フォロワーに送り、各フォロワーはリーダーと同じ順序で適用する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>読み取りはどこからでもOK</h4><p>リーダーでもフォロワーでも読める。ただし書き込みを受け付けるのはリーダーだけ（フォロワーはクライアントから見ると読み取り専用）。</p>
+        <div class="branch ok">✅ 書き込みはリーダー1台に集約、読み取りはみんなで分担。</div></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：編集権は本社だけ、印刷はどの支局でもできる</h4>
+      <p>記事を<b>書き換えられる（編集できる）のは本社だけ</b>です（＝リーダー）。本社は組んだ紙面の差し替え原稿を全国の支局へ送り、各支局は同じ順番でその差し替えを反映して同じ新聞を刷ります（＝フォロワー）。読者は近くのどの支局でも新聞を買える（読み取りはどこでもOK）けれど、記事の中身を直したいときは必ず本社に申請する、というルールです。</p>
+    </div>
+
+    <details class="code"><summary>ホワイトボードのメモ：リーダーベースの動き</summary>
+<pre><span class="cmt"># リーダーベースレプリケーションの動き</span>
+1. レプリカの1つを「リーダー」（マスター/プライマリ）に指定する
+   → 書き込みたいクライアントは、必ずリーダーにリクエストを送る
+   → リーダーはまず自分のローカルストレージに書き込む
+2. 他のレプリカは「フォロワー」（リードレプリカ/スレーブ/セカンダリ/ホットスタンバイ）
+   → リーダーは変更を「レプリケーションログ（変更ストリーム）」として全フォロワーに送る
+   → 各フォロワーはリーダーと同じ順序で、その変更を自分のコピーに適用する
+3. 読み取りは、リーダーでもフォロワーでもどこからでもOK
+   → ただし書き込みを受け付けるのはリーダーだけ（フォロワーは読み取り専用）</pre>
+    </details>
+
+    <details class="code"><summary>構成図：シングルリーダー（リーダーベース）</summary>
+<pre>       [クライアント]
+        │書き込み（リーダーのみ）        ＼読み取り（どこでもOK）
+        ▼                                 ＼
+     [リーダー]                            ＼
+        │レプリケーションログ（変更ストリーム）を送る
+        ├──────────────▶ [フォロワー1] ◀── 読み取り
+        └──────────────▶ [フォロワー2] ◀── 読み取り</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>書き込みはリーダー1台、読み取りはみんなで分担、と。これってマイナーな仕組みなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>逆だよ、超メジャー。PostgreSQL（9.0以降）、MySQL、Oracle Data Guard、SQL ServerのAlwaysOn可用性グループ……たくさんのリレーショナルDBに組み込まれてる。MongoDB、RethinkDB、Espressoみたいな非リレーショナルDBでも使われる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>DBだけの話ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、DBだけじゃない。KafkaやRabbitMQの高可用性キューといった分散メッセージブローカーも同じ仕組みだし、DRBDみたいなレプリケーションするブロックデバイスにも同様のものがある。それくらい基本的なパターンなんだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「書き込みはリーダーに集約、読み取りは分散」という最も基本的な構成を理解できる。</li>
+        <li>自分が使っているDB（PostgreSQLやMySQLなど）が裏でこの仕組みを使っていると分かる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リーダー1台が書き込みを受け、変更ログをフォロワーに送る。</li>
+        <li>フォロワーはリーダーと同じ順序で変更を適用し、読み取りを担える。</li>
+        <li>書き込みを受け付けるのはリーダーのみ。</li>
+        <li>リレーショナルDB・非リレーショナルDB・メッセージブローカーまで幅広く採用されている。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.1.1 同期と非同期 ===== -->
+<section id="s511">
+  <div class="sec-head"><div class="sec-num">5.1.1</div><div><h2>同期と非同期のレプリケーション</h2><span class="tag">フォロワーの「受け取りました」を待つか、待たないか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：同期レプリケーションは「フォロワーのOKを待ってから成功を返す」ので最新性が保証されるが、フォロワーが止まると書き込みも止まる。非同期は待たないので速いが、リーダー障害時に未送信の書き込みが消える。現実的には<b>1つだけ同期にする準同期型</b>がよく使われる。研究ではチェーンレプリケーションなどデータを失わない手法も進んでいる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーがフォロワーに変更を送る、ってことは……フォロワーが受け取り終わるまでリーダーは待つんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが超大事。待つのが<b>同期的（synchronous）</b>、待たないのが<b>非同期的（asynchronous）</b>。リレーショナルDBでは設定で選べることが多い。例で考えよう。ユーザーがプロフィール画像を更新する場面だ。</div></div>
+    </div>
+
+    <details class="code"><summary>時間の流れ：同期フォロワーと非同期フォロワー</summary>
+<pre><span class="cmt"># 同期フォロワーと非同期フォロワーを1つずつ持つ場合（時間は左→右）</span>
+クライアント ──更新リクエスト──▶ [リーダー]
+                                   ├─▶ [フォロワー1（同期）] ──OK──▶ リーダーは「OK」を待つ★
+                                   └─▶ [フォロワー2（非同期）]      リーダーは返事を待たない
+クライアント ◀──「更新成功」──── [リーダー]（フォロワー1のOKを確認してから返す）
+                                       （フォロワー2はだいぶ遅れて反映されることもある）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：支局の「受け取りました」を待つ本社、待たない本社</h4>
+      <p>本社が差し替え原稿を支局へ送ったとき、<b>同期</b>は「支局から『反映しました』の電話が来るのを待ってから、記者に『差し替え完了』と返す」やり方。確実だけど、その支局が電話に出ないと本社の作業が全部止まります。<b>非同期</b>は「原稿を送ったらすぐ『完了』と返し、支局の反映は後回し」。速いけれど、本社が原稿を送りきる前に倒れると、その差し替えは消えてしまいます。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>普段どれくらい遅れるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>通常はめちゃくちゃ速い。多くのDBは1秒以内にフォロワーへ変更を適用する。でも<b>時間の保証はない</b>。フォロワーが障害復帰直後とか、性能の上限ぎりぎりとか、ネットワークに問題があると、数分以上遅れることもある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同期にしておけば安心ですよね？ 常に最新なんだから。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>利点はその通り。同期フォロワーは必ず最新で、リーダーが突然死んでもデータが確実にある。でも欠点が大きい。同期フォロワーが返事を返さないと――クラッシュでもネットワーク障害でも――<b>書き込みが全部止まる</b>。リーダーは同期レプリカが復活するまで全書き込みをブロックして待つしかない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、じゃあフォロワーが1台こけただけで書き込み不能……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。だから<b>全フォロワーを同期にするのは非現実的</b>。1ノード停止で全体が止まる。現実的には、複数フォロワーのうち<b>1つだけ</b>を同期にして残りは非同期にする。同期フォロワーが遅くなったら非同期のどれかを同期に昇格させる。これで「リーダー＋1つの同期フォロワー」の2か所に必ず最新コピーがある。この構成を<b>準同期型（semi-synchronous）</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>完全に非同期にする構成もあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。むしろリーダーベースは完全非同期で組まれることが多い。この場合、リーダーが死んで復旧不能だと、まだフォロワーに送られてなかった書き込みは全部消える。つまり<b>クライアントに「成功」と返した書き込みでも、永続性は保証されない</b>。でも利点として、全フォロワーが遅延しててもリーダーは書き込みを続けられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>耐久性を犠牲にするって、ちょっと怖い気もしますけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>悪いトレードオフに聞こえるよね。でも非同期は、特にフォロワーが多い場合や地理的に分散してる場合に広く使われてる。遅延の問題は「5.2 レプリケーションラグにまつわる問題」で詳しくやるよ。</div></div>
+    </div>
+
+    <h3 class="blk">レプリケーションに関する研究</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「非同期だとリーダー障害でデータが消える」って、研究者は手をこまねいてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、データを失わずに高性能・高可用性を両立する手法が研究され続けてる。たとえば<b>チェーンレプリケーション</b>は同期型の変種で、Microsoft Azure Storageなどで実装に成功してる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>チェーン……鎖みたいに繋ぐんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>イメージはそう。あと、レプリケーションの一貫性は<b>合意（consensus）</b>――複数ノードがある値について一致すること――と強い関係がある。その理論は9章で深掘りする。この章では、実際に広く使われてるシンプルな形態に注目していくよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「同期か非同期か」を、最新性の保証と書き込みの止まりやすさのトレードオフで判断できる。</li>
+        <li>完全同期が非現実的な理由（1ノードで全体停止）を説明でき、準同期型という現実解を選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>同期＝フォロワーのOKを待つ。最新性は保証されるが、フォロワー停止で書き込みが止まる。</li>
+        <li>非同期＝待たない。速いが、リーダー障害で未送信の書き込みが失われる。</li>
+        <li>全フォロワー同期は非現実的。1つだけ同期にする準同期型が実用的。</li>
+        <li>完全非同期は広く使われるが、成功と返した書き込みの永続性は保証されない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.1.2 新しいフォロワーのセットアップ ===== -->
+<section id="s512">
+  <div class="sec-head"><div class="sec-num">5.1.2</div><div><h2>新しいフォロワーのセットアップ</h2><span class="tag">サービスを止めずにレプリカを増やす</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：新フォロワーのセットアップは、単純ファイルコピーだと書き込み中で壊れる。ダウンタイムなしの正攻法は「①一貫スナップショット取得→②コピー→③スナップショット位置以降の変更を要求→④キャッチアップ」。スナップショットが<b>ログのどの位置か</b>を示す情報（ログシーケンス番号やbinlog coordinates）が鍵。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>レプリカを増やしたり壊れたノードを置き換えたりするとき、新しいフォロワーにどうやってデータを揃えるんですか？ ファイルをコピーすればいいのでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが落とし穴。クライアントは常に書き込み続けてるから、単純にファイルをコピーすると、DBの違う部分を「違う時刻の状態」でコピーすることになる。結果はめちゃくちゃになりかねない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ書き込みを止めてコピーすれば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DBをロックして書き込み禁止にすればファイルは一貫するけど、それは「高可用性」って目標に反する。ありがたいことに、ダウンタイムなしでセットアップできるんだ。手順はこう。</div></div>
+    </div>
+
+    <h3 class="blk">新しいフォロワーのセットアップ手順（ダウンタイムなし）</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>一貫性のあるスナップショットを取る</h4><p>できればロックなしで。バックアップでも必要なので多くのDBにこの機能がある（MySQLならinnobackupex等のツールも）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>スナップショットを新フォロワーにコピー</h4><p>これが新フォロワーの「土台」になる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>スナップショット取得後の全変更を要求</h4><p>フォロワーはリーダーに接続。スナップショットがログのどの位置かを示す正確な位置が必要（PostgreSQLでは「ログシーケンス番号」、MySQLでは「binlog coordinates」）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>キャッチアップ完了</h4><p>溜まった変更（バックログ）を処理し終えると「キャッチアップ」完了。以降はリーダーの変更を発生ごとに処理していける。</p>
+        <div class="branch ok">✅ サービスを止めずにレプリカを追加・交換できる。</div></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：開局する新支局へ、過去の縮刷版＋その後の差し替えを渡す</h4>
+      <p>新しい支局を開くとき、本社は今この瞬間の<b>「縮刷版（一貫したスナップショット）」</b>を渡します。新聞は毎日刷られ続けているので、ただ書庫を丸ごとコピーすると「1面は今日、3面は先週」みたいにバラバラになってしまう。だから「縮刷版を作った時点」を正確に記録し、新支局には縮刷版を渡したうえで<b>「その時点から今までの差し替え原稿を全部ください」</b>と要求させ、追いつかせるのです。</p>
+    </div>
+
+    <details class="code"><summary>ホワイトボードのメモ：セットアップ手順</summary>
+<pre><span class="cmt"># 新しいフォロワーのセットアップ手順（ダウンタイムなし）</span>
+1. リーダーの「一貫性のあるスナップショット」を取る（できればロックなしで）
+2. そのスナップショットを新しいフォロワーにコピーする
+3. フォロワーはリーダーに接続し「スナップショット取得後に起きた全変更」を要求する
+   → スナップショットがログのどの位置のものかを示す正確な位置が必要
+     （PostgreSQL: ログシーケンス番号 / MySQL: binlog coordinates）
+4. フォロワーが溜まった変更（バックログ）を処理し終えると「キャッチアップ」完了
+   → 以降はリーダーの変更を発生ごとに処理していける</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スナップショットで土台を作って、その後の差分を追いかけてもらう、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。実際の手順はDBごとに大きく違う。完全自動のものもあれば、管理者が難解な手順を手作業で踏むものもある。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>レプリカ追加・故障ノード交換を、サービスを止めずに行う手順を理解できる。</li>
+        <li>「スナップショット＋差分追いかけ」という考え方は、バックアップやリストアにも応用できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>単純なファイルコピーは書き込み進行中で一貫性が崩れる。</li>
+        <li>ロックは高可用性に反するので避ける。</li>
+        <li>正攻法はスナップショット取得→コピー→以降の変更要求→キャッチアップ。</li>
+        <li>スナップショットのログ位置（ログシーケンス番号/binlog coordinates）が必要。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.1.3 ノード障害への対処 ===== -->
+<section id="s513">
+  <div class="sec-head"><div class="sec-num">5.1.3</div><div><h2>ノード障害への対処</h2><span class="tag">フォロワー障害は簡単、リーダー障害は地雷だらけ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：フォロワー障害は簡単（自分の処理位置から差分を要求してキャッチアップ）。リーダー障害は難しく、<b>フェイルオーバー</b>（フォロワー昇格＋クライアント切替＋他フォロワーの再接続）が必要。タイムアウトでの障害検出・新リーダー選出・再設定の3段階だが、書き込み破棄・スプリットブレイン・タイムアウト設定など地雷が多い。だから手動フェイルオーバーを好む現場もある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最初の不安に戻りますけど、ノードって絶対いつか落ちますよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>絶対だ。予想外の障害もあれば、カーネルにセキュリティパッチを当てて再起動みたいな計画メンテもある。目標は「個々のノードが落ちても全体は動き続け、1ノード停止の影響を最小にする」こと。フォロワーが落ちた場合とリーダーが落ちた場合で、難しさが全然違うんだ。</div></div>
+    </div>
+
+    <h3 class="blk">5.1.3.1 フォロワーの障害：キャッチアップリカバリ</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まずフォロワーが落ちた場合は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これは簡単。各フォロワーはローカルに「リーダーから受信した変更ログ」を保持してる。クラッシュして再起動しても、ネットワークが一瞬切れても、「障害前に最後に処理したトランザクション」をログから判断できる。だからリーダーに再接続して「切れてた間の変更を全部ちょうだい」と要求し、適用すればキャッチアップ完了。元通り変更ストリームを受け続けられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>自分がどこまで処理したか覚えてるから、そこから再開できるんですね。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：支局が一時休業しても、戻れば追いつける</h4>
+      <p>支局が停電で一時的に新聞を刷れなくなっても、その支局は「最後に反映した差し替えはここまで」と控えています。復旧したら本社に「休んでいた間の差し替えを全部送って」と頼み、まとめて反映すれば元通り。支局1つの休業は、新聞社全体にはほとんど影響しません。</p>
+    </div>
+
+    <h3 class="blk">5.1.3.2 リーダーの障害：フェイルオーバー</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーが落ちた場合は難しい、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ぐっと複雑になる。フォロワーの1つをリーダーに昇格させ、クライアントは書き込み先を新リーダーに切り替え、他のフォロワーは新リーダーから変更を受け取り始める。この一連を<b>フェイルオーバー</b>と呼ぶ。手動でも自動でもやる。自動フェイルオーバーは普通こんな流れだ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>リーダー障害の確認</h4><p>クラッシュ・電源喪失・ネットワーク問題…確実な検出は難しい。ほとんどのシステムは単純にタイムアウトを使う（例: 30秒反応がなければ落ちたと見なす）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>新しいリーダーの選出</h4><p>残ったレプリカの過半数で選出、または事前指定のコントローラノードが指名。最適候補は「旧リーダーに一番追従していたレプリカ」（データ損失を最小化）。全ノードを同意させるのは「合意」の問題（9章）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>新リーダーを使うようシステムを再設定</h4><p>クライアントは書き込みを新リーダーへ送る。旧リーダーが復帰しても、まだ自分がリーダーだと思い込んでいるかも → フォロワーに降格させ新リーダーを認識させる必要がある。</p></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：本社が機能停止 → 支局を臨時本社に昇格</h4>
+      <p>本社が火事や通信断で編集できなくなったら、どこかの支局を<b>臨時の本社（新リーダー）</b>に格上げします。記者の原稿の送り先を新本社に切り替え、他の支局は新本社から差し替えを受け取るようにする――これがフェイルオーバー。ただし「本社は本当に動けないのか」「どの支局を昇格させるか」「元の本社が復旧して『まだ自分が本社だ』と言い張ったら？」と、判断ミスのリスクが山ほどあります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんだか問題が起きそうな匂いがします……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。フェイルオーバーには地雷がたくさんある。順に見よう。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>フェイルオーバーで問題になりうること</th></tr>
+      <tr><td><b>書き込みの破棄</b>：非同期だと新リーダーは旧リーダーの全書き込みを受信してないかも。旧リーダー復帰時、未送信だった書き込みは一般に「破棄」されるが、これは永続性の期待に反する。</td></tr>
+      <tr><td><b>他システムとの不整合（GitHubの事故）</b>：遅れていたMySQLフォロワーが昇格し、自動インクリメントのカウンタが古い値に戻り、すでに使用済みのプライマリキーを再利用。そのキーはRedisでも使われていたため整合性が壊れ、プライベートなデータが間違ったユーザーに公開された。</td></tr>
+      <tr><td><b>スプリットブレイン</b>：2つのノードが両方とも「自分がリーダー」と思い込む危険な状況。どちらも書き込みを受け付け、衝突解決がないとデータ損失/破損が起きやすい。片方を強制シャットダウンする安全策もあるが、設計が雑だと両方落ちることも。</td></tr>
+      <tr><td><b>タイムアウトの長さ</b>：長いと復旧が遅い。短すぎると、一時的な負荷スパイクやパケット遅延で不要なフェイルオーバーが起きる。高負荷時の不要なフェイルオーバーは状況を悪化させる。</td></tr>
+    </table>
+
+    <details class="code"><summary>ホワイトボードのメモ：自動フェイルオーバーと問題点</summary>
+<pre><span class="cmt"># 自動フェイルオーバーのプロセス</span>
+1. リーダー障害の確認（ほとんどはタイムアウト。例: 30秒反応なし）
+2. 新しいリーダーの選出（過半数で選出 / コントローラが指名。追従していた候補が最適）
+3. 新リーダーを使うようシステムを再設定（旧リーダーは降格が必要）
+
+<span class="cmt"># フェイルオーバーで問題になりうること</span>
+- 非同期で未送信の書き込みが破棄される → 永続性の期待に反する
+- 他システムとの不整合（GitHubの例：使用済みプライマリキーの再利用）
+- スプリットブレイン（2ノードが両方リーダーと思い込む）
+- タイムアウトの長さ（長い=復旧遅い / 短い=不要なフェイルオーバー）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>GitHubの事故、こわすぎます……。プライマリキーが再利用されて他人のデータが見えるなんて。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>だろ。だから運用チームによっては、ソフトが自動フェイルオーバーをサポートしてても、あえて<b>手動</b>でやるところもある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>自動より手動のほうが安全なこともあるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これらの問題――ノード障害、信頼できないネットワーク、一貫性・永続性・可用性・レイテンシのトレードオフ――は分散システムの根本的な問題なんだ。8章と9章でもっと深く掘る。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>フォロワー障害とリーダー障害で対処の難易度が全く違うと理解できる。</li>
+        <li>スプリットブレインや書き込み破棄のリスクを知り、フェイルオーバー設計の落とし穴を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>フォロワー障害はキャッチアップリカバリで容易に回復できる。</li>
+        <li>リーダー障害はフェイルオーバーが必要：障害検出→新リーダー選出→再設定。</li>
+        <li>危険：非同期での書き込み破棄（GitHubの例）、スプリットブレイン、タイムアウト設定の難しさ。</li>
+        <li>自動が用意されていても、あえて手動フェイルオーバーを選ぶ現場もある。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.1.4 レプリケーションログの実装 ===== -->
+<section id="s514">
+  <div class="sec-head"><div class="sec-num">5.1.4</div><div><h2>レプリケーションログの実装</h2><span class="tag">「差し替え原稿」の中身は4通りの書き方がある</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：レプリケーションログの実装は4方式。①<b>ステートメントベース</b>（SQL文を送る。非決定的関数などで壊れやすい）、②<b>WAL転送</b>（低レベルログをそのまま送る。高速だがストレージと密結合でアップグレードに難）、③<b>論理（行ベース）ログ</b>（行単位の独立フォーマット。バージョン違いやCDCに強い）、④<b>トリガベース</b>（アプリ層で柔軟だがオーバーヘッド大）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそもリーダーがフォロワーに送る「変更ログ」って、中身はどうなってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい質問。実装にはいくつか方式がある。簡単に4つ見ていこう。ステートメントベース、WAL転送、論理（行ベース）ログ、トリガベースだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：本社が支局へ「どう紙面を直すか」を伝える4つの伝え方</h4>
+      <p>本社が支局に紙面の直し方を伝えるとき、①<b>「この編集指示（命令文）をそのまま実行して」</b>と言う（ステートメント）、②<b>「印刷機のこのドラムをこう動かして」</b>と機械の超細かい操作を渡す（WAL）、③<b>「3面の見出しをこの行に差し替え」</b>と行単位で内容だけ渡す（論理ログ）、④<b>「記事が変わったら自分でこのルールに従って処理して」</b>と現場に判断を委ねる（トリガ）。同じ目的でも、伝え方で起きる問題がまるで違います。</p>
+    </div>
+
+    <h3 class="blk">5.1.4.1 ステートメントベースのレプリケーション</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一番シンプルなのは、リーダーが実行したすべての書き込みリクエスト（<b>ステートメント</b>＝SQL文そのもの）をログに記録してフォロワーに送る方式。<code>INSERT</code>・<code>UPDATE</code>・<code>DELETE</code>文を転送して、各フォロワーが同じSQLをパースして実行する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>妥当そうですけど、何か問題が？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いろんな形で壊れる。例を挙げるね。</div></div>
+    </div>
+    <table class="t">
+      <tr><th>ステートメントベースが壊れる例</th></tr>
+      <tr><td><b>非決定的な関数</b>：<code>NOW()</code>（現在時刻）や<code>RAND()</code>（乱数）は、レプリカごとに違う結果になる。</td></tr>
+      <tr><td><b>既存データへの依存</b>：自動インクリメント列や「UPDATE ... WHERE 条件」は、全レプリカで完全に同じ順序で実行しないと結果がズレる（並行実行の制約になる）。</td></tr>
+      <tr><td><b>副作用</b>：トリガ・ストアドプロシージャ・ユーザー定義関数は、副作用が完全に決定的でないとレプリカごとに違う結果を生む。</td></tr>
+    </table>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>NOW()</code>はたしかにレプリカごとに時刻が違っちゃいますね……。回避できないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できなくはない。リーダーが非決定的な関数呼び出しを、確定した返り値で置き換えてログに記録すれば全フォロワーが同じ値を得られる。でもエッジケースが多すぎて今は他の方式が好まれる。MySQLは5.1以前はこれを使ってたけど、今は非決定性があれば行ベースに自動で切り替える。VoltDBはこれを使うけど、トランザクションを決定的にして安全性を確保してる。</div></div>
+    </div>
+
+    <h3 class="blk">5.1.4.2 write-aheadログ（WAL）の転送</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3章でやったけど、ストレージエンジンは普通すべての書き込みをログに追記するよね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>log-structuredエンジンはログが中心で、Bツリーはクラッシュ復旧のために変更をまず<b>write-aheadログ</b>に書く、でしたっけ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>よく覚えてた。どっちの場合も、このログにはDBへの全書き込みが追記専用のバイト列として入ってる。なら<b>このログをそのままフォロワーに送れば</b>いい。フォロワーが処理すれば、リーダーと全く同じデータ構造のコピーができる。PostgreSQLとOracleがこれを使ってる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>シンプルでいいですね。欠点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ログがデータを<b>非常に低レベル</b>で記述してること。WALには「どのディスクブロックのどのバイトが変わったか」が入ってる。だからレプリケーションがストレージエンジンと密結合になる。ストレージフォーマットのバージョンが変わると、リーダーとフォロワーで違うバージョンを動かせなくなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それのどこが運用で困るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アップグレードだ。本来は「フォロワーを先に新バージョンにして、フェイルオーバーで新リーダーにする」とダウンタイムなしでアップグレードできる。でもWAL転送だとバージョン違いが許されないことが多くて、アップグレードにダウンタイムが必要になっちゃう。</div></div>
+    </div>
+
+    <h3 class="blk">5.1.4.3 論理（行ベース）ログレプリケーション</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで別の方式。レプリケーション用とストレージエンジン用で<b>別のログフォーマット</b>を使う。レプリケーション用のを<b>論理ログ</b>と呼ぶ。ストレージエンジンの物理的なデータ表現とは切り離されてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>論理ログって、中身はどんな感じですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>リレーショナルDBなら「行を単位とした、テーブルへの書き込みを記述するレコードの並び」だ。こんな感じ。</div></div>
+    </div>
+    <table class="t">
+      <tr><th>論理ログ（行ベース）の中身</th></tr>
+      <tr><td><b>挿入された行</b>：すべての列の新しい値を記録。</td></tr>
+      <tr><td><b>削除された行</b>：行を一意に特定できる情報（通常はプライマリキー）を記録。なければ削除前の全列の値を記録。</td></tr>
+      <tr><td><b>更新された行</b>：行を一意に特定する情報＋（少なくとも変更された）全列の新しい値。</td></tr>
+      <tr><td>複数行を変えるトランザクションは、複数のログレコード＋コミットを示すレコードを生成。</td></tr>
+    </table>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>MySQLのbinlogがこれですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>行ベースに設定すればね。論理ログの利点は、ストレージエンジンと分離されてるから<b>後方互換性を保ちやすい</b>こと。リーダーとフォロワーで違うバージョンのDB、さらには違うストレージエンジンすら動かせる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>他にもメリットが？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>外部アプリにとってパースしやすい。DBの内容を外部システム――データウェアハウスや、カスタムインデックス・キャッシュ――に送りたいときに便利だ。これを<b>変更データのキャプチャ（CDC）</b>と呼ぶ。11章でまた取り上げるよ。</div></div>
+    </div>
+
+    <h3 class="blk">5.1.4.4 トリガベースレプリケーション</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここまでの方式はDBシステムが実装するもので、アプリのコードは要らなかった。でも、もっと柔軟性が欲しいときがある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>たとえば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データの一部だけレプリケーションしたい、違う種類のDB間でやりたい、衝突解決のロジックを入れたい――そういうとき。レプリケーションをアプリのレイヤーに引き上げる。方法は2つ。1つはOracle GoldenGateみたいにDBのログを読んでアプリから使えるようにするツール。もう1つは<b>トリガ</b>や<b>ストアドプロシージャ</b>を使う方法だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トリガって、データが変わったら自動で動くやつでしたっけ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。トリガに「データ変更が起きたら、その変更を別のテーブルに記録する」カスタムコードを登録する。外部プロセスがそのテーブルを読んで、必要なアプリのロジックを適用してから他システムにレプリケーションする。OracleのDatabusやPostgresのBucardoがこの方式だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>柔軟そうですけど、デメリットは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>他の方式よりオーバーヘッドが大きく、バグが生じやすく、制約も多い。でも柔軟性の高さから有益な場面もある、って感じだね。</div></div>
+    </div>
+
+    <details class="code"><summary>ホワイトボードのメモ：4方式の比較</summary>
+<pre><span class="cmt"># レプリケーションログの4方式</span>
+ステートメントベース : SQL文を送る。非決定的関数(NOW/RAND)・順序依存・副作用で壊れやすい
+WAL転送             : 低レベルログをそのまま送る。高速だがストレージと密結合 → バージョン違いに弱い
+論理(行ベース)ログ   : 行単位の独立フォーマット。互換性とCDCに強い（MySQL binlog）
+トリガベース         : アプリ層で柔軟（Bucardo等）。オーバーヘッド大・バグ多い</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分のDBがどの方式を使っているか調べ、アップグレード戦略やCDC活用の可否を判断できる。</li>
+        <li>「ステートメントベースで<code>NOW()</code>がズレる」のような実際のトラブルの原因を見抜ける。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ステートメントベース：SQL文を送る。非決定性・順序依存・副作用で壊れやすい。</li>
+        <li>WAL転送：低レベルログを送る。ストレージと密結合でバージョン違いに弱い。</li>
+        <li>論理（行ベース）ログ：行単位の独立フォーマット。互換性とCDCに強い（MySQL binlog）。</li>
+        <li>トリガベース：アプリ層で柔軟（Bucardo等）だが、オーバーヘッドとバグが多い。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.2 レプリケーションラグ ===== -->
+<section id="s52">
+  <div class="sec-head"><div class="sec-num">5.2</div><div><h2>レプリケーションラグにまつわる問題</h2><span class="tag">コピーがズレている間に起きる「気持ち悪い現象」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：フォロワーへ読み取りを分散する「読み取りスケーリング」は非同期前提。非同期だと遅延フォロワーから古いデータが見える＝<b>結果整合性</b>。普段のラグは1秒未満だが、障害時は数秒〜数分に膨らみ現実の問題になる。代表的な問題が3つある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そろそろ「投稿したコメントが消える」クレームの話ですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、いよいよ本題。「読み取りをフォロワーに分散できる」って性質を思い出して。Webは大体「読み取りが多くて書き込みが少ない」から、フォロワーをたくさん作って読み取りを分散すると、リーダーの負荷を減らせて近場のレプリカから読めるから速い。これを<b>読み取りスケーリング</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>フォロワーを足すだけで読み取り能力が増える、いいことずくめでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>現実的にうまくいくのは<b>非同期</b>のときだけだよ。同期で全フォロワーに行こうとすると、1ノード障害やネットワーク断で書き込み不能になる。ノードが増えるほどどれか1つが落ちる確率は上がるから、完全同期は信頼性が極めて低い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ非同期で。でもそれだと……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、<b>遅延してるフォロワーから読むと古い情報が見える</b>。同じクエリをリーダーとフォロワーに同時に投げると違う結果が返るかもしれない。でも一時的で、書き込みを止めてしばらく待てばフォロワーは追いついて一貫する。だからこれを<b>結果整合性（eventual consistency）</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「結果（eventually）」っていつですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>わざと曖昧にしてある言葉なんだ。普段の<b>レプリケーションラグ</b>――リーダーの書き込みがフォロワーに反映されるまでの時間差――は1秒未満で気づかない程度。でも容量限界やネットワーク障害だと簡単に数秒〜数分になる。ラグが大きくなると、これは理論じゃなく現実の問題になる。これから3つの代表的な問題を見ていこう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：本社の最新版が、まだ届いていない支局がある</h4>
+      <p>本社が紙面を直した直後、その差し替えがまだ届いていない<b>遅れている支局</b>で新聞を買うと、読者は「古い記事」を読むことになります。これがレプリケーションラグ。でも待っていればいつかその支局にも差し替えが届き、全支局が同じ紙面になる――これが結果整合性（いずれ全支局が同じ紙面に）。普段は数秒の遅れですが、配送トラブルが起きると数分〜数時間の遅れになり、読者から「内容が違う」と苦情が来ます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「読み取りスケーリングは非同期前提」と理解し、安易に全同期にしない判断ができる。</li>
+        <li>「結果整合性」の意味（一時的な不一致、いつか追いつく）を正しく説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>読み取りスケーリング＝フォロワーを増やして読み取りを分散。非同期前提。</li>
+        <li>非同期だと遅延フォロワーから古い値が見える＝結果整合性。</li>
+        <li>レプリケーションラグは普段1秒未満だが、障害時は数秒〜数分に増大しうる。</li>
+        <li>ラグが大きいときの3つの問題を次から見る。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5.2.1 自分が書いた内容の読み取り ===== -->
+<section id="s521">
+  <div class="sec-head"><div class="sec-num">5.2.1</div><div><h2>自分が書いた内容の読み取り</h2><span class="tag">「投稿したコメントが消える」問題の正体と直し方</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：「自分の書いたものが見えない」問題は<b>read-after-write一貫性</b>で解決する。自分の更新だけは必ず見えるよう保証する。手法は「変更しうるものはリーダーから読む」「最終更新から一定時間はリーダー」「最終書き込み時刻を覚えて追いついたレプリカで読む」など。複数デバイスや複数DCではさらに複雑になる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これがまさに「投稿したコメントが消える」やつですか！？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ビンゴ。多くのアプリでは、ユーザーは自分が入れたデータをそのまま見られるべきだよね。書き込み先はリーダーだけど、読み取りはフォロワーから来るかもしれない。普段はそれでいい――参照が多くて書き込みが少ないなら。</div></div>
+    </div>
+
+    <details class="code"><summary>図：自分の書き込みが見えない問題</summary>
+<pre><span class="cmt"># 自分の書き込みが見えない問題（非同期レプリケーション）</span>
+ユーザー ──書き込み「コメント追加」──▶ [リーダー]（書き込み成功）
+                                          │まだフォロワーに届いていない…
+ユーザー ──読み取り──▶ [遅延フォロワー]──▶ 「コメントは無い」と返す！
+  → ユーザーには「投稿が消えた」ように見える</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：自分が出した投書が、まだ届いていない支局に載っていない</h4>
+      <p>読者が本社に投書を送り（書き込み＝リーダー）、本社は確かに受理しました。でもその読者が<b>差し替えがまだ届いていない近所の支局</b>で新聞を買うと、自分の投書が載っていない（読み取り＝遅延フォロワー）。読者は「自分の投書が消えた！」と慌てます。直し方は<b>「自分が出した投書を確認するときは、必ず本社（または確実に届いている支局）で読ませる」</b>こと。これがread-after-write一貫性です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まさにこれです。どう直すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここで必要なのが<b>read-after-write一貫性</b>（read-your-writes一貫性とも）。「ユーザーがページを読み直したとき、自分が入れた更新は必ず反映されている」を保証する。注意：これは<b>自分の書き込み</b>だけの保証で、他人の更新は遅れて見えてもいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうやって実装するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いくつか手がある。書き出すね。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>read-after-write一貫性の実装手法</th></tr>
+      <tr><td>「ユーザーが変更したかもしれないもの」はリーダーから、それ以外はフォロワーから読む（例: SNSの自分のプロフィールは本人しか編集できない → 自分のはリーダー、他人のはフォロワー）。</td></tr>
+      <tr><td>ユーザーがほとんどの情報を編集できる場合は上の手が効かない → 別の条件で判定：最後の更新から1分以内の読み取りはリーダーから。またはフォロワーのラグを監視し、1分以上遅れたフォロワーには読まない。</td></tr>
+      <tr><td>クライアントが「最後に書いた時刻（タイムスタンプ）」を覚えておき、「その時刻までの更新が反映済みのレプリカ」でだけ読み取る。追いついてなければ他レプリカへ回すか待つ。タイムスタンプは論理的なもの（ログのシーケンス番号）か実時計（クロック同期が重要）。</td></tr>
+      <tr><td>レプリカが複数データセンターに分散していると、リーダー読みが必要なリクエストはリーダーのいるDCへルーティングする。</td></tr>
+    </table>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど。「自分のものはリーダー、他人のはフォロワー」が一番シンプルですね。あと、デバイスが複数あるとどうなりますか？ PCで書いてスマホで見るとか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが<b>クロスデバイス</b>read-after-write一貫性。1つのデバイスで入れた情報を別デバイスで見たら、ちゃんと出るべき。でも難しくなる。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>クロスデバイスでさらに増える問題</th></tr>
+      <tr><td>あるデバイスのコードは他デバイスの更新を知らない → 「最終更新タイムスタンプ」を覚えるアプローチが難しくなる。このメタデータはどこかに集中配置する必要がある。</td></tr>
+      <tr><td>別々のデバイスが同じデータセンターにルーティングされる保証がない（例: PCは家のブロードバンド、スマホはセルラー回線 → 経路が全く違う）。リーダー読みが必要なら、全デバイスを同じDCへルーティングする必要があるかも。</td></tr>
+    </table>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「自分の投稿が消える」系のクレームの原因と直し方を具体的に説明できる。</li>
+        <li>自分の更新の保証と他人の更新の保証は別物だと区別できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>非同期レプリケーションでは、書いた直後に遅延フォロワーから読むと自分の更新が見えない。</li>
+        <li>read-after-write一貫性は「自分の更新は必ず見える」を保証（他人の更新は対象外）。</li>
+        <li>実装：変更しうるものはリーダーから/時刻条件/最終書き込みタイムスタンプ追跡。</li>
+        <li>クロスデバイス・複数DCではメタデータの集中配置やルーティングがさらに必要。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.2.2 モノトニックな読み取り ===== -->
+<section id="s522">
+  <div class="sec-head"><div class="sec-num">5.2.2</div><div><h2>モノトニックな読み取り</h2><span class="tag">「時間が巻き戻る（さっき見えたものが消える）」異常を防ぐ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：モノトニックな読み取りは「時間が巻き戻る（さっき見えたものが消える）」異常を防ぐ。ラグの大小が違う複数のレプリカから読むと起きる。保証は「一度新しいデータを読んだら、それより古いデータは読まれない」。実装は「各ユーザーは常に同じレプリカ（ユーザーIDのハッシュで選ぶ等）から読む」。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目の問題は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「<b>過去に遡って</b>情報が見える」異常。ユーザーが複数のレプリカから複数回読むときに起きる。例で説明するね。</div></div>
+    </div>
+
+    <details class="code"><summary>図：時間が巻き戻る異常</summary>
+<pre><span class="cmt"># 時間が巻き戻る異常（モノトニックな読み取り違反）</span>
+ユーザー1234 がコメントを書き込み済み
+ユーザー2345 が同じクエリを2回実行：
+  1回目 → [ラグの小さいフォロワー]── ユーザー1234のコメントが見える
+  2回目 → [ラグの大きいフォロワー]── コメントが無い！（まだ反映されてない）
+  → ユーザー2345には「さっき見えたコメントが消えた＝時間が巻き戻った」ように見える</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：同じ読者が、別の支局で買うたびに新聞が古くなる</h4>
+      <p>ある読者が朝、<b>差し替えの早い支局</b>で新聞を買い、新しい記事を読みました。お昼にうっかり<b>差し替えの遅い別の支局</b>で同じ新聞を買うと、その記事がまだ載っていない！ 読者には「さっき読んだ記事が消えた＝時間が巻き戻った」ように見えます。これを防ぐには<b>「この読者はいつも同じ支局で買う」</b>と決めておく。一度新しい紙面を読んだら、それより古い紙面は二度と見せない、という約束です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっき見えたものが消えるの、すごく混乱しますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。ページを更新するたびにランダムなサーバーに飛ばされると起きやすい。1回目何も出なかったなら「まだ知らないだけ」でそこまで悪くない。でも「見えたものが消える」のは最悪だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これを防ぐのが？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>モノトニックな読み取り</b>。強い一貫性ほどではないけど、結果整合性より強い保証だ。「古い値が見えることはあっても、連続した複数回の読み取りで時間が巻き戻らない」を保証する。つまり一度新しいデータを読んだら、それより古いデータは読まれない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どう実現するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一番簡単なのは「各ユーザーは常に同じレプリカから読む」こと。ユーザーが違えば別のレプリカでいい。レプリカをランダムじゃなく、ユーザーIDのハッシュで決めるとかね。ただしそのレプリカが落ちたら、そのユーザーのクエリは別レプリカに回すしかない。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「更新したら情報が消えた/戻った」系の不具合の原因（複数レプリカのラグ差）が分かる。</li>
+        <li>ユーザー単位でレプリカを固定するという実装パターンを使える。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>複数レプリカをまたいで読むと、ラグの差で「時間が巻き戻る」異常が起きる。</li>
+        <li>モノトニックな読み取りは「新しいデータを読んだら、以後それより古いデータは見えない」を保証。</li>
+        <li>結果整合性より強く、強い一貫性より弱い。</li>
+        <li>実装は「同じユーザーは常に同じレプリカから読む」（ユーザーIDのハッシュ等）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5.2.3 一貫性のあるプレフィックス読み取り ===== -->
+<section id="s523">
+  <div class="sec-head"><div class="sec-num">5.2.3</div><div><h2>一貫性のあるプレフィックス読み取り</h2><span class="tag">「質問より先に答えが見える」因果律違反を防ぐ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：一貫性のあるプレフィックス読み取りは「書き込みの順序どおりに読める」を保証し、<b>因果律違反</b>（質問より先に答えが見える）を防ぐ。パーティションごとに独立して動く分散DBで、パーティション間でラグ差があると起きる。解決は因果関係のある書き込みを同じパーティションに置く、または因果関係を追跡する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>因果律違反</b>。順序が逆転して見える異常だ。PoonsさんとCakeさんの会話で説明するね。本来はこう。</div></div>
+    </div>
+
+    <details class="code"><summary>図：本来の会話と、順序が逆転して見える異常</summary>
+<pre><span class="cmt"># 本来の会話（因果関係がある）</span>
+Poonsさん「Cakeさん、どのくらい先の未来まで見通せますか？」
+Cakeさん「普段は10秒程度です、Poonsさん。」
+  → CakeさんはPoonsさんの質問を聞いて答えている（質問が原因、回答が結果）
+
+<span class="cmt"># 順序が逆転して見える（一貫性のあるプレフィックス読み取り違反）</span>
+Cakeさん「普段は10秒程度です、Poonsさん。」  ← 先に届く
+Poonsさん「Cakeさん、どのくらい先の未来まで見通せますか？」 ← 後で届く
+  → 観測者には「質問する前に答えている」超能力者のように見える！</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：質問記事より先に「回答記事」が届いた支局</h4>
+      <p>新聞に「読者の質問」と「記者の回答」を別々の差し替えで配ったとします。ある支局には<b>回答の差し替えが先に、質問の差し替えが後に</b>届いてしまいました。その支局の読者は「回答」を先に、「質問」を後に読むので、まるで記者が<b>質問される前に答えている超能力者</b>のように見えます。これを防ぐには「原因の記事と結果の記事は必ず同じ順番で届ける」必要があります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>答えが質問より先……たしかに意味不明です。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これを防ぐのが<b>一貫性のあるプレフィックス読み取り</b>。「ある順序で書き込まれたなら、読む人にも必ず同じ順序で見える」を保証する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでこんなことが起きるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>特に6章でやる<b>パーティション分割（シャーディング）</b>されたDBで問題になる。1つのパーティション内では順序が保たれても、多くの分散DBではパーティションごとに独立して動くから、全体としては書き込みに順序がない。だからDBの古い部分と新しい部分が混ざって見える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>解決策は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1つは「因果関係を持つ書き込みは必ず同じパーティションに書く」。ただアプリによっては効率的にできない。あと、因果関係を明示的に追跡するアルゴリズムもあって、それは後半の「事前発生関係」で取り上げるよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「順序が逆転して見える」現象が因果律違反であると理解できる。</li>
+        <li>パーティション分割と一貫性の関係を意識して設計できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ラグの差で書き込みの順序が逆転し、原因より結果が先に見える異常が起きる。</li>
+        <li>一貫性のあるプレフィックス読み取りは「書いた順序どおりに見える」を保証。</li>
+        <li>原因はパーティションごとの独立動作（全体に順序がない）。</li>
+        <li>解決は因果関係のある書き込みの同一パーティション化、または因果関係の追跡。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5.2.4 レプリケーションラグへの対処方法 ===== -->
+<section id="s524">
+  <div class="sec-head"><div class="sec-num">5.2.4</div><div><h2>レプリケーションラグへの対処方法</h2><span class="tag">アプリで頑張るより、DBのトランザクションに任せたい</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：レプリケーションラグが大きいときのアプリの振る舞いを事前に考えるべき。許容できないならread-after-writeなど強い保証を設計する。アプリ側で一貫性を扱うのは複雑でバグりやすいので、本来は<b>トランザクション</b>（DBが強い保証を提供する仕組み）に任せたい。分散DBがトランザクションを捨てたという主張は単純化しすぎ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これらの問題、アプリ側でなんとかするしかないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>結果整合性のシステムを使うなら、ラグが数分〜数時間に膨らんだときアプリがどう振る舞うか考えておくべきだ。「それでも問題ない」なら最高。でもユーザー体験が悪くなるなら、read-after-writeみたいな強い保証を提供するよう設計すべき。<b>非同期なのに同期のフリをすると、いつか必ず問題が起きる</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっき出てきた「リーダーから読む」とかをアプリで実装すればいいんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できるけど、アプリのコードで一貫性を扱うのは複雑でバグりやすい。本当はアプリ開発者が細かいことを気にせず「DBがちゃんとやってくれる」と信じられるほうがいい。それが<b>トランザクション</b>の存在意義なんだ。トランザクションは、アプリをシンプルにするためにDBが強い保証を提供する方法だよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも分散DBってトランザクションを捨ててるイメージが……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、分散DBへの移行で「トランザクションは性能や可用性の負担が大きすぎる、スケーラブルなシステムでは結果整合性が不可避だ」と主張して捨てたシステムが多い。これはある面では真実だけど、単純化しすぎ。もっと緻密な見方を7章と9章で発展させるよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：配送のクセを各記者に覚えさせるより、配送部が保証するほうがいい</h4>
+      <p>「自分の投書はどの支局で確認すればいいか」「同じ読者は同じ支局へ」といった配送の細かいルールを、<b>記者一人ひとり（アプリのコード）に覚えさせる</b>のは大変でミスも出ます。本当は<b>配送部（DBのトランザクション）</b>が「ちゃんと届きます」と一括で保証してくれるほうが、記者は記事づくりに集中できます。「うちは大規模だから配送の保証はムリ」というのは、実は言い過ぎなのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ラグが大きいときの挙動を設計段階で検討する習慣がつく。</li>
+        <li>一貫性の保証はアプリで頑張るよりトランザクションに任せるべきと理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ラグが膨らんだときの挙動を事前に検討し、必要なら強い保証を設計する。</li>
+        <li>アプリ側での一貫性処理は複雑でバグりやすい。</li>
+        <li>トランザクションはアプリをシンプルにするためDBが提供する強い保証。</li>
+        <li>「分散＝トランザクション不可」は単純化しすぎ（7章・9章で再検討）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.3 マルチリーダー ===== -->
+<section id="s53">
+  <div class="sec-head"><div class="sec-num">5.3</div><div><h2>マルチリーダーレプリケーション</h2><span class="tag">複数の本社が同時に編集する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：マルチリーダー構成は、複数のノードが書き込みを受け付けられるようにしたもの。シングルリーダーの「リーダーが単一障害点」という欠点を緩和する。各リーダーは互いのフォロワーとしても振る舞い、変更を転送し合う。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでリーダー1台でしたけど、2つ目の方式「マルチリーダー」ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。シングルリーダーには大きな欠点がある。<b>全書き込みを1つのリーダーに送らなきゃいけない</b>こと。ユーザーとリーダーの間のネットワークが切れたら、もう書き込めない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、リーダーが単一障害点になっちゃう。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>自然な拡張として「複数のノードで書き込みを受け付けられるようにする」のが<b>マルチリーダー</b>構成だ。マスター‐マスター、アクティブ／アクティブとも呼ぶ。レプリケーションの働きは同じ――書き込みを受けた各ノードが変更を他の全ノードに転送する。違いは、各リーダーが同時に他のリーダーの<b>フォロワーとしても振る舞う</b>こと。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：本社を東京と大阪の2つにして、両方で編集できるようにする</h4>
+      <p>本社が1つだと、そこへの連絡線が切れた記者は記事を直せません。そこで<b>本社を複数（東京本社・大阪本社）</b>にして、どちらでも編集できるようにします。各本社は自分で受けた差し替えを相手の本社にも転送し、お互いの支局にもなる――これがマルチリーダー。便利ですが、両本社が同じ記事を別々に直すと「食い違い（衝突）」が生まれます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>シングルリーダーの単一障害点という弱点と、その緩和策を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>シングルリーダーの欠点は全書き込みが1リーダーに集中すること。</li>
+        <li>マルチリーダーは複数ノードが書き込みを受け付ける拡張。</li>
+        <li>各リーダーは互いのフォロワーでもあり、変更を転送し合う。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5.3.1 ユースケース ===== -->
+<section id="s531">
+  <div class="sec-head"><div class="sec-num">5.3.1</div><div><h2>マルチリーダーレプリケーションのユースケース</h2><span class="tag">使うべき3つの場面（と、使うべきでない場面）</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：マルチリーダーが妥当なのは3ケース。①マルチDC運用（各DCにリーダーを置き、性能・DC障害耐性・ネットワーク耐性で有利だが衝突解決が必要）、②オフライン運用（各デバイスがローカルのリーダー、カレンダーアプリ等）、③コラボレーティブ編集（Google Docs等、ロックを避けるとマルチリーダーの問題が出る）。<b>単一DC内では基本使わない</b>。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>書き込みできる場所が増えるなら、いつでもマルチリーダーがいいのでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、<b>単一データセンター内でマルチリーダーを使う意味はほとんどない</b>。得られるメリットが、加わる複雑さに見合わないんだ。でも妥当な状況が3つある。マルチデータセンター運用、オフライン運用、コラボレーティブ編集だ。順に見よう。</div></div>
+    </div>
+
+    <h3 class="blk">5.3.1.1 マルチデータセンターでの運用</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>複数のデータセンター（DC）にレプリカを持つDBを考える。理由はDC全体の障害に耐えるためとか、ユーザーとの距離のため。シングルリーダーだとリーダーは<b>どこか1つの</b>DCに置かれ全書き込みがそこに行く。マルチリーダーなら<b>それぞれの</b>DCにリーダーを置ける。</div></div>
+    </div>
+
+    <details class="code"><summary>図：マルチDCにまたがるマルチリーダー構成</summary>
+<pre><span class="cmt"># マルチDCにまたがるマルチリーダー構成</span>
+[データセンター東京]                  [データセンター大阪]
+  [リーダー東] ◀──変更を相互に──▶ [リーダー西]
+   │ ローカルのフォロワー              │ ローカルのフォロワー
+   ▼                                  ▼
+  [フォロワー]                       [フォロワー]
+  → 各DC内は普通のリーダー‐フォロワー
+  → DC間は各リーダーが自分の変更を相手DCのリーダーへ非同期レプリケーション</pre>
+    </details>
+
+    <table class="t">
+      <tr><th>観点</th><th>シングルリーダー</th><th>マルチリーダー</th></tr>
+      <tr><td>パフォーマンス</td><td>全書き込みがインターネット越しにリーダーのDCへ → 大きなレイテンシ</td><td>書き込みをローカルDCで処理し他DCへ非同期送信 → DC間遅延を隠せて速い</td></tr>
+      <tr><td>DC障害への耐性</td><td>リーダーのDCが落ちたらフェイルオーバーで他DCのフォロワーを昇格</td><td>各DCは独立して動き続け、復旧したDCはレプリケーションが追いつく</td></tr>
+      <tr><td>ネットワーク問題への耐性</td><td>DC間リンクを同期で使うため、リンク障害に非常に敏感</td><td>非同期なので一時的なネットワーク障害でも書き込みを継続できる</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：各地方に本社を置けば、その地方の記者は近くで編集できる</h4>
+      <p>東京本社1つだと、大阪の記者は毎回東京まで原稿を送らねばならず遅い。<b>大阪にも本社を置けば</b>、大阪の記者は近くで編集できて速い（性能）。東京本社が被災しても大阪本社が動き続け（DC障害耐性）、東京‐大阪間の連絡線が一時的に切れても各本社は編集を続けられます（ネットワーク耐性）。ただし両本社が同じ記事を直すと食い違いが起きるのが弱点です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>マルチリーダー、いいことだらけに見えますけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが罠。大きな欠点がある。<b>異なる2つのDCで同じデータが並行して変更されると書き込みが衝突する</b>。これを解決しなきゃいけない（次の5.3.2）。あと、マルチリーダーは多くのDBで後付けされた機能だから、自動インクリメントのキー・トリガ・整合性制約あたりで微妙な落とし穴を起こす。だから「可能なら避けるべき危険地域」と見なされることが多い。実装はMySQL用のTungsten Replicator、Postgres-BDR、Oracle GoldenGateみたいな外部ツールが多いよ。</div></div>
+    </div>
+
+    <h3 class="blk">5.3.1.2 オフラインで運用されるクライアント</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つ目のユースケースは「インターネットに繋がってなくても動かなきゃいけない」アプリ。例えばスマホやノートPCのカレンダーアプリ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ああ、飛行機の中でも予定を見たり追加したりできますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。オフラインで変更したら、次にオンラインになったときサーバーや他デバイスと同期する。この場合、<b>各デバイスがリーダーのように振る舞うローカルDB</b>を持つ。全デバイスのカレンダーのレプリカ間で非同期マルチリーダーレプリケーションが走る。ラグはネットに繋がるタイミング次第で数時間〜数日にもなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それって、さっきのマルチDCと同じ構造ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>本質的には同じで、それを極端にしたもの。各デバイスが「データセンター」で、デバイス間のネットワーク接続が極めて信頼できないだけ。壊れたカレンダー同期の実装例は山ほどあるから正しく動かすのは難しい。CouchDBはこの運用形態を念頭に設計されてる。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：取材先で電波がなくても、記者の手帳には書ける</h4>
+      <p>記者が山奥で取材中、電波がなくても<b>手元の取材手帳（ローカルのリーダー）</b>には記事を書けます。街に戻ってオンラインになったら、手帳の内容を本社や他の記者の手帳と突き合わせて同期する。各記者の手帳が小さな本社で、連絡がたまにしか取れない――それがオフライン運用です。</p>
+    </div>
+
+    <h3 class="blk">5.3.1.3 コラボレーティブな編集</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3つ目は<b>リアルタイムコラボレーティブ編集</b>。複数人が同時に1つのドキュメントを編集する。Google DocsやEtherpadだね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あれもレプリケーションなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>普通はそう捉えないけど、オフライン編集とよく似てる。ユーザーが編集すると、変更はすぐローカルのレプリカ（ブラウザ内のドキュメント）に反映され、サーバーと他ユーザーに非同期でレプリケーションされる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>衝突は起きないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>衝突を絶対避けたいなら、変更前にドキュメントを<b>ロック</b>する。他のユーザーは最初の人がコミットしてロックを離すまで待つ。これはリーダー上でトランザクションを扱うシングルリーダーと等価だ。でも素早くコラボするには変更の単位をごく小さく（1キー入力ごと）してロックを避けたい。そうすると並行編集できるけど、衝突解決みたいなマルチリーダーの問題が全部持ち込まれる。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：1本の記事を複数の記者が同時に書く</h4>
+      <p>1本の特集記事を複数の記者が同時に書くとき、<b>「この段落は私が書くから他の人は触らないで」とロック</b>すれば食い違いは起きませんが、待ち時間が出ます。スピード重視で<b>1文字単位で同時に書き合う</b>と速いけれど、同じ箇所を同時に直したときの「食い違いの調停」が必要になる――マルチリーダーの宿題が全部ついてきます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>マルチリーダーが有効な場面を見分けられ、安易に単一DC内で使う無駄を避けられる。</li>
+        <li>カレンダーやコラボ編集が、実はマルチDCと同じ構造だと見抜ける。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>単一DC内でのマルチリーダーは複雑さに見合わず基本使わない。</li>
+        <li>マルチDC：各DCにリーダー。性能・障害耐性・ネットワーク耐性で有利だが衝突が起きる。</li>
+        <li>オフライン運用：各デバイスがローカルのリーダー（極端なマルチDC）。</li>
+        <li>コラボ編集：ロックを避けて並行編集すると衝突解決が必要になる。</li>
+        <li>後付け機能ゆえ落とし穴が多く「避けるべき危険地域」とされることも。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.3.2 書き込みの衝突の処理 ===== -->
+<section id="s532">
+  <div class="sec-head"><div class="sec-num">5.3.2</div><div><h2>書き込みの衝突の処理</h2><span class="tag">食い違った記事をどう調停するか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：マルチリーダー最大の問題は書き込みの衝突。シングルリーダーなら起きない。対処は①<b>衝突を回避</b>（同じレコードは同じリーダーへ）、②<b>収束させる</b>（LWW・レプリカID優先・マージ・記録して後で解決）、③<b>カスタムロジック</b>（書き込み時/読み込み時）。LWWはデータ損失の危険大。CRDTなど自動解決の研究も進む。衝突には予約のように検出しにくいものもある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いよいよ衝突ですね。具体的にどう起きるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2人が同時に同じwikiページを編集する例で。</div></div>
+    </div>
+
+    <details class="code"><summary>図：書き込みの衝突（2人が同時にタイトル変更）</summary>
+<pre><span class="cmt"># 書き込みの衝突（2人が同時にwikiページのタイトルを変更）</span>
+ユーザー1 ──タイトルをAからBに──▶ [リーダー1]（ローカルでは成功）
+ユーザー2 ──タイトルをAからCに──▶ [リーダー2]（ローカルでは成功）
+       ↓ 非同期にレプリケーションされたとき…
+  [リーダー1]はB、[リーダー2]はC → 衝突を検出！
+  → シングルリーダーなら起きない問題</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：東京本社と大阪本社が、同じ見出しを別の言葉に直した</h4>
+      <p>同じ記事の見出しを、東京本社は「B」に、大阪本社は「C」に、ほぼ同時に直しました。それぞれの本社ではちゃんと直ったつもり。でも後でお互いの差し替えを交換したとき、<b>「Bにすべきか、Cにすべきか」が食い違う</b>。これが衝突です。本社が1つだけ（シングルリーダー）なら順番に処理されるので起きません。</p>
+    </div>
+
+    <h3 class="blk">5.3.2.1 同期の衝突検出と非同期の衝突検出</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>シングルリーダーだとどうなってたんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2番目の書き込みはブロックされて最初の完了を待つか、中止されてユーザーにリトライしてもらう。でもマルチリーダーだと<b>両方とも成功</b>して、衝突は後で非同期に検出される。その時点ではもうユーザーに解決を求めるには遅すぎるかもしれない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同期的に衝突を検出すればいいのでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>原理的にはできる。全レプリカにレプリケーションされるのを待ってから成功を返せばいい。でもそれだと「各レプリカが独立に書き込みを受け付けられる」というマルチリーダーの主要なメリットが消える。それなら単にシングルリーダーを使うのと同じだ。</div></div>
+    </div>
+
+    <h3 class="blk">5.3.2.2 衝突の回避</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一番シンプルな戦略は<b>衝突を回避する</b>こと。あるレコードへの書き込みが必ず同じリーダーに行くとアプリが保証できれば、衝突は起きない。多くのマルチリーダー実装は衝突処理が貧弱だから、回避が推奨されることが多い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どうやって同じリーダーに行かせるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>例えばユーザーが自分のデータを編集するアプリなら、各ユーザーのリクエストを必ず同じDC（その人の「ホーム」DC、地理的な近さで決める）にルーティングして、そのDCのリーダーで読み書きする。ユーザーから見ればこれは実質シングルリーダーだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でもホームDCを変えたいときは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DC障害でトラフィックを別DCに回すときや、ユーザーが引っ越して別DCが近くなったときだね。そういうときは回避ができなくなるから、別々のリーダーに並行書き込みされる可能性に対処しなきゃいけない。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：「この記事の担当本社はいつも東京」と決めておく</h4>
+      <p>衝突を防ぐ一番楽な方法は<b>「この記事を直せるのはいつも東京本社だけ」と担当を固定する</b>こと。そうすれば食い違いは起きません。ただし東京本社が被災したり、担当が大阪に引っ越したりして担当本社を変えると、固定が崩れて衝突に対処する必要が出てきます。</p>
+    </div>
+
+    <h3 class="blk">5.3.2.3 一貫した状態への収束</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>シングルリーダーは書き込みを順番に適用するから、同じフィールドへの複数更新は「最後の書き込み」で値が決まる。でもマルチリーダーには<b>定まった順序がない</b>。さっきの例で、リーダー1はB→C、リーダー2はC→Bの順だったら、どっちが正しいとも言えない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>各レプリカが受けた順に適用したら、リーダー1はCで終わり、リーダー2はBで終わる……バラバラですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それは許容できない。どんなレプリケーションでも、最終的に全レプリカが同じ値にならなきゃいけない。これを<b>収束（convergent）</b>と呼ぶ。収束を実現する方法はいくつかある。</div></div>
+    </div>
+    <table class="t">
+      <tr><th>収束的な衝突解決の方法</th></tr>
+      <tr><td>各書き込みにユニークなID（タイムスタンプ、大きな乱数、UUID、ハッシュ等）を与え、最大のIDを「勝者」、他は廃棄する。タイムスタンプを使うと「最後の書き込みを勝たせる（LWW）」になる。広く使われるが<b>データ損失の危険が大きい</b>。</td></tr>
+      <tr><td>各レプリカにユニークなIDを与え、IDの大きいレプリカの書き込みを優先する。これもデータロスの可能性あり。</td></tr>
+      <tr><td>何らかの方法で値をマージする（例: アルファベット順に連結 → 「B/C」）。</td></tr>
+      <tr><td>全情報を保存するデータ構造で衝突を明示的に記録し、後でアプリコードが解決する（ユーザーに確認を求めることも）。</td></tr>
+    </table>
+
+    <h3 class="blk">5.3.2.4 カスタムの衝突解決ロジック</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最適な解決法はアプリ次第だから、多くのマルチリーダーツールはアプリのコードで衝突解決ロジックを書けるようにしてる。これは書き込み時か読み込み時に実行される。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">✍️</div><h4>書き込み時に実行</h4><p>変更ログから衝突を検出するとすぐ衝突ハンドラが呼ばれる（例: BucardoはPerlで書ける）。バックグラウンドで高速に動く必要があり、ユーザーに確認は求められない。</p></div>
+      <div class="mini"><div class="ic">📖</div><h4>読み込み時に実行</h4><p>衝突する全書き込みを保存しておき、次に読み出されたとき複数バージョンをアプリに返す。アプリがユーザーに確認するか自動解決し、結果をDBに書き戻す（例: CouchDB）。</p></div>
+    </div>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トランザクション全体で解決するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、注意点。衝突解決は普通トランザクション全体ではなく、<b>個々の行やドキュメント単位</b>で適用される。複数の書き込みをアトミックに行うトランザクションでも、衝突解決の観点では各書き込みは独立に扱われる。</div></div>
+    </div>
+
+    <h3 class="blk">自動的な衝突の解決</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>衝突解決ルールを自分で書くの、バグりそうで怖いです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。急速に複雑化してエラーが紛れ込みやすい。有名なのがAmazonの例。一時期、ショッピングカートの衝突解決ロジックのせいで「カートに追加した」は保持されるのに「カートから削除した」が保持されないことがあった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、削除したアイテムが復活する……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、顧客が削除したはずのアイテムがカートに再び現れた。だから、並行変更による衝突を自動解決する研究が進んでる。注目すべきものを紹介するね。</div></div>
+    </div>
+    <table class="t">
+      <tr><th>自動的な衝突解決の研究</th></tr>
+      <tr><td><b>CRDTs（衝突のない複製データ型）</b>：集合・マップ・順序付きリスト・カウンタなどのデータ構造のファミリ。複数ユーザーから並行編集でき、実用的な方法で自動的に衝突解決する（Riak 2.0で実装）。</td></tr>
+      <tr><td><b>マージ可能な永続データ構造</b>：Gitのように履歴を明示的に追跡し、3ウェイマージを使う（CRDTは2ウェイマージ）。</td></tr>
+      <tr><td><b>操作変換（Operational transformation）</b>：Google DocsやEtherpadを支える衝突解決アルゴリズム。テキストの文字リストのような順序付きリストの並行編集向けに設計。</td></tr>
+    </table>
+
+    <h3 class="blk">5.3.2.5 衝突とは何か？</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>衝突って、同じフィールドを2人が違う値にしたとき、ですよね。それは分かりやすいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、それは疑う余地のない衝突。でも、もっと検出しにくい衝突もある。ミーティングルームの予約システムを考えて。同じ部屋は同時に1グループしか予約できないとする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>別々の2人が同じ部屋を同じ時刻に予約したら……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>衝突だ。予約前に「空いてるか」チェックしてても、2つの予約が<b>異なる2つのリーダー</b>で行われたら衝突の余地がある。手っ取り早い出来合いの答えはない。7章でもっと衝突の例を見るし、12章でスケーラブルに検出・解決する方法を論じるよ。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：見出しの食い違いより厄介な「同じ枠の二重掲載」</h4>
+      <p>「見出しがBかCか」の食い違いは目に見えてわかりやすい衝突です。でも、<b>1面の同じ広告枠を、東京本社と大阪本社が別々の広告で『空いてるね』と確認して同時に売った</b>ら？ どちらも手元では正しいのに、刷ってみたら二重掲載。こういう「事前チェックをすり抜ける衝突」は検出しにくく、簡単な特効薬はありません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>衝突の発生メカニズムと、回避・収束・解決の戦略を選べる。</li>
+        <li>LWWの危険性やAmazonカートの教訓から、データ損失を避ける判断ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>マルチリーダーでは同じデータの並行変更で衝突が起き、解決が必要。</li>
+        <li>同期検出はマルチリーダーの利点を消すので、普通は非同期検出。</li>
+        <li>最善はそもそも衝突を回避（同じレコードは同じリーダーへ）。</li>
+        <li>収束（LWW・マージ等）が必要。LWWはデータ損失リスク大。</li>
+        <li>CRDT・操作変換など自動解決の研究が進行中。衝突には検出しにくいもの（予約重複等）もある。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.3.3 トポロジー ===== -->
+<section id="s533">
+  <div class="sec-head"><div class="sec-num">5.3.3</div><div><h2>マルチリーダーレプリケーションのトポロジー</h2><span class="tag">差し替えが本社間を伝わる「経路」の形</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：トポロジーは書き込みが伝わる経路。循環型・スター型・all-to-all型がある。循環型/スター型は1ノード障害で流れが止まるので、複数経路を持つ<b>all-to-all型</b>が耐障害性が高い。ただしall-to-allはメッセージの追い越しで順序逆転（因果律違反）が起き、タイムスタンプだけでは順序づけできず<b>バージョンベクトル</b>が必要。既存ツールの衝突検出は貧弱なことが多いので要検証。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーが3つ以上になったら、変更ってどう伝えるんですか？ 全員に直接送る？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>書き込みがノード間を伝わる経路を<b>レプリケーションのトポロジー</b>と呼ぶ。リーダー2つなら経路は1通り（互いに送り合う）だけど、3つ以上だといろんな形がありえる。代表的なのを描くね。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔄</div><h4>循環型（リング）</h4><p>各ノードは1つから受信し、1つへ転送する（MySQLのデフォルト）。[1]→[2]→[3]→[1]</p></div>
+      <div class="mini"><div class="ic">⭐</div><h4>スター型</h4><p>ルートの1ノードが他の全ノードへ転送（ツリー型に一般化できる）。</p></div>
+      <div class="mini"><div class="ic">🕸️</div><h4>all-to-all型（最も一般的）</h4><p>全リーダーが自分の書き込みを他の全リーダーへ送る。</p></div>
+    </div>
+
+    <details class="code"><summary>図：3つのトポロジー</summary>
+<pre><span class="cmt"># マルチリーダーのトポロジー</span>
+- 循環型（リング）: 各ノードは1つから受信し、1つへ転送する（MySQLのデフォルト）
+   [1]→[2]→[3]→[1]
+- スター型 : ルートの1ノードが他の全ノードへ転送（ツリー型に一般化できる）
+   [2] [3]
+     ＼ ／
+     [1]（ルート）
+     ／ ＼
+   [4] [5]
+- all-to-all型（最も一般的）: 全リーダーが自分の書き込みを他の全リーダーへ送る
+   [1]⇄[2]
+    ⇅ ✕ ⇅
+   [3]⇄[4]</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：本社間で差し替えを回す3つの配り方</h4>
+      <p>本社が3つ以上あるとき、差し替え原稿の回し方には型があります。<b>循環型＝原稿をバケツリレーで隣の本社へ次々回す</b>。<b>スター型＝中央の本社がハブになって全本社へ配る</b>。<b>all-to-all型＝全本社が全本社へ直接配る</b>。バケツリレーや中央ハブは経路が1本なので、途中の本社が1つ倒れると流れが止まる。全本社直送なら経路が複数あって止まりにくい――けれど、速い線と遅い線で原稿の「追い越し」が起きる弱点があります。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>循環型やスター型だと、書き込みが全レプリカに届くまで複数ノードを経由しますね。無限ループしないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい着眼。各ノードにユニークな識別子を与えて、ログの各書き込みに「経由した全ノードの識別子」をタグ付けする。自分の識別子がタグ付けされた変更を受け取ったら「もう処理済み」だから無視する。これでループを防ぐ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>循環型やスター型の弱点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>たった1ノードの障害で、他ノード間のメッセージの流れが止まる。回復まで他のやりとりができない。トポロジーを組み直して障害ノードを回避できるけど、多くの環境では手作業だ。だから<b>all-to-all型</b>のほうが、複数経路でメッセージを流せて単一障害点がなく耐障害性が高い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあall-to-all型が最強ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それにも問題がある。あるリンクが他より速いと、メッセージが<b>追い越し</b>を起こす。例を見て。</div></div>
+    </div>
+
+    <details class="code"><summary>図：all-to-all型での順序逆転（因果律の問題）</summary>
+<pre><span class="cmt"># all-to-all型での順序逆転（因果律の問題）</span>
+クライアントA ──行を挿入──▶ [リーダー1]
+クライアントB ──その行を更新──▶ [リーダー3]
+       ↓ [リーダー2]には違う順序で届くかも
+  [リーダー2]: まず「更新」を受信（存在しない行への更新！）→ その後「挿入」を受信
+  → 本来は挿入が先に処理されるべき</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、これ「5.2.3 一貫性のあるプレフィックス読み取り」と似た因果律の問題ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。更新は挿入に依存してるから、全ノードで挿入→更新の順を保証しなきゃいけない。でも各ノードのクロックが十分同期してると信じられないから、単にタイムスタンプを付けるだけじゃダメ。これを正しく順序づけるには、後で論じる<b>バージョンベクトル</b>が使える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>既存のツールはちゃんとやってくれるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが、多くのマルチリーダーシステムの衝突検出の実装は貧弱なんだ。本書執筆時点で、PostgreSQL BDRは書き込みの因果関係づけを提供してないし、MySQLのTungsten Replicatorは衝突を検出しようとさえしない。だからマルチリーダーを使うなら、この問題を認識して、ドキュメントを注意深く読んで、期待してる保証が本当にあるかをDBを徹底的にテストして確認すべきだよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>トポロジーごとの耐障害性と弱点を比較して選べる。</li>
+        <li>all-to-allの追い越し問題が因果律違反だと理解し、ツールの保証を疑って検証できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>トポロジー：循環型・スター型・all-to-all型。</li>
+        <li>循環型/スター型は無限ループ防止に識別子タグが必要、1ノード障害に弱い。</li>
+        <li>all-to-allは耐障害性が高いが、メッセージ追い越しで順序逆転（因果律違反）が起きる。</li>
+        <li>タイムスタンプでは不十分でバージョンベクトルが要る。既存ツールの保証は要検証。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.4 リーダーレス ===== -->
+<section id="s54">
+  <div class="sec-head"><div class="sec-num">5.4</div><div><h2>リーダーレスレプリケーション</h2><span class="tag">本社を置かず、各支局が直接やり取りする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リーダーレスはリーダーを置かず、どのレプリカも直接書き込みを受け付ける方式。Amazon Dynamo由来で<b>Dynamoスタイル</b>とも呼ばれ、Riak・Cassandra・Voldemortが代表。コーディネータがいても書き込み順序は強制しない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目の方式「リーダーレス」。リーダーがいないってことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。シングルもマルチも「クライアントがリーダーに書き込み、DBが他レプリカにコピーする」方式で、書き込み順序はリーダーが決めてた。リーダーレスは<b>リーダーという概念を捨てて、どのレプリカも直接クライアントから書き込みを受け付ける</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>新しい発想なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、初期のデータシステムにはリーダーレスもあった。リレーショナルDB全盛期に忘れられてたけど、Amazonが自社の<b>Dynamo</b>システムで使って再流行した。Riak、Cassandra、VoldemortがDynamoから着想を得たから、この種は<b>Dynamoスタイル</b>とも呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>クライアントが直接全レプリカに送るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実装次第。クライアントが直接複数レプリカに送るものもあれば、コーディネータノードが代わりに送るものもある。ただしリーダーと違って、このコーディネータは<b>書き込みの順序を強制しない</b>。この違いが利用方法に大きく効いてくる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：本社をなくし、どの支局でも記事を受け付けて互いに直し合う</h4>
+      <p>リーダーレスは、<b>編集権を持つ本社を廃止</b>して、どの支局でも記者から直接記事を受け付けられるようにした体制です。記者は記事を複数の支局に同時に送り、各支局はそれを保管する。本社が決めていた「掲載順」はもう誰も決めません。代わりに、後で支局同士が突き合わせて古いものを直す、というやり方になります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 補足：DynamoとDynamoDBは別物</h4>
+      <ul>
+        <li>Amazonの<b>Dynamo</b>は社外には公開されていない内部システム。</li>
+        <li>紛らわしいことに、AWSが提供する<b>DynamoDB</b>という製品はアーキテクチャがまったく異なり、シングルリーダーレプリケーションに基づいている。</li>
+        <li>名前が似ているだけで別物なので注意。</li>
+      </ul>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リーダーレスはリーダー概念を捨て、どのレプリカも直接書き込みを受ける。</li>
+        <li>Amazon Dynamo由来でDynamoスタイル（Riak・Cassandra・Voldemort）。</li>
+        <li>コーディネータがいても書き込み順序は強制しない（DynamoDBとは別物）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5.4.1 ノードダウン時の書き込み ===== -->
+<section id="s541">
+  <div class="sec-head"><div class="sec-num">5.4.1</div><div><h2>ノードがダウンしている状態でのDBへの書き込み</h2><span class="tag">フェイルオーバー不要 ― 一定数のOKで成功にする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リーダーレスにはフェイルオーバーがなく、書き込みを全レプリカに並列送信し「一定数のOK」で成功とする（ダウンしたノードが逃すのは無視）。復活ノードは古い値を持つので、読み取りも複数ノードに並列送信し、<b>バージョン番号</b>で最新を判断する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーがいないのに、ノードが落ちたらどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>リーダーベースだと書き込み継続にはフェイルオーバーが要ったよね。リーダーレスには<b>フェイルオーバーがない</b>。図で見よう。3レプリカで1つがアップデート中で使えないとする。</div></div>
+    </div>
+
+    <details class="code"><summary>図：リーダーレスでの書き込み（3レプリカ中1つがダウン）</summary>
+<pre><span class="cmt"># リーダーレスでの書き込み（3レプリカ中1つがダウン）</span>
+ユーザー1234 ──書き込みを並行に全レプリカへ送信──▶ [レプリカ1] OK
+                                                  ▶ [レプリカ2] OK
+                                                  ▶ [レプリカ3] ダウン（書き込みを逃す）
+  → 「3つ中2つでOK」なら成功と見なす
+  → ユーザー1234は2つのokを受け取り、書き込み成功。レプリカ3が逃したことは無視</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：3支局のうち2支局が受け取れば「掲載OK」とする</h4>
+      <p>記者が記事を3つの支局に同時に送り、<b>2つの支局が「受け取りました」と返せば掲載成功</b>と見なします。1つの支局が改装中で受け取れなくても気にしません。ただしその支局が再開すると古い記事しか持っていないので、読者が読むときも<b>複数の支局に同時に問い合わせて、一番新しい版を採用</b>するのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でもレプリカ3が復活したら、古いデータを返しちゃいませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。ダウン中の書き込みが無いから古い値を返す。だから<b>読み取りも複数ノードに並列に送る</b>。すると、あるノードは最新、別のノードは古い、と違うレスポンスが返ることがある。どっちが新しいかは<b>バージョン番号</b>で判断する。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.1.1 読み取り修復と反エントロピー</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ダウンしてたノードは、復活後どうやって逃した書き込みを取り戻すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Dynamoスタイルでは2つの仕組みを使う。読み取り修復と反エントロピーだ。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔧</div><h4>読み取り修復（read repair）</h4><p>クライアントが複数ノードから並列に読むと古いレスポンスを検出できる。例: レプリカ3がバージョン6、レプリカ1・2がバージョン7 → レプリカ3が古いと分かり、新しい値を書き戻す。<b>頻繁に読まれる値でうまく働く</b>。</p></div>
+      <div class="mini"><div class="ic">🌙</div><h4>反エントロピー（anti-entropy）</h4><p>バックグラウンドプロセスが常にレプリカ間の差異を探し、欠けたデータをコピーする。レプリケーションログと違い、コピーは順序づけされず、大きな遅延もありうる。</p></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：読まれたときに直す vs 夜間にこっそり全支局を突き合わせる</h4>
+      <p>復活した支局の遅れを直す方法は2つ。<b>読み取り修復＝読者がその記事を読みに来たときに「あれ、よその支局は新しい版だぞ」と気づいて差し替える</b>（よく読まれる記事は確実に直る）。<b>反エントロピー＝夜間に巡回係が全支局を回り、こっそり差分を探して補う</b>（順番はバラバラで遅れることも）。</p>
+    </div>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>両方とも全システムにあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや。例えばVoldemortは今のところ反エントロピーを持ってない。注意点として、読み取り修復は<b>読まれたときしか</b>起きないから、反エントロピーがないと、めったに読まれない値はいくつかのレプリカで欠損したままになり、耐久性が低くなる。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.1.2 読み書きのためのクォーラム（Quorum）</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっき「3つ中2つでOK」って言ってましたけど、1つでOKじゃダメなんですか？ どこまで減らせます？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここが核心。書き込みが3レプリカ中<b>少なくとも2つ</b>に保存されてるなら、古いレプリカはせいぜい1つ。だから<b>少なくとも2つから読めば</b>、どっちかは必ず最新だ。3つ目がダウンしてても最新が読める。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一般化できますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できる。式で書くね。<b>_w_ + _r_ &gt; _n_</b> を満たせば、読み取りの集合と書き込みの集合が必ず重なるから、最新の値を持つノードが必ず含まれる。</div></div>
+    </div>
+
+    <details class="code"><summary>クォーラムの条件と例</summary>
+<pre><span class="cmt"># クォーラムの条件</span>
+n : レプリカの総数
+w : 書き込みが成功と見なされるのに必要なノード数
+r : 読み取りで問い合わせる必要があるノード数
+条件: w + r &gt; n
+  → このとき、読み取りのr個のうち少なくとも1つは最新の値を持つ（集合が必ず重なるため）
+例: n = 3, w = 2, r = 2 → 2 + 2 &gt; 3 を満たす</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：過半数の支局の同意があれば、最新版を必ず拾える</h4>
+      <p>記事を3支局のうち<b>2支局（過半数）に確実に届ける</b>と決め、読むときも<b>2支局に問い合わせる</b>と決めれば、書いた2支局と読んだ2支局は必ずどこか1つで重なります。その重なった支局が最新版を持っているので、読者は必ず最新を拾える。「過半数の支局の同意」がクォーラムの正体です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この _r_ や _w_ に従う読み書きを<b>クォーラム</b>読み取り/書き込みと呼ぶ。「正当な読み書きに必要な最小の投票数」と考えればいい。Dynamoスタイルでは _n_・_w_・_r_ は設定可能。一般的には _n_ を奇数（3か5）にして _w_ = _r_ = (_n_ + 1) / 2（切り上げ）とする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>調整もできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できる。書き込みが少なく読み取りが多いなら _w_ = _n_、 _r_ = 1 にすると読み取りが超高速。ただし1ノード障害で書き込みが必ず失敗するデメリットがある。あと _n_ より多いノードをクラスタに置いて、各値は _n_ 個だけに保存する方法もある。こうするとデータをパーティション化して、1ノードに収まらない大きなデータセットを扱える（6章）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>_w_ + _r_ &gt; _n_ だと、何台まで壊れても耐えられるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>整理しよう。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>クォーラムでの障害耐性</th></tr>
+      <tr><td>_w_ &lt; _n_ なら、1ノードが使えなくても書き込みを続けられる。</td></tr>
+      <tr><td>_r_ &lt; _n_ なら、1ノードが使えなくても読み込みを続けられる。</td></tr>
+      <tr><td>_n_=3, _w_=2, _r_=2 → 1ノード障害まで耐えられる。</td></tr>
+      <tr><td>_n_=5, _w_=3, _r_=3 → 2ノード障害まで耐えられる。</td></tr>
+      <tr><td>通常、読み書きは常に全 _n_ 個のレプリカに並列送信する。_w_ と _r_ は「いくつのノードが成功を返せば成功と見なすか」を決める待ち数。</td></tr>
+      <tr><td>利用可能なノードが _w_ や _r_ に満たないと、書き込み/読み取りはエラーを返す（ダウン・ディスク満杯・ネットワーク断など。理由の識別は不要）。</td></tr>
+    </table>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>_w_ + _r_ &gt; _n_ の式で「最新値が読めるか」「何台壊れて耐えるか」を自分で計算できる。</li>
+        <li>読み取り重視・書き込み重視に応じて _w_ / _r_ を調整できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リーダーレスはフェイルオーバーなしで、ダウンノードがいても書き込みを継続できる。</li>
+        <li>書き込みは全レプリカに並列送信、一定数のOKで成功。復活ノードは古い値を持つため、読み取りも並列送信しバージョン番号で最新を判定。</li>
+        <li>読み取り修復（読み取り時に書き戻す）と反エントロピー（バックグラウンドで差異を補う）。反エントロピーがないと、めったに読まれない値の耐久性が低下。</li>
+        <li>クォーラム条件 _w_ + _r_ &gt; _n_ で読み書き集合が重なり、最新値が得られる。_n_=3で1台、_n_=5で2台の障害に耐える。読み取り重視なら _w_=_n_,_r_=1 のように調整可能。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.4.2 クォーラムの一貫性の限界 ===== -->
+<section id="s542">
+  <div class="sec-head"><div class="sec-num">5.4.2</div><div><h2>クォーラムの一貫性の限界</h2><span class="tag">「過半数の同意」は絶対の保証ではない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：_w_ + _r_ &gt; _n_ でも、いい加減なクォーラム・並行書き込み・読み書きの並行・部分的失敗・リストアなどで<b>古い値が返るエッジケース</b>がある。クォーラムは絶対の保証ではなく、Dynamoスタイルは結果整合性向け。リーダーベースはラグを数値化しやすいが、リーダーレスは順序が定まらずモニタリングが難しい。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>_w_ + _r_ &gt; _n_ なら絶対に最新が読めるんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「読み書き集合が必ず重なる」のは確かだけど、実際はそれほど単純じゃない。まず _r_ と _w_ は過半数（ _n_/2より大きい）に選ばれることが多い。 _n_/2までの障害に耐えられるからね。でもクォーラムは<b>必ずしも過半数でなくていい</b>。重なりが1ノードあればいいんだ。柔軟な割り当てで設計の自由度が上がる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>_w_ + _r_ ≤ _n_ にもできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できる。クォーラム条件は満たさないけど、読み書きは _n_ 個に送りつつ、成功と見なすのに必要なレスポンス数を減らせる。古い値を読む可能性は高まるけど、レイテンシが下がり可用性が上がる。ネットワーク障害で多くのレプリカに届かなくても読み書きを続けられる確率が高い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ _w_ + _r_ &gt; _n_ なら安心ですね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが、 _w_ + _r_ &gt; _n_ でも古い値が返るエッジケースがあるんだ。実装次第だけど、列挙するね。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>_w_ + _r_ &gt; _n_ でも古い値が返りうるエッジケース</th></tr>
+      <tr><td>いい加減なクォーラムを使う場合、書き込みの _w_ 個と読み取りの _r_ 個が全く別になりうる → 重なりの保証がなくなる。</td></tr>
+      <tr><td>2つの書き込みが並行 → どちらが先か不明。安全な解決はマージのみ。タイムスタンプで勝者を選ぶ（LWW）と、クロックのズレで書き込みが失われうる。</td></tr>
+      <tr><td>読み取りと書き込みが並行 → 一部レプリカだけ反映済み → 新旧どちらが読めるか不明。</td></tr>
+      <tr><td>書き込みが一部レプリカで成功し他で失敗し、成功数が _w_ 未満 → 成功したレプリカでロールバックされない → 以降の読み取りで返るか不明。</td></tr>
+      <tr><td>新しい値を持つノードが障害 → 古い値を持つレプリカからリストアされると、新しい値を持つレプリカ数が _w_ を下回り、クォーラム条件が崩れる。</td></tr>
+      <tr><td>全部うまく動いていても、タイミング次第で問題が生じるエッジケースがある（9章）。</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：「過半数の支局」でも最新を拾い損ねることがある</h4>
+      <p>過半数の支局に届け、過半数の支局から読めば最新が拾えるはず――でも、配送が乱れて<b>「届けた支局」と「読んだ支局」がたまたま1つも重ならなかった</b>り、2人が同時に同じ記事を直して<b>どちらが新しいか決められなかった</b>り、新しい版を持つ支局が倒れて<b>古い版からバックアップが復元された</b>りすると、最新を拾い損ねます。過半数の同意は強力ですが、絶対ではないのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>クォーラムって絶対の保証だと思ってました……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>見た目はそう見えるけど、実際はそうじゃない。Dynamoスタイルは概して「結果整合性で耐えられるユースケース」に最適化されてる。 _w_ / _r_ で古い値を読む確率は調整できるけど、絶対的な保証とは捉えないほうがいい。さっきの「自分の書いたものが読める」「モノトニックな読み取り」「一貫性のあるプレフィックス読み取り」も得られない。強い保証が要るなら、概してトランザクションや合意が必要だ（7章・9章）。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.2.1 遅延のモニタリング</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>運用面で気をつけることは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DBが最新の結果を返してるかモニタリングするのは重要。古い値に耐えられるアプリでも、レプリケーションの健全性は把握すべき。大きく遅延したら原因（ネットワークや過負荷ノード）を調査できるようアラートを出す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーベースだと簡単にできるんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。リーダーベースは普通レプリケーションラグのメトリクスを公開してる。書き込みはリーダーに適用後、同じ順序でフォロワーに適用され、各ノードがログ中の位置を保持してるから、リーダーの位置からフォロワーの位置を引けばラグが分かる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーレスは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>難しい。書き込みの適用順序が定まらないからね。さらに読み取り修復だけ（反エントロピーなし）だと、値がどれだけ古くなるか限度がない。めったに読まれない値ははるか昔のものかも。レプリカの古さの計測や、 _n_・_w_・_r_ から古い値を読む確率を予想する研究もあるけど、まだ一般的な実践にはなってない。結果整合性は意図的に曖昧な保証だけど、運用上は「結果」がいつ頃かを数値化できるようにしておくべきだよ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「クォーラム＝絶対最新」という誤解を解き、エッジケースを警戒できる。</li>
+        <li>強い保証が必要ならトランザクション/合意が要ると判断できる。</li>
+        <li>リーダーレスのラグ監視の難しさを理解し、古さの数値化を意識できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>クォーラムは必ずしも過半数でなくてよい（重なり1ノードでよい）。</li>
+        <li>_w_ + _r_ ≤ _n_ にすると低レイテンシ・高可用性だが古い値が増える。</li>
+        <li>_w_ + _r_ &gt; _n_ でも複数のエッジケースで古い値が返りうる。</li>
+        <li>強い保証にはトランザクション/合意が必要。リーダーレスはラグ監視が難しく、古さの数値化が望ましい。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5.4.3 いい加減なクォーラム ===== -->
+<section id="s543">
+  <div class="sec-head"><div class="sec-num">5.4.3</div><div><h2>いい加減なクォーラム と ヒント付きのハンドオフ</h2><span class="tag">担当外の支局に一時的に泊めてもらう</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：いい加減なクォーラムは、本来のホームノードに届かないとき到達可能な別ノードに書く仕組み（隣家に泊まる比喩）。ネットワーク障害時に書き込み可用性を高めるが、最新値が読める保証はなくなる（旧来のクォーラムではない）。ネットワーク回復後は<b>ヒント付きハンドオフ</b>でホームノードに転送。マルチDCではローカルDCのクォーラムだけ待つことで遅延を回避する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきから出てくる「いい加減なクォーラム」って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その前に。適切なクォーラムは個々のノード障害にフェイルオーバーなしで耐えられるし、 _w_ や _r_ 個のレスポンスで進めるからノードの低速化にも耐えられる。高可用性・低レイテンシで、時々古いデータを読んでも耐えられるユースケースに向いてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも完璧じゃない、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。ネットワーク障害で、クライアントが大量のDBノードから切り離されることがある。それらのノードは生きてて他のクライアントからは見えるのに、切り離されたクライアントから見れば落ちてるも同然。到達可能なノードが _w_ や _r_ を下回ると、クライアントはクォーラムに到達できない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>大規模クラスタだと、一部のノードには繋がるかもしれませんよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで設計者はトレードオフに直面する。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>ネットワーク障害時のトレードオフ</th></tr>
+      <tr><td>_w_/_r_ のクォーラムに到達できないリクエストには必ずエラーを返すべきか？</td></tr>
+      <tr><td>それとも、まず書き込みを受け付けて、 _n_ 個に含まれないが到達可能なノードに書くべきか？ → 後者を「<b>いい加減なクォーラム（sloppy quorum）</b>」と呼ぶ。</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：担当支局に届かないので、隣町の支局に一時保管してもらう</h4>
+      <p>記事を届けるべき担当支局への道が通行止め（ネットワーク障害）。本来の担当に届かないなら掲載を諦める？ それとも<b>とりあえず到達できる隣町の支局に一時保管してもらう？</b> 後者がいい加減なクォーラム。「鍵をなくして家に入れないとき、隣の家に一時的に泊めてもらう」イメージです。掲載は続けられますが、最新版が担当支局以外にあるので、読者が担当支局を読んでも最新を拾えるとは限りません。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい加減なクォーラムでは、 _w_ や _r_ 個の成功は必要なままだけど、その中に「本来の _n_ 個のホームノードに含まれないノード」を入れていい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ネットワークが直ったら、その一時的な書き込みはどうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>適切な「ホーム」ノードに転送される。これを<b>ヒント付きのハンドオフ</b>と呼ぶ。鍵が見つかったら、隣人が「そろそろ家に帰ってね」と丁寧に促す感じだね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>メリットは書き込みの可用性ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、特に書き込みの可用性を高める。任意の _w_ ノードが使えれば書き込める。でも、最新の値が一時的に _n_ 以外のノードに書かれてるかもしれないから、 _w_ + _r_ &gt; _n_ でも最新が読める保証はなくなる。つまり<b>いい加減なクォーラムは旧来の意味のクォーラムではない</b>。耐久性の向上を支援するだけで、ヒント付きハンドオフが完了するまでは _r_ 個読んでも最新の保証はない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>標準で有効なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>広く使われるDynamoスタイル実装ではオプション。Riakはデフォルト有効、CassandraやVoldemortはデフォルト無効だ。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.3.1 マルチデータセンターでの運用</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>リーダーレスもマルチDC運用に向いてる。衝突する並行書き込み・ネットワーク障害・レイテンシスパイクに耐えるよう設計されてるからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体的にはどう動くんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>CassandraとVoldemortは通常のリーダーレスモデル内でマルチDCをサポートする。全DCのノードに置く合計レプリカ数を _n_ として、各DCに何個ずつ置くか指定できる。書き込みはDCに関係なく全DCに送られるけど、クライアントが待つのは通常ローカルDC内のクォーラムの承認だけ。だからDC間リンクの障害の遅延を受けない。他DCへの書き込みは非同期に設定されることが多い。Riakはクライアントとノード間の通信を1つのDC内に限定するから、 _n_ は1つのDC内のレプリカ数。DC間のレプリケーションはマルチリーダーに似たスタイルで非同期にバックグラウンドで行われる。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ネットワーク分断時に書き込みを続ける手段（いい加減なクォーラム）の効果と限界を理解できる。</li>
+        <li>マルチDCでローカルクォーラムを使い、DC間遅延を隠す設計ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>いい加減なクォーラムは到達可能な別ノードに一時書き込みし、可用性を高める。</li>
+        <li>代償として _w_ + _r_ &gt; _n_ でも最新値の保証が消える（旧来のクォーラムではない）。</li>
+        <li>回復後はヒント付きハンドオフでホームノードへ転送。Riakはデフォルト有効、Cassandra/Voldemortはデフォルト無効。</li>
+        <li>マルチDCではローカルDCのクォーラムだけ待ち、DC間遅延を回避する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 5.4.4 並行書き込みの検出 ===== -->
+<section id="s544">
+  <div class="sec-head"><div class="sec-num">5.4.4</div><div><h2>並行書き込みの検出</h2><span class="tag">「どっちが先か」を判定し、並行ならマージする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リーダーレスでは並行書き込みがノードごとに違う順序で届き、受信順上書きだと永久に不一致になる。解決は①<b>LWW</b>（タイムスタンプで1つ選ぶ。収束するがデータ損失。イミュータブルキー＋UUIDで安全に）、②<b>事前発生関係を追跡</b>し並行な値をsiblingとして保持→アプリがマージ（和集合、削除は墓石で記録）。複数レプリカでは<b>バージョンベクトル</b>でキー×レプリカごとに追跡する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リーダーレスでも衝突は起きるんですか？ クォーラムがあるのに。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>起きる。複数クライアントが同じキーに並行書き込みできるから、厳格なクォーラムでも衝突しうる。Dynamoスタイルでは読み取り修復やヒント付きハンドオフのときにも衝突が生じる。問題はネットワーク遅延のばらつきや部分障害で、書き込みが<b>ノードごとに違う順序で</b>届くことだ。図で見よう。</div></div>
+    </div>
+
+    <details class="code"><summary>図：Dynamoスタイルでの並行書き込み（決まった順序がない）</summary>
+<pre><span class="cmt"># Dynamoスタイルでの並行書き込み（決まった順序がない）</span>
+クライアントA と クライアントB が同時にキーX に書き込む
+- ノード1 : Aを受信（Bは一時障害で受け付けない）→ 最終値 A
+- ノード2 : Aを受信 → 続いてB → 最終値 B
+- ノード3 : Bを受信 → 続いてA → 最終値 A
+  → 各ノードが「受信順に上書き」すると、永久に一貫しない
+    （ノード2はB、他はAと食い違う）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：同じ記事の2つの差し替えが、支局ごとに違う順番で届く</h4>
+      <p>記者AとBが同じ記事をほぼ同時に直し、各支局に差し替えを配りました。配送ルートの速さが違うので、<b>ある支局はAだけ、別の支局はA→Bの順、また別の支局はB→Aの順</b>で受け取ります。各支局が「届いた順に上書き」すると、支局ごとに最終版がバラバラになり、永久に揃いません。「どちらの差し替えが先か」をちゃんと判定する仕組みが要るのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>受信順に上書きするとバラバラになるんですね。DBが自動で解決してくれないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>期待したくなるけど、多くの実装は極めて貧弱なんだ。データを失いたくないなら、アプリ開発者は使うDBの衝突処理の内部動作をよく知っておかなきゃいけない。締めくくる前に、もう少し詳しく見よう。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.4.1 最後の書き込みを勝たせる（LWW）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>収束を実現する1つのアプローチが<b>最後の書き込みを勝たせる（LWW）</b>。各レプリカは最も「新しい」値だけ保持して、「古い」値は上書きして捨てる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でもさっきの例、どっちが「新しい」か決まらないですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。「新しい」がカギ括弧付きなのはそのため。AもBもお互いを知らずに書いてるから、どっちが先かは意味を持たない。これらは<b>並行</b>で、順序が定義されない。でも順序を<b>強制的に</b>与えることはできる。各書き込みにタイムスタンプを付けて、最大のタイムスタンプを「新しい」とし、古いものは捨てる。これがLWWだ。Cassandraが<b>唯一</b>サポートする衝突解決方法で、Riakではオプション。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>収束はするけど……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>耐久性のコストを伴う。同じキーへの並行書き込みが全部「成功」とクライアントに返されても、残るのは1つだけで、他は<b>何の通知もなく</b>捨てられる。さらに並行でない書き込みもドロップすることがある（8章で詳述）。キャッシュみたいに書き込みが失われてもいい状況ならOKだけど、データを失えないならLWWは不十分。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>安全に使う方法は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>LWWを安全に使う唯一の方法は「キーが書かれるのは一度だけでイミュータブル」を保証して、同じキーが並行更新されないようにすること。Cassandraでは各書き込みにユニークなキーとしてUUIDを使うのが推奨されてる。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：一番新しい原稿だけ採用 ― でも捨てた原稿は二度と戻らない</h4>
+      <p>LWWは<b>「一番新しい原稿だけ採用し、他は捨てる」</b>やり方。全支局が同じ1本に揃う（収束）のは良いのですが、捨てられた原稿は<b>誰にも知らされず消えます</b>。さらに本社の時計がズレていると、本当は後から書いた原稿が「古い」と誤判定されて消えることも。確実に残したい記事には不向きで、安全に使うには「同じ見出しは二度と書き換えない（イミュータブル）」と決め、原稿ごとに固有の番号（UUID）を振るしかありません。</p>
+    </div>
+
+    <h3 class="blk">5.4.4.2 「事前発生（happens-before）」関係と並行性</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも2つの操作が「並行」かどうか、どう判定するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>例で直感をつかもう。</div></div>
+    </div>
+    <table class="t">
+      <tr><th>並行か、事前発生かの判定</th></tr>
+      <tr><td>さっきのall-to-allの例（挿入→更新）：<b>並行していない</b>。更新は挿入された値に対するもの → 挿入が更新の「以前に生じた」。更新は挿入に「因果関係を持つ」。</td></tr>
+      <tr><td>Dynamoの並行書き込みの例（AとB）：<b>並行している</b>。どちらのクライアントも相手の操作を知らない → 因果関係がない。</td></tr>
+    </table>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>操作BがAを知っている、BがAに依存している、BがAを前提にしているとき、AはBより「先に行われた」。どちらも他方より先でない（互いに相手を知らない）なら、2つは単に<b>並行</b>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり可能性は3つ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。AがBより先、BがAより先、AとBが並行。先に行われたなら後者が前者を上書きすべき。並行なら、解決すべき衝突がある、ということ。</div></div>
+    </div>
+
+    <h4 class="blk">並行性、時間、相対性</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「並行」って「同時刻」ってことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実は時間的に重なってるかは重要じゃない。分散システムはクロックの問題があって、2つの出来事が完全に同時かを判断するのは極めて難しい。並行性の定義に厳密な時刻は要らないんだ。<b>互いに相手を認識していないなら</b>、物理的な時間がどうであれ並行とされる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>相対性理論みたいですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにその通り。情報は光速を超えて伝わらない、という特殊相対性理論と関係づけられることがある。離れた2つの出来事は、その間隔が光がその距離を移動する時間より短いなら互いに影響できない。逆にコンピュータでは、原理的に光速内で影響しうる場合でも、ネットワークの速度低下や障害で互いを知れなければ並行になりうる。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.4.3 事前発生関係の捕捉</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>並行か事前発生かを判定するアルゴリズムを知りたいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まずレプリカ1つの単純な場合から。ショッピングカートに2人が並行でアイテムを追加する例だ。最初カートは空。5つの書き込みが起きる。</div></div>
+    </div>
+
+    <details class="code"><summary>図：ショッピングカートの並行編集（バージョン番号で因果関係を捕捉）</summary>
+<pre><span class="cmt"># ショッピングカートの並行編集（レプリカ1つ、バージョン番号で因果関係を捕捉）</span>
+1. クライアント1が milk を追加
+   → 最初の書き込み。サーバーはバージョン1を与え、値とバージョンをクライアントに返す
+2. クライアント2が（1の milk を知らずに）eggs を追加
+   → サーバーはバージョン2を与え、[eggs] と [milk] を別々の値として保存
+   → バージョン2とともに「両方の値」をクライアントに返す
+3. クライアント1が（2を知らずに）flour を追加。自分はカートを [milk, flour] と思う
+   → 以前のバージョン1とともに送る
+   → サーバーは「これは[milk]を置き換えるが[eggs]とは並行」と判断
+   → [milk, flour] にバージョン3を与え、バージョン1の[milk]を上書き、[eggs]は保持
+   → 残った2つ（[milk, flour] と [eggs]）をクライアント1に返す
+4. クライアント2が（3を知らずに）ham を追加
+   → 手元の [eggs] と [milk] をマージして [eggs, milk, ham] を作り、バージョン2とともに送る
+   → サーバーはバージョン2の[eggs]を上書きするが、[milk, flour]とは並行と検出
+   → バージョン3の[milk, flour] と バージョン4の[eggs, milk, ham] が残る
+5. クライアント1が bacon を追加
+   → バージョン3で得た [milk, flour] と [eggs] をマージして bacon を足し、
+     [milk, flour, eggs, bacon] をバージョン3とともに送る
+   → [milk, flour] を上書きするが、[eggs, milk, ham] とは並行 → 両方保持</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：原稿に「どの版を見て書いたか」を必ず添えさせる</h4>
+      <p>本社は記者から原稿を受けるとき、<b>「あなたはどの版（バージョン番号）を見て書きましたか？」</b>を必ず添えさせます。すると本社は中身を読まなくても、「これは私が出した版の続きだから上書きOK」「これは私の知らない版から書かれたから並行＝両方残す」と判断できます。番号だけで、どの原稿を差し替えてどれを残すかを機械的に決められるのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バージョン番号で「どれを上書きしてどれを残すか」を判断するんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。サーバーは値の中身を解釈しなくても、バージョン番号だけで並行かを判断できる。アルゴリズムはこうだ。</div></div>
+    </div>
+
+    <details class="code"><summary>事前発生関係を捕捉するアルゴリズム（単一レプリカ）</summary>
+<pre><span class="cmt"># 事前発生関係を捕捉するアルゴリズム（単一レプリカ）</span>
+- サーバーはキーごとにバージョン番号を管理し、書き込みのたびにインクリメントして
+  書き込まれた値とともに新しいバージョン番号を保存する
+- クライアントがキーを読むと、サーバーは上書きされていない全値と最新バージョン番号を返す
+  （書き込む前には必ず読まなければならない）
+- クライアントが書くときは、以前の読み取りで得たバージョン番号を含め、
+  得た全値をマージしなければならない
+- バージョン番号付きの書き込みを受けると、サーバーはそのバージョン以下の値を上書きできる
+  （マージ済みと分かるため）。それより大きいバージョンの値は保持する（並行だから）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>書き込みに以前のバージョン番号が含まれてるってことは「その書き込みが基づく以前の状態」が分かるってこと。バージョン番号なしの書き込みは「他の全書き込みと並行」扱いになり、何も上書きしない。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.4.4 並行で書き込まれた値のマージ</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>並行した値が残ったら、誰がマージするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>クライアントだ。このアルゴリズムは「通知なくデータが消えない」ことは保証するけど、クライアントの作業が増える。並行に書かれた値を後からマージしてクリーンアップしなきゃいけない。Riakではこの並行する値を<b>sibling（兄弟）</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>マージってどうやるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これはマルチリーダーの衝突解決と同じ問題。シンプルにはLWW（バージョンやタイムスタンプで1つ選ぶ）だけど、データが失われる。だからもっと賢い処理がいる。カートの例なら<b>和集合</b>を取る。</div></div>
+    </div>
+
+    <details class="code"><summary>siblingのマージ（ショッピングカート）</summary>
+<pre><span class="cmt"># siblingのマージ（ショッピングカート）</span>
+2つの最終sibling: [milk, flour, eggs, bacon] と [eggs, milk, ham]
+→ 和集合（重複除去）: [milk, flour, eggs, bacon, ham]
+  ※ milk と eggs は一度しか書かれていないが双方に現れる → 重複を除く
+注意: ユーザーがアイテムを「削除」できる場合、和集合だけだと削除アイテムが復活する
+→ 削除は単純な削除ではなく、適切なバージョン番号とともに
+  「削除されたことを示すマーカー」を残す → これを「墓石（tombstone）」と呼ぶ</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📰 たとえ話：2本の原稿を「合体」させる ― 削除は「削除済みの付箋」を残す</h4>
+      <p>並行に書かれた2本の原稿（sibling）が残ったら、記者が<b>両方の内容を合体（和集合）</b>させます。ただし「この段落を削除した」という編集まで合体で消えると、消したはずの段落が復活してしまう（Amazonのカート問題と同じ罠）。だから削除は紙面から消すのではなく、<b>「ここは削除済み」という付箋（墓石／tombstone）</b>を貼って記録します。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>削除したのに復活、またこのパターンですね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、Amazonのカートと同じ罠。だから墓石で「消した」という事実を残す。アプリのコードによるsiblingマージは複雑でバグりやすいから、自動でマージできるデータ構造（Riakのデータ型でサポートされるCRDTなど）を設計する試みが進んでる。CRDTはsiblingを賢く自動マージし、削除操作も保持できる。</div></div>
+    </div>
+
+    <h3 class="blk">5.4.4.5 バージョンベクトル</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきの例はレプリカ1つでしたけど、複数あってリーダーレスだとどうなりますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>バージョン番号1つじゃ足りない。<b>キーごと、そしてレプリカごと</b>にバージョン番号を使う必要がある。各レプリカは書き込みのたびに自分のバージョン番号をインクリメントし、他の全レプリカから得たバージョン番号も追跡する。この情報が「どのsiblingを上書きしどれを保持するか」を示す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>その集合に名前があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>全レプリカから取得したバージョン番号の集合を<b>バージョンベクトル</b>と呼ぶ。最も興味深いのはRiak 2.0で使われる<b>ドット付きバージョンベクトル</b>。動作はカートの例とよく似てる。バージョンベクトルは、値が読まれるときレプリカからクライアントに送られ、書くとき送り返される（Riakでは<b>causal context（因果コンテキスト）</b>という文字列にエンコードする）。これで上書きと並行書き込みを区別できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>マージはやっぱり必要？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>単一レプリカの例と同じく、アプリがsiblingをマージしなきゃいけないことがある。バージョンベクトル構造は「あるレプリカから読んで別レプリカに書き戻しても安全」を保証する。siblingが生成されるかもしれないけど、マージが適切なら、データは失われない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「ベクトルクロック」って言葉も聞きますけど、同じですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>似てるけど完全に同じじゃない。違いは微妙なんだけど、簡単に言えば、レプリカの状態を比較するのに適切なのは<b>バージョンベクトル</b>のほうだよ。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>📰 たとえ話：本社が1つでなく複数だから、各本社ごとの版番号をまとめて管理する</h4>
+      <p>本社が1つなら版番号は1系列で済みました。でも本社が複数（リーダーレス）になると、<b>「東京本社では版3、大阪本社では版5、名古屋本社では版2」といった各本社の版番号を全部束ねて管理</b>する必要があります。この束がバージョンベクトル。これがあれば「ある本社で読んだ記事を別の本社に書き戻しても、原稿を取り違えて消す事故が起きない」と保証できます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>並行か事前発生かの判定基準（互いを知っているか）を説明できる。</li>
+        <li>LWWのデータ損失リスクを理解し、siblingマージや墓石・CRDTで安全に扱える。</li>
+        <li>バージョンベクトルで複数レプリカの並行性を追跡する仕組みが分かる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>並行書き込みは受信順上書きだと永久に不一致になる。</li>
+        <li>LWWは収束するが通知なくデータを捨てる。イミュータブルキー＋UUIDで安全に使う。</li>
+        <li>事前発生関係：互いを知らなければ並行、依存していれば順序がある。厳密な時刻は不要。</li>
+        <li>並行な値はsiblingとして保持し、アプリがマージ（和集合・削除は墓石で記録）。</li>
+        <li>複数レプリカではバージョンベクトル（キー×レプリカごと）で追跡。CRDTで自動マージも。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 章のまとめ（振り返り） ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で5つを言ってみる</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のポイント、言ってみます。1つ目は「<b>レプリケーション</b>＝同じデータを複数マシンに持つこと。目的は可用性・切断時の運用・レイテンシ低減・スケーラビリティ」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。簡単そうで、変更を扱い出すと一気に難しくなる。最低でもノード障害とネットワーク障害には対処できないといけない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目は「方式は3つ。<b>シングルリーダー</b>（書き込みはリーダー、変更ストリームをフォロワーへ。理解しやすく衝突解決不要で大人気）、<b>マルチリーダー</b>（複数リーダーが書き込みを受け、互いに転送）、<b>リーダーレス</b>（クライアントが複数ノードに書き、複数ノードから読んで古いノードを直す）」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>マルチとリーダーレスはノード障害・ネットワーク障害・レイテンシスパイクに頑健だけど、理由の説明が難しく、一貫性の保証が弱い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目は「レプリケーションは<b>同期</b>でも<b>非同期</b>でもできて、障害時の振る舞いが大きく変わる。非同期は普段速いけど、リーダー障害でコミット済みデータが消えうる」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ラグが大きくなったときに何が起きるかを理解しておくのが肝心だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目は「ラグが生む不思議な現象に、3つの一貫性モデルで対処する。<b>read-after-write一貫性</b>（自分の入れたデータは必ず見える）、<b>モノトニックな読み取り</b>（一度見たデータより古い時点を見ない）、<b>一貫性のあるプレフィックス読み取り</b>（質問→回答のような因果順を保って見える）」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>完璧だ。最後は？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目は「マルチリーダーとリーダーレスは並行書き込みで<b>衝突</b>が起きる。ある操作が他より先か並行かを判定し、並行なら<b>マージ</b>して解決する。LWWはデータを捨てるので注意。バージョンベクトルやCRDTが助けになる」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>文句なし。次の6章は、このレプリケーションの「対」になる手法――大きなデータセットを分割する<b>パーティショニング</b>だ。セットで効いてくるよ。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① レプリケーション</h4><p>同じデータを複数マシン（レプリカ）に持つ。目的は可用性・切断時運用・レイテンシ低減・スケーラビリティ。変更を扱い出すと一気に難しくなる。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 3つの方式</h4><p>シングルリーダー（人気・衝突なし）、マルチリーダー（複数本社）、リーダーレス（本社なし）。後の2つは頑健だが一貫性が弱い。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 同期 / 非同期</h4><p>同期は最新性を保証、非同期は速いがリーダー障害でデータが消えうる。準同期型が現実解。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 3つの一貫性モデル</h4><p>read-after-write（自分の更新は見える）、モノトニック（時間が巻き戻らない）、プレフィックス（因果順を守る）。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>⑤ 衝突とマージ</h4><p>並行書き込みは先後を判定し、並行ならマージ。LWWはデータを捨てる。バージョンベクトル・CRDTが助けに。</p></div>
+    </div>
+    <div class="loopback">🧭 この5つを足場に、次の6章「パーティショニング（シャーディング）」へ ― データの複製と分割はセットで効く</div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ「分かっていなかった部分」</span></div></div>
+
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>同期と非同期のレプリケーション</div>
+      <p style="font-size:14px;margin:0">同期レプリケーションと非同期レプリケーションの違いを説明し、それぞれの利点と欠点を1つずつ挙げてください。また「全フォロワーを同期にしない」のはなぜですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">同期はリーダーがフォロワーの「書き込み完了」を確認してからクライアントに成功を返す方式、非同期は確認を待たずに成功を返す方式です。同期の利点はフォロワーが常に最新でリーダー障害でもデータが残ること、欠点はフォロワーが応答しないと書き込みが全部止まること。非同期の利点は全フォロワーが遅延してもリーダーが書き込みを続けられること、欠点はリーダー障害時に未送信の書き込みが失われ永続性が保証されないことです。全フォロワーを同期にすると、1ノードが止まっただけでシステム全体が書き込み不能になるため非現実的です。実際は1つだけ同期にする準同期型がよく使われます。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 同期＝フォロワーのOKを待つ、非同期＝待たない、と説明できている ／ □ 同期の最新性保証と「フォロワー停止で書き込みが止まる」欠点を述べている ／ □ 非同期の速さと「リーダー障害でデータ損失」の欠点を述べている ／ □ 全同期は1ノード停止で全体停止するため非現実的、準同期型を使うと述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>read-after-write一貫性</div>
+      <p style="font-size:14px;margin:0">「自分が投稿したコメントが、更新したら消えて見える」現象がなぜ起きるかを説明し、それを防ぐ一貫性モデルの名前と、その実装手法を1つ挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">書き込みはリーダーに行きますが、読み取りは非同期で遅延しているフォロワーから来ることがあり、まだその書き込みがフォロワーに届いていないと「コメントが無い」と返るためです。これを防ぐのがread-after-write一貫性（read-your-writes一貫性）で、「ユーザーが自分で入れた更新は必ず見える」ことを保証します。実装手法の例として「ユーザーが変更したかもしれないもの（自分のプロフィールなど）はリーダーから読み、それ以外はフォロワーから読む」「最後の書き込みから一定時間はリーダーから読む」「最後の書き込み時刻を覚えておき、その時刻まで反映済みのレプリカでだけ読む」などがあります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 原因が「遅延フォロワーからの読み取りで自分の書き込みが未反映」だと説明できている ／ □ read-after-write（read-your-writes）一貫性の名前を挙げている ／ □ 「自分の更新だけ保証、他人は対象外」に触れていると尚良い ／ □ 実装手法を1つ具体的に挙げている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>クォーラム</div>
+      <p style="font-size:14px;margin:0">レプリカ数 _n_=5でクォーラムを組むとき、 _w_ + _r_ &gt; _n_ を満たす設定を1つ挙げ、それが何台のノード障害に耐えられるか説明してください。また _w_ + _r_ &gt; _n_ なら必ず最新値が読めると言い切れない理由を1つ挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">たとえば _w_=3, _r_=3とすると3+3=6 &gt; 5でクォーラム条件を満たします。書き込みは少なくとも3ノードに保存され、読み取りも3ノードに問い合わせるので、両者は必ず1ノード以上重なり、その重なったノードが最新値を持ちます。この設定では2台のノード障害まで耐えられます（残り3台で _w_ も _r_ も満たせるため）。ただし _w_ + _r_ &gt; _n_ でも必ず最新が読めるとは限りません。理由の例として、いい加減なクォーラムで書き込み集合と読み取り集合が別々のノードになり重なりが保証されない場合や、2つの書き込みが並行して順序が定まらない場合、書き込みが一部ノードで失敗して成功数が _w_ を下回った場合などがあります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ _w_ + _r_ &gt; _n_ を満たす具体的な設定（例: _w_=3,_r_=3）を挙げている ／ □ 読み書き集合が必ず重なるから最新が読める、と説明できている ／ □ 耐えられる障害数（例: 2台）を正しく述べている ／ □ 最新が読めないエッジケースを1つ挙げている（いい加減なクォーラム/並行書き込み/部分失敗など）</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>書き込みの衝突とLWW</div>
+      <p style="font-size:14px;margin:0">マルチリーダーやリーダーレスで「書き込みの衝突」が起きる理由を説明し、「最後の書き込みを勝たせる（LWW）」で衝突を解決するときの危険性を述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">複数のノードが独立に書き込みを受け付けるため、同じデータが並行して別々の値に変更されることがあり、これが衝突です。シングルリーダーなら書き込みが1か所で順序づけされるので起きません。LWWは各書き込みにタイムスタンプを付け、最大のタイムスタンプを「新しい」として残し、他を捨てる方法です。収束はしますが、並行した書き込みは本来どちらが先か定義できないのに無理やり順序をつけるため、捨てられた書き込みは何の通知もなく消えます。さらにクロックのズレで、並行でない書き込みまで失われることがあります。データを失えない用途には不適切で、安全に使うにはキーをイミュータブルにする（例: UUIDをキーにする）必要があります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 衝突の原因が「複数ノードでの並行書き込み」だと説明できている ／ □ シングルリーダーでは起きないことに触れている ／ □ LWWは順序を強制して1つだけ残し他を捨てる、と説明できている ／ □ データが通知なく失われる危険、イミュータブルキーで安全に、と述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>3つの一貫性モデルの使い分け</div>
+      <p style="font-size:14px;margin:0">read-after-write一貫性・モノトニックな読み取り・一貫性のあるプレフィックス読み取りの3つが、それぞれどんな異常を防ぐのかを1つずつ説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">read-after-write一貫性は「自分が書き込んだ直後にそのデータが見えない（投稿が消えたように見える）」異常を防ぎ、自分の更新は必ず見えることを保証します。モノトニックな読み取りは「一度見えたデータが、別の遅延レプリカから読んだら消えて、時間が巻き戻ったように見える」異常を防ぎ、一度新しいデータを読んだら以後それより古いデータは見えないことを保証します。一貫性のあるプレフィックス読み取りは「質問より先に回答が見えるなど、因果関係のある書き込みの順序が逆転して見える」異常を防ぎ、書き込まれた順序どおりに見えることを保証します。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ read-after-write＝自分の書き込みが見えない問題を防ぐ、と説明できている ／ □ モノトニックな読み取り＝時間が巻き戻る問題を防ぐ、と説明できている ／ □ 一貫性のあるプレフィックス読み取り＝因果順の逆転を防ぐ、と説明できている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして体感する</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>手元のDBのレプリケーション方式を調べる</h4><p>自分が使っているDB（PostgreSQL・MySQL・MongoDBなど）が同期/非同期どちらか、レプリケーションログがWAL転送か行ベースかを公式ドキュメントで確認してみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>レプリケーションラグを実際に測る</h4><p>リードレプリカを1台立てて、リーダーに書き込んだ直後にフォロワーから読んでみて、どれくらい遅れて反映されるかを観察（read-after-writeの問題を体感できます）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>クォーラムの計算を練習する</h4><p>_n_=3,5,7のそれぞれで「 _w_ + _r_ &gt; _n_ を満たす最小の設定」と「何台の障害に耐えるか」を紙に書いて計算。読み取り重視・書き込み重視で _w_ / _r_ をどう振るかも考えてみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>CassandraやRiakのドキュメントを読む</h4><p>リーダーレスの実際の挙動（LWW、いい加減なクォーラム、CRDT）が製品でどう設定されるかを読み、この章の概念と対応づけてみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次章へ</h4><p>6章「パーティショニング（シャーディング）」では、1台に収まらない大きなデータセットを複数ノードに分割する手法を学びます。レプリケーション（複製）とパーティショニング（分割）は組み合わせて使われるので、この章の3方式が分割とどう絡むかを意識しながら読み進めてください。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『データ指向アプリケーションデザイン』第5章 図解 ／ たとえ話メタファー：📰 新聞社の本社と支局（記事の配信） ／ レプリケーション ― シングルリーダー・マルチリーダー・リーダーレス</p>
+
+</div>
+</body>
+</html>

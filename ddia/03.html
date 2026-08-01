@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第3章 ストレージと抽出 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第3章</span>
+  <h1>ストレージと抽出 ― データの棚入れと棚出し</h1>
+  <p>「保存ボタンを押したデータは、どこにどう置かれているの？」――データベースが裏でやっている<b>2つの仕事（保存と取り出し）</b>と、それを速くする工夫を、新人ハルとベテラン カイ先輩の対話でたどります。追記ログ・ハッシュ索引・LSMツリー・Bツリー・列指向まで、<b>5つの仕組み</b>を巨大倉庫の棚入れ・棚出しに置きかえて学びます。</p>
+  <div class="badge-row">
+    <span class="badge">📦 たとえ話は「巨大倉庫の棚入れ・棚出し」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a href="#s31">3.1 データベースを駆動するデータ構造</a>
+  <a class="sub" href="#s311">3.1.1 ハッシュインデックス</a>
+  <a class="sub" href="#s312">3.1.2 SSTableとLSMツリー</a>
+  <a class="sub" href="#s313">3.1.3 Bツリー</a>
+  <a class="sub" href="#s314">3.1.4 BツリーとLSMツリーの比較</a>
+  <a class="sub" href="#s315">3.1.5 その他のインデックス構造</a>
+  <a href="#s32">3.2 トランザクション処理か、分析処理か？</a>
+  <a class="sub" href="#s321">3.2.1 データウェアハウス</a>
+  <a class="sub" href="#s322">3.2.2 スターとスノーフレーク</a>
+  <a href="#s33">3.3 列指向ストレージ</a>
+  <a class="sub" href="#s331">3.3.1 列の圧縮</a>
+  <a class="sub" href="#s332">3.3.2 列ストレージのソート順序</a>
+  <a class="sub" href="#s333">3.3.3 列指向への書き込み</a>
+  <a class="sub" href="#s334">3.3.4 データキューブとマテリアライズドビュー</a>
+  <a href="#sumchap">章のまとめ</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">📦</div><div><b>たとえ話はぜんぶ倉庫で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「巨大倉庫の棚入れ・棚出し」</b>に置きかえます。書き込み＝棚入れ、読み取り＝棚出し、データ＝商品、インデックス＝所在マップです。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、倉庫のたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">ストレージエンジン <span>storage engine</span></div><p>データベースの中で「保存」と「取り出し」を実際に担う心臓部。倉庫でいう<b>棚入れ・棚出しの仕組みそのもの</b>。</p></div>
+    <div class="item"><div class="w">ログ <span>log</span></div><p>追記だけが行われるレコードの並び。倉庫の<b>入庫記録の連番台帳</b>（消さずに足していくノート）。エラーログとは別の広い意味。</p></div>
+    <div class="item"><div class="w">インデックス <span>index</span></div><p>欲しいデータの場所を教えてくれる目印。倉庫の<b>所在マップ（どこに何があるかの一覧）</b>。本の巻末索引と同じ。</p></div>
+    <div class="item"><div class="w">ハッシュインデックス <span>hash index</span></div><p>「キー→棚番号」を一発で引ける早見表。倉庫の<b>商品番号→棚番号の早見表</b>。</p></div>
+    <div class="item"><div class="w">SSTable</div><p>キー順に並べて保存したセグメント。倉庫の<b>商品番号順に仕分けした整列棚</b>。</p></div>
+    <div class="item"><div class="w">LSMツリー <span>Log-Structured Merge-Tree</span></div><p>メモリに溜めて整列棚に書き出し、裏で統合していく方式。<b>仮置き台→整列棚→棚の合併</b>の流れ。</p></div>
+    <div class="item"><div class="w">memtable（メムテーブル）</div><p>書き込みを一旦溜めるメモリ上の整列済みの台。倉庫の<b>受付の仮置き台</b>。</p></div>
+    <div class="item"><div class="w">Bツリー <span>B-tree</span></div><p>固定サイズのページ（棚板）のツリーをたどってキーを探す方式。<b>ページ式の固定棚</b>。最も広く使われる。</p></div>
+    <div class="item"><div class="w">ページ <span>page</span></div><p>Bツリーが読み書きする固定サイズのブロック（通常4KB）。倉庫の<b>1枚の棚板</b>。</p></div>
+    <div class="item"><div class="w">コンパクション <span>compaction</span></div><p>同じキーの古い値を捨てて最新だけ残す圧縮整理。倉庫の<b>古い記録を捨てる棚卸し</b>。</p></div>
+    <div class="item"><div class="w">マージ <span>merge</span></div><p>複数のセグメント（棚）を1つに統合すること。倉庫の<b>棚の合併</b>。</p></div>
+    <div class="item"><div class="w">墓石 <span>tombstone</span></div><p>「このキーは削除した」と示す特別な記録。倉庫の<b>廃棄済みの貼り紙</b>。</p></div>
+    <div class="item"><div class="w">WAL <span>write-ahead log</span></div><p>棚を書き換える前に変更内容を先に書いておく追記ログ。倉庫の<b>作業前の予定メモ（事故ったらこれで復元）</b>。</p></div>
+    <div class="item"><div class="w">ブルームフィルター <span>bloom filter</span></div><p>「このキーは無い」を高速判定するメモリ効率のよい仕組み。倉庫の<b>「在庫なし」を即答する札</b>。</p></div>
+    <div class="item"><div class="w">セカンダリインデックス <span>secondary index</span></div><p>主キー以外でも探せる追加の索引。倉庫の<b>色別・サイズ別の追加マップ</b>。</p></div>
+    <div class="item"><div class="w">ヒープファイル <span>heap file</span></div><p>行の実データを置く順序なしの置き場。倉庫の<b>商品本体を置く共通の置き場</b>。</p></div>
+    <div class="item"><div class="w">OLTP</div><p>ユーザーがキーで少数を低レイテンシで読み書きする使い方。倉庫の<b>1点ずつの出荷・入荷の日常業務</b>。</p></div>
+    <div class="item"><div class="w">OLAP</div><p>大量レコードをスキャンして集計する分析。倉庫の<b>全在庫を数えて月次レポートを作る棚卸し分析</b>。</p></div>
+    <div class="item"><div class="w">データウェアハウス <span>data warehouse</span></div><p>分析専用にデータをコピーした別DB。倉庫の<b>分析専用の別館（読み取り専用の写し）</b>。</p></div>
+    <div class="item"><div class="w">ETL <span>Extract-Transform-Load</span></div><p>取り出し→変換→ロードでデータを取り込む流れ。倉庫の<b>各店から在庫を集めて別館に整理して並べる作業</b>。</p></div>
+    <div class="item"><div class="w">列指向ストレージ <span>column-oriented</span></div><p>列（品目）ごとにまとめて保存する方式。倉庫の<b>品目ごとにまとめた棚</b>。分析に強い。</p></div>
+    <div class="item"><div class="w">マテリアライズドビュー</div><p>クエリ結果を実際にディスクへコピーした表。倉庫の<b>よく聞かれる集計を貼り出した掲示板</b>。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>ハルは「保存ボタンを押したらデータはどこにどう置かれているんだろう？」とふと疑問を持ちます。そんな素朴な問いから、カイ先輩との「データベースの中身を覗く冒険」が始まります。たった2行のシェルスクリプトで作る世界一シンプルなデータベースから出発し、なぜ検索が遅くなるのか、どうやって速くするのか、そして「書き込みが得意な仕組み」と「読み取りが得意な仕組み」の違い、さらには「たくさん集計するための特別な置き方」まで、データの保存と取り出しの裏側をじっくりたどっていきます。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：データベースの仕事は突き詰めると2つだけ。「データを保存すること」と「頼まれたら取り出すこと」。でも速く取り出すには工夫（<b>インデックス</b>）がいる。この章は、その代表である「ログ構造（追記して後で整理）」と「Bツリー（決まった大きさのページで管理）」の2大流派を学び、さらに「ふつうの業務処理（<b>OLTP</b>）」と「大量集計の分析（<b>OLAP</b>）」では最適な保存方法がまるで違うこと、分析には「列ごとにまとめて置く（<b>列指向</b>）」のが効くことを理解する回。</p>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：これから「巨大倉庫の棚入れ・棚出し」の話をします</h4>
+      <p>この章を通して、データベース＝<b>巨大倉庫</b>、データ＝<b>商品</b>、書き込み＝<b>棚入れ</b>、読み取り＝<b>棚出し</b>、インデックス＝<b>所在マップ</b>に置きかえて読みます。倉庫の仕事も2つだけ。「商品をしまう（棚入れ）」と「頼まれた商品を出す（棚出し）」。そして「どこに何があるか」のマップがなければ、棚出しのたびに倉庫中を端から端まで探すハメになる――この感覚が、この章ぜんぶを貫く合言葉です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>選べるようになる</b>：自分でストレージエンジンを作ることはなくても、山ほどあるDBから「自分のアプリに合うもの」を選ぶには中身の仕組みを知らないと選べない。</li>
+        <li><b>勘で触らない</b>：チューニング設定（パラメータ）を増減すると何が起きるかをイメージできないと、事故る。</li>
+        <li><b>トレードオフが見える</b>：「書き込みが速い」「読み取りが速い」「分析が速い」はそれぞれ別の設計から来る。過剰な期待や誤った選定を避けられる。</li>
+        <li><b>説明・提案できる</b>：LSM系（Cassandra/HBase）とBツリー系（一般的なRDB）の違い、インデックスの基本トレードオフ、分析が遅いときの列指向提案ができる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.1 ===== -->
+<section id="s31">
+  <div class="sec-head"><div class="sec-num">3.1</div><div><h2>データベースを駆動するデータ構造</h2><span class="tag">世界一シンプルなDBから、なぜインデックスが要るのかを知る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：データベースの仕事は「保存」と「取り出し」。追記だけの<b>ログ</b>は書き込みが速いが、全件スキャンになるので読み取りが遅い。速く探すには<b>インデックス</b>（目印）が要る。ただしインデックスは読み取りを速くする代わりに<b>書き込みを遅くする</b>ので、必要なものだけ選ぶ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、「保存」ボタンを押したデータって、実際どこに、どんな形で置かれてるんですか？ なんとなくDBに入る、としか分かってなくて。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>いい疑問だ。前の章では「アプリ側から見たデータの形」を話したよね。今日は逆。<b>データベースの側に立って</b>、「与えられたデータをどう保存するか」「頼まれたデータをどう見つけるか」を覗いていくよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも僕、自分でデータベースを作ることなんてないですよ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>作りはしない。でも<b>選ぶ</b>必要はある。世の中には山ほどストレージエンジンがあって、ワークロードに合わせて選びチューニングしなきゃいけない。特に<b>トランザクション向け</b>と<b>分析向け</b>はまるで別物だからね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まず、世界で一番単純なデータベースを見せよう。たった2つのBashの関数でできてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2行で……データベースですか？</div></div>
+    </div>
+
+    <p>キーと値を保存する <code>db_set</code> と、取り出す <code>db_get</code> の2つの関数だけ。<code>db_set</code> はファイル末尾に追記し、<code>db_get</code> はそのキーの最後（最新）の行を返します。</p>
+    <details class="code"><summary>世界一シンプルなデータベース（2つのBash関数）</summary>
+<pre><span class="cmt"># 世界一シンプルなデータベース：キーと値を保存し、取り出す2つの関数</span>
+<span class="cmt">#!/bin/bash</span>
+
+<span class="cmt"># db_set：第1引数(key)と第2引数(value)を「key,value」の形でファイル末尾に追記する</span>
+<span class="fn">db_set</span> () {
+    <span class="kw">echo</span> <span class="str">"$1,$2"</span> &gt;&gt; database
+}
+
+<span class="cmt"># db_get：指定キーの行をすべて探し、その中で一番最後（＝最新）の値だけを返す</span>
+<span class="fn">db_get</span> () {
+    <span class="fn">grep</span> <span class="str">"^$1,"</span> database | <span class="fn">sed</span> -e <span class="str">"s/^$1,//"</span> | <span class="fn">tail</span> -n <span class="num">1</span>
+}</pre>
+    </details>
+    <details class="code"><summary>動かしてみる（保存・取り出し・更新）</summary>
+<pre><span class="cmt"># 保存：都市の情報をJSONで保存する</span>
+$ db_set <span class="num">123456</span> <span class="str">'{"name":"東京","attractions":["東京タワー","スカイツリー"]}'</span>
+$ db_set <span class="num">42</span> <span class="str">'{"name":"大阪","attractions":["通天閣"]}'</span>
+
+<span class="cmt"># 取り出し：キー42の最新の値を取得する</span>
+$ db_get <span class="num">42</span>
+{<span class="str">"name"</span>:<span class="str">"大阪"</span>,<span class="str">"attractions"</span>:[<span class="str">"通天閣"</span>]}
+
+<span class="cmt"># 同じキー42を更新（上書きではなく追記される）</span>
+$ db_set <span class="num">42</span> <span class="str">'{"name":"大阪","attractions":["海遊館"]}'</span>
+$ db_get <span class="num">42</span>
+{<span class="str">"name"</span>:<span class="str">"大阪"</span>,<span class="str">"attractions"</span>:[<span class="str">"海遊館"</span>]}
+
+<span class="cmt"># ファイルの中身を見ると、古い値も残ったまま</span>
+$ cat database
+<span class="num">123456</span>,{<span class="str">"name"</span>:<span class="str">"東京"</span>,...}
+<span class="num">42</span>,{<span class="str">"name"</span>:<span class="str">"大阪"</span>,<span class="str">"attractions"</span>:[<span class="str">"通天閣"</span>]}
+<span class="num">42</span>,{<span class="str">"name"</span>:<span class="str">"大阪"</span>,<span class="str">"attractions"</span>:[<span class="str">"海遊館"</span>]}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>古いのが残ってるの、無駄じゃないですか？ 上書きすればいいのに。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ところがね、これは<b>書き込みがすごく速い</b>。ファイルへの追記はコンピュータにとても効率がいい操作なんだ。この「追記だけが行われるデータファイル」を<span class="term" data-tip="追記だけが行われるレコードの並び。人が読める必要はない。エラーログとは別の広い意味。">ログ（log）</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ログって、エラーログのログですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>混同しやすいから注意。この本でいう<b>ログ</b>は「追記だけが行われるレコードの並び」という広い意味。バイナリでプログラムだけが読むものでもログと呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>書き込みは速い。読み取りは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが弱点。<code>db_get</code> はキーを探すたびに<b>ファイルの先頭から末尾まで全スキャン</b>。レコード数が <i>n</i> なら検索コストは <i>O</i>(<i>n</i>)。データが増えると目も当てられない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ速く探すには？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで<span class="term" data-tip="欲しいデータの場所を教える目印。元データから導かれる追加構造で、本体は変えずクエリ速度だけ変える。">インデックス（index, 索引）</span>。本の巻末索引と同じで、目印を横に置いて場所を教えてもらう。インデックスは追加の構造だから、足し引きしても<b>データ本体は変わらず、クエリの速さだけ</b>変わる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ全部のキーにインデックスを張ればいいじゃないですか！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが大事なトレードオフ。インデックスは<b>読み取りを速くするけど書き込みを遅くする</b>。書くたびにインデックスも更新だからね。だから<b>よくあるクエリパターンを知る人が、必要なところだけ選んで張る</b>。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：連番台帳に足すだけの倉庫</h4>
+      <p>このシンプルDBは、商品が来たら<b>入庫記録の連番台帳（ログ）の一番下に行を足すだけ</b>の倉庫です。足すだけだから棚入れは超高速。でも所在マップ（インデックス）が無いので、ある商品を出したいときは台帳を上から下まで全部読む（全スキャン）ハメに。商品が2倍になれば探す時間も2倍。だから「どこに何があるか」の<b>所在マップ</b>を別に作っておくのです。ただしマップは、棚入れのたびに書き直す手間が増えます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「追記は速い」「全スキャンは遅い」という基本感覚が身につき、なぜインデックスが要るかを根本から理解できる。</li>
+        <li>「インデックス＝読み取り高速化と書き込み低速化のトレードオフ」を知り、無駄なインデックスを張らない判断ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>データベースの最も基本的な仕事は「保存」と「取り出し」。</li>
+        <li>追記だけのログ（log）は書き込みが効率的。本書のログは「追記のみのレコードの並び」という広い意味。</li>
+        <li>インデックスは元データから導かれる追加構造で、本体は変えずクエリ速度だけ変える。</li>
+        <li>インデックスは読み取りを速くするが書き込みを遅くするので、クエリパターンを知って選ぶ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.1.1 ハッシュインデックス ===== -->
+<section id="s311">
+  <div class="sec-head"><div class="sec-num">3.1.1</div><div><h2>ハッシュインデックス</h2><span class="tag">「キー→ファイル内の位置」をメモリの早見表で持つ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ハッシュインデックスは「キー→ファイル内の位置」をメモリ上の表で持つ方式（<b>Bitcask</b>）。書き込みは追記、ディスクが満杯にならないよう<b>セグメント分割＋コンパクション＋マージ</b>で整理する。追記設計はシーケンシャル書き込みが速く回復もシンプル。ただし<b>全キーがメモリに収まる必要</b>があり、<b>範囲クエリが苦手</b>。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>インデックスって、具体的にはどう作るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一番シンプルなのが<b>ハッシュインデックス</b>。多くの言語の「辞書」型は普通ハッシュマップで実装されてる。「このキーはこの場所」と一発で引ける表だ。これをディスク上データの索引に使う。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データはログに追記していく。それに加えて<b>メモリ上のハッシュマップ</b>を持つ。中身は「キー → そのデータがファイルの何バイト目から始まるか（<b>バイトオフセット</b>）」の対応表だ。</div></div>
+    </div>
+
+    <details class="code"><summary>ファイルへの追記 + メモリ上のハッシュマップ（イメージ）</summary>
+<pre><span class="cmt"># ファイルへの追記 + メモリ上のハッシュマップ（イメージ）</span>
+
+[データファイル（ログ）]              [メモリ上のハッシュマップ]
+0:  123456,{...東京...}              123456 → バイトオフセット 0
+64: 42,{...大阪・通天閣...}           42     → バイトオフセット 95（最新の位置）
+95: 42,{...大阪・海遊館...}
+
+<span class="cmt">・書き込み：ファイル末尾に追記し、ハッシュマップのオフセットも更新する</span>
+<span class="cmt">・読み取り：ハッシュマップでオフセットを引き、その場所まで飛んで（シーク）値を読む</span></pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：商品番号→棚番号の早見表</h4>
+      <p>連番台帳（ログ）に棚入れするのは同じ。でも受付に<b>「商品番号 → 棚の何番地に最新が置いてあるか」の早見表</b>を貼っておきます。棚入れのたびに台帳に足し、早見表の番地も最新に書き換える。棚出しのときは、台帳を全部読まずに<b>早見表を一発で引いて、その棚へ直行</b>するだけ。これがハッシュインデックスです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これって本当に使われてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>使われてる。<b>Bitcask</b>（Riakのデフォルトのストレージエンジン）がこの方式。マップを丸ごとメモリに置くから読み書きが速い。ただし<b>全キーがメモリ（RAM）に収まる</b>必要がある。値はディスクにあって1回シークで読めるから、値の総量はメモリより多くてもいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どんなアプリに向いてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>キーの種類は多くないけど、各キーの値が<b>しょっちゅう更新される</b>ケース。たとえばキーが「猫の動画のURL」、値が「再生回数」。書き込みは大量でも、ユニークなキー（動画の本数）はメモリに収まる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、追記し続けたらディスクが満杯になりませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい指摘。だから<b>ログをセグメント（区切り）に分ける</b>。ある大きさになったらファイルを閉じて新しいファイルに書く。そして閉じたセグメントに<b>コンパクション（圧縮整理）</b>をかけ、同じキーの古い値を捨てて最新だけ残すんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>コンパクション：同じキーの古い値を捨て、最新だけ残す</summary>
+<pre><span class="cmt"># コンパクション：同じキーの古い値を捨て、最新だけを残す</span>
+
+[コンパクション前のセグメント]        [コンパクション後]
+猫A,10                                猫A,12
+猫B,3                                 猫B,5
+猫A,11                →（整理）→       猫C,7
+猫B,4
+猫A,12
+猫C,7
+猫B,5</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>コンパクションすると重複が消えて小さくなるから、複数のセグメントを<b>マージ（統合）</b>もできる。書き終わったセグメントは変更されない（イミュータブル＝不変）から、マージ結果は新ファイルに書けばいい。しかも<b>バックグラウンドのスレッド</b>でやれて、その間も古いセグメントで読み書きを続けられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>セグメントが複数あると、読むときは大変じゃないですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各セグメントがそれぞれ自分のハッシュマップを持つ。探すときは最新のマップから順にたどる。マージのおかげでセグメント数は少なく保たれるから、たどる回数も少ない。</div></div>
+    </div>
+
+    <h3 class="blk">実用にするための細かい検討項目（5つ）</h3>
+    <table class="t">
+      <tr><th>項目</th><th>内容</th></tr>
+      <tr><td>ファイルフォーマット</td><td>CSVより、「文字列の長さをバイト数で先に書き、生の文字列を続ける」バイナリ形式が速くシンプル（エスケープ不要）。</td></tr>
+      <tr><td>レコードの削除</td><td>特別な削除レコード（<span class="term" data-tip="削除を示す特別な記録。マージ時にそのキーの過去の値を全部捨てる。">墓石 tombstone</span>）を追記する。マージ時に墓石を見たら過去の値を全部捨てる。</td></tr>
+      <tr><td>クラッシュのリカバリ</td><td>再起動でメモリのマップは消える。Bitcaskは各セグメントのマップの<b>スナップショット</b>をディスクに保存し素早く読み込む。</td></tr>
+      <tr><td>部分的に書き込まれたレコード</td><td>追記途中のクラッシュに備え、<span class="term" data-tip="壊れ検出用の検査値。壊れた部分を捨てたり無視したりできる。">チェックサム（checksum）</span>を入れておく。</td></tr>
+      <tr><td>並行性の制御</td><td>書き込みは順番が大事なので書き込みスレッドは普通1本。セグメントは不変なので読み取りは複数スレッドで同時にOK。</td></tr>
+    </table>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも、なんでわざわざ追記なんですか？ 上書きすればいい気もしますけど。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>追記（とマージ）にはちゃんと理由があるんだ。3つ挙げよう。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">⚡</div><h4>① 順番に書くから速い</h4><p><b>シーケンシャルな書き込み</b>（連続した場所に順に書く）は、ランダムな書き込み（あちこち飛ぶ）よりずっと速い。特に磁気HDD、SSDでもある程度。</p></div>
+      <div class="mini"><div class="ic">🛟</div><h4>② 回復がシンプル</h4><p>並行処理とクラッシュ回復がシンプル。「上書き中にクラッシュして半端な状態」を心配しなくてよい。</p></div>
+      <div class="mini"><div class="ic">🧹</div><h4>③ 断片化を防ぐ</h4><p>古いセグメントをマージすることで、ファイルの<b>断片化（フラグメンテーション）</b>を防げる。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いいことずくめですね。じゃあハッシュインデックスが最強？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、制約もある。2つ。①<b>ハッシュテーブルがメモリに収まらないといけない</b>。キーが膨大だとアウト（ディスク上で管理すると大量のランダムI/Oが必要で性能が出にくい）。②<b>範囲クエリが苦手</b>。「kitty00000〜kitty99999まで全部」のような範囲スキャンができず、1キーずつ引くしかない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、キーが多すぎるとダメ、範囲検索もダメ、と。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「キーが多すぎず、各キーが頻繁に更新される」ワークロードにハッシュインデックス系が向くと判断できる。</li>
+        <li>コンパクション・マージ・墓石・チェックサムといったストレージ実装の定番用語を理解できる。</li>
+        <li>「範囲検索したいならハッシュインデックスは不向き」と見抜ける。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ハッシュインデックスは「キー→バイトオフセット」のメモリ上の表。Bitcaskが代表例。</li>
+        <li>セグメント分割＋コンパクション（最新だけ残す）＋マージでディスクを節約。</li>
+        <li>追記のみ設計の利点：速いシーケンシャル書き込み、シンプルな並行処理・回復、断片化回避。</li>
+        <li>制約：全キーがメモリに収まる必要、範囲クエリが苦手。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.1.2 SSTableとLSMツリー ===== -->
+<section id="s312">
+  <div class="sec-head"><div class="sec-num">3.1.2</div><div><h2>SSTableとLSMツリー</h2><span class="tag">キー順に並べて保存すると、もっと賢くなる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：SSTableは「キー順にソートして保存するセグメント」。<b>マージが簡単・メモリ上のインデックスは疎で済む・圧縮しやすい</b>の3利点。書き込みはメモリ上の<b>memtable</b>に溜めてソート順でディスクに書き出し（クラッシュ対策に別ログも持つ）、バックグラウンドでマージするのが<b>LSMツリー</b>。LevelDB/RocksDB/Cassandra/HBase/Luceneが代表。存在しないキー検索は<b>ブルームフィルター</b>で高速化、コンパクションはsize-tiered/leveledなどの戦略がある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきのハッシュインデックスの弱点、なんとかなりませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>なるんだ。セグメントに条件を1つ足すだけ。「<b>キーでソート（並べ替え）した状態で保存する</b>」というルールを加える。これを<b>ソート済み文字列テーブル（Sorted String Table）</b>、略して<b>SSTable</b>と呼ぶ。さらに「1つのマージ済みセグメント内では各キーは一度だけ」も足す（コンパクションが自動で満たす）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ソートすると、何がうれしいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きな利点が3つある。</div></div>
+    </div>
+
+    <h3 class="blk">利点1：マージが簡単で効率的（マージソート方式）</h3>
+    <p>ファイルがメモリより大きくても平気。複数の入力ファイルの先頭キーを見て、一番小さいキーを出力にコピーするのを繰り返すだけ（マージソートと同じ）。</p>
+    <details class="code"><summary>利点1：ソート済みセグメント同士のマージ</summary>
+<pre><span class="cmt"># 利点1：ソート済みセグメント同士のマージ（マージソート方式）</span>
+
+入力セグメント1: A:1  C:3  E:5
+入力セグメント2: B:2  C:9  D:4
+                  │
+                  ▼ 先頭キーを比べて小さい順に出す
+出力セグメント:  A:1  B:2  C:9  D:4  E:5
+                          ↑ 同じキーCは「新しいセグメントの値」を優先して残す</pre>
+    </details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じキーが両方に出てきたら、どっちを残すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各セグメントには「ある期間に書かれた値」だけが入ってる。新しいセグメントの値のほうが最近。マージは隣り合うセグメント同士でやるから、<b>新しいほうを残して古いほうを捨てる</b>だけでいい。</div></div>
+    </div>
+
+    <h3 class="blk">利点2：全キーをメモリに置かなくてよい（疎なインデックス）</h3>
+    <p><code>handiwork</code> の正確な位置を知らなくても、<code>handbag</code> と <code>handsome</code> の位置を知っていれば、その<b>間</b>にあると分かる。<code>handbag</code> に飛んで読み進めればいい。メモリ上のインデックスは数KBごとに1キーで十分（疎でいい）。</p>
+    <details class="code"><summary>利点2：疎なインメモリインデックス</summary>
+<pre><span class="cmt"># 利点2：疎なインメモリインデックス</span>
+
+[メモリ上の疎なインデックス（数KBごとに1キーだけ）]
+  handbag  → オフセット 100
+  handsome → オフセット 500
+
+[ディスク上のソート済みセグメント]
+  100: handbag,...
+       handiwork,...  ← handbag〜handsome の間をスキャンして発見
+       handoff,...
+  500: handsome,...</pre>
+    </details>
+    <p>（補足）もし全キーと値のサイズが固定なら二分探索ができ、メモリ上のインデックスは不要になる。でも普通はサイズが固定でないので、インデックスがないとレコードの切れ目が分からず難しい。</p>
+
+    <h3 class="blk">利点3：圧縮できる</h3>
+    <p>範囲を読むときはどうせ連続した複数レコードを読む。それらを<b>ブロック</b>にまとめて圧縮してから書ける。疎なインデックスの各エントリは圧縮ブロックの先頭を指す。ディスク容量もI/O帯域も減る。</p>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：商品番号順に並べた整列棚</h4>
+      <p>SSTableは、商品を<b>商品番号順にきっちり並べた整列棚</b>です。①整列棚どうしを合併するのは、両方を端から見比べて小さい番号から並べるだけなので簡単（利点1）。②所在マップは「100番台はこの棚、500番台はあの棚」と<b>ざっくり（疎）でOK</b>。間の番号は棚をちょっと歩けば見つかる（利点2）。③隣り合う番号の商品はまとめて梱包・圧縮しておける（利点3）。番号順に並んでいるだけで、いいことが3つも増えるのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いいことだらけですけど……書き込みの順番はバラバラなのに、どうやってキー順に保存するんですか？</div></div>
+    </div>
+
+    <h4 class="blk">SSTableの構築と管理（3.1.2.1）</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが核心。ディスク上でソートを保つのは大変だけど、<b>メモリ上ならソート済み構造を保つのは簡単</b>。red-blackツリーやAVLツリーといった「バランスのとれたツリー」を使えば、どんな順で入れても読み出しはソート順で取り出せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>メモリに溜めて、ソートして、ディスクに書く……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。流れはこうだ。</div></div>
+    </div>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>書き込みは memtable へ</h4><p>メモリ上のバランスドツリー（red-blackツリーなど）に追加する。このメモリ上のツリーを <b>memtable（メムテーブル）</b> と呼ぶ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>閾値を超えたらSSTableに書き出す</h4><p>memtable が一定サイズ（通常数MB）を超えたらSSTableファイルとしてディスクへ。すでにキー順なので効率よく書ける。これが最新のセグメント。書き出し中の新しい書き込みは別の新しい memtable に受ける。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>読み取りは memtable → 最新 → 古い…の順</h4><p>まず memtable、次にディスク上の最新セグメント、その次に古いセグメント…と探す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>裏でマージ＆コンパクション</h4><p>時々バックグラウンドでマージ＆コンパクションを実行し、上書き・削除された値を捨てる。</p>
+        <div class="branch ng">⚠️ memtableはメモリ上。クラッシュすると、まだ書き出してない分が消える。</div></div></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも memtable はメモリ上ですよね。クラッシュしたら、まだ書き出してない分が消えませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。だから保険をかける。<b>ディスク上に別のログ</b>を持って、すべての書き込みをそこに即座に追記しておく。このログはソートされてないけど、目的は「クラッシュ後に memtable を復元すること」だけだから問題ない。memtable を無事SSTableに書き出せたら、対応するログは捨てていい。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：受付の仮置き台 → 整列棚 → 棚の合併</h4>
+      <p>商品が来たら、まず<b>受付の仮置き台（memtable）に番号順に並べて仮置き</b>します。台がいっぱいになったら、その並びをそのまま<b>整列棚（SSTable）として倉庫に運ぶ</b>。棚出しは、まず仮置き台を見て、無ければ新しい棚→古い棚の順に探す。裏方は空いた時間に<b>古い棚どうしを合併（マージ）</b>して数を減らす。仮置き台が地震（クラッシュ）で崩れても困らないよう、<b>受付の控えノート（別ログ）に来た商品を即メモ</b>しておくのです。</p>
+    </div>
+
+    <h4 class="blk">SSTableからのLSMツリーの作成（3.1.2.2）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>この方式、実際の製品で使われてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>バリバリ使われてる。<b>LevelDB</b> や <b>RocksDB</b>（組み込み用のキー‐バリューライブラリ）がこのアルゴリズム。同じ仕組みは <b>Cassandra</b> や <b>HBase</b> でも使われていて、Googleの <b>Bigtable</b> の論文（<b>SSTable</b>・<b>memtable</b> という言葉はこの論文で登場）から着想を得ている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>この仕組み自体に名前はあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある。最初に述べたのはPatrick O'Neilらで、以前の <b>log-structuredファイルシステム</b> の上に作られ、<b>Log-Structured Merge-Tree（LSMツリー）</b> と名付けられた。「ソート済みファイルのマージとコンパクション」を土台にするものを <b>LSMストレージエンジン</b> と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全文検索とかにも関係しますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>するよ。ElasticsearchやSolrの全文検索エンジンの <b>Lucene</b> も、<b>語の辞書（term dictionary）</b> を似た方法で保存してる。全文検索ではキーを「語（term）」、値を「その語を含む全ドキュメントIDのリスト（<b>ポスティングリスト</b>）」にして、SSTableに似たソート済みファイルに保存し、必要に応じてバックグラウンドでマージする。</div></div>
+    </div>
+
+    <h4 class="blk">パフォーマンスの最適化（3.1.2.3）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>実用にするには、まだ工夫が要りそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。LSMツリーは「<b>存在しないキーを探すと遅い</b>」弱点がある。無いことを確認するには memtable から一番古いセグメントまで全部調べないといけないからだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「無い」ことを確かめるのに全部見るって、無駄ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>だから<span class="term" data-tip="集合の中身の概要をメモリ効率よく保持し、「このキーは存在しない」を高速判定するデータ構造。">ブルームフィルター（bloom filter）</span>を追加で使う。「<b>このキーはデータベースに存在しない</b>」と高速判定でき、無駄なディスク読み取りを省ける。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>マージのやり方にも種類があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>コンパクションの順序とタイミングに戦略がある。代表が<b>サイズごと（size-tiered）</b>と<b>階層ごと（leveled）</b>のコンパクションだ。</div></div>
+    </div>
+    <table class="t">
+      <tr><th>コンパクション戦略</th><th>内容</th><th>採用例</th></tr>
+      <tr><td>size-tiered（サイズごと）</td><td>新しく小さいSSTableを、古くて大きいSSTableに次々マージしていく。</td><td>HBase</td></tr>
+      <tr><td>leveled（階層ごと）</td><td>キーの範囲を小さなSSTableに分割し、古いデータを「レベル」へ移す。インクリメンタルにでき、必要ディスク量も少ない。</td><td>LevelDB・RocksDB（名前の由来）</td></tr>
+      <tr><td>両方サポート</td><td>状況に応じて選べる。</td><td>Cassandra</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：「在庫なし」を即答する札と、棚の合併ルール</h4>
+      <p>「その商品ありますか？」と聞かれて、無い商品のために全部の棚を歩くのは無駄。だから入口に<b>「うちに無い番号を即答できる札（ブルームフィルター）</b>」を貼り、無ければその場で「ありません」と返します。棚の合併（コンパクション）にもやり方があって、<b>小さい棚を大きい棚へ吸収していく方式</b>（size-tiered）と、<b>番号の範囲ごとに段（レベル）を作って少しずつ整える方式</b>（leveled）があるのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>細かい工夫は多いけど、「カスケード（段階的）にSSTableをバックグラウンドでマージしていく」というLSMツリーの基本はシンプルで効率的だ。データがメモリよりずっと大きくても動くし、ソート順だから<b>範囲クエリも効率的</b>、書き込みはシーケンシャルだから<b>書き込みスループットも高い</b>。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>CassandraやHBaseなどLSM系DBが「書き込みに強い」理由を、memtable＋シーケンシャル書き込みの観点で説明できる。</li>
+        <li>「存在しないキーの検索が遅い→ブルームフィルター」という最適化の発想を持てる。</li>
+        <li>size-tiered/leveledコンパクションの違いを理解し、運用チューニングの文脈を読める。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>SSTable＝キー順ソート済みセグメント。マージ容易・疎インデックス可・圧縮可の3利点。</li>
+        <li>memtable（メモリ上のバランスドツリー）に溜め、閾値で SSTable として書き出す。クラッシュ対策に別ログ。</li>
+        <li>この仕組みがLSMツリー。LevelDB/RocksDB/Cassandra/HBase/Lucene などが採用。</li>
+        <li>存在しないキー検索はブルームフィルターで高速化。コンパクションは size-tiered / leveled 戦略。</li>
+        <li>メモリより大きくても動き、範囲クエリと書き込みスループットに強い。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.1.3 Bツリー ===== -->
+<section id="s313">
+  <div class="sec-head"><div class="sec-num">3.1.3</div><div><h2>Bツリー</h2><span class="tag">最も広く使われる「ページ式の固定棚」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Bツリーは最も広く使われるインデックスで、データを<b>固定サイズのページ</b>に分け、ページのツリーをたどってキーを探す（深さは O(log n)、通常3〜4レベル）。挿入で満杯になれば<b>ページ分割</b>。LSMと違い「その場で上書き」するため、クラッシュ対策に<b>WAL</b>、並行制御に<b>ラッチ</b>が要る。最適化にはコピーオンライト、キーの短縮（B+ツリー）、リーフの連続配置などがある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>LSMツリーが一番よく使われてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、それが意外。log-structuredも広まってきてるけど、<b>最も広く使われているのはBツリー</b>。1970年に登場して10年経たずに「普遍的」と呼ばれた。ほぼすべてのリレーショナルDBの標準実装で、多くの非リレーショナルDBでも使われている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>SSTableと同じ「キー順ソート」なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこは同じ。キー検索も範囲クエリも効率的。でも設計哲学は全然違う。LSMは<b>可変サイズのセグメント</b>（数MB以上）を常にシーケンシャルに書く。Bツリーは<b>固定サイズのブロック（ページ）</b>（通常4KB）に分け、1ページ単位で読み書きする。ディスクも固定サイズのブロックの並びだから、ハードウェアと相性がいい。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各ページにはアドレス（場所）があって、別のページを参照できる。メモリのポインタに似てるけど、ディスク上の話だ。これでページのツリー（木構造）を作る。</div></div>
+    </div>
+
+    <details class="code"><summary>Bツリーでキー251を探す</summary>
+<pre><span class="cmt"># Bツリーでキー251を探す（分岐係数の例）</span>
+
+            [ルートページ：境界 100 / 200 / 300 / 400 / 500]
+                              │ 200〜300 を担当する子へ
+                              ▼
+            [中間ページ：境界 200 / 250 / 270 / 300]
+                              │ 250〜270 を担当する子へ
+                              ▼
+            [リーフページ：251 → 値, 255 → 値, 268 → 値 ...]
+                              ↑ ここに値そのもの、または値への参照がある</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>出発点が<b>ルート</b>ページ。各ページに複数のキーと、子ページへの参照が入ってる。子はそれぞれ「キーの連続した範囲」を担当し、参照と参照の間のキーが境界。251なら200と300の境界の間をたどり、細かい範囲へ降りて、最後に<b>リーフページ</b>に着く。リーフにはキーの値そのものか、値があるページへの参照が入っている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1ページから何個の子に分かれるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それを<span class="term" data-tip="1つのページから分かれる子ページの数。ページに収まる量しだいで通常は数百になる。">分岐係数（branching factor）</span>と呼ぶ。ページに収まる量しだいで、<b>通常は数百</b>になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>新しいキーを追加したいときは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そのキーの範囲を担当するリーフページを探して追加。空きがなければ<b>ページを2つに分割</b>して半分ずつ入れ、親ページを新しい範囲に合わせて更新する。既存キーの値更新なら、リーフを探して書き換え、ディスクに書き戻すだけ（場所は変わらず参照そのまま）。</div></div>
+    </div>
+
+    <details class="code"><summary>ページ分割でBツリーを大きくする</summary>
+<pre><span class="cmt"># ページ分割でBツリーを大きくする</span>
+[満杯のリーフ：333,337,344,...,366]  ← もう入らない！
+                │ 350 のあたりで分割
+                ▼
+[リーフ前半：333,337,344]   [リーフ後半：350,366,...]
+        ＼              ／
+         [親ページに新しい境界 350 を追加して更新]</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この分割のおかげでツリーは常に<b>バランスが保たれる</b>。だから <i>n</i> 個のキーを持つBツリーの深さは常に <i>O</i>(log <i>n</i>)。実際ほとんどのDBで深さは3〜4レベル。ページ4KB・深さ4・分岐係数500なら最大256TBも保存でき、少ないページ参照で目的に着ける。</div></div>
+    </div>
+    <p>（補足）新しいキーの挿入はほぼ直感的だけど、ツリーのバランスを保ちながらキーを削除するのは、少し手の込んだ処理になる。</p>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：番号順の「ページ式の固定棚」を案内板でたどる</h4>
+      <p>Bツリーは、棚板1枚を固定サイズ（ページ）にした倉庫です。入口の<b>大案内板（ルート）</b>に「100番台は左、200番台は中央…」。中央へ行くと<b>中案内板</b>「250番台はこっち」。最後に<b>商品棚（リーフ）</b>に着く。案内板を3〜4回たどるだけで目的の商品に着けます。棚が満杯なら、その棚を2つに割って案内板に新しい区切りを足す（ページ分割）。だから倉庫がどれだけ大きくなっても、歩く回数はほぼ変わらないのです。</p>
+    </div>
+
+    <h4 class="blk">Bツリーの信頼性を高める（3.1.3.1）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Bツリーは「その場で上書き」するんですよね。LSMの追記と違って。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。基本操作は「ディスク上のページを新しいデータで<b>上書き</b>」。場所は変わらず参照もそのまま。追記だけのLSMとは対照的だ。磁気ディスクならヘッドを動かして上書き、SSDなら大きなブロックを消してから書き直すのでもっと込み入る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>上書き中にクラッシュしたら、どうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>危険。ページ分割が起きると、分割した2ページと親ページの<b>複数を上書き</b>しないといけない。途中でクラッシュすると「どこからも参照されない孤児ページ」ができてインデックスが壊れることがある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どう守るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="write-ahead log。ページを変更する前に変更内容を先に書く追記ログ。redoログとも。">WAL（write-aheadログ、redoログ）</span>を持たせる。追記のみのファイルで、Bツリー本体を変更する<b>前に</b>すべての変更を先に書く。クラッシュ後はこれでBツリーを整合状態に戻す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数スレッドが同時にアクセスしたら混乱しませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>するから、<span class="term" data-tip="軽量なロック。ツリーを保護して並行処理を制御する。">ラッチ（latch, 軽量なロック）</span>でツリーを保護する。この点ではLSMのほうがシンプル。LSMはマージを全部バックグラウンドでやってクエリを邪魔せず、古いセグメントをこっそり差し替えるだけだからね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：棚を書き換える前の「作業予定メモ」と棚ごとの整理券</h4>
+      <p>固定棚は商品を<b>その場で上書き</b>するので、棚の入れ替え中に停電すると棚がぐちゃぐちゃに。だから書き換える前に<b>「これからこう動かす」という予定メモ（WAL）</b>を別ノートに書いておき、停電しても予定メモから元に戻せるようにします。さらに同じ棚を二人が同時にいじらないよう<b>棚ごとに整理券（ラッチ）</b>を配るのです。</p>
+    </div>
+
+    <h4 class="blk">Bツリーの最適化（3.1.3.2）</h4>
+    <table class="t">
+      <tr><th>最適化</th><th>内容</th></tr>
+      <tr><td>コピーオンライト</td><td>WALの代わりに、変更ページを別の場所に書き、親の新バージョンを作って新しい場所を指す（LMDBなど）。並行処理制御にも有益。</td></tr>
+      <tr><td>キーの短縮</td><td>範囲の境界に十分な情報だけ保存しキー全体を省く。1ページに多くのキーが入る＝分岐係数が大きく、深さが減る。この変種を<b>B+ツリー</b>と呼ぶこともある。</td></tr>
+      <tr><td>リーフページを連続配置</td><td>範囲スキャンを速くするためリーフをディスク上で順に並べようとする。ツリーが育つと維持は難しい（LSMはマージ時に書き直すので容易）。</td></tr>
+      <tr><td>隣接ページへのポインタ</td><td>各リーフに左右の隣ページへの参照を持たせ、順スキャン時に親に戻らなくて済む。</td></tr>
+      <tr><td>フラクタルツリー</td><td>log-structuredの考えを一部取り入れディスクシークを減らすBツリーの変種（名前に反しフラクタルとは無関係）。</td></tr>
+    </table>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>一般的なRDBのインデックスがBツリーだと理解し、「深さが浅いから少ないディスクアクセスで引ける」感覚を持てる。</li>
+        <li>WALやラッチが「クラッシュ耐性」「並行処理」のために要ることを説明できる。</li>
+        <li>分岐係数・ページサイズと保存可能量の関係をイメージできる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Bツリーは固定サイズページのツリー。キー順・範囲クエリ可、深さ O(log n)（通常3〜4レベル）。</li>
+        <li>分岐係数は通常数百。満杯時はページ分割でバランス維持。</li>
+        <li>その場で上書きするためWAL（write-aheadログ）でクラッシュ耐性、ラッチで並行制御。</li>
+        <li>最適化：コピーオンライト、キー短縮（B+ツリー）、リーフ連続配置、隣接ポインタ、フラクタルツリー。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.1.4 比較 ===== -->
+<section id="s314">
+  <div class="sec-head"><div class="sec-num">3.1.4</div><div><h2>BツリーとLSMツリーの比較</h2><span class="tag">LSMは書き込み、Bツリーは読み取り ― でも実測が大事</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：大まかにLSMは<b>書き込みが速く</b>、Bツリーは<b>読み取りが速い</b>。LSMの利点は高い書き込みスループット・小さいファイル・SSDでの有利さ。マイナス面はコンパクションが高パーセンタイルのレスポンスを悪化させ得ること、書き込み帯域をコンパクションと共有し追いつかないと破綻し得ること。Bツリーはキーが1カ所にあり強いトランザクションに向く。結局は<b>自分のワークロードで試して</b>選ぶ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結局、BツリーとLSM、どっちがいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ざっくり「<b>LSMは書き込みが速い、Bツリーは読み取りが速い</b>」と見なされてる。LSMの読み取りが遅くなりがちなのは、いろんなコンパクション段階の複数のデータ構造やSSTableを調べないといけないからだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあLSMは書き込み重視、Bツリーは読み取り重視で決まり？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう単純じゃない。ベンチマークはワークロード次第でブレるから、<b>結局は自分のワークロードで実際に試す</b>しかない。とはいえ判断材料はあるから整理しよう。</div></div>
+    </div>
+
+    <h4 class="blk">LSMツリーの利点（3.1.4.1）</h4>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まずキーワードは<span class="term" data-tip="1回の書き込みが実際には何回ものディスク書き込みを生む現象。">書き込みの増幅（write amplification）</span>。Bツリーは最低2回書く（WAL＋ツリー本体）。ページ分割でさらに増え、数バイトの変更でもページ全体を書く。LSMはコンパクションとマージでデータが複数回書き直される。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>書き込みの増幅は、特に「上書き回数に上限があるSSD」で問題になる。書き込みが多いアプリでは、ディスクへの書き込み速度がボトルネックになり、増幅がそのまま性能コストになるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、LSMの利点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3つ。①書き込みスループットが高い、②ファイルが小さくなる、③SSDでも有利だ。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">✍️</div><h4>① 高い書き込みスループット</h4><p>増幅が低めになる場合があり、複数ページ上書きが不要でコンパクトなSSTableをシーケンシャルに書くだけ。特に磁気HDDで有利。</p></div>
+      <div class="mini"><div class="ic">🗜️</div><h4>② ファイルが小さい</h4><p>圧縮率を高められ、Bツリーのような断片化（未使用領域）が少ない。定期的に書き直して断片化を除去（特にleveled）。</p></div>
+      <div class="mini"><div class="ic">💾</div><h4>③ SSDでも有利</h4><p>増幅と断片化を抑えると、I/O帯域内で処理できる読み書き数が増える。</p></div>
+    </div>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>SSDの多くはファームウェアが内部的にlog-structuredで、ランダム書き込みでも下層では順番に書く。それでも増幅と断片化を抑えるのはSSDでもメリットがあるんだ。</div></div>
+    </div>
+
+    <h4 class="blk">LSMツリーのマイナス面（3.1.4.2）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>逆にLSMの弱点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きいのは<b>コンパクションが実行中の読み書きに影響する</b>こと。重いコンパクションが終わるまでリクエストがディスク待ちになりやすく、平均は小さくても<b>高いパーセンタイルのレスポンスタイム</b>（1章のp99など）がすごく悪化することがある。その点Bツリーは挙動が予測しやすい。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もう1つ。ディスクの書き込み帯域は「元々の書き込み（ログとmemtableのフラッシュ）」と「バックグラウンドのコンパクション」で<b>共有</b>される。DBが大きくなるほどコンパクションに必要な帯域が増える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コンパクションが追いつかなくなったら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>未マージのセグメントが増え続けてディスクが満杯になり、読み取りも遅くなる。しかも普通SSTable系は「追いついてなくても書き込みを受け付け続ける」から、<b>自分で明示的にモニタリングして検出</b>しないといけない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Bツリー側の利点も改めて教えてください。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Bツリーは<b>各キーがインデックス中の1カ所にしかない</b>のが利点。LSMは同じキーのコピーが複数セグメントに散らばりうる。1カ所だからBツリーは<b>強いトランザクション</b>に向く。多くのRDBはトランザクション分離をキー範囲のロックで実装していて、Bツリーならそのロックを直接ツリーに付けられる（7章）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結論、どっちを選べば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Bツリーは深く根づいてて多くのワークロードで安定して速いから当分廃れない。新しいデータストアではlog-structuredが広まりつつある。簡単なルールはないから、<b>実際に試して決める</b>のが正解だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：合併中の倉庫は通路が混む／品物は1カ所派と分散派</h4>
+      <p>整列棚の倉庫（LSM）は、商品をどんどん搬入するのは得意。でも裏方が大量の棚を合併（コンパクション）している最中は<b>通路が荷物でふさがり、ときどき棚出しが極端に遅くなる</b>（高パーセンタイルの悪化）。しかも搬入路と合併路が同じなので、合併が追いつかないと倉庫がパンクするから、見張りが要ります。固定棚の倉庫（Bツリー）は、同じ商品が<b>必ず1カ所</b>にあるので、棚に「貸出中の鍵（範囲ロック）」をかけやすく、厳密な貸出管理（トランザクション）に向くのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「書き込みの増幅」という概念で、SSD寿命や書き込み性能の話を理解できる。</li>
+        <li>LSM採用時に「コンパクションが追いついているか」を監視すべきだと判断できる。</li>
+        <li>トランザクション重視ならBツリー系という選定の勘所を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>一般にLSM＝書き込み高速、Bツリー＝読み取り高速。ただしワークロード次第なので実測が必要。</li>
+        <li>LSMの利点：高書き込みスループット、小さいファイル（断片化少）、SSDでも有利。</li>
+        <li>LSMのマイナス面：コンパクションが高パーセンタイルのレスポンスを悪化、書き込み帯域の共有で追いつかないと破綻（要監視）。</li>
+        <li>Bツリーはキーが1カ所にあり、強いトランザクション（範囲ロック）に向く。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.1.5 その他のインデックス構造 ===== -->
+<section id="s315">
+  <div class="sec-head"><div class="sec-num">3.1.5</div><div><h2>その他のインデックス構造</h2><span class="tag">セカンダリ・値の置き場・複合・曖昧・インメモリ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：キー‐バリューインデックス（主キー相当）以外にも、<b>セカンダリインデックス</b>（重複キー対応）、値をどこに置くか（ヒープファイル／クラスタ化／カバーリング）、複数列の<b>連結インデックス</b>や地理向けの<b>多次元インデックス</b>、スペルミスに対応する<b>曖昧（全文検索）インデックス</b>がある。さらにRAMが安くなり<b>インメモリDB</b>が発展。速さの本当の理由はエンコード手間の削減。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでのインデックスって、全部「キー→値」でしたよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、これはリレーショナルモデルの<b>プライマリキー（主キー）</b>のインデックスにあたる。プライマリキーはテーブルの1行・1ドキュメント・1頂点を<b>ユニークに特定</b>する。他のレコードはプライマリキーでそれを参照し、インデックスが参照を解決する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>主キー以外で検索したいときは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで<b>セカンダリインデックス（二次索引）</b>。RDBなら <code>CREATE INDEX</code> で1テーブルに複数張れる。効率的な結合（join）に欠かせない。<code>user_id</code> 列に張れば、同じユーザーの行を全部見つけられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>プライマリキーと作り方は違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ほぼ同じ。主な違いは「<b>キーがユニークじゃない</b>」こと。同じキーの行が大量にあり得る。対処は2通りで、どちらもBツリーでもlog-structuredでも使える。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📋</div><h4>対処1：リスト化</h4><p>インデックスの各値を「マッチする行の識別子のリスト」にする（全文検索のポスティングリスト風）。</p></div>
+      <div class="mini"><div class="ic">🔑</div><h4>対処2：キーをユニーク化</h4><p>各キーに行の識別子を足して、キー自体をユニークにする。</p></div>
+    </div>
+
+    <h4 class="blk">インデックスへの値の保存（3.1.5.1）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>インデックスで引いた先には、何が入ってるんですか？ 値そのもの？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2種類ある。①探していた実際の行そのもの、②行が保存されている別の場所への参照。②の置き場を<span class="term" data-tip="行の実データを置く順序なしの置き場。">ヒープファイル（heap file）</span>と呼ぶ。中身は順序なし。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでわざわざ別の場所（ヒープ）に置くんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>セカンダリインデックスが複数あるとき、データが何重にも複製されるのを避けられる。各インデックスはヒープ内の場所を指すだけで、実データは1カ所にまとまる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>値を更新するときは効率いいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>キーを変えない更新で、新しい値が古い値より大きくなければその場で上書きできて効率的。でも<b>大きくなった</b>ら、空きのある場所へ移動が必要で複雑になる（全インデックスを更新するか、元の場所に引っ越し先ポインタを残す）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>参照を1回挟むのって、遅くなりませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その「インデックス→ヒープ」のホップが負担になりすぎる場合は、<b>行データを直接インデックスの中に</b>入れる。これを<span class="term" data-tip="行データをインデックスの中に直接格納する方式。">クラスタ化インデックス（clustered index）</span>と呼ぶ。MySQLのInnoDBはプライマリキーが必ずクラスタ化で、セカンダリはプライマリキーを参照する。SQL Serverはテーブルごとに1つ指定できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部入れるか、参照だけか、の中間はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある。<span class="term" data-tip="一部の列だけをインデックスに入れ、一部のクエリをインデックスだけで答える。">カバーリングインデックス（covering index）</span>。テーブルの<b>一部の列だけ</b>をインデックスに入れ、一部のクエリはインデックスだけで答えられる（クエリを「カバーする」）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いいことばかりですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データ複製の常で、読み取りは速いけど<b>ストレージは余分に要り、書き込みにオーバーヘッド</b>。複製の不整合を防ぐ必要もあり、トランザクション保証の負担も増える。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">📦</div><h4>ヒープファイル参照</h4><p>インデックスは場所を指すだけ。実データはヒープに1カ所。複数索引でも複製を避けられる。</p></div>
+      <div class="mini"><div class="ic">🗄️</div><h4>クラスタ化インデックス</h4><p>行データをインデックス内に直接格納。ホップ不要で読み取り速いが容量・書き込みコスト。</p></div>
+      <div class="mini"><div class="ic">🎫</div><h4>カバーリングインデックス</h4><p>一部の列だけ格納。そのクエリは索引だけで完結。中間的な選択肢。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：所在マップに「番地だけ」書くか「商品も貼る」か</h4>
+      <p>色別・サイズ別の<b>追加マップ（セカンダリインデックス）</b>を作るとき、3つのやり方があります。①マップには<b>番地だけ</b>書いて、商品本体は共通の置き場（ヒープ）に1つだけ置く。②マップに<b>商品そのものを貼り付け</b>てしまう（クラスタ化＝歩かず即取れるが場所を食う）。③<b>よく聞かれる情報だけマップに添える</b>（カバーリング）。便利になるほど、貼り替えの手間と置き場が増えるトレードオフです。</p>
+    </div>
+
+    <h4 class="blk">複合インデックス（3.1.5.2）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数の列をまとめて検索したいときは？ 1キーのインデックスじゃ足りませんよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最も一般的なのが<b>連結インデックス（concatenated index）</b>。複数フィールドをくっつけて1つのキーにする（順番は定義で指定）。紙の電話帳が <code>(姓, 名)</code> から電話番号への索引なのと同じだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>電話帳だと、何ができて何ができないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><code>(姓, 名)</code> の順なら「特定の姓を全部」「姓＋名の組み合わせ」は引ける。でも「特定の<b>名</b>を持つ人を全部」は引けない。順番が効くんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>地図でレストランを矩形範囲で探すような検索は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それは<b>多次元インデックス（multi-dimensional index）</b>の出番。地理空間データで重要だ。緯度・経度を持つレストランを、地図上の四角の中で探す。</div></div>
+    </div>
+    <details class="code"><summary>地図上の四角い範囲内のレストランを探す（2次元の範囲クエリ）</summary>
+<pre><span class="cmt">-- 地図上の四角い範囲内のレストランを探す2次元の範囲クエリ</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> restaurants
+  <span class="kw">WHERE</span> latitude  &gt; <span class="num">51.4946</span> <span class="kw">AND</span> latitude  &lt; <span class="num">51.5079</span>
+    <span class="kw">AND</span> longitude &gt; <span class="num">-0.1162</span> <span class="kw">AND</span> longitude &lt; <span class="num">-0.1004</span>;</pre>
+    </details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>普通のBツリーやLSMだと、これは効率的に答えられない。「緯度の範囲だけ」か「経度の範囲だけ」は答えられても、<b>両方同時</b>は無理なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どう解決するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1つは<b>空間充填曲線</b>で2次元を1つの数値に変換してから普通のBツリーを使う方法。もっと広く使われるのは<b>Rツリー</b>のような専用の空間インデックス。PostGISはPostgreSQLの<b>GiST（汎用検索ツリー）</b>を使ってRツリーとして実装している。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>多次元って、地図専用ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、面白いことに地理以外にも使える。ECで <code>(赤, 緑, 青)</code> の3次元で特定の色の範囲の製品を探したり、気象に <code>(日付, 気温)</code> を持たせて「2013年で気温25〜30度の日を全部」を探したり。1次元だと2013年を全部スキャンしてから気温でフィルタになるけど、2次元なら同時に範囲指定できる（HyperDexの手法）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：「姓→名」順の名簿と、地図グリッドの所在マップ</h4>
+      <p>連結インデックスは、倉庫の名簿を<b>「メーカー → 型番」の順</b>で作るようなもの。メーカーで全部、メーカー＋型番でピンポイントは引けるが、型番だけでは引けません。多次元インデックスは、倉庫の床に<b>碁盤の目（グリッド）の所在マップ</b>を敷くイメージ。「この四角いエリアにある商品ぜんぶ」を縦横同時に絞り込めるのです。</p>
+    </div>
+
+    <h4 class="blk">全文検索と曖昧インデックス（3.1.5.3）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでのインデックスは、キーがピッタリ一致しないとダメですよね。スペルミスとかは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、これまでは「厳密な値」か「ソート順の範囲」が前提。スペルミスみたいな「<b>似ている</b>キー」は探せない。そういう<b>曖昧（fuzzy）なクエリ</b>には別の手法が要る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>たとえば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>全文検索エンジンなら、同義語を含めたり、文法的な語形変化を無視したり、近くの複数語を探したりできる。誤字対応として、Luceneは「<span class="term" data-tip="1文字の追加・削除・置換で一致するなら編集距離1。">編集距離（edit distance）</span>が一定以内の語」を探せる。編集距離1なら、1文字の追加・削除・置換で一致する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>仕組みは前のSSTableと関係ありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>する。Luceneは語の辞書にSSTableに似たソート済みファイルを使う。LevelDBではインデックスが「疎なキーのコレクション」だったけど、Luceneでは<b>trie（トライ）</b>に似た「文字に対する有限状態オートマトン」になっていて、編集距離内の語を効率的に探せる<b>レーベンシュタインオートマトン</b>に変換できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もっと賢い曖昧検索もありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。ドキュメントの分類や機械学習の方向に進む手法もある。詳しくは情報抽出の教科書を見てくれ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：商品名のスペル違いでも見つける棚案内</h4>
+      <p>普通の所在マップは「商品名がぴったり一致」しないと引けません。でも倉庫の検索係が賢ければ、<b>「1文字違いの似た名前」でも候補を出してくれる</b>（編集距離）。商品名を1文字ずつたどる賢い索引（trie／オートマトン）を持っているから、打ち間違いにも対応できるのです。</p>
+    </div>
+
+    <h4 class="blk">全データのメモリでの保持（3.1.5.4）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまで全部「ディスクにどう置くか」の話でしたよね。そもそも全部メモリに置けないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいところに来た。ここまでは全部「ディスクの限界」への回答だった。でもディスクには2つの利点がある。①<b>永続性</b>（電源を切っても消えない）、②<b>安さ</b>（RAMよりGBあたりが安い）。ところがRAMが安くなって②の優位は薄れ、多くのデータセットは全部メモリに載せられるようになった。これが<b>インメモリデータベース</b>の発展につながった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>メモリに置いたら、電源が切れたら消えちゃいませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>用途による。Memcachedみたいに「キャッシュ専用で再起動で消えてOK」なものもある。でも<b>耐久性を目指す</b>インメモリDBもあって、バッテリ駆動RAMや、変更ログをディスクに書く、定期スナップショット、他マシンへのレプリケーションで実現する。再起動時はディスクやレプリカから読み直す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ディスクに書くなら、結局ディスクDBと同じでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、<b>読み込みはすべてメモリから</b>やる。ディスクは「永続化のための追記ログ」を書くためだけ。だからやっぱりインメモリDBなんだ。製品ではVoltDB、MemSQL、Oracle TimesTenがリレーショナルなインメモリDB。RAMCloudは耐久性を持つキー‐バリュー。RedisやCouchbaseは非同期書き込みで弱い耐久性を提供する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>インメモリが速いのは、ディスクを読まなくていいからですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実はそこ、直感に反するけど<b>違う</b>。ディスクベースでもメモリが十分あればOSが最近使ったブロックをキャッシュするから、結局ディスクを読まないこともある。インメモリDBが速い本当の理由は、「<b>メモリ上のデータ構造を、ディスクに書ける形式にエンコードする手間を省ける</b>」ことなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、変換の手間がないから速い、と。ほかに利点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ディスクベースでは難しいデータモデルを提供できる。Redisはプライオリティキューや集合（set）のインターフェースを出してるけど、全部メモリにあるから実装がシンプルなんだ。あと<b>アンチキャッシング（anti-caching）</b>という方法もある。メモリが足りないとき一番長く使われてないデータをディスクに退避し、再アクセス時にメモリへ戻す（OSのスワップより効率的）。ただしインデックスは全部メモリに収まる必要がある。将来<b>不揮発性メモリ（NVM）</b>が普及すれば設計はまた変わるだろうね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：商品を全部「作業台の上」に出しておく倉庫</h4>
+      <p>インメモリDBは、商品を奥の棚にしまわず<b>ぜんぶ作業台の上に広げておく倉庫</b>です。速い本当の理由は「棚から出す時間」ではなく、<b>棚にしまうための梱包（エンコード）をしなくていい</b>こと。ただし停電で台の上が消えないよう、<b>来た商品を控えノート（追記ログ）に書き、ときどき台ごと写真（スナップショット）を撮って</b>おくのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>プライマリ／セカンダリ、クラスタ化／カバーリングといったインデックス用語を区別して設計できる。</li>
+        <li>「複数列検索なら連結インデックス、地理検索なら多次元（Rツリー）」と手法を選べる。</li>
+        <li>インメモリDB（Redisなど）が速い理由と耐久性の実現方法を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>プライマリキー＝行を一意に特定。セカンダリインデックス＝重複キー可（リスト化またはキーをユニーク化）。</li>
+        <li>値の保存：ヒープファイル（参照）／クラスタ化インデックス（行を直接格納）／カバーリングインデックス（一部列を格納）。読み取り速度↑だが書き込み・容量・整合性のコスト。</li>
+        <li>連結インデックスは列の順番が効く。多次元インデックス（空間充填曲線・Rツリー・GiST）は地理や複数範囲に有効。</li>
+        <li>曖昧検索は全文検索エンジン（編集距離・trie・レーベンシュタインオートマトン）。</li>
+        <li>インメモリDBはエンコード手間の削減で高速。耐久性はログ／スナップショット／レプリケーション等で実現。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.2 OLTP vs OLAP ===== -->
+<section id="s32">
+  <div class="sec-head"><div class="sec-num">3.2</div><div><h2>トランザクション処理か、分析処理か？</h2><span class="tag">日常の出荷入荷（OLTP）と、月次棚卸し分析（OLAP）は別物</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：<b>OLTP</b>（トランザクション処理）は、ユーザーがキーで少数レコードを低レイテンシで読み書きするインタラクティブな使い方。<b>OLAP</b>（分析処理）は、アナリストが大量レコードをスキャンして要約統計を出す使い方。アクセスパターンが大きく違うため、分析専用のデータウェアハウスへ分けるようになった。トランザクション処理は必ずしもACIDを意味しない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「トランザクション向けと分析向けはまるで別」って言ってましたよね。トランザクションって、お金の取引のことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もともとはそう。昔のビジネスデータ処理は販売・発注・給与みたいな<b>商取引</b>にひもづいた書き込みだった。対象がお金以外に広がっても、<b>トランザクション</b>という言葉だけ残って、「論理的なひとまとまりの一連の読み書き」を指すようになった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トランザクションって、必ずACIDが要るんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこ誤解しやすい。<b>トランザクション処理は必ずしもACID</b>（原子性・一貫性・独立性・永続性）<b>を持たなくていい</b>。ここでは単に「クライアントが低レイテンシで読み書きする」という意味。定期的にまとめてやる<b>バッチ処理</b>と対照的だ（ACIDは7章、バッチは10章）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ブログのコメントやゲームの操作も商取引と同じ扱い？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アクセスパターンが似てるんだ。普通アプリは何かのキーで少数レコードを引き、ユーザー入力で挿入・更新する。こういう使い方を<b>オンライントランザクション処理（OLTP）</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分析だと、何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>分析はアクセスが全然違う。<b>大量レコードをスキャン</b>して各レコードの<b>少数の列だけ</b>を読み、データそのものではなく<b>要約統計</b>（件数・合計・平均）を計算する。こういうクエリだ。</div></div>
+    </div>
+
+    <details class="code"><summary>分析的なクエリの例</summary>
+<pre><span class="cmt"># 分析的なクエリの例</span>
+- 1月における各店舗の総収入は？
+- 直近のプロモーション期間で、通常よりどれだけ多くバナナが売れたか？
+- ブランドXのおむつと一緒に最もよく買われた乳児食品のブランドは？</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>こういうのはビジネスアナリストが書いて、経営判断（<b>ビジネスインテリジェンス</b>）のレポートに使う。OLTPと区別して<b>オンライン分析処理（OLAP）</b>と呼ぶ。両者の典型的な違いはこうだ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>観点</th><th>OLTP（トランザクション処理）</th><th>OLAP（分析処理）</th></tr>
+      <tr><td>主な読み取り</td><td>キーで少数レコードをフェッチ</td><td>大量レコードを集計</td></tr>
+      <tr><td>主な書き込み</td><td>ユーザー入力でランダム・低レイテンシ</td><td>バルクインポート(ETL)／イベントストリーム</td></tr>
+      <tr><td>主な利用者</td><td>Webアプリのエンドユーザー／顧客</td><td>経営判断を支援する社内アナリスト</td></tr>
+      <tr><td>データの内容</td><td>最新の状態（現時点）</td><td>時間経過で生じた出来事の履歴</td></tr>
+      <tr><td>データセットのサイズ</td><td>ギガバイト〜テラバイト</td><td>テラバイト〜ペタバイト</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：1点ずつの出荷入荷 vs 全在庫の棚卸し分析</h4>
+      <p><b>OLTP＝倉庫の日常業務</b>。お客から「商品42を1個出して」と頼まれ、所在マップで一発で見つけてサッと出荷する（少数を低レイテンシ）。<b>OLAP＝月末の棚卸し分析</b>。「先月、店舗ごとに何がどれだけ売れたか」を出すために、<b>倉庫じゅうの記録を端から端まで数えて集計</b>します。日常業務の最中に倉庫中を数え回られたら、出荷が滞って大迷惑。だから分析は別の場所でやるのです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最初は同じDBで両方やってたんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、SQLは柔軟で両方扱えた。でも1980年代末〜90年代初頭、「OLTPで分析するのはやめて、<b>分析専用の別のDB</b>でやろう」という流れになった。その別のDBが<b>データウェアハウス</b>だ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分のクエリがOLTP型かOLAP型かを見分け、適したシステムを選べる。</li>
+        <li>「トランザクション＝ACID」という思い込みを避け、用語を正確に使える。</li>
+        <li>分析を本番OLTPで回すと負荷で本番が劣化する、という危険を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>OLTP＝キーで少数レコードを低レイテンシで読み書き（ユーザー向け、最新状態）。</li>
+        <li>OLAP＝大量レコードをスキャンして集計（アナリスト向け、履歴、巨大）。</li>
+        <li>トランザクション処理は「低レイテンシの読み書き」の意味で、必ずしもACIDではない（バッチ処理と対比）。</li>
+        <li>アクセスパターンが違うため、分析は別個のデータウェアハウスへ分離する流れになった。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.2.1 データウェアハウス ===== -->
+<section id="s321">
+  <div class="sec-head"><div class="sec-num">3.2.1</div><div><h2>データウェアハウス</h2><span class="tag">分析専用の「別館」にETLでコピーする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：データウェアハウスは、各OLTPシステムのデータを<b>ETL</b>（取り出し・変換・ロード）で読み取り専用にコピーした分析専用DB。本番OLTPを守りつつ分析できる。OLTPと同じSQLインターフェースでも、最適化対象が違うので内部は大きく異なる。Teradata/Vertica/Redshiftや、オープンソースのSQL-on-Hadoop（Hive、Spark SQL、Impalaなど）がある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでわざわざ分析用のDBを別に作るんですか？ 既存のでよくないですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大企業は1社で数十のOLTPシステムを持つことがある。顧客向けWeb、店舗のPOS、在庫管理、配送経路、サプライヤー管理、従業員管理……どれも複雑で別チームが独立運用。経営に重要だから高い可用性と低レイテンシが要る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>その本番DBで分析クエリを流せばいいのでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DB管理者は嫌がる。分析クエリは負荷が高くデータの大部分をスキャンするから、<b>同時に動く本番トランザクションの性能を壊しかねない</b>。だから本番OLTPは厳重に守る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあデータウェアハウスは……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>データウェアハウス</b>は独立したDBで、本番OLTPに影響を与えずアナリストがクエリできる場所。社内の各OLTPシステムのデータの<b>読み取り専用のコピー</b>が置かれる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">E</div><div class="line"></div></div><div class="body"><h4>Extract（取り出し）</h4><p>各OLTPシステム（顧客Web／POS／在庫…）からデータを取り出す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">T</div><div class="line"></div></div><div class="body"><h4>Transform（変換）</h4><p>分析向けスキーマに変換・クリーンアップする。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">L</div><div class="line"></div></div><div class="body"><h4>Load（ロード）</h4><p>データウェアハウスに読み取り専用コピーとしてロードする（定期ダンプ、または連続的な更新ストリーム）。</p>
+        <div class="branch ok">✅ この「取り出し→変換→ロード」の流れを ETL（Extract-Transform-Load）と呼ぶ。</div></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：各店舗の在庫を「分析専用の別館」に集めて並べ直す</h4>
+      <p>本店・支店（各OLTPシステム）の倉庫はお客対応で大忙し。そこで夜間に各店の在庫記録を<b>取り出し（Extract）</b>、分析しやすい形に<b>並べ直し（Transform）</b>、<b>分析専用の別館（データウェアハウス）に運び込む（Load）</b>。別館は読み取り専用の写しだから、アナリストがいくら数え回っても本店の出荷は止まりません。この一連の搬入作業がETLです。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どの会社も持ってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大企業はほぼ持ってる。小さい会社はあまり。理由はOLTPシステムが少なくて、普通のSQLやスプレッドシートで分析できる程度のデータしかないから。大企業では、小さい会社なら単純に済むことに多くの困難が伴うんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分けるメリットの本質は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データウェアハウスを<b>分析のアクセスパターンに最適化できる</b>こと。前半で見たインデックス（ハッシュ、LSM、Bツリー）はOLTPでは強いけど分析にはうまく働かない。だからこの後、分析に最適化された<b>列指向</b>を見ていく。</div></div>
+    </div>
+
+    <h4 class="blk">OLTPデータベースとデータウェアハウスの相違点（3.2.1.1）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データウェアハウスもSQLが使えるなら、OLTPと同じものでは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>表面はね。どちらもSQLインターフェースを持つから似て見える。データモデルも普通リレーショナルで、SQLが分析クエリに向いてるからだ。<b>ドリルダウン</b>や<b>スライスとダイス</b>で探索できるツールも多い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ中身も同じ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、<b>最適化しているクエリのパターンが全然違うから、内部は大きく異なる</b>。今は多くのベンダーがトランザクションか分析のどちらかに集中していて、両方には集中しない。SQL ServerやSAP HANAのように1製品で両対応するものもあるが、徐々に「2つの独立したエンジンを共通のSQLインターフェースでアクセスできるだけ」になってきている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データウェアハウスの製品って、どんなものがありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Teradata、Vertica、SAP HANA、ParAccelなどが高価な商用ライセンス。Amazon RedShiftはParAccelのホステッド版。最近はオープンソースの<b>SQL-on-Hadoop</b>もたくさんあって、Apache Hive、Spark SQL、Cloudera Impala、Facebook Presto、Apache Tajo、Apache Drillなど。いくつかはGoogleのDremelの発想に基づく。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「分析は本番を巻き込まず別DBで」という分離の理由を説明できる。</li>
+        <li>ETLという定番の取り込みプロセスを理解できる。</li>
+        <li>データウェアハウス製品やSQL-on-Hadoopの全体像を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>大企業は多数のOLTPシステムを持ち、本番で重い分析を回すと性能を毀損するため分離する。</li>
+        <li>データウェアハウスは読み取り専用コピーを置く独立DB。ETL（Extract-Transform-Load）で取り込む。</li>
+        <li>小企業は持たないことが多い（データ量が少なくSQLやスプレッドシートで足りる）。</li>
+        <li>SQL共通でも最適化対象が違い内部は別物。商用（Teradata等）とSQL-on-Hadoop（Hive等）がある。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.2.2 スター・スノーフレーク ===== -->
+<section id="s322">
+  <div class="sec-head"><div class="sec-num">3.2.2</div><div><h2>スターとスノーフレーク：分析のためのスキーマ</h2><span class="tag">巨大なファクトを、ディメンションが星型に囲む</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：分析のスキーマは多くが<b>スタースキーマ</b>。中心の巨大な<b>ファクトテーブル</b>（イベント1件＝1行、外部キー＋数値）を、人物・対象・日時・場所などを表す<b>ディメンションテーブル</b>が星型に囲む。ディメンションをさらに分割して正規化したのが<b>スノーフレーク</b>だが、分析にはシンプルなスターが好まれる。テーブルは100列以上になることも珍しくない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分析用のデータって、どんな形（スキーマ）で置くんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>OLTPはアプリごとに多様だけど、分析はあまり多様じゃない。多くが<b>スタースキーマ（ディメンションモデル）</b>を使う。中心が<span class="term" data-tip="各行が「特定の時点で起きたイベント」を表すテーブル。巨大になる。">ファクトテーブル（fact table）</span>で、各行は「特定の時点で起きたイベント」。ここでは「顧客が商品を買った」1件だ。</div></div>
+    </div>
+
+    <details class="code"><summary>スタースキーマ（図3-9のイメージ）</summary>
+<pre><span class="cmt"># スタースキーマ（中心がファクト、周りをディメンションが囲む）</span>
+
+       [dim_date]      [dim_product]
+            ＼            ／
+             ＼          ／
+   [dim_store]─[fact_sales]─[dim_customer]   ← 中心がファクトテーブル
+             ／          ＼
+            ／            ＼
+    [dim_promotion]    （周りをディメンションテーブルが囲む＝星型）
+
+fact_sales の各行：いつ・どの商品・どの店・どの顧客・どのプロモか（外部キー）
+                 ＋ 販売価格・仕入価格・数量 などの数値</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ファクトテーブルは「個別のイベント」を全部そのまま記録するから巨大になる。Apple、Walmart、eBayクラスだと数十ペタバイトに達し、そのほとんどがファクトテーブルだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>周りのテーブルは何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="イベントの人物・対象・日時・場所・方法・理由を表すテーブル。">ディメンションテーブル（dimension table）</span>。ファクトの列には属性（販売価格・仕入価格など、差で利益率が出る）と、他テーブルを指す<b>外部キー</b>がある。ファクトが「イベント」なら、ディメンションはそのイベントの<b>人物・対象・日時・場所・方法・理由</b>を表す。<code>dim_product</code> の各行は1種類の商品をSKU・説明・ブランド名・分類などとともに表す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>日付までテーブルにするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>することがある。日付をディメンションにすると「公休日かどうか」などを持たせられて、「休日と平日で売上がどう違うか」を分析できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「スター」の意味、分かりました。中心のファクトを囲むからですね。スノーフレークは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り、星の輝きみたいだから「スター」。<b>スノーフレークスキーマ（雪の結晶）</b>はその変種で、ディメンションをさらにサブディメンションに分割する。ブランドや分類を別テーブルにして外部キーで参照する。スノーフレークのほうが正規化されてるけど、<b>分析にはスターのほうがシンプルで好まれる</b>ことが多い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列数って多いんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>典型的には1テーブルが100列以上、時に数百列。<code>dim_store</code> には、提供サービス、店内にベーカリーがあるか、店舗面積、開店日、最後の改修日、最寄り高速道路からの距離、なんてのが入りうる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：「出荷記録の山」を中心に、商品台帳・店舗台帳が囲む</h4>
+      <p>分析用の別館は、中心に<b>「いつ・どの商品・どの店・誰に・いくつ売れた」を1件ずつ書いた巨大な出荷記録の山（ファクト）</b>を置きます。記録には商品番号や店番号（外部キー）と、価格・数量（数値）だけが書いてある。商品の詳しい説明は別の<b>商品台帳（ディメンション）</b>、店の詳しい情報は<b>店舗台帳</b>……と周りに置き、番号で引く。中心の記録の山を台帳が星型に囲む形です。台帳をさらに細かく分けると雪の結晶（スノーフレーク）になります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ファクト／ディメンションの役割を区別し、分析向けスキーマを読める・設計できる。</li>
+        <li>スターとスノーフレークの違い（正規化の度合い）と使い分けを説明できる。</li>
+        <li>「列数が多くファクトが巨大」という特性が、次の列指向ストレージの動機になると理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>スタースキーマ＝中心のファクトテーブル＋周囲のディメンションテーブル。</li>
+        <li>ファクト＝個別イベント（外部キー＋数値）で巨大（数十ペタバイトも）。ディメンション＝人物・対象・日時・場所など。</li>
+        <li>スノーフレークはディメンションをさらに分割し正規化。分析にはスターが好まれることが多い。</li>
+        <li>テーブルは100列以上になることも珍しくない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.3 列指向ストレージ ===== -->
+<section id="s33">
+  <div class="sec-head"><div class="sec-num">3.3</div><div><h2>列指向ストレージ</h2><span class="tag">品目ごとにまとめた棚 ― 使う列だけ読む</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：分析クエリは100列以上あっても数列しか使わない。<b>行指向</b>は1行を丸ごと読むため無駄が多い。<b>列指向</b>は各列をまとめて保存し、使う列だけ読むので効率的。各列ファイルが同じ行順を保つことで行を再構成できる。Parquetのような非リレーショナル向け列フォーマットもある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ファクトテーブルがペタバイト級って、どうやって効率的にクエリするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが本題。ファクトテーブルは100列以上あっても、典型的な分析クエリが一度に使うのは<b>4〜5列だけ</b>。<code>SELECT *</code> なんて分析ではほぼ使わない。たとえばこのクエリ。</div></div>
+    </div>
+
+    <details class="code"><summary>例3-1：曜日ごとに果物とキャンディの売上数を集計する</summary>
+<pre><span class="cmt">-- 例3-1：曜日ごとに果物とキャンディの売上数を集計する分析クエリ</span>
+<span class="kw">SELECT</span>
+  dim_date.weekday, dim_product.category,
+  <span class="fn">SUM</span>(fact_sales.quantity) <span class="kw">AS</span> quantity_sold
+<span class="kw">FROM</span> fact_sales
+  <span class="kw">JOIN</span> dim_date    <span class="kw">ON</span> fact_sales.date_key   = dim_date.date_key
+  <span class="kw">JOIN</span> dim_product <span class="kw">ON</span> fact_sales.product_sk = dim_product.product_sk
+<span class="kw">WHERE</span>
+  dim_date.year = <span class="num">2013</span> <span class="kw">AND</span>
+  dim_product.category <span class="kw">IN</span> (<span class="str">'生鮮果物'</span>, <span class="str">'キャンディ'</span>)
+<span class="kw">GROUP BY</span>
+  dim_date.weekday, dim_product.category;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>このクエリは大量の行にアクセスするけど、<code>fact_sales</code> で使う列は <code>date_key</code>、<code>product_sk</code>、<code>quantity</code> の<b>3列だけ</b>。あとは全部無視する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>普通のDBだと、どう保存されてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くのOLTPでは<b>行指向（row-oriented）</b>。1行の値が全部隣り合って並んでいる。CSVを思い浮かべればいい。<code>date_key</code> にインデックスを張っても、該当行を<b>丸ごと</b>（100列以上）ロードしてパースし、条件に合わない行をフィルタする。時間がかかる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列指向の考え方はシンプルそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>シンプルだ。「1行の全値をまとめる」のではなく「<b>各列の全値をまとめて保存する</b>」。各列が別ファイルなら、クエリが読むのは使う列だけで済む。</div></div>
+    </div>
+
+    <details class="code"><summary>行指向 vs 列指向（図3-10のイメージ）</summary>
+<pre><span class="cmt"># 行指向 vs 列指向（図3-10のイメージ）</span>
+
+[行指向：1行ぶんがまとまって並ぶ]
+行1: 日付A, 商品1, 店3, ..., 数量2
+行2: 日付A, 商品2, 店3, ..., 数量5
+行3: 日付B, 商品1, 店8, ..., 数量1
+→ 3列だけ欲しくても、行ごと全部（100列以上）を読んでパースして捨てる
+
+[列指向：1列ぶんがまとまって並ぶ]
+date_key 列   : 日付A, 日付A, 日付B, ...
+product_sk 列 : 商品1, 商品2, 商品1, ...
+quantity 列   : 2, 5, 1, ...
+→ 欲しい3つの列ファイルだけ読めばよい</pre>
+    </details>
+
+    <div class="grid2">
+      <div class="mini" style="border-color:#ff6b8b55"><div class="ic">📄</div><h4>行指向</h4><p>1行の全列が隣り合う。数列しか使わなくても行を丸ごと（100列以上）読む＝無駄が多い。</p></div>
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">📊</div><h4>列指向</h4><p>各列をまとめて別ファイルに。使う列のファイルだけ読めばよい＝ディスクから読む量が激減。</p></div>
+    </div>
+
+    <p>（補足）列ストレージはリレーショナルで一番理解しやすいけど、非リレーショナルにも使える。たとえばParquetはGoogleのDremelを元にした、ドキュメントデータモデルをサポートする列ストレージフォーマット。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>行を1つにまとめ直すのはどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各列のファイルが<b>同じ順序で行を保持</b>しているのが大事。23番目の行が欲しければ、各列ファイルの23番目のエントリを取り出して並べれば再構成できる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：品目ごとにまとめた棚</h4>
+      <p>行指向の倉庫は、1件の注文に関する<b>あらゆる項目を1つの箱にまとめて</b>棚に置きます。でも「全注文の数量だけ集計したい」とき、箱を全部開けて数量だけ抜き、残りは捨てるハメに。列指向の倉庫は逆。<b>「日付だけの棚」「商品番号だけの棚」「数量だけの棚」と品目ごとにまとめて</b>置きます。数量を集計したいなら数量の棚だけ見ればいい。どの棚も<b>同じ順番</b>で並んでいるので、23番目の品をどの棚からも取り出せば、元の1件を組み立て直せるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「分析が遅い→列指向で必要な列だけ読む」という改善の方向を理解できる。</li>
+        <li>行指向と列指向のデータ配置の違いを説明できる。</li>
+        <li>ParquetなどのカラムナフォーマットがOLAPで使われる理由が分かる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>分析クエリは大量行・少数列。行指向は1行丸ごと読むので無駄が多い。</li>
+        <li>列指向は各列をまとめて保存し、使う列だけ読む。</li>
+        <li>各列ファイルは同じ行順を保つため、エントリ番号で行を再構成できる。</li>
+        <li>列ストレージは非リレーショナル（Parquet等）にも適用できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.3.1 列の圧縮 ===== -->
+<section id="s331">
+  <div class="sec-head"><div class="sec-num">3.3.1</div><div><h2>列の圧縮</h2><span class="tag">ビットマップで圧縮し、ベクトル化処理でCPUも効率化</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：列の中身は繰り返しが多く圧縮しやすい。代表が<b>ビットマップエンコーディング</b>（値ごとに0/1の列を作り、疎ならランレングスでさらに圧縮）。IN や AND/OR のクエリをビットごとの論理演算で高速処理できる。Cassandraらの「列ファミリ」は名前に反してほぼ行指向。列指向はディスクI/O削減だけでなく、CPUキャッシュに収めた密ループ＝<b>ベクトル化処理</b>でCPUも効率化する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列ごとにまとめると、ほかに得することはありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>圧縮しやすくなる</b>。列の中の値は同じものが何度も繰り返されることが多いから、圧縮にうってつけ。特に効くのが<span class="term" data-tip="ユニークな値ごとに、その値かどうかを0/1で表すビットの列を作る圧縮法。">ビットマップエンコーディング</span>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ビットマップ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1つの列のユニークな値の数は、行数に比べてずっと小さいことが多い（数十億の取引でも商品の種類は10万程度）。そこで、ユニークな値ごとに「その値かどうか」を0/1で表すビットの列を作るんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>ビットマップエンコーディング（図3-11のイメージ）</summary>
+<pre><span class="cmt"># ビットマップエンコーディング（図3-11のイメージ）</span>
+
+product_sk 列の値:  68 69 69 68 70 69 69
+                     │
+                     ▼ 値ごとにビットマップ（その行がその値なら1）
+product_sk=68 : 1 0 0 1 0 0 0
+product_sk=69 : 0 1 1 0 0 1 1
+product_sk=70 : 0 0 0 0 1 0 0
+
+<span class="cmt">・ユニーク値 n が小さい（例：country は200程度）→ 行ごと1ビットで済む</span>
+<span class="cmt">・n が大きい → ビットマップは大量の0が並ぶ（疎＝sparse）</span>
+<span class="cmt">  → さらに「ランレングスエンコーディング（連続する同じ値をまとめる）」で超コンパクトに</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>このビットマップ、クエリにどう役立つんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データウェアハウスのよくあるクエリにピッタリだ。例を出そう。</div></div>
+    </div>
+    <details class="code"><summary>ビットマップによるクエリ処理</summary>
+<pre><span class="cmt"># ビットマップによるクエリ処理</span>
+- WHERE product_sk IN (30, 68, 69)
+   → 30・68・69 の3つのビットマップをロードし、ビットごとの OR を取る（効率的）
+- WHERE product_sk = 31 AND store_sk = 3
+   → 2つのビットマップをロードし、ビットごとの AND を取る
+   <span class="cmt">※ どの列も同じ行順なので、k番目のビットは同じ行に対応する</span></pre>
+    </details>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：品目棚に「該当する箱だけ◯」のチェックシート</h4>
+      <p>「商品番号68のものは全部どれ？」と聞かれて毎回棚を見て回るのは大変。そこで、<b>各商品番号ごとに「1番目の箱は該当？ 2番目は？…」を◯×で記したチェックシート（ビットマップ）</b>を用意します。「68か69か70のもの」を探すなら3枚のシートを重ねて<b>どれか◯ならOK（OR）</b>。「68かつ店舗3」なら2枚を重ねて<b>両方◯（AND）</b>。シートの大半が×（疎）なら、「×が10連続」と書いて圧縮（ランレングス）できます。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列ファミリって聞いたことありますけど、これと同じですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>違う、混同注意。CassandraやHBaseには<b>列ファミリ（column family）</b>という概念がBigtable由来であるけど、これを「列指向」と呼ぶのは誤解を招く。列ファミリ内では「行の全列が行キーと一緒にまとめて」保存され、列は圧縮されない。だからBigtableのモデルは<b>やっぱりほぼ行指向</b>なんだ。</div></div>
+    </div>
+
+    <h4 class="blk">メモリの帯域とベクトル化処理（3.3.1.1）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列指向の速さって、ディスクから読む量が減るからだけですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それも大きいけど、唯一のボトルネックじゃない。数百万行をスキャンする分析クエリでは「ディスク→メモリ」の帯域がまず大きなボトルネック。でも分析DBの開発者は「メモリ→CPUキャッシュ」の帯域や、分岐予測ミス、CPUのパイプラインの空き、現代CPUの<b>SIMD</b>（1命令で複数データを処理）命令の活用まで考える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列指向はCPUにも優しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。圧縮された列のデータの塊（チャンク）をCPUのL1キャッシュにうまく収めて、<b>関数呼び出しのない密なループ</b>で一気に処理できる。圧縮すれば同じL1キャッシュに多くの行が収まるし、さっきのビットごとのANDやORは圧縮データを直接処理できる。この手法を<span class="term" data-tip="圧縮データをCPUキャッシュに収め、密なループで一気に処理する手法。">ベクトル化処理（vectorized processing）</span>と呼ぶ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>列指向が「読み込み量削減＋圧縮＋CPU効率」の三重で速い理由を説明できる。</li>
+        <li>ビットマップで IN / AND / OR が高速に処理される仕組みを理解できる。</li>
+        <li>「列ファミリ＝列指向」という誤解を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>列は繰り返しが多く圧縮に向く。ビットマップエンコーディング＋ランレングスでコンパクトに。</li>
+        <li>IN は OR、AND はビットごとのANDで効率処理（全列が同じ行順だから成立）。</li>
+        <li>列ファミリ（Cassandra/HBase/Bigtable）はほぼ行指向で、列指向ではない。</li>
+        <li>列指向はディスクI/O削減に加え、ベクトル化処理でCPUキャッシュを活かし高速化する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.3.2 ソート順序 ===== -->
+<section id="s332">
+  <div class="sec-head"><div class="sec-num">3.3.2</div><div><h2>列ストレージにおけるソート順序</h2><span class="tag">行ごとまとめて並べ替える ― 圧縮にも効く</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：列指向でも行全体をまとめてソートできる（列を独立にソートしてはいけない）。よく使うクエリに合わせて第一・第二のソートキーを選ぶと、範囲スキャンが速くなり、第一ソート列はランレングスで強く圧縮できる。クエリごとに最適なソート順が違うので、<b>Vertica</b>はレプリカを異なるソート順で保存する。これは行指向のセカンダリインデックスに似るが、列指向では列自体が値を持ちポインタはない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列指向では、行の順番はどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>必ずしも問題にならない。一番簡単なのは「挿入された順」で、新しい行は各列ファイルに追記するだけ。でも、SSTableで見たように<b>順序を強制してインデックス代わり</b>にもできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列ごとにバラバラにソートすればいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ダメだ。各列を独立にソートしたら、「どの値とどの値が同じ行か」が分からなくなる。ある列のk番目が他の列のk番目と同じ行だからこそ再構成できる。だから<b>ソートするなら行全体をまとめて並べ替える</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>何を基準に並べるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>よく使うクエリを知ってる管理者がソート順の列を選ぶ。クエリが「直近の月」みたいに日付範囲を指定することが多いなら、<code>date_key</code> を<b>第一のソートキー</b>に。するとオプティマイザは直近の月の行だけスキャンすればよく、全行スキャンよりずっと速い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目のキーは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>第一キーが同じ行の中での並び順を決める。<code>date_key</code> が第一なら <code>product_sk</code> を<b>第二のソートキー</b>にして、同じ日・同じ製品の売上をまとめる。「特定期間内で製品ごとにグループ化・フィルタ」するクエリを助けられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ソートって圧縮にも関係しますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>する。第一ソート列のユニーク値が少なければ、ソート後は同じ値が長く連続する。だから<b>ランレングスエンコーディングで数キロバイトまで圧縮</b>できることも。行数が数十億でもね。この効果は第一ソートキーで最大。第二・第三キーは並びが混沌として繰り返しが減るので効きにくくなる。それでも最初の数列をソートするのは全体として効率的だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：「日付順 → 商品順」で品目棚をまとめて並べ替える</h4>
+      <p>品目ごとの棚を並べ替えるとき、<b>日付の棚だけ別の順に並べてはいけません</b>。日付・商品・数量の棚は同じ順番でこそ「23番目どうしが同じ取引」と分かるからです。だから<b>取引まるごとを「まず日付順、同じ日なら商品順」に並べ替え</b>ます。すると「先月の取引」を探すとき、先月の区画だけ見ればよく、しかも同じ日付が長く連続するので「日付Aが1000件連続」とまとめて超圧縮できるのです。</p>
+    </div>
+
+    <h4 class="blk">複数のソート順序（3.3.2.1）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、クエリによって嬉しいソート順は違いますよね。1つに決められないような……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい着眼点。だから「<b>同じデータをいくつかの違うソート順で保存しておく</b>」という手がある。これを列指向に取り入れたのが商用データウェアハウスの<b>Vertica</b>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じデータを何個も持つって、無駄じゃないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>無駄じゃない。どのみち1台の障害でデータが消えないよう、データは複数マシンに<b>レプリケーション（複製）</b>しないといけない。その冗長なコピーを<b>それぞれ違うソート順</b>にしておけば、クエリごとに最適なバージョンを使える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これって、行指向のセカンダリインデックスと似てますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>少し似てる。でも大きく違う。行指向では全行を1カ所（ヒープかクラスタ化）に持ち、セカンダリインデックスは「マッチする行へのポインタ」を持つだけ。一方、列指向では普通「他の場所のデータへのポインタ」は一切なくて、<b>列だけが値を持っている</b>んだ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ソート順の選び方が「範囲スキャンの速さ」と「圧縮率」の両方に効くと理解できる。</li>
+        <li>「複数ソート順のレプリカ」（Vertica）という発想で、冗長コピーを性能に活かせると分かる。</li>
+        <li>列指向と行指向＋セカンダリインデックスの構造的な違いを説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>列を独立にソートしてはいけない（行の対応が壊れる）。行全体をまとめてソートする。</li>
+        <li>第一・第二ソートキーをよく使うクエリに合わせると範囲スキャンが高速化。</li>
+        <li>第一ソート列はランレングスで強く圧縮できる（後続キーほど効きにくい）。</li>
+        <li>レプリカを異なるソート順で保存（Vertica）。列指向は列自体が値を持ちポインタはない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.3.3 列指向への書き込み ===== -->
+<section id="s333">
+  <div class="sec-head"><div class="sec-num">3.3.3</div><div><h2>列指向ストレージへの書き込み</h2><span class="tag">書き込みが難しい ― 解決はまたLSMツリー</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：列指向＋圧縮＋ソートは読み取りに最適だが、その場での更新ができず、1行挿入でも全列ファイルの書き直しになり書き込みが難しい。解決は<b>LSMツリー方式</b>：書き込みをメモリ上のソート済みストアに溜め、十分溜まったらディスクの列ファイルとマージして新ファイルに書く（<b>Verticaの方式</b>）。クエリはメモリとディスクの両方を見るが、その区別はオプティマイザが隠す。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>列指向＋圧縮＋ソートで読み取りは速いんですよね。書き込みはどうなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが欠点。これらの最適化はデータウェアハウスでは理にかなってる（負荷の大半がアナリストの大規模な読み取りだから）。でも<b>書き込みは難しくなる</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで難しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Bツリーがやる「その場で上書き（インプレース更新）」が、圧縮された列では不可能なんだ。ソート済みテーブルの途中に1行挿入したいと思ったら、おそらく<b>すべての列ファイルを書き直す</b>ことになる。行は列内の位置で識別されるから、挿入時に全列を整合させて更新しなきゃいけない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それは大変……。解決策はあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もうこの章で見てる。<b>LSMツリー</b>だ。すべての書き込みをまず<b>メモリ上のストア</b>に送ってソート済み構造に溜める。メモリ上が行指向か列指向かは問題にならない。十分溜まったら、ディスク上の列ファイルとマージして一度に新ファイルに書き出す。<b>Verticaが基本的にやっているのがこれ</b>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でもメモリにある分とディスクにある分、別々ですよね。クエリは大丈夫ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>クエリは「ディスク上の列データ」と「メモリ内の直近の書き込み」の両方を調べて結果を組み合わせる。でもオプティマイザがこの区別をユーザーから隠してくれる。アナリストから見れば、挿入・更新・削除した変更は次のクエリにすぐ反映されてるように見える。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：圧縮梱包した品目棚に1件だけ割り込ませる難しさ</h4>
+      <p>品目棚をぎゅっと圧縮梱包して番号順に並べてあると、途中に1件だけ割り込ませるのは至難。<b>全部の品目棚を解いて並べ直す</b>ハメになります。そこで、ここでもLSMの知恵を使う。新しい品は<b>受付の仮置き台（メモリ）に番号順で仮置き</b>し、溜まったらまとめて品目棚と合併して新しい棚にする。棚出しのときは仮置き台と棚の両方を見て答えますが、その手間は<b>受付係（オプティマイザ）がうまく隠して</b>くれるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「列指向は読み取り最適だが書き込みが重い」というトレードオフを理解できる。</li>
+        <li>その解決にLSMツリー（メモリ蓄積→マージ）が再利用されると分かり、概念のつながりを掴める。</li>
+        <li>列指向DBへの挿入が即座に反映される仕組み（メモリ＋ディスクの結合）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>列指向＋圧縮＋ソートは読み取りに最適だが、その場更新ができず書き込みが難しい（全列書き直し）。</li>
+        <li>解決はLSMツリー方式：メモリ上のソート済みストアに溜め、まとめてディスクの列ファイルにマージ（Vertica）。</li>
+        <li>クエリはメモリとディスクの両方を見て結合するが、その区別はオプティマイザが隠す（変更は即反映に見える）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3.3.4 データキューブとマテリアライズドビュー ===== -->
+<section id="s334">
+  <div class="sec-head"><div class="sec-num">3.3.4</div><div><h2>集計：データキューブとマテリアライズドビュー</h2><span class="tag">よく使う集計を事前計算して掲示する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：同じ集計を何度も使うなら結果をキャッシュすると速い。<b>マテリアライズドビュー</b>はクエリ結果を実際にディスクへコピーしたもの（仮想ビューは展開するだけ）。元データ変更で更新が要り書き込み負荷が増すのでOLTPには不向き、読み取り中心のデータウェアハウス向き。その特殊形が<b>データキューブ（OLAPキューブ）</b>で、次元ごとの集計を事前計算し特定クエリを超高速化するが、生データほど柔軟ではない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データウェアハウスって全部列ストアなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、必ずしも。旧来の行指向DBや他のアーキテクチャも使われてる。ただアドホックな分析クエリでは列ストアが明らかに速いから急速に広まってる。さて、もう1つ大事な話、<b>実体化された集計（materialized aggregates）</b>を紹介しよう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>集計を実体化、ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>分析クエリにはよく <code>COUNT</code>、<code>SUM</code>、<code>AVG</code>、<code>MIN</code>、<code>MAX</code> といった集計関数が出る。同じ集計を多くのクエリで使うなら、毎回生データを処理するのは無駄。だから<b>よく使うカウントや合計をキャッシュ</b>しておけばいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そのキャッシュって、どう作るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1つの方法が<span class="term" data-tip="クエリ結果を実際にコピーしてディスクに書いたテーブルのようなオブジェクト。">マテリアライズドビュー（実体化ビュー）</span>。普通のビュー（仮想ビュー）と違うのは、<b>実際に結果をコピーしてディスクに書く</b>ことだ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini" style="border-color:#b78cff55"><div class="ic">👻</div><h4>仮想ビュー</h4><p>クエリを書きやすくするショートカット。読むたびに元クエリに展開して実行（実体は持たない）。</p></div>
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">📌</div><h4>マテリアライズドビュー</h4><p>クエリ結果を実際にコピーしてディスクに保存（実体を持つ）。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>元データが変わったら、コピーは古くなりませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。元データが変わったら、その非正規化コピーであるマテリアライズドビューを<b>更新</b>しないといけない。DBが自動でやれるけど、更新は書き込み負荷を高める。だから<b>書き込みの多いOLTPではあまり使われず</b>、読み取りの多いデータウェアハウスのほうが理にかなってる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もっと特化したものはありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>マテリアライズドビューの特殊ケースで広く使われるのが<span class="term" data-tip="いろんなディメンションでグループ化した集計値のグリッド。OLAPキューブとも。">データキューブ（OLAPキューブ）</span>。いろんなディメンションでグループ化した集計値のグリッド（格子）だ。</div></div>
+    </div>
+
+    <details class="code"><summary>2次元のデータキューブ（図3-12のイメージ）</summary>
+<pre><span class="cmt"># 2次元のデータキューブ（図3-12のイメージ）</span>
+            商品1   商品2   商品3   …   ← 各行の合計（日付ごとの売上）
+   日付A     149     0      ...        sum
+   日付B      0     250     ...        sum
+   日付C     ...    ...     ...        sum
+    …
+  各列の合計  sum    sum    sum
+  （日付に関係ない製品ごとの売上）
+
+各セル：その日付×製品の組み合わせのファクト属性（例 net_price）の集計（例 sum）
+行や列方向に集計すると、次元を1つ減らしたサマリが得られる</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各ファクトが2つのディメンション（dateとproduct）に外部キーを持つなら、片方を製品、もう片方を日付にした2次元テーブルが描ける。各セルにその組み合わせの集計値が入る。行や列ごとに集計すれば、次元を1つ減らしたサマリ（製品ごと、日付ごとの売上）が得られる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>次元が2つより多いときは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実際はファクトの次元は3以上が普通。図3-9では日付・製品・店舗・プロモーション・顧客の5次元。5次元のハイパーキューブは想像しにくいけど原理は同じで、各セルに「特定の日付−製品−店舗−プロモ−顧客」の売上が入り、各次元に沿って集計できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データキューブの利点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある種のクエリが<b>超高速</b>になる。事前に計算済みだからね。「昨日の店舗ごとの総売上」なら、適切な次元に沿って合計を見るだけで、数百万行をスキャンしなくていい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>欠点はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>柔軟性が低い</b>。生データへのクエリほど自由じゃない。「100ドル以上の商品が生んだ売上の比率」は、次元に価格がなければ計算できない。だからほとんどのデータウェアハウスは、できる限り生データを保持して、データキューブのような集計は<b>特定クエリの高速化のためだけ</b>に使う。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：よく聞かれる集計を「掲示板」に貼り出す</h4>
+      <p>「店舗ごとの昨日の総売上は？」と毎日聞かれるなら、その都度倉庫じゅうを数えるのは無駄。あらかじめ計算して<b>掲示板（マテリアライズドビュー）に貼り出して</b>おけば一瞬で答えられます。掲示板を「日付×商品×店舗…」の格子にしたのが<b>データキューブ</b>。事前計算済みなので特定の集計は超高速。ただし<b>格子に無い切り口（価格条件など）は掲示板では答えられない</b>ので、生の記録の山も必ず残しておくのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>仮想ビューとマテリアライズドビューの違い（実体を持つか）を説明できる。</li>
+        <li>データキューブが「事前集計で高速だが柔軟性が低い」トレードオフを理解できる。</li>
+        <li>「生データは残し、集計は高速化のために併用する」という実務方針を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>必ずしも全データウェアハウスが列ストアではないが、アドホック分析では列ストアが速く広まっている。</li>
+        <li>マテリアライズドビュー＝クエリ結果をディスクにコピー（仮想ビューは展開のみ）。更新負荷ゆえOLTPには不向き、データウェアハウス向き。</li>
+        <li>データキューブ（OLAPキューブ）は次元ごとの集計の事前計算で特定クエリを超高速化。</li>
+        <li>欠点は柔軟性の低さ。生データは残し、集計は高速化目的で併用する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ ===== -->
+<section id="sumchap">
+  <div class="sec-head"><div class="sec-num">📕</div><div><h2>章のまとめ</h2><span class="tag">シークと帯域、どっちがボトルネックか</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ストレージエンジンはOLTP最適化（ボトルネックは<b>シーク</b>）とOLAP最適化（ボトルネックは<b>帯域</b>）に大別される。OLTPはlog-structured（追記＝LSM系）とインプレース更新（Bツリー）の2流派。log-structuredの鍵は<b>ランダム書き込みをシーケンシャルに変換</b>すること。OLAPは列指向で読み込み量を最小化する。これらの語彙が、DB選定・チューニング・ドキュメント理解の土台になる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日も盛りだくさんでした……。最後に整理してもらえますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいよ。今日はストレージとデータの取り出しの最下層を見た。まず大きく、ストレージエンジンは<b>OLTP最適化</b>と<b>OLAP最適化</b>の2つに分けられた。アクセスパターンが全然違うんだったね。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini" style="border-color:#6c8cff55"><div class="ic">🔍</div><h4>OLTP（ボトルネック：シーク）</h4><p>ユーザーから莫大なリクエスト。各クエリは少数レコードをキーで引く。インデックスでキーに対応するデータを見つける。ボトルネックはディスクの「シーク」（あちこち探す時間）。</p></div>
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">📡</div><h4>OLAP（ボトルネック：帯域）</h4><p>アナリストが使う。クエリ数は少ないが1本が重く、短時間に数百万行をスキャン。ボトルネックはディスクの「帯域」（一度に運べる量）。列指向が活躍。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>OLTP側のストレージエンジンには、大きく2つの考え方があった。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📜</div><h4>log-structured</h4><p>ファイルへの追記と古いファイル削除だけ。一度書いたら更新しない。例：Bitcask、SSTable、LSMツリー、LevelDB、Cassandra、HBase、Lucene。</p></div>
+      <div class="mini"><div class="ic">📚</div><h4>インプレース更新</h4><p>ディスクを「更新可能な固定サイズのページの集合」として扱う。代表がBツリー。主要なリレーショナルDBと多くの非リレーショナルDBで使われる。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>log-structuredの鍵となる発想は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「<b>ディスク上のランダムな書き込みを、システマティックにシーケンシャルな書き込みに変換する</b>」こと。HDDやSSDの特性を踏まえて書き込みスループットを高める。OLTPでは少し複雑なインデックス（セカンダリ、多次元、曖昧）や、全データをメモリに置くインメモリDBも見た。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>OLAP（データウェアハウス）側のポイントは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大量の行をシーケンシャルにスキャンするクエリでは、インデックスはあまり関係ない。大事なのは「<b>データをすごくコンパクトにエンコードして、ディスクから読む量を最小にする</b>」こと。それを助けるのが列指向ストレージ（＋圧縮、ソート順、ビットマップ、ベクトル化処理、マテリアライズドビュー／データキューブ）だった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これで僕、ストレージエンジンを選べるようになりますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>この章でチューニングの達人にはなれない。でも、自分のアプリに最適なツールを判断しやすくなるし、チューニングパラメータの値の増減の影響をイメージできる。何より、<b>選んだデータベースのドキュメントを読みこなすための語彙</b>が身についた。それが今日の一番の収穫だよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📦 たとえ話：日常出荷の倉庫と、棚卸し分析の別館</h4>
+      <p>今日学んだのは、倉庫が大きく2タイプに分かれること。<b>日常の出荷入荷（OLTP）の倉庫</b>は、頼まれた商品を所在マップで一発で見つけるのが命だから、悩みは「目的の棚まで歩く時間（シーク）」。<b>棚卸し分析（OLAP）の別館</b>は、全在庫をまとめて数えるのが命だから、悩みは「一度にどれだけ運べるか（帯域）」。出荷倉庫は「連番台帳に足すだけ（log-structured＝LSM）」派と「ページ式の固定棚（Bツリー）」派の2流派。分析別館は「品目ごとにまとめた棚（列指向）」でぎゅっと圧縮して運ぶ量を減らす。この見取り図が、倉庫（DB）選びとドキュメント読解の土台になります。</p>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ストレージエンジンはOLTP（シークがボトルネック）とOLAP（帯域がボトルネック）に大別。</li>
+        <li>OLTPの2流派：log-structured（Bitcask/LSM/Cassandra/HBase/Lucene）とインプレース更新（Bツリー）。</li>
+        <li>log-structuredの鍵はランダム書き込み→シーケンシャル書き込みへの変換。</li>
+        <li>OLAPは列指向でデータをコンパクトにし、ディスクから読む量を最小化する。</li>
+        <li>この知識はDB選定・チューニング・ドキュメント理解のための語彙になる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 弟子の振り返り ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で5つのポイントを言い直す</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のポイント、言ってみます。1つ目「データベースの仕事は保存と取り出し。追記ログは書き込みが速いけど全スキャンで読み取りが遅い。だから<b>インデックス</b>を張る。でも読み取り高速化と引き換えに書き込みが遅くなる」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。トレードオフが全ての出発点だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目「OLTPのストレージは2流派。<b>LSMツリー</b>（追記してmemtableに溜め、ソートしてSSTableに書き、バックグラウンドでマージ。書き込みが速い）と<b>Bツリー</b>（固定サイズのページのツリー。その場で上書き、WALとラッチが要る。読み取りが速い）」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>LSMは書き込み、Bツリーは読み取り、でも実測が大事、だったね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目「その他のインデックス。セカンダリ、ヒープ／クラスタ化／カバーリング、連結や多次元（Rツリー）、曖昧検索（全文検索）、そして全部メモリに置くインメモリDB」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>用途ごとに道具が違う、を体感できたね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目「<b>OLTPとOLAP</b>は別物。分析は本番を巻き込まず<b>データウェアハウス</b>へETLでコピー。スキーマは<b>スタースキーマ</b>（巨大なファクト＋ディメンション）」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アクセスパターンの違いが全部の設計を変える、が肝。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目「分析には<b>列指向ストレージ</b>。使う列だけ読む、ビットマップで圧縮、ベクトル化処理でCPUも効率化。書き込みはLSM方式で解決。集計はマテリアライズドビューやデータキューブで事前計算」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>完璧だ。シークと帯域、どっちがボトルネックか――この視点を持って、次の章へ進もう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 理解度チェック ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ伸びしろ</span></div></div>
+
+  <div class="card">
+    <p style="color:var(--sub);font-size:14px;margin-top:0">この章を読み終えたあと、自分の言葉で答えてみてください。スラスラ書ける問題は理解できています。詰まる問題こそが「実は分かっていなかった部分」です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>インデックスのトレードオフ</div>
+      <p>インデックスを張ると何が速くなり、何が遅くなりますか。データベースが「何にでも自動でインデックスを張る」ことをしない理由とあわせて説明してください。</p>
+      <details><summary>✅ 解答例を見る</summary>
+        <div class="ans">インデックスは「キーから目的のデータの場所を教えてくれる目印」なので、読み取り（検索）のクエリが速くなります。一方で、データを書き込むたびにインデックスも更新しなければならないため、書き込みは遅くなります。さらにインデックスは追加のデータ構造なので保存容量のオーバーヘッドも生じます。何にでも自動で張るとこのオーバーヘッドが無駄に大きくなるので、アプリのよくあるクエリパターンを知っている開発者やDB管理者が、本当に有益なインデックスだけを選んで張ります。</div>
+      </details>
+      <details><summary>📝 採点ポイント</summary>
+        <div class="point">・インデックスは読み取りを速くする、と説明できている<br>・書き込みのたびに更新が要るので書き込みは遅くなる、と述べている<br>・クエリパターンを知る人が必要なものだけ選ぶ（無駄なオーバーヘッドを避ける）と述べている</div>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>LSMツリーとBツリー</div>
+      <p>LSMツリーとBツリーの基本的な仕組みの違いを説明し、それぞれが「書き込み」「読み取り」のどちらに強いとされるかを述べてください。</p>
+      <details><summary>✅ 解答例を見る</summary>
+        <div class="ans">LSMツリーは、書き込みをまずメモリ上のソート済み構造（memtable）に溜め、一定量たまったらキー順のファイル（SSTable）としてディスクに書き出し、バックグラウンドでマージ・コンパクションして整理します。一度書いたファイルは更新せず追記中心です。Bツリーは、データベースを固定サイズのページに分けてツリーを作り、キーを探すときはツリーをたどります。更新はページをその場で上書きします。一般に、LSMツリーは書き込みが速く（シーケンシャルに書ける）、Bツリーは読み取りが速い（キーが1カ所にあり、複数のSSTableを調べなくてよい）とされます。ただしワークロード次第なので実測が必要です。</div>
+      </details>
+      <details><summary>📝 採点ポイント</summary>
+        <div class="point">・LSM＝memtableに溜めてSSTableに書き出しマージする追記中心、と説明できている<br>・Bツリー＝固定サイズページのツリーをその場上書きで更新、と説明できている<br>・LSMは書き込みに強い、Bツリーは読み取りに強い（要実測）と述べている</div>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>OLTPとOLAP</div>
+      <p>OLTPとOLAPの違いを、利用者・アクセスパターン・ボトルネックの観点から説明してください。なぜ分析専用のデータウェアハウスを別に用意するのかも述べてください。</p>
+      <details><summary>✅ 解答例を見る</summary>
+        <div class="ans">OLTP（トランザクション処理）は、Webアプリのエンドユーザーがキーで少数のレコードを低レイテンシで読み書きする使い方で、ボトルネックはディスクのシーク（あちこち探す時間）です。OLAP（分析処理）は、社内アナリストが大量のレコードをスキャンして集計（合計・平均など）する使い方で、ボトルネックはディスクの帯域（一度に運べる量）です。分析クエリは負荷が高くデータの大部分をスキャンするため、本番のOLTPで実行するとトランザクションの性能を毀損します。そこで、各OLTPシステムのデータをETLで読み取り専用にコピーした分析専用のデータウェアハウスを別に用意し、本番に影響を与えず分析できるようにします。</div>
+      </details>
+      <details><summary>📝 採点ポイント</summary>
+        <div class="point">・OLTP＝ユーザーがキーで少数レコードを低レイテンシ、OLAP＝アナリストが大量スキャンで集計、と区別している<br>・ボトルネックがOLTPはシーク、OLAPは帯域、と述べている<br>・本番OLTPを守るためETLでデータウェアハウスにコピーして分離する、と述べている</div>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>列指向ストレージ</div>
+      <p>列指向ストレージが分析クエリで速い理由を、行指向と比較しながら説明してください。圧縮との関係にも触れてください。</p>
+      <details><summary>✅ 解答例を見る</summary>
+        <div class="ans">行指向では1行の全列が隣り合って保存されるため、たとえ数列しか使わないクエリでも、行を丸ごと（100列以上）ディスクから読んでパースする必要があり無駄が多くなります。列指向では各列をまとめて保存するので、クエリで使う列のファイルだけを読めばよく、ディスクから読む量を大きく減らせます。さらに、同じ列の中は同じ値が繰り返されることが多いため圧縮が効きやすく、ビットマップエンコーディングやランレングスエンコーディングでコンパクトにできます。圧縮データはCPUキャッシュに多く収まり、ビットごとのAND/ORで効率処理（ベクトル化処理）できるため、ディスクI/OだけでなくCPUも効率化されて速くなります。</div>
+      </details>
+      <details><summary>📝 採点ポイント</summary>
+        <div class="point">・行指向は行を丸ごと読むので無駄、列指向は使う列だけ読む、と比較できている<br>・列は繰り返しが多く圧縮しやすい（ビットマップ/ランレングス）と述べている<br>・ディスクI/O削減だけでなくCPU効率（ベクトル化処理）にも触れている（あれば加点）</div>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>マテリアライズドビューとデータキューブ</div>
+      <p>マテリアライズドビューとは何か、普通の（仮想）ビューとの違いを説明してください。また、データキューブの利点と欠点を1つずつ挙げてください。</p>
+      <details><summary>✅ 解答例を見る</summary>
+        <div class="ans">仮想ビューはクエリを書きやすくするためのショートカットで、読むたびに元のクエリに展開して実行されるだけで実体を持ちません。マテリアライズドビューは、クエリの結果を実際にコピーしてディスクに書き込んだもの（実体を持つもの）です。元データが変わると更新が必要で書き込み負荷が増すため、読み取り中心のデータウェアハウスに向きます。データキューブは、次元ごとの集計を事前計算したマテリアライズドビューの特殊形です。利点は、事前計算済みなので「店舗ごとの昨日の総売上」のような集計クエリが超高速になること。欠点は、生データほどの柔軟性がなく、たとえば次元に含まれない属性（価格など）の条件では計算できないことです。</div>
+      </details>
+      <details><summary>📝 採点ポイント</summary>
+        <div class="point">・仮想ビュー＝展開するだけで実体なし、マテリアライズドビュー＝結果をディスクにコピー、と区別している<br>・マテリアライズドビューは更新負荷があり読み取り中心向き、と述べている<br>・データキューブの利点（事前集計で高速）と欠点（柔軟性が低い）を挙げている</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>次のステップ</h2><span class="tag">初心者がこの内容を理解するための具体的アドバイス</span></div></div>
+
+  <div class="card">
+    <div class="why">
+      <h4>💡 手を動かして腹落ちさせる</h4>
+      <ul>
+        <li><b>2行データベースを自分で動かす</b>：冒頭の <code>db_set</code> / <code>db_get</code> を実際にシェルで作って動かし、データを増やすと <code>db_get</code> が遅くなることを体感する。「なぜインデックスが要るのか」が腹落ちします。</li>
+        <li><b>手元のDBのインデックスを観察する</b>：SQLite や MySQL / PostgreSQL で <code>EXPLAIN</code>（クエリ実行計画）を使い、インデックスありとなしでクエリの処理がどう変わるかを見る。Bツリーがどう使われるか実感できます。</li>
+        <li><b>LSM系とBツリー系を1つずつ触る</b>：一般的なRDB（Bツリー系）と、Cassandraや RocksDB（LSM系）を1つずつ触り、書き込み重視か読み取り重視かで体感の差を確かめる。</li>
+        <li><b>列指向フォーマットを試す</b>：Parquet形式でデータを保存し、CSV（行指向に近い）と比べてファイルサイズや、一部の列だけ読むときの速さを比較する。圧縮と列指向の効果が見えます。</li>
+        <li><b>次章へ</b>：次の章では、データを複数のマシンにコピーして保つ「レプリケーション」を学びます。本章で出てきた「ログ（追記のレコードの並び）」が、複数マシン間でデータを同期する土台としても登場します。「ログ」という言葉に注目しながら読み進めてください。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<p class="foot">📦 この章のたとえ話は「巨大倉庫の棚入れ・棚出し」で統一しました（書き込み＝棚入れ、読み取り＝棚出し、ログ＝連番台帳、インデックス＝所在マップ、ハッシュ索引＝早見表、SSTable/LSM＝整列棚、Bツリー＝ページ式の固定棚、列指向＝品目ごとにまとめた棚）。<br>データ指向アプリケーションデザイン 第3章「ストレージと抽出」より ／ コードは読み飛ばしても本文と図で理解できるように構成しています。</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,2090 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第2章 データモデルとクエリ言語 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第2章</span>
+  <h1>データモデルとクエリ言語</h1>
+  <p>データを「どんな形でしまうか」――表で整理する<b>リレーショナル</b>、入れ子の書類にする<b>ドキュメント</b>、点と線でつなぐ<b>グラフ</b>。しまい方が変わると、できること・できないことが大きく変わる。新人ハルとベテラン カイ先輩の対話で、自分のアプリに合う形を見抜く目を養います。</p>
+  <div class="badge-row">
+    <span class="badge">📚 たとえ話は「図書館の蔵書整理と目録」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📖 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a href="#s21">2.1 リレーショナルモデルとドキュメントモデル</a>
+  <a class="sub" href="#s211">2.1.1 NoSQLの誕生</a>
+  <a class="sub" href="#s212">2.1.2 オブジェクトとリレーショナルのミスマッチ</a>
+  <a class="sub" href="#s213">2.1.3 多対一と多対多の関係</a>
+  <a class="sub" href="#s214">2.1.4 ドキュメントDBは歴史を繰り返すのか？</a>
+  <a class="sub" href="#s2141">　└ 2.1.4.1 ネットワークモデル</a>
+  <a class="sub" href="#s2142">　└ 2.1.4.2 リレーショナルモデル</a>
+  <a class="sub" href="#s2143">　└ 2.1.4.3 ドキュメントDBとの比較</a>
+  <a class="sub" href="#s215">2.1.5 今日のリレーショナルとドキュメント</a>
+  <a class="sub" href="#s2151">　└ 2.1.5.1 コードをシンプルにするモデルは？</a>
+  <a class="sub" href="#s2152">　└ 2.1.5.2 スキーマの柔軟性</a>
+  <a class="sub" href="#s2153">　└ 2.1.5.3 クエリのためのローカリティ</a>
+  <a class="sub" href="#s2154">　└ 2.1.5.4 両者の融合</a>
+  <a href="#s22">2.2 データのためのクエリ言語</a>
+  <a class="sub" href="#s221">2.2.1 Web上での宣言的クエリ</a>
+  <a class="sub" href="#s222">2.2.2 MapReduceでのクエリ</a>
+  <a href="#s23">2.3 グラフ型のデータモデル</a>
+  <a class="sub" href="#s231">2.3.1 プロパティグラフ</a>
+  <a class="sub" href="#s232">2.3.2 Cypherクエリ言語</a>
+  <a class="sub" href="#s233">2.3.3 SQLでのグラフクエリ</a>
+  <a class="sub" href="#s234">2.3.4 トリプルストアとSPARQL</a>
+  <a class="sub" href="#s2341">　└ 2.3.4.1 セマンティックWeb</a>
+  <a class="sub" href="#s2342">　└ 2.3.4.2 RDFデータモデル</a>
+  <a class="sub" href="#s2343">　└ 2.3.4.3 SPARQLクエリ言語</a>
+  <a class="sub" href="#s234net">　└ ネットワークモデルとの比較</a>
+  <a class="sub" href="#s235">2.3.5 礎となったもの：Datalog</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>たとえ話はぜんぶ図書館で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「図書館の蔵書整理と目録」</b>に置きかえて説明します。データ＝本、しまい方＝本の並べ方です。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、図書館のたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">データモデル <span>data model</span></div><p>データを「どんな形で表すか」の決め方。図書館でいうと<b>本のしまい方・並べ方のルール</b>。</p></div>
+    <div class="item"><div class="w">リレーショナルモデル</div><p>データを表（テーブル）と行で整理するモデル。<b>＝棚に並べ、背表紙ラベルと索引カードで管理</b>する方式。</p></div>
+    <div class="item"><div class="w">ドキュメントモデル</div><p>関連する情報を1つの入れ子の書類にまとめるモデル。<b>＝1冊にまとめた書類綴り（ファイル）</b>。</p></div>
+    <div class="item"><div class="w">グラフモデル</div><p>点（頂点）と線（辺）でつながりを表すモデル。<b>＝人物相関の系図（誰が誰とつながるか）</b>。</p></div>
+    <div class="item"><div class="w">クエリ言語 <span>query language</span></div><p>データに問いかける言葉。図書館でいう<b>司書への頼み方</b>。</p></div>
+    <div class="item"><div class="w">タプル／行・リレーション／テーブル</div><p>タプル＝表の1行（1冊分のカード）、リレーション＝表（同じ種類のカードの束）。</p></div>
+    <div class="item"><div class="w">NoSQL</div><p>もとはハッシュタグ由来の言葉。今は「Not Only SQL（SQLだけじゃない）」の意。リレーショナル以外のDBの総称。</p></div>
+    <div class="item"><div class="w">ポリグロットパーシステンス</div><p>複数のモデル（道具）を適材適所で併用すること。<b>＝棚・書類綴り・系図を使い分ける</b>図書館。</p></div>
+    <div class="item"><div class="w">インピーダンスミスマッチ</div><p>アプリのオブジェクトとDBのテーブルの形が合わずぎくしゃくすること。<b>本の中身と目録カードの様式のズレ</b>。</p></div>
+    <div class="item"><div class="w">ORM</div><p>オブジェクトとテーブルの変換を肩代わりする道具。<b>＝中身を目録カードに自動転記する助手</b>。</p></div>
+    <div class="item"><div class="w">一対多 / 多対一 / 多対多</div><p>つながり方。一対多＝1冊に複数の章。多対一＝多くの本が同じジャンルに属す。多対多＝本同士が引用し合う網。</p></div>
+    <div class="item"><div class="w">正規化 / 非正規化</div><p>正規化＝同じ情報をダブらせずID（請求記号）で1カ所参照。非正規化＝あえて複製して取り出しを速くする。</p></div>
+    <div class="item"><div class="w">外部キー／ドキュメント参照</div><p>別の場所のデータを指す「請求記号」。図書館の<b>「○○を参照」のクロスリファレンスカード</b>。</p></div>
+    <div class="item"><div class="w">結合（ジョイン）</div><p>別々の表を、参照（請求記号）でつなげて1つにまとめる操作。<b>カードをたどって関連資料を集める</b>。</p></div>
+    <div class="item"><div class="w">ローカリティ <span>locality</span></div><p>関連データが1カ所にまとまっていること。<b>1冊の綴りに全部入っていて一度で取れる</b>こと。</p></div>
+    <div class="item"><div class="w">階層モデル / ネットワークモデル</div><p>昔のモデル。階層＝1本の大きなツリー。ネットワーク（CODASYL）＝複数の親を持てる網。</p></div>
+    <div class="item"><div class="w">アクセスパス</div><p>目的のデータに着くまでの道順。昔は手で道順を指定した。<b>目当ての本までの順路を全部自分で指示</b>。</p></div>
+    <div class="item"><div class="w">クエリオプティマイザ</div><p>どの索引をどの順で使うか自動で決める仕組み。<b>頼みを聞いて最短の探し方を考えるベテラン司書</b>。</p></div>
+    <div class="item"><div class="w">スキーマ <span>schema</span></div><p>データの決められた形・型。図書館の<b>目録カードの記入様式</b>。</p></div>
+    <div class="item"><div class="w">スキーマオンライト／オンリード</div><p>オンライト＝しまうとき様式を強制。オンリード＝取り出すときに解釈。書く時か読む時か。</p></div>
+    <div class="item"><div class="w">宣言的 / 命令的</div><p>宣言的＝ほしい結果だけ言う（「○○の本ください」）。命令的＝探し方を全部指示（「棚を1段ずつ見て…」）。</p></div>
+    <div class="item"><div class="w">MapReduce</div><p>大量データを多数のマシンで分担処理する仕組み。<b>大勢の助手で手分けして数え、最後に合算</b>する。</p></div>
+    <div class="item"><div class="w">頂点（vertex）／辺（edge）</div><p>グラフの点と線。頂点＝人やモノ、辺＝そのつながり（関係）。系図の人物と続柄線。</p></div>
+    <div class="item"><div class="w">プロパティグラフ／トリプルストア</div><p>グラフの2つの実装方式。後者は (主語,述語,目的語) の3つ組で表す。</p></div>
+    <div class="item"><div class="w">Cypher／SPARQL／Datalog</div><p>グラフに問いかける宣言的言語3種。Datalogは最も古く、後の言語の礎。</p></div>
+    <div class="item"><div class="w">RDF／セマンティックWeb</div><p>RDF＝コンピュータ可読データの記述方式。セマンティックWeb＝それで巨大なデータの網を作る構想。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <p style="font-size:13px;color:#8b93bf;font-style:italic;margin-top:0">「私の言語の限界は、私の世界の限界を意味する。」――ウィトゲンシュタイン『論理哲学論考』（1922）</p>
+    <h3 class="blk">あらすじ</h3>
+    <p>前回、システムの3つの目標（こわれにくさ・大きくなっても平気・直しやすさ）を学んだハル。今日は「データそのものをどんな形でしまうか」という、もっと土台の話に踏み込みます。データを表（テーブル）にするのか、入れ子の書類（ドキュメント）にするのか、それとも点と線でつなぐ網（グラフ）にするのか――しまい方が変わると、できること・できないことが大きく変わる。カイ先輩は、昔の巨大システムの歴史から最新のNoSQLまでをたどりながら、ハルに「自分のアプリにはどの形が合うのか」を考える目を授けていきます。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：データを「どんな形で表現するか」を決めるのが<b>データモデル</b>。代表は3つ――表で整理するリレーショナル、入れ子の書類にするドキュメント、点と線でつなぐグラフ。それぞれ得意・不得意があり、データのつながり方（一対多か、多対多か）で向き不向きが決まる。さらに、その形に問いかける言葉（<b>クエリ言語</b>）にも「やり方を全部指示する命令型」と「ほしい結果だけ言う宣言型」があり、宣言型が主流。この章は、その選び方の地図を手に入れる回。</div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：これから「図書館の蔵書整理」の話をします</h4>
+      <p>この章を通して、データ＝<b>本（蔵書）</b>、データモデル＝<b>本のしまい方・並べ方</b>、クエリ言語＝<b>司書への頼み方</b>に置きかえて読みます。同じ蔵書でも、棚に並べて索引カードで管理するか（リレーショナル）、関連書類を1冊に綴じるか（ドキュメント）、人物相関の系図で結ぶか（グラフ）で、探しやすさも変えやすさも全然違います。この「本のしまい方」選びが、この章ぜんぶを貫く合言葉です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>問題の考え方が変わる</b>：データモデルは書き方だけでなく「問題そのものの考え方」に影響する。最初に形を間違えると後でずっと苦しむ。</li>
+        <li><b>雰囲気選びを卒業</b>：「とりあえずMySQL」「とりあえずMongoDB」をやめ、データのつながり方から論理的に選べる。</li>
+        <li><b>流行に振り回されない</b>：リレーショナル vs NoSQL の論争は実は1960年代から繰り返された古い問題。歴史を知ると冷静に判断できる。</li>
+        <li><b>使い分けられる</b>：ツリー構造（一対多）か網目構造（多対多）かを見分け、3モデルを使い分けられる。宣言型クエリがなぜ速く並列化しやすいかも説明できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1 ===== -->
+<section id="s21">
+  <div class="sec-head"><div class="sec-num">2.1</div><div><h2>リレーショナルモデルとドキュメントモデル</h2><span class="tag">いちばん有名なデータモデル ― 表と行のSQL</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リレーショナルモデルは1970年にCoddが提唱し、データを表（テーブル）と行（タプル）で整理する。1980年代半ばから30年近く支配的で、ビジネスデータ処理から始まって幅広い用途に広がった。ライバル（ネットワーク・階層・オブジェクト・XML）は現れては消えた。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、自分のアプリを作ろうとすると最初の一歩で詰まるんです。「データをどうやってしまうか」が分からなくて……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>いいテーマだ。今日は「データをどんな形で表すか」、つまり<span class="term" data-tip="データをどんな形で表すかの決め方。本のしまい方・並べ方のルール。">データモデル</span>の話をしよう。これはソフト開発でいちばん大事な部分かもしれない。書き方だけじゃなく、<b>僕らが問題そのものをどう考えるか</b>にまで影響するんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ただの「保存の仕方」じゃないんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>現実の人やモノを、まずアプリのコードでオブジェクトとして表し、保存するときにJSON・テーブル・グラフといった汎用モデルで表し直す。その下ではバイト列、もっと下では電流や光……何層にもなってて、<b>各層がきれいなモデルを提供して下の複雑さを隠してる</b>。だから別々のグループが効率よく協力できるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いちばん有名なデータモデルって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>たぶん<b>SQL</b>のモデルだ。1970年にEdgar Coddが考えた<span class="term" data-tip="データを表（テーブル）と行（タプル）で整理するモデル。">リレーショナルデータモデル</span>が土台。データを<span class="term" data-tip="SQLではテーブル（表）と呼ばれる、順序のないタプル（行）の集まり。">リレーション</span>＝テーブルとして整理し、1つのテーブルは順序のない<span class="term" data-tip="SQLでいう行。">タプル（行）</span>の集まりなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ふだん見てるあの表ですね。最初から人気だったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最初は理論で「効率よく実装できるのか」と疑われた。でも1980年代半ばには<b>RDBMS</b>とSQLが定番の道具になり、それから25〜30年支配的だった。コンピュータの歴史では永遠とも思える長さだよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もともと何のために？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>起源は<b>ビジネスデータの処理</b>。1960〜70年代にメインフレームでやってた。代表は2つ。<b>トランザクション処理</b>（販売・銀行取引・予約・在庫確保みたいな入力処理）と<b>バッチ処理</b>（請求・給与・レポートを溜めてまとめてやる処理）。狙いは<b>きれいなインターフェースで裏側の実装を隠す</b>ことだった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ライバルはいなかったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>たくさん現れては消えた。1970〜80年代初めは<b>ネットワークモデル</b>と<b>階層モデル</b>、80年代終わりは<b>オブジェクトDB</b>、2000年代初めは<b>XML DB</b>。みんなブームを作ったが長続きせず、リレーショナルが圧倒した。しかも汎用性が高くて、Web出版・掲示板・SNS・eコマース・ゲーム・SaaSと幅広く使われ続けてる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：背表紙ラベルと索引カードで管理する図書館</h4>
+      <p>リレーショナルモデルは、本を<b>棚にきちんと並べ、1冊ごとに索引カード（行）を作って、同じ様式のカードを引き出し（テーブル）にまとめる</b>やり方です。著者名・出版年・分類…と決まった欄に書く。司書（DB）に「○○の本ください」と頼めば、複雑な探し方を知らなくても出てくる――裏側の手順を隠してくれるのが強み。だからどんなジャンルの蔵書でも回せる万能の整理術として、長く図書館を支配してきました。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「テーブルと行」というありふれた形が、実は理論から生まれた強力なモデルだと理解できる。</li>
+        <li>リレーショナルDBがなぜ長く主流だったか（汎用性と実装の隠蔽）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リレーショナルモデル＝データを「リレーション（テーブル）」と「タプル（行）」で表す。1970年Codd提唱。</li>
+        <li>RDBMSとSQLは1980年代半ばから30年近く支配的。</li>
+        <li>起源はビジネスデータ処理（トランザクション処理とバッチ処理）。</li>
+        <li>狙いは「きれいなインターフェースで実装の詳細を隠す」こと。</li>
+        <li>ネットワーク・階層・オブジェクト・XMLなどのライバルは長続きしなかった。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.1.1 NoSQLの誕生 ===== -->
+<section id="s211">
+  <div class="sec-head"><div class="sec-num">2.1.1</div><div><h2>NoSQLの誕生</h2><span class="tag">「SQLを使わない」ではなく「SQLだけじゃない」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：NoSQLは特定技術ではなく、もとはハッシュタグ由来の言葉で「Not Only SQL」の意。スケーラビリティ・オープンソース志向・特殊クエリ・スキーマ制約への不満が普及の背景。今後はリレーショナルと非リレーショナルを併用する「ポリグロットパーシステンス」が現実的。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最近よく聞く「NoSQL」って、SQLを使わないってことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが不幸な名前でね。「NoSQL」は特定の技術を指してない。もとは2009年に、リレーショナルじゃない分散DBの集まり（ミートアップ）のために使われた、目を引く<b>Twitterのハッシュタグ</b>だっただけなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、ただのハッシュタグ！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>でも妙に神経を刺激して急速に広まり、後づけで<b>Not Only SQL（SQLだけじゃない）</b>と解釈されるようになった。「使わない」じゃなく「だけじゃない」だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでそんなに広まったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>理由は4つ。①リレーショナルでは出しにくい<b>スケーラビリティ</b>（巨大データ・高い書き込みスループット）が要った。②商用より<b>フリーでオープンなソフト</b>が好まれた。③リレーショナルが苦手な<b>特殊なクエリ操作</b>があった。④<b>スキーマの制約への不満</b>と、もっと動的で表現力あるモデルへの欲求。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあこれからはNoSQLが主流に？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>どっちかが勝つ話じゃない。アプリごとに要求が違うから、リレーショナルは幅広い非リレーショナルDBと<b>併せて</b>使われていく。この「複数のモデルを組み合わせて保存する」考え方を<span class="term" data-tip="複数のモデル（道具）を適材適所で併用すること。">ポリグロットパーシステンス</span>と呼ぶよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：1つの整理術にこだわらない図書館</h4>
+      <p>NoSQLは「索引カード方式（SQL）をやめる」のではなく、<b>本の性質に合わせて整理術を選ぶ</b>という考え方です。ふつうの本は棚と索引カードで、関連書類は1冊に綴じて、人物資料は系図で――。1つの万能整理術にこだわらず、適材適所で混ぜて使う図書館。これがポリグロットパーシステンスです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「NoSQL＝SQLを使わない」という誤解を解き、用途に応じた併用という現実的な視点を持てる。</li>
+        <li>NoSQLが選ばれる4つの理由を知り、自分のアプリに当てはまるか判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>NoSQLはハッシュタグ由来の言葉で、後に「Not Only SQL」と解釈された。</li>
+        <li>普及の理由：スケーラビリティ、フリー/オープン志向、特殊クエリ、スキーマ制約への不満。</li>
+        <li>今後はリレーショナルと非リレーショナルを併用する（ポリグロットパーシステンス）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1.2 オブジェクトとリレーショナルのミスマッチ ===== -->
+<section id="s212">
+  <div class="sec-head"><div class="sec-num">2.1.2</div><div><h2>オブジェクトとリレーショナルのミスマッチ</h2><span class="tag">アプリのオブジェクトとテーブルがかみ合わない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：オブジェクト指向のコードとテーブルの間には変換の層が要り、これを<b>インピーダンスミスマッチ</b>と呼ぶ。ORMで定型コードは減るが差は消えない。一対多の関係（履歴書のポジションや学歴）は、正規化テーブル・構造型/JSON型・テキスト列へのドキュメント保存の3通りで表せる。履歴書のような自己完結したツリー構造はJSONが向き、ローカリティ（関連データが1カ所）と木構造の明示という長所がある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今のアプリはオブジェクト指向で書きますよね。SQLと相性いいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこがSQLへのよくある批判だ。データをテーブルに保存するなら、コードの中の<b>オブジェクト</b>とDBの<b>テーブル・行・列</b>の間に、不格好な変換の層が要る。このズレを<span class="term" data-tip="オブジェクトとテーブルの形が合わずぎくしゃくすること。もとは電子工学の用語。">インピーダンスミスマッチ</span>と呼ぶんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>インピーダンス……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もとは電子工学で、回路をつなぐとき両方の「電流の流れにくさ」が一致してると電力が最大限伝わり、合わないと信号が反射してトラブルになる。オブジェクトとテーブルの形が合わないとぎくしゃくする、というたとえだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ORMを使えば解決するって聞きました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="Object-Relational Mapping。オブジェクトとテーブルの変換を肩代わりする道具。">ORM</span>（ActiveRecordやHibernate）は変換の定型コードを減らしてくれる。でも2つのモデルの差を<b>完全には</b>隠せないんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体例で見たいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>LinkedInのプロフィール（履歴書）を考えよう。プロフィール全体は<b>user_id</b>で指定でき、名・姓は一度しか出ないから<b>users</b>テーブルの列にできる。でも仕事（ポジション）は複数、学歴も連絡先も数がバラバラ。これが<span class="term" data-tip="1人のユーザーに複数のポジションや学歴がぶら下がる関係。1冊に複数の章。">一対多</span>の関係だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1人に複数ぶら下がる、と。どう表すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3つある。①伝統的に<b>position・education・contact</b>を別テーブルにして<span class="term" data-tip="別の場所のデータを指す請求記号のようなもの。">外部キー参照</span>を張る＝<b>正規化された表現</b>。②SQLの構造データ型やXML型・JSON型を使い、複数値を1行に入れる。③ジョブ・学歴・連絡先を<b>JSONやXMLのドキュメント</b>にしてテキスト列に放り込む（ただし中身にクエリはかけられない）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>履歴書みたいな「ほぼ自己完結した塊」ならJSONが向いてそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさに。履歴書みたいなデータには、こんなJSONがぴったりだ。</div></div>
+    </div>
+
+    <h3 class="blk">一対多を表す3つの方法</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🗂️</div><h4>①別テーブル＋外部キー</h4><p>position/education/contactを別の引き出しにし、IDで参照。<b>正規化された表現</b>。</p><span class="pill">正規化</span></div>
+      <div class="mini"><div class="ic">🧩</div><h4>②構造型/JSON型の列</h4><p>複数値を1行の中に構造データ型・XML型・JSON型で入れる。</p><span class="pill">1行に内包</span></div>
+      <div class="mini"><div class="ic">📄</div><h4>③テキスト列にドキュメント</h4><p>JSON/XMLにして文字列として保存。ただし中身へのクエリは不可。</p><span class="pill">塊で保存</span></div>
+    </div>
+
+    <p style="margin-top:14px">このコードは、LinkedInのプロフィール（名前・職歴・学歴・連絡先）を1つのJSONの書類としてまとめたものです。職歴や学歴が「配列」として入れ子になっている点に注目。</p>
+    <details class="code"><summary>LinkedInプロフィールのJSON表現</summary>
+<pre><span class="cmt">// LinkedInのプロフィールをJSONドキュメントとして表したもの。</span>
+<span class="cmt">// user_id は本人を指す番号、positions は職歴の配列、</span>
+<span class="cmt">// education は学歴の配列、contact_info は連絡先のまとまり。</span>
+{
+  <span class="str">"user_id"</span>:     <span class="num">251</span>,
+  <span class="str">"first_name"</span>:  <span class="str">"太郎"</span>,
+  <span class="str">"last_name"</span>:   <span class="str">"山田"</span>,
+  <span class="str">"summary"</span>:     <span class="str">"ある財団の共同会長。... 活発なブロガー。"</span>,
+  <span class="str">"region_id"</span>:   <span class="str">"jp:13"</span>,
+  <span class="str">"industry_id"</span>: <span class="num">131</span>,
+  <span class="str">"photo_url"</span>:   <span class="str">"/p/7/000/253/05b/308dd6e.jpg"</span>,
+  <span class="str">"positions"</span>: [
+    {<span class="str">"job_title"</span>: <span class="str">"共同会長"</span>, <span class="str">"organization"</span>: <span class="str">"山田記念財団"</span>},
+    {<span class="str">"job_title"</span>: <span class="str">"共同創業者・会長"</span>, <span class="str">"organization"</span>: <span class="str">"ツバサ社"</span>}
+  ],
+  <span class="str">"education"</span>: [
+    {<span class="str">"school_name"</span>: <span class="str">"東京大学"</span>,   <span class="str">"start"</span>: <span class="num">1973</span>, <span class="str">"end"</span>: <span class="num">1975</span>},
+    {<span class="str">"school_name"</span>: <span class="str">"桜ヶ丘高校"</span>,  <span class="str">"start"</span>: <span class="kw">null</span>, <span class="str">"end"</span>: <span class="kw">null</span>}
+  ],
+  <span class="str">"contact_info"</span>: {
+    <span class="str">"blog"</span>:    <span class="str">"http://taro-notes.example.com"</span>,
+    <span class="str">"twitter"</span>: <span class="str">"http://twitter.com/yamada_taro"</span>
+  }
+}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>JSONはXMLよりずっと単純だ。MongoDB、RethinkDB、CouchDB、Espresso みたいな<b>ドキュメント指向DB</b>がこのモデルをサポートしてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>JSONならインピーダンスミスマッチが減りそうですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう感じる人もいる。ただJSONにも問題はあって（4章で扱う）、「スキーマがない」利点も後で（2.1.5.2）話す。今は大きな長所を見よう。<span class="term" data-tip="関連するデータが1カ所にまとまっていること。一度で取れる。">ローカリティ</span>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ローカリティ……局所性、ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「関連するデータが1カ所にまとまってる」こと。正規化テーブルだとプロフィール全体を取るのにuser_idで何回もクエリするか、<span class="term" data-tip="別々の表を参照でつなげて1つにまとめる操作。">結合（ジョイン）</span>を何度もしないといけない。JSONなら関連情報が全部1カ所だから<b>一度のクエリ</b>で済む。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バラバラに取りに行かなくていいんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。それに一対多の関係は、データが<b>木構造（ツリー）</b>になってることを示す。JSON表現だとそのツリー構造が見た目にもはっきり表れてるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：履歴書は「1冊に綴じた書類ファイル」</h4>
+      <p>1人の履歴書には、職歴・学歴・連絡先が何枚もぶら下がります（一対多＝1冊に複数の章）。これをバラバラの引き出しに分けて入れる（正規化テーブル）と、取り出すたびに引き出しを何往復もすることに。一方、<b>1人分を1冊のクリアファイルに全部綴じておけば、一度手に取るだけで全部読めます</b>（ローカリティ）。しかも目次を見れば「職歴の章・学歴の章」と構造がひと目で分かる（木構造の明示）。これがドキュメント（JSON）の長所です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>アプリのオブジェクトとDBのテーブルがなぜ「かみ合わない」のか（インピーダンスミスマッチ）を説明できる。</li>
+        <li>一対多の関係を3通りで表現でき、JSON（ドキュメント）が向く場面を判断できる。</li>
+        <li>ローカリティ（1回のクエリで取れる）という性能上の利点を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>インピーダンスミスマッチ＝オブジェクトとテーブルの形のズレ。ORMでも完全には消えない。</li>
+        <li>一対多の関係は「別テーブル＋外部キー」「構造型/JSON型」「テキスト列へのドキュメント」の3通り。</li>
+        <li>履歴書のような自己完結ツリーはJSONが好相性。</li>
+        <li>JSONの利点はローカリティ（一度のクエリで取れる）と木構造の明示。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.1.3 多対一と多対多 ===== -->
+<section id="s213">
+  <div class="sec-head"><div class="sec-num">2.1.3</div><div><h2>多対一と多対多の関係</h2><span class="tag">IDで参照する正規化 ― そしてドキュメントの弱点</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：人間に意味のある値（地域名・業界名）は、複製せずIDで1カ所に保存するのが<b>正規化</b>の鍵。複製は更新負担と不整合を招く。正規化には多対一の関係が要るが、これはドキュメントモデルに不向きで、結合の弱いドキュメントDBではアプリ側で結合を真似ることになる。アプリが育つと組織のエンティティ化や推薦文のような多対多の関係が生まれ、参照と結合が必要になる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきのJSONで<b>region_id</b>や<b>industry_id</b>が数字のIDでしたよね。なんで「グレーターシアトル地域」みたいな文字列をそのまま入れないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい着眼点だ。自由記述ならそのまま保存していい。でも地域や業界の<b>標準化リスト</b>を用意してドロップダウンで選ばせる方式には、たくさんメリットがあるんだ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①スタイルやスペルを統一できる。②同名都市の曖昧さを排除。③更新が楽（名前は1カ所だから一気に直せる）。④ローカライズ（翻訳）しやすい。⑤検索性が上がる――「神奈川県の慈善家」検索で、リストに「横浜は神奈川県にある」と入れておけばマッチできる。文字列だけじゃどの県か分からないからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>IDにすると、いいことだらけ。でもなんでそんなに違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>複製（コピー）</b>の問題なんだ。IDを使えば意味のある情報（「慈善活動」って言葉）は<b>1カ所だけ</b>に保存され、参照する場所はぜんぶIDを使う。テキストを直接保存すると、その情報を使うレコードすべてに<b>複製</b>される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複製すると何が困るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ID自体は人間に意味がないから<b>決して変える必要がない</b>。でも意味のあるものはいつか変わる。そのとき複製されてたらコピー全部を更新しなきゃならず、書き込みの負担と<b>不整合</b>のリスク（一部だけ古いまま）を招く。この複製を取り除くのがDBの<span class="term" data-tip="同じ情報をダブらせずIDで1カ所参照すること。">正規化</span>の鍵だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>正規化って、その「ダブりをなくす」ことなんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。正規化と非正規化は議論が尽きないテーマだけど、今は判断を保留する（第Ⅲ部で戻る）。さて、正規化すると<span class="term" data-tip="多くの本が同じジャンルに属すような関係。">多対一</span>の関係が必要になる。1つの地域に多くの人が住み、1つの業界で多くの人が働く、というやつだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>その多対一は、ドキュメントモデルでも大丈夫ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが弱点。多対一は<b>ドキュメントモデルにうまく合わない</b>。リレーショナルは結合が簡単だけど、ドキュメントDBは一対多のツリーには結合が要らない代わりに、<b>結合のサポートが弱い</b>ことが多い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結合がないと、どうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリのコードで結合を<b>エミュレート</b>（真似て再現）する。DBに複数回クエリを投げる。この例なら地域・業界のリストは小さくゆっくりしか変わらないからメモリに持てるけど、結合の処理がDBからアプリに移ってきちゃうわけだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最初はドキュメントでうまくいっても、後で困りそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさに。機能が増えるとデータ同士がつながる。例えば①<b>組織や学校のエンティティ化</b>――organizationやschool_nameがただの文字列じゃなく「エンティティへの参照」になり、各組織が独自のWebページを持つ。②<b>推薦文</b>――あるユーザーが他のユーザーに推薦文を書け、書いた人の写真と一緒に表示される。推薦者が写真を更新したら表示にも<b>新しい写真が反映</b>されなきゃいけない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>写真を複製して持ってたら、更新が反映されないですもんね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。だから推薦文は著者プロフィールへの<b>参照</b>を含む必要がある。こうした新機能は<span class="term" data-tip="本同士が引用し合うような網の関係。">多対多</span>の関係を生み、参照と結合が必要になるんだ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini" style="border-color:#ff6b8b55"><div class="ic">📋📋</div><h4>値を直接保存（複製）</h4><p>「慈善活動」という言葉を使う全レコードにコピー。<br><b>名前が変わると全コピーを直す手間＋不整合リスク</b>。</p></div>
+      <div class="mini" style="border-color:#5ee7a055"><div class="ic">🔖</div><h4>IDで参照（正規化）</h4><p>意味のある情報は1カ所、他はIDで指す。<br><b>IDは不変。名前が変わっても1カ所直すだけ</b>。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：ジャンル名は「請求記号」で1カ所に</h4>
+      <p>もし全部の本のカードに「慈善活動」とジャンル名を手書きで写したら、ジャンル名が変わったとき<b>何千枚ものカードを書き直す</b>羽目になり、写し間違い（不整合）も起きます。だから図書館は、ジャンルに<b>請求記号（ID）</b>を1つ割り当て、各カードには記号だけ書く（正規化）。多くの本が同じジャンル記号を指す＝多対一です。さらに本同士が「この本はあの本を参照」と引用し合うと、人物相関の系図のような<b>多対多の網</b>になり、クロスリファレンスカード（参照＝結合）でたどる必要が出てきます。これがドキュメント（1冊綴り）方式の苦手な領域です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>値を直接保存するかIDで参照するかを、正規化（複製の排除）の観点で判断できる。</li>
+        <li>多対一・多対多の関係がドキュメントモデルに不向きだと理解し、結合の必要性を見越せる。</li>
+        <li>アプリの成長でデータがつながっていく（多対多が現れる）ことを予測して設計できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>値を直接保存＝複製、IDで参照＝正規化（1カ所に保存）。複製は更新負担と不整合の原因。</li>
+        <li>IDは意味を持たないので変える必要がない。これが正規化の利点。</li>
+        <li>正規化には多対一の関係が必要だが、ドキュメントモデルには不向き（結合が弱い）。</li>
+        <li>アプリの成長で多対多の関係（組織のエンティティ化、推薦文など）が生まれ、参照と結合が要る。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.1.4 歴史を繰り返すのか ===== -->
+<section id="s214">
+  <div class="sec-head"><div class="sec-num">2.1.4</div><div><h2>ドキュメントデータベースは歴史を繰り返すのか？</h2><span class="tag">多対多と結合の悩みは半世紀前からあった</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：多対多と結合をめぐる議論はNoSQLよりずっと古く、1970年代のIMS（階層モデル）にさかのぼる。階層モデルはJSON同様のツリー構造で、一対多は得意だが多対多と結合が苦手。これは今のドキュメントDBの悩みとそっくり。当時の解決策がリレーショナルモデルとネットワークモデルで、両者は「大論争」を繰り広げた。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>多対多と結合の弱点、最近の議論ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実はずっと古い。最初期のコンピュータDBまでさかのぼる。1970年代、ビジネスデータ処理で最も使われたのがIBMの<b>IMS</b>（Information Management System）。もともとアポロ宇宙計画の在庫管理のために作られ、1968年に商用リリースされた。今でもIBMのメインフレームで動いてるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>50年以上前のDBが現役！ どんな仕組みですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>IMSは<span class="term" data-tip="すべてのデータを、レコードが入れ子になった1本のツリーとして表すモデル。">階層モデル</span>というごく単純なモデルを使う。これがドキュメントDBのJSONモデルにそっくりで、すべてのデータをレコードが入れ子になった<b>ツリー</b>で表すんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあIMSも同じ弱点を……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。IMSは一対多はうまく扱えるけど<b>多対多が苦手で、結合もサポートしてない</b>。開発者はデータを複製（非正規化）するか、レコードからレコードへの参照を自分でたどるか選ぶしかなかった。今のドキュメントDBの悩みとそっくりだろ？ だから「歴史を繰り返すのか？」って問いになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>当時、その弱点をどう解決したんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いろんな方法が提案され、中でも傑出したのが2つ。<b>リレーショナルモデル</b>（これがSQLになって世界を制覇）と<b>ネットワークモデル</b>（最初は支持を集めたが廃れた）。この2陣営の「大論争」が1970年代を通じて続いた。今でも意味があるから振り返ろう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：「1冊にまとめる綴じ方」は昔も今も同じ壁にぶつかる</h4>
+      <p>IMSの階層モデルは、まさに今のドキュメント（1冊綴り）方式の祖先です。1冊の中に章を入れ子にする一対多は得意。でも「この本とあの本が互いに引用し合う」多対多の網になると、綴じ方では表せず、いちいち別の本を手作業でたどるしかない。半世紀前の図書館員が悩んだのと、今のエンジニアが悩むのは同じ壁なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>今のドキュメントDBの弱点が、半世紀前の階層モデルの問題の再来だと歴史的に理解できる。</li>
+        <li>流行（NoSQL）に飛びつく前に、過去の教訓から学ぶ姿勢を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>1970年代のIMSは階層モデル（ツリー構造）で、JSONに似ている。</li>
+        <li>階層モデルは一対多が得意、多対多と結合が苦手（今のドキュメントDBと同じ）。</li>
+        <li>階層モデルの制約への解決策がリレーショナルモデルとネットワークモデル。</li>
+        <li>両者の大論争が1970年代に続いた。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1.4.1 ネットワークモデル ===== -->
+<section id="s2141">
+  <div class="sec-head"><div class="sec-num">2.1.4.1</div><div><h2>ネットワークモデル（CODASYL）</h2><span class="tag">手で道順をたどる ― 柔軟性に欠ける旧モデル</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ネットワークモデル（CODASYL）は階層モデルを一般化し、レコードが複数の親を持てるので多対一・多対多が表せる。リンクはポインタのようなもので、ルートからアクセスパスをたどってデータに到達する。当時の貧弱なハードには効率的だったが、コードが複雑で柔軟性に欠け、データモデルの変更が困難だった。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まずネットワークモデルから。どんなものですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>CODASYL</b>という協議会で標準化されたから<b>CODASYLモデル</b>とも呼ぶ。階層モデルを<b>一般化</b>したものだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一般化、というと？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>階層モデルのツリーではどのレコードも親を<b>必ず1つだけ</b>持つ。でもネットワークモデルではレコードが<b>複数の親</b>を持てる。例えば「グレーターシアトル地域」レコードに、その地域に住む全ユーザーがリンクできる。これで多対一や多対多が表せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リンクって、外部キーみたいなもの？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ちょっと違う。外部キーじゃなく、プログラミング言語の<b>ポインタ</b>みたいなもの（ただしディスク上に保存）。レコードにアクセスする唯一の方法は、ルート（根っこ）から、リンクの連鎖に沿ってパスをたどること。これを<span class="term" data-tip="目的のデータに着くまでの道順。昔は手で指定した。">アクセスパス</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>道順をたどっていくんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。単純だとリンクリスト（数珠つなぎ）をたどる感じ。でも多対多があると同じレコードへのパスが複数でき、プログラマは複数パスを追跡しなきゃならない。CODASYLのクエリは、リストを繰り返し処理してアクセスパスをたどり、DB内で<b>カーソル</b>を動かす。協議会メンバーすら「n次元のデータ空間を航行してるようだ」と認めてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>大変そう……なんでそんな面倒なやり方を？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1970年代のハードがきわめて限られてたから。テープドライブはシーク（位置移動）が極端に遅く、手動でアクセスパスを選ぶのが限られたハードを最も効率よく使う方法だった。でも代償としてクエリや更新のコードが<b>複雑で柔軟性に欠ける</b>ものになった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>柔軟性がないと、何が困るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>求めるデータへのパスが分かってない状況がやっかいだ。アクセスパスは変更できるけど、その場合プログラマは大量のクエリを全部調べて書き換えなきゃいけない。つまり<b>データモデルに変更を加えるのが難しかった</b>んだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：目当ての本まで「順路を全部自分で指示」する図書館</h4>
+      <p>ネットワークモデルは、「入口から3番目の棚へ行き、左の列の上から5冊目、そこから紐でつながった次の本へ…」と<b>道順（アクセスパス）を司書に逐一指示</b>しないと本が出てこない図書館です。本棚の配置を少しでも変えたら、書き留めた順路メモを全部書き直す羽目に。これが「変更しにくい」という弱点でした。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「手動でアクセスパスをたどる」古い方式の発想と、その欠点（変更の困難さ）を理解できる。</li>
+        <li>なぜリレーショナルモデルが革命的だったのかを、対比で深く理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ネットワークモデル＝CODASYLモデル。階層モデルの一般化でレコードが複数の親を持てる。</li>
+        <li>多対一・多対多が表せる。リンクはポインタ的で、アクセスパスをたどってアクセスする。</li>
+        <li>当時のハードには効率的だが、コードが複雑・柔軟性不足でモデル変更が難しかった。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1.4.2 リレーショナルモデル ===== -->
+<section id="s2142">
+  <div class="sec-head"><div class="sec-num">2.1.4.2</div><div><h2>リレーショナルモデル</h2><span class="tag">道順は不要 ― オプティマイザが自動で選ぶ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リレーショナルモデルはデータをオープンに配置し、複雑なアクセスパスを手でたどる必要がない。どのインデックスをどの順で使うかは<b>クエリオプティマイザ</b>が自動判断するので、開発者は意識せずに済み、新しいインデックスを宣言するだけで新機能を追加できる。オプティマイザの構築は大変だが、一度作れば全アプリが恩恵を受ける。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>対するリレーショナルモデルは、何が違ったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>発想が真逆。すべてのデータが<b>オープンに配置</b>される。リレーション（テーブル）は単なるタプル（行）の集まりで、それだけ。込み入った構造もなく、データを見るために複雑なアクセスパスをたどる必要もない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>アクセスパスがいらない？ じゃあどうやって読むんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>行はどれか1つ読んでも全部読んでもいい。任意の条件にマッチする行を選べるし、いくつかの列をキーに特定の行を読める。外部キー関係を気にせず任意のテーブルに新しい行を追加できる。自由なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、どのインデックスをどの順で処理するか、誰が決めるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが肝心。<span class="term" data-tip="どの索引をどの順で使うか自動で決める仕組み。ベテラン司書のような存在。">クエリオプティマイザ</span>が、クエリ各部の実行順序やどのインデックスを使うかを自動判断する。事実上「アクセスパス」を選ぶんだが、違いは<b>開発者じゃなくオプティマイザが自動で決める</b>こと。だから開発者はたいてい気にしなくていい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>新しい検索の仕方をしたくなったら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>新しい<b>インデックス</b>を宣言するだけ。するとクエリは最適なインデックスを自動で使う。書き直さなくても活用される。だからリレーショナルは新機能を足すのがはるかに楽なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>オプティマイザを作るの、すごく大変そうですけど。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り、複雑な代物で長年研究されてきた。でも肝心なのは<b>一度作れば、そのDBを使う全アプリが恩恵を受ける</b>こと。特定クエリのためにアクセスパスを手書きするより、長い目で見れば<b>汎用的な解が勝つ</b>んだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：頼めば最短の探し方を考えてくれるベテラン司書</h4>
+      <p>リレーショナルモデルでは、利用者は「○○についての本ください」と<b>ほしい結果だけ</b>を伝えればいい。順路は<b>ベテラン司書（クエリオプティマイザ）</b>が「この索引から引いて、こう棚をたどれば最短」と自動で考えてくれます。新しい探し方が欲しければ<b>新しい索引（インデックス）を1つ作る</b>だけ。利用者は頼み方を変えずに済みます。この優秀な司書を一度育てれば、全利用者がその恩恵を受けるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>クエリオプティマイザが「アクセスパスを自動で選ぶ」役割を理解し、宣言的に書ける利点を説明できる。</li>
+        <li>新しいインデックスを宣言するだけで最適化される、という柔軟性の高さを理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リレーショナルモデルはデータをオープンに配置、複雑なアクセスパスは不要。</li>
+        <li>どのインデックス・どの順で実行するかはクエリオプティマイザが自動判断。</li>
+        <li>新しいインデックスを宣言するだけで活用され、新機能追加が楽。</li>
+        <li>オプティマイザの構築は大変だが、一度作れば全アプリが恩恵を受ける（汎用解が勝つ）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1.4.3 ドキュメントDBとの比較 ===== -->
+<section id="s2143">
+  <div class="sec-head"><div class="sec-num">2.1.4.3</div><div><h2>ドキュメントデータベースとの比較</h2><span class="tag">似て非なる ― CODASYLの轍は踏んでいない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ドキュメントDBは一対多をツリーの中に入れ子にする点で階層モデルに回帰している。しかし多対一・多対多は、リレーショナルもドキュメントも一意の識別子（外部キー／ドキュメント参照）で参照し、読み取り時に解決する点で本質的に同じ。参照を挿入時に固定したCODASYLとは違い、ドキュメントDBはその轍を踏んでいない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ今のドキュメントDBは、昔のネットワークモデルの再来なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>慎重に見たほうがいい。ドキュメントDBは<b>1つの面では階層モデルに回帰</b>してる。ネストされたレコード（履歴書のpositions・education・contact_infoみたいな一対多）を、独立テーブルじゃなく<b>親のレコードの中に</b>保存してる点だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ツリーの中に入れ子にする、という点ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。でも<b>多対一・多対多の表現という点では、リレーショナルとドキュメントに基本的な違いはない</b>。どちらも関連アイテムを一意の識別子で参照する。リレーショナルでは<b>外部キー</b>、ドキュメントでは<b>ドキュメント参照</b>と呼ぶけど、やってることは同じ。その識別子は結合やフォローアップのクエリで<b>読み取り時に</b>解決される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、じゃあ昔のCODASYLとは違うんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが大事。CODASYLは参照を<b>挿入時</b>に解決して固定しちゃってたけど、ドキュメントDBは読み取り時に解決する。だから今のところドキュメントDBは、CODASYLのたどった道（柔軟性のない手動アクセスパス）を繰り返しては<b>いない</b>んだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：参照は「読むときにたどる」現代の図書館</h4>
+      <p>昔のCODASYLは、本を棚に入れる<b>その瞬間に紐で別の本へ固定的に結びつけて</b>、後から配置を変えにくくしました。今のドキュメントDBやリレーショナルは、カードに「○○を参照」と請求記号を書いておくだけ。実際にたどるのは<b>読みたくなったとき</b>です。だから配置換えも自由。同じ「参照」でも、固定するか・読むときたどるかが、柔軟性の決定的な差なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ドキュメントDBと階層/ネットワークモデルの「似て非なる」点を区別できる。</li>
+        <li>外部キーとドキュメント参照が本質的に同じ仕組み（読み取り時に解決）だと理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ドキュメントDBは一対多をツリーに入れ子にする点で階層モデルに回帰。</li>
+        <li>多対一・多対多はリレーショナル（外部キー）もドキュメント（ドキュメント参照）も識別子で参照、読み取り時に解決。</li>
+        <li>挿入時に参照を固定したCODASYLとは異なり、ドキュメントDBはその欠点を繰り返していない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.1.5 今日のリレーショナルとドキュメント ===== -->
+<section id="s215">
+  <div class="sec-head"><div class="sec-num">2.1.5</div><div><h2>今日のリレーショナルデータベースとドキュメントデータベース</h2><span class="tag">それぞれの強み ― この章はデータモデルに集中</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リレーショナルとドキュメントの比較は本章ではデータモデルの違いに集中する。ドキュメントの強みは<b>スキーマの柔軟性・ローカリティ・アプリに近い構造</b>。リレーショナルの強みは<b>結合と多対一・多対多のサポート</b>。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結局、リレーショナルとドキュメント、どっちを選べばいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>比べる違いはいろいろある。耐障害性（5章）や並行処理（7章）もそうだ。でもこの章では<b>データモデルの違い</b>だけに集中しよう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データモデルの観点だと、それぞれの強みは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ドキュメントを推す理由は3つ。<b>スキーマの柔軟性</b>、<b>ローカリティから来る良い性能</b>、<b>アプリによってはデータ構造がアプリのものに近い</b>こと。逆にリレーショナルは<b>結合</b>や<b>多対一・多対多のサポート</b>に優れる。1つずつ見ていこう。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini" style="border-color:#42d6c355"><div class="ic">📄</div><h4>ドキュメントの強み</h4><p>①スキーマの柔軟性<br>②ローカリティ（良い性能）<br>③アプリの構造に近い</p></div>
+      <div class="mini" style="border-color:#6c8cff55"><div class="ic">🗂️</div><h4>リレーショナルの強み</h4><p>①結合のサポート<br>②多対一・多対多の関係<br>③汎用的で実績豊富</p></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>両モデルの強みを3点ずつ整理し、選択の判断軸を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ドキュメントの強み：スキーマの柔軟性、ローカリティ、アプリに近い構造。</li>
+        <li>リレーショナルの強み：結合、多対一・多対多のサポート。</li>
+        <li>耐障害性や並行処理の違いは別章（5章・7章）で扱う。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1.5.1 ===== -->
+<section id="s2151">
+  <div class="sec-head"><div class="sec-num">2.1.5.1</div><div><h2>アプリのコードをシンプルにするモデルは？</h2><span class="tag">データの形しだい ― 関係が強いほどグラフが自然</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：コードがシンプルになるモデルはデータの形による。一対多のツリーで全体を一度に読むならドキュメントが向く（リレーショナルだと細分化で複雑化）。ドキュメントはネスト要素を直接参照できず、多対多が必要だと魅力が薄れる（非正規化やエミュレートでコード複雑化・性能低下）。関係性が強いほどグラフモデルが自然。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どっちのモデルだと、アプリのコードがシンプルになりますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データの形による。アプリのデータが<b>ドキュメントのような構造</b>――一対多のツリーで、ふつうツリー全体を一度にロードする――ならドキュメントモデルがいい。これをリレーショナルでやると<b>細分化（shredding）</b>といって、ドキュメント的構造を複数テーブルにバラすことになり、スキーマが込み入ってコードが不必要に複雑になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ドキュメントモデルに弱点はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。ドキュメント内にネストされたアイテムは<b>直接参照できない</b>。「ユーザー251のポジションのリストの2番目」みたいに指定しなきゃいけない。階層モデルのアクセスパスに似てる。ただネストが深すぎなければ普通は問題にならない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結合が弱いのは、いつも困るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリ次第。例えばイベントと発生時刻を記録する分析アプリなら多対多が要らないかもしれず、問題にならない。でも本当に多対多が必要なら魅力は薄れる。非正規化で結合の必要性を下げられるけど、その分「非正規化データの整合性を保つ処理」が増える。結合をアプリから複数リクエストでエミュレートもできるけど、コードは複雑になりDB内の特化コードより遅くなる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ結局、どっちがシンプルって一概には言えない？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一般論では言えない。<b>データのアイテム間の関係の種類</b>による。関係性が強い（つながりが多い）と、ドキュメントは扱いにくく、リレーショナルは許容範囲、そして<b>グラフモデルが最も自然</b>になる。グラフは2.3で扱うよ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>一対多のツリー（関係が少ない）</h4><p>全体を一度に読むなら<b>ドキュメント</b>が向く。リレーショナルだと細分化で複雑化。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>多対多が必要（関係が中くらい）</h4><p><b>リレーショナル</b>が許容範囲。ドキュメントは非正規化・エミュレートで複雑化・低速化。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>つながりが複雑（関係が強い）</h4><p><b>グラフ</b>が最も自然（→ 2.3で）。</p></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：資料の「つながり具合」で綴じ方を選ぶ</h4>
+      <p>1人分でまとまる履歴書のような資料は<b>1冊に綴じる（ドキュメント）</b>のが一番シンプル。これを無理に何冊もの薄い冊子にバラす（細分化）と、いちいち集めて回る手間が増えます。でも資料同士が引用し合う多対多なら棚＋索引（リレーショナル）が無難。さらに「誰と誰がどうつながるか」が主役の資料は、もう<b>人物相関の系図（グラフ）</b>で描くのが一番自然です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>データの関係の種類（ツリーか網目か）からモデルを選べる。</li>
+        <li>ドキュメントモデルの制約（直接参照不可、結合の弱さ）を踏まえて判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>一対多のツリーで全体を一度に読むならドキュメント向き（リレーショナルは細分化で複雑化）。</li>
+        <li>ドキュメントはネスト要素を直接参照できない（アクセスパス的）。</li>
+        <li>多対多が必要だとドキュメントの魅力は薄れる（非正規化・エミュレートで複雑化・低速化）。</li>
+        <li>どれがシンプルかは関係の種類次第。関係が強いほどグラフが自然。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.1.5.2 スキーマの柔軟性 ===== -->
+<section id="s2152">
+  <div class="sec-head"><div class="sec-num">2.1.5.2</div><div><h2>ドキュメントモデルにおけるスキーマの柔軟性</h2><span class="tag">スキーマオンリード vs スキーマオンライト</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ドキュメントDBはスキーマを強制しない<b>スキーマオンリード</b>（読み取り時に構造を解釈）で、リレーショナルの<b>スキーマオンライト</b>（書き込み時に強制）の逆。動的型/静的型チェックの対比に似て優劣はない。フォーマット変更時に差が出る（アプリ側で補う vs マイグレーション）。スキーマ変更は必ずしも遅くない。構造が不均一なデータにはスキーマオンリードが、均一なデータにはスキーマが有益。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっき保留した「スキーマがない」話、ここですね。スキーマって何でしたっけ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="データの決められた形・型。目録カードの記入様式。">スキーマ</span>は「データの決められた形・型」だ。多くのドキュメントDBやリレーショナルのJSONサポートは、ドキュメント内のデータに<b>スキーマを強制しない</b>。任意のキーと値を追加でき、読み取り時にどんなフィールドが入ってるか保証がない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ドキュメントDBは「スキーマレス」って聞きます。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その言い方は誤解を招く。データを読むコードは普通「何らかの構造があること」を前提にしてる。つまり暗黙にスキーマを想定してるけどDBが強制しないだけ。だから正確には<span class="term" data-tip="読み取り時にだけ構造を解釈する方式。動的型チェックに似る。">スキーマオンリード</span>と呼ぶ。逆にリレーショナルの伝統は<span class="term" data-tip="スキーマを明示し、書き込み時にDBが適合を保証する方式。静的型チェックに似る。">スキーマオンライト</span>だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>読むとき解釈するか、書くとき強制するか、ですね。プログラミングの何かに似てます？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいところに気づいた。スキーマオンリードは<b>動的（実行時）型チェック</b>、スキーマオンライトは<b>静的（コンパイル時）型チェック</b>に似てる。静的派と動的派が大論争してきたように、これも物議を醸す話題で一般に正しい・間違いはない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>違いがいちばん出るのは、どんな時ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データのフォーマットを<b>変更</b>するときだ。例えばフルネーム1フィールドを姓と名に分けたいとする。ドキュメントDBなら、新フィールドで以後のドキュメントを書き始めて、古いのを読んだときの処理をアプリに持たせるだけでいい。こんな感じだ。</div></div>
+    </div>
+
+    <p>このコードは、古い形式（氏名がまとめて1つに入っている）のデータを読んだとき、その場で「名」を取り出して補う処理です。</p>
+    <details class="code"><summary>ドキュメントDB：読み取り時に補う（JavaScript）</summary>
+<pre><span class="cmt">// 古い形式のドキュメント（name に氏名がまとめて入っている）を</span>
+<span class="cmt">// 読んだときに、first_name（名）をその場で補う処理。</span>
+<span class="cmt">// user は1人分のプロフィール、name は「太郎 山田」のような氏名の文字列。</span>
+<span class="kw">if</span> (user &amp;&amp; user.name &amp;&amp; !user.first_name) {
+    <span class="cmt">// ① 2013年12月8日より前に書かれたドキュメントには first_name がない</span>
+    user.first_name = user.name.<span class="fn">split</span>(<span class="str">" "</span>)[<span class="num">0</span>]; <span class="cmt">// ② name を空白で区切って先頭（名）を取り出す</span>
+}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①のコメント通り、古いデータには新フィールドがない。②で空白区切りの先頭をfirst_nameにする。読み取り時に埋めてるわけだ。一方「静的な型付き」のDBスキーマだと、ふつう<span class="term" data-tip="データの形を変えるための移行作業。">マイグレーション</span>をこう実行する。</div></div>
+    </div>
+
+    <p>このSQLは、テーブルに「名」の列を新しく追加し、既存の氏名から名を取り出して埋める移行作業です。</p>
+    <details class="code"><summary>リレーショナル：マイグレーション（SQL）</summary>
+<pre><span class="cmt">-- users テーブルに first_name 列を追加し、既存の name から名を埋めるマイグレーション</span>
+<span class="kw">ALTER TABLE</span> users <span class="kw">ADD COLUMN</span> first_name <span class="kw">text</span>;             <span class="cmt">-- ① 新しい列を追加</span>
+<span class="kw">UPDATE</span> users <span class="kw">SET</span> first_name = <span class="fn">split_part</span>(name, <span class="str">' '</span>, <span class="num">1</span>);   <span class="cmt">-- ② PostgreSQL: name を空白で区切り先頭を入れる</span>
+<span class="kw">UPDATE</span> users <span class="kw">SET</span> first_name = <span class="fn">substring_index</span>(name, <span class="str">' '</span>, <span class="num">1</span>); <span class="cmt">-- ② MySQL: 同じことを MySQL の関数で</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマ変更って、遅くてダウンタイム（停止時間）が出るって聞きました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その評判は必ずしも妥当じゃない。多くのリレーショナルDBは<b>ALTER TABLE</b>を数ミリ秒で処理する。例外はMySQLで、テーブル全体をコピーするから大きいテーブルだと数分〜数時間のダウンタイムが出ることがある。でも回避ツールもいろいろあるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>UPDATEのほうは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きいテーブルへのUPDATEは全行を書き直すからどのDBでも遅い。許容できないなら、ドキュメントDBと同じくfirst_nameをデフォルトのNULLのままにして、読み取り時に埋める手もある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スキーマオンリードが得なのは、どんな場合ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アイテムの構造がバラバラ（<b>ヘテロジニアス</b>＝不均一）な場合だ。①種類の違うオブジェクトが多くて種類ごとに別テーブルにするのが非現実的、②データ構造が外部システムで決まり制御できずいつ変わるか分からない。こういう時はスキーマがデメリットになりがちで、スキーマレスのほうが自然だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>逆に、みんな同じ構造なら？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>全レコードが同じ構造だと期待できるなら、スキーマは「ドキュメント化」と「構造の強制」の点で有益だ。スキーマとその進化は4章で詳しく扱うよ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>観点</th><th>スキーマオンライト（リレーショナル）</th><th>スキーマオンリード（ドキュメント）</th></tr>
+      <tr><td>いつ構造を扱う</td><td>書き込み時に強制（事前に明示）</td><td>読み取り時に解釈（強制しない）</td></tr>
+      <tr><td>似ている型チェック</td><td>静的（コンパイル時）型チェック</td><td>動的（実行時）型チェック</td></tr>
+      <tr><td>フォーマット変更</td><td>マイグレーション（ALTER/UPDATE）</td><td>アプリで読み取り時に補完</td></tr>
+      <tr><td>向くデータ</td><td>全レコードが均一な構造</td><td>不均一・外部依存で変わる構造</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：目録カードの様式を「いつ」そろえるか</h4>
+      <p>スキーマオンライトは、本を<b>受け入れるその場で、決まった様式の目録カードに書かせて</b>はじき出す厳格な受付（書く時にそろえる）。スキーマオンリードは、とりあえずどんなメモでも受け取り、<b>あとで取り出すときに読み手が解釈する</b>ゆるい受付（読む時にそろえる）。どんな本でも様式がバラバラに来る（不均一）なら、ゆるい受付が楽。逆にぜんぶ同じ種類なら、最初に様式をそろえたほうが後で混乱しません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>スキーマオンリードとスキーマオンライトの違いを、型チェックの対比で説明できる。</li>
+        <li>データのフォーマット変更時の対応（読み取り時補完 vs マイグレーション）を選べる。</li>
+        <li>不均一なデータか均一なデータかでスキーマの要否を判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>スキーマレスは誤解を招く語。正確には「スキーマオンリード」（読み取り時に解釈）。</li>
+        <li>対するリレーショナルは「スキーマオンライト」（書き込み時に強制）。動的型/静的型に似て優劣なし。</li>
+        <li>フォーマット変更時、ドキュメントはアプリで補完、リレーショナルはマイグレーション。</li>
+        <li>スキーマ変更は必ずしも遅くない（MySQLは例外、回避ツールあり）。</li>
+        <li>不均一なデータにはスキーマオンリードが、均一なデータにはスキーマが有益。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1.5.3 ローカリティ ===== -->
+<section id="s2153">
+  <div class="sec-head"><div class="sec-num">2.1.5.3</div><div><h2>クエリのためのデータローカリティ</h2><span class="tag">全体を一度に取れる利点と、全体を読む弱点</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ドキュメントは連続した文字列やバイナリで保存され、全体を一度に使うならローカリティで性能が上がる。だが一部しか使わなくても全体をロード・書き直すので、ドキュメントは小さく保つべき。ローカリティの着想はドキュメント専用ではなく、Spannerのインターリーブ、Oracleのクラスタテーブル、Bigtableのカラムファミリーでもリレーショナル/その他で実現される。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ローカリティの話、もう少し詳しく聞きたいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ドキュメントは普通、JSON/XMLとしてエンコードした<b>連続した文字列</b>か、バイナリ型（MongoDBのBSONなど）で保存される。アプリが多くの場合ドキュメント<b>全体</b>にアクセスする（Webページ表示のためなど）なら、この<b>ストレージのローカリティ</b>に性能上のメリットがあるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全体を一気に取れるから速い、ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。複数テーブルに分かれてると、全部取るのに複数回のインデックスのルックアップが要り、ディスクのシークも増えて時間がかかる。でも<b>ローカリティの恩恵は、一度にドキュメントの大部分が必要になる場合に限られる</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一部しか要らないときは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが弱点。一部しか使わなくてもDBはドキュメント<b>全体をロード</b>する。大きいドキュメントだと無駄が多い。更新も同じで全体を書き直す（その場で上書きできるのはサイズが変わらない場合だけ）。だから<b>ドキュメントは小さく保ち、サイズを大きくする書き込みは避ける</b>のが望ましい。この制約のせいで、ドキュメントDBが有効な状況はかなり減るんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ローカリティって、ドキュメントモデルだけの話ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、専用じゃない。Googleの<b>Spanner</b>はテーブルの行を親テーブルの中に<b>インターリーブ（ネスト）</b>できるとスキーマで指定でき、リレーショナルでも同じローカリティを実現する。Oracleの<b>マルチテーブルインデックスクラスタテーブル</b>も似てるし、Bigtableの<b>カラムファミリー</b>（Cassandra/HBaseで使う）も同じ目的を持つ。ローカリティは3章でもまた見るよ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a055"><div class="ic">⚡</div><h4>利点</h4><p>全体を一度に使うなら、複数回のルックアップやシークが要らず速い。</p></div>
+      <div class="mini" style="border-color:#ff6b8b55"><div class="ic">🐢</div><h4>弱点</h4><p>一部しか使わなくても全体をロード・書き直す。大きいと無駄。だから小さく保つ。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：分厚い綴りは「一冊まるごと出し入れ」になる</h4>
+      <p>1冊にまとめた書類綴り（ドキュメント）は、全部を読みたいときは一度手に取るだけで済んで速い。でも<b>たった1ページの数字を直したいだけでも、分厚い綴りを丸ごと取り出して綴じ直す</b>羽目になります。だから綴りは薄く保つのがコツ。ちなみに「関連資料をまとめて近くに置く」工夫は綴り方式の専売特許ではなく、棚方式（リレーショナル）でも、関連する本を隣同士に並べる（Spannerのインターリーブ等）形で実現できます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ローカリティの利点（一度に取れる）と弱点（一部でも全体ロード）を理解し、ドキュメントを小さく保つ判断ができる。</li>
+        <li>ローカリティがドキュメント専用でなく、リレーショナルや他のモデルでも実現できると知る。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ドキュメントは連続文字列/バイナリで保存。全体アクセス時はローカリティで性能向上。</li>
+        <li>一部しか使わなくても全体をロード・書き直すので、ドキュメントは小さく保つ。</li>
+        <li>ローカリティの着想は汎用的（Spannerのインターリーブ、Oracleのクラスタテーブル、Bigtableのカラムファミリー）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.1.5.4 融合 ===== -->
+<section id="s2154">
+  <div class="sec-head"><div class="sec-num">2.1.5.4</div><div><h2>ドキュメント及びリレーショナルデータベースの融合</h2><span class="tag">境界はあいまいに ― ハイブリッドが将来の良策</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リレーショナルとドキュメントは融合しつつある。リレーショナル側はXML（MySQL除く）やJSON（PostgreSQL/MySQL/DB2など）をサポートし、ドキュメント側（RethinkDB、一部MongoDBドライバー）は結合を取り入れた（ただしクライアント側結合は遅い）。両者は補い合い、ハイブリッドが将来の良い方針。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リレーショナルとドキュメント、ずっと別々のままなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実は<b>融合</b>してきてる。ほとんどのリレーショナルDB（MySQLを除く）は2000年代中頃からXMLをサポートし、XMLの一部変更・中身へのインデックス・クエリができる。ドキュメントDBっぽいモデルが使えるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>JSONはどうですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>JSONも進んでる。PostgreSQLは9.3以降、MySQLは5.7以降、IBM DB2は10.5以降で同程度にJSONをサポートしてる。Web APIでJSONが広く使われてることを考えると、他のDBも追随するだろうね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>逆に、ドキュメントDBが結合をサポートし始めたりは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>してるよ。RethinkDBはクエリ言語でリレーショナル的な結合をサポートし、MongoDBのドライバーには参照を自動解決するものがある。ただしこれは実質クライアント側の結合だから、ネットワークのラウンドトリップ（往復）が増え、最適化も甘くて、DB側でやる結合より遅い。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>お互い近づいてるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、いいことだ。それぞれが補い合う。ドキュメント的なデータを扱えてリレーショナルなクエリもかけられれば、アプリは必要に応じて最適な機能の組み合わせを使える。<b>リレーショナルとドキュメントのハイブリッド</b>は、DBにとって将来に向けた良い方針なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：棚も綴りも両方そなえた図書館</h4>
+      <p>最近の図書館は、伝統的な棚＋索引カード（リレーショナル）に加えて、関連書類を1冊に綴じる方式（ドキュメント）も取り入れ、しかも<b>綴りの中身まで索引から検索できる</b>ようになりました。逆に綴り中心の図書館も、別の綴りへの参照をたどる仕組み（結合）を持ち始めた。両方の良さを併せ持つハイブリッドが、これからの図書館の賢いやり方です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>リレーショナルDBでもJSONを扱える現状を知り、両モデルの境界が曖昧になっていると理解できる。</li>
+        <li>ハイブリッドな使い方（ドキュメント保存＋リレーショナルクエリ）の利点を判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リレーショナルDBはXML（MySQL除く）・JSON（PostgreSQL/MySQL/DB2等）をサポート。</li>
+        <li>ドキュメントDBは結合を取り入れつつある（クライアント側結合はDB側より遅い）。</li>
+        <li>両者は融合し補い合う。ハイブリッドモデルが将来の良い方針。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.2 クエリ言語 ===== -->
+<section id="s22">
+  <div class="sec-head"><div class="sec-num">2.2</div><div><h2>データのためのクエリ言語</h2><span class="tag">宣言的（ほしい結果だけ）vs 命令的（手順を全部）</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：SQLは<b>宣言的</b>（ほしい結果のパターンだけ指定）、IMS/CODASYLは<b>命令的</b>（手順を全部指定）。宣言的の利点は3つ――簡潔で扱いやすい、実装の詳細を隠すのでクエリを変えずに性能改善できる、結果のパターンだけ指定するので並列化しやすい（マルチコア時代に有利）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データの「形」が分かりました。次は、それに「問いかける言葉」ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、クエリ言語だ。SQLは<span class="term" data-tip="ほしい結果のパターンだけ指定する書き方。「○○の本ください」。">宣言的</span>クエリ言語で、対するIMSやCODASYLは<span class="term" data-tip="やり方・手順を全部指示する書き方。「棚を1段ずつ見て…」。">命令的</span>コードでクエリしてた。この違い、何を意味すると思う？</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>宣言的と命令的……言葉は聞きますけど、はっきりとは。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>例で見よう。動物の種のリストから「サメだけ」返したい。多くのプログラミング言語は<b>命令的</b>で、こう書く。</div></div>
+    </div>
+
+    <p>このコードは、動物のリストを1つずつ見て、「サメ科」のものだけを集めて返す関数です（手順を全部自分で書く＝命令的）。</p>
+    <details class="code"><summary>命令的なやり方（JavaScript）</summary>
+<pre><span class="cmt">// 動物のリスト animals から「サメ科」のものだけ集めて返す関数（命令的なやり方）。</span>
+<span class="cmt">// animals は動物の配列、各動物は family（科）という属性を持つ。</span>
+<span class="kw">function</span> <span class="fn">getSharks</span>() {
+    <span class="kw">var</span> sharks = [];                              <span class="cmt">// ① 結果を入れる空の入れ物を用意</span>
+    <span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; animals.length; i++) {    <span class="cmt">// ② 動物を1つずつ順番に見ていく</span>
+        <span class="kw">if</span> (animals[i].family === <span class="str">"Sharks"</span>) {     <span class="cmt">// ③ 科が「サメ」なら</span>
+            sharks.<span class="fn">push</span>(animals[i]);              <span class="cmt">// ④ 結果の入れ物に追加する</span>
+        }
+    }
+    <span class="kw">return</span> sharks;                                <span class="cmt">// ⑤ 集めたサメを返す</span>
+}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「入れ物を用意して、ループを回して、条件を見て、追加して…」と<b>手順を全部指定</b>してるよね。これが命令的。一方、数学の<b>関係代数</b>ではこう書ける。</div></div>
+    </div>
+
+    <details class="code"><summary>関係代数（数式）</summary>
+<pre><span class="cmt"># σ（シグマ）は選択演算子。family が "Sharks" の動物だけを返す。</span>
+sharks = σ_(family = <span class="str">"Sharks"</span>) (animals)</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>σ（シグマ、selectionのs）は<b>選択演算子</b>で、family = "Sharks"にマッチする動物だけ返す。SQLは定義時、関係代数の構造にきわめて忠実に沿ってた。だから同じことがSQLでこう書ける。</div></div>
+    </div>
+
+    <p>このSQLは、テーブルから「サメ科」の行だけを全部取り出すよう頼むものです（ほしい結果だけ言う＝宣言的）。</p>
+    <details class="code"><summary>宣言的なやり方（SQL）</summary>
+<pre><span class="cmt">-- animals テーブルから family が「サメ」の行だけ全部取り出すSQL（宣言的なやり方）</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> animals <span class="kw">WHERE</span> family = <span class="str">'Sharks'</span>;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>SQLのほう、すごく短い！ さっきのループが1行に。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが宣言的の特徴。命令型は「指定した操作を指定した順序で行え」と指示する。でも宣言的なSQLや関係代数は、<b>ほしいデータのパターンと、どう変換するか（ソート・グループ化・集計）だけを指定し、どうやって達成するかは指定しない</b>。どのインデックス・どの結合方法・どの順かはDBの<b>クエリオプティマイザ</b>に任せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで宣言的のほうがいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>3つ。1つめ、命令型より<b>簡潔で扱いやすい</b>。2つめ、もっと重要で、<b>DBエンジンの実装の詳細を隠す</b>から、クエリを書き換えなくてもDB側が性能を改善できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>性能を改善できる、というのは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>命令型コードは動物が特定の順序で並んでた。DBが裏で未使用領域を回収しようとレコードを動かして順序を変えたいとする。命令型だと順序に依存してるかDBに分からず勝手に動かせない。でもSQLは順序を保証してないから気にしなくていい。<b>SQLは機能面の制約が強いからこそ、自動最適化の余地が大きい</b>んだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つめは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>並列実行に向いてる</b>こと。今どきのCPU高速化は、クロックを上げるんじゃなく<b>コア数を増やす</b>形で進む。命令型は特定の順序で実行する命令を指定するから並列化がすごく難しい。でも宣言型は「結果のパターン」だけ指定して「アルゴリズム」は指定しないから、DBが自由に並列実装を使えて高速化しやすいんだ。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini" style="border-color:#ff6b8b55"><div class="ic">📜</div><h4>命令的</h4><p>手順を順序通り全部指定（forループ）。順序に依存し、並列化が難しく、最適化に書き直しが要る。</p></div>
+      <div class="mini" style="border-color:#5ee7a055"><div class="ic">🎯</div><h4>宣言的</h4><p>ほしい結果のパターンだけ指定（SQL）。簡潔・実装を隠して最適化できる・並列化しやすい。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：司書への2通りの頼み方</h4>
+      <p>命令的とは、「<b>入口から3番目の棚へ行って、上から順に背表紙を見て、『サメ』と書いてあったら抜き出して…</b>」と探し方を逐一指示すること。宣言的とは、「<b>サメの本、ぜんぶください</b>」とほしい結果だけ伝えること。後者なら、司書（オプティマイザ）が新しい索引を作って探し方を改善しても、あなたは頼み方を変えずに済むし、何人もの司書が手分けして同時に探す（並列化）こともできます。だから宣言的のほうが賢いのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>命令型と宣言型の違いを、コード例で具体的に説明できる。</li>
+        <li>なぜSQLが性能改善・並列化しやすいか（実装の詳細を隠す、順序に依存しない）を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>命令的＝手順を順序通り指定（forループなど）。宣言的＝ほしい結果のパターンだけ指定（SQL、関係代数）。</li>
+        <li>SQLは関係代数（選択演算子σなど）に忠実に沿って作られた。</li>
+        <li>宣言型の利点：簡潔、実装を隠して性能改善できる、並列化しやすい。</li>
+        <li>命令型は順序依存で並列化が難しい。宣言型はマルチコア時代に有利。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.2.1 Web上での宣言的クエリ ===== -->
+<section id="s221">
+  <div class="sec-head"><div class="sec-num">2.2.1</div><div><h2>Web上での宣言的クエリ</h2><span class="tag">CSSは宣言的、JavaScript+DOMは命令的</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：宣言的の優位はDB外でも成り立つ。Webでは、要素のスタイル指定をCSS/XSL（宣言的）でやるほうが、JavaScript+DOM API（命令的）よりはるかに優れる。命令的だとコードが長く、状態変化への自動追従ができず（selectedが外れても青が消えない）、新しいAPIへの最適化に書き直しが要る。同じ理屈でDBもSQLが優れる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>宣言的のよさって、DBだけの話ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、まったく別の環境でも同じだ。Webブラウザで比べよう。海の動物のサイトで、ユーザーが今サメのページを見てて、ナビの「Sharks」を「選択中」とマークしたい。HTMLはこうだ。</div></div>
+    </div>
+
+    <p>このコードは、海の動物のメニュー（ナビゲーション）の骨組みです。「selected」が今選ばれている項目を表します。</p>
+    <details class="code"><summary>ナビゲーションのHTML</summary>
+<pre><span class="cmt">&lt;!-- 海の動物のナビゲーション。selected クラスが「今選ばれている項目」を表す。 --&gt;</span>
+<span class="kw">&lt;ul&gt;</span>
+    <span class="kw">&lt;li</span> class=<span class="str">"selected"</span><span class="kw">&gt;</span>                <span class="cmt">&lt;!-- ① 選択されている項目は selected クラスでマーク --&gt;</span>
+        <span class="kw">&lt;p&gt;</span>サメ<span class="kw">&lt;/p&gt;</span>                       <span class="cmt">&lt;!-- ② これが現在選択されているページ --&gt;</span>
+        <span class="kw">&lt;ul&gt;</span>
+            <span class="kw">&lt;li&gt;</span>ホホジロザメ<span class="kw">&lt;/li&gt;</span>
+            <span class="kw">&lt;li&gt;</span>イタチザメ<span class="kw">&lt;/li&gt;</span>
+            <span class="kw">&lt;li&gt;</span>シュモクザメ<span class="kw">&lt;/li&gt;</span>
+        <span class="kw">&lt;/ul&gt;</span>
+    <span class="kw">&lt;/li&gt;</span>
+    <span class="kw">&lt;li&gt;</span>
+        <span class="kw">&lt;p&gt;</span>クジラ<span class="kw">&lt;/p&gt;</span>
+        <span class="kw">&lt;ul&gt;</span>
+            <span class="kw">&lt;li&gt;</span>シロナガスクジラ<span class="kw">&lt;/li&gt;</span>
+            <span class="kw">&lt;li&gt;</span>ザトウクジラ<span class="kw">&lt;/li&gt;</span>
+            <span class="kw">&lt;li&gt;</span>ナガスクジラ<span class="kw">&lt;/li&gt;</span>
+        <span class="kw">&lt;/ul&gt;</span>
+    <span class="kw">&lt;/li&gt;</span>
+<span class="kw">&lt;/ul&gt;</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①で選択中をselectedクラスでマークし、②が選択中のページ。さて、このページのタイトルの背景を青くしたい。<b>CSS</b>ならこう書ける。</div></div>
+    </div>
+
+    <p>このコードは「selectedが付いた項目の中のタイトルを青くする」というルールを宣言するものです。</p>
+    <details class="code"><summary>宣言的：CSS</summary>
+<pre><span class="cmt">/* selected クラスを持つ &lt;li&gt; の直接の子である &lt;p&gt; の背景を青くする */</span>
+li.selected &gt; p {
+    background-color: blue;
+}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>青くしたい要素のパターンをCSSのセレクター<b>li.selected &gt; p</b>で<b>宣言</b>してる。意味は「selectedクラスを持つ&lt;li&gt;を直接の親とする全ての&lt;p&gt;」。サメはマッチするが、クジラは親にselectedがないのでマッチしない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>CSSも宣言的なんですね。XSLとかでも？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できるよ。CSSの代わりにXSLを使ってもいい。</div></div>
+    </div>
+
+    <p>このコードは、CSSと同じ「選択中の項目のタイトルを青くする」指定を、XSLという別の宣言的言語で書いたものです。</p>
+    <details class="code"><summary>宣言的：XSL</summary>
+<pre><span class="cmt">&lt;!-- XSL: class が selected の li の中の p を青い背景にするテンプレート --&gt;</span>
+<span class="kw">&lt;xsl:template</span> match=<span class="str">"li[@class='selected']/p"</span><span class="kw">&gt;</span>
+    <span class="kw">&lt;fo:block</span> background-color=<span class="str">"blue"</span><span class="kw">&gt;</span>
+        <span class="kw">&lt;xsl:apply-templates/&gt;</span>
+    <span class="kw">&lt;/fo:block&gt;</span>
+<span class="kw">&lt;/xsl:template&gt;</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>このXPathの式<b>li[@class='selected']/p</b>は、さっきのCSSセレクター<b>li.selected &gt; p</b>と同じ意味だ。CSSもXSLも、どちらも<b>宣言的</b>な言語ってこと。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もし命令的にやったら、どうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>JavaScriptで<b>DOM</b>（HTMLをプログラムで操作する仕組み）APIを使うとこうなる。</div></div>
+    </div>
+
+    <p>このコードは、すべての項目を1つずつ調べて「selectedのものの中のタイトル」を探し、見つけたら青くする、という手順を全部書いたものです。</p>
+    <details class="code"><summary>命令的：JavaScript + DOM API</summary>
+<pre><span class="cmt">// すべての &lt;li&gt; を調べ、selected クラスのものの中の &lt;p&gt; を青くする命令的なコード。</span>
+<span class="cmt">// liElements はページ上の &lt;li&gt; 要素の一覧。</span>
+<span class="kw">var</span> liElements = document.<span class="fn">getElementsByTagName</span>(<span class="str">"li"</span>);        <span class="cmt">// ① すべての &lt;li&gt; を取得</span>
+<span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; liElements.length; i++) {                <span class="cmt">// ② &lt;li&gt; を1つずつ見る</span>
+    <span class="kw">if</span> (liElements[i].className === <span class="str">"selected"</span>) {            <span class="cmt">// ③ クラスが selected なら</span>
+        <span class="kw">var</span> children = liElements[i].childNodes;             <span class="cmt">// ④ その子要素を取り出す</span>
+        <span class="kw">for</span> (<span class="kw">var</span> j = <span class="num">0</span>; j &lt; children.length; j++) {          <span class="cmt">// ⑤ 子を1つずつ見る</span>
+            <span class="kw">var</span> child = children[j];
+            <span class="kw">if</span> (child.nodeType === Node.ELEMENT_NODE &amp;&amp; child.tagName === <span class="str">"P"</span>) { <span class="cmt">// ⑥ 子が &lt;p&gt; なら</span>
+                child.<span class="fn">setAttribute</span>(<span class="str">"style"</span>, <span class="str">"background-color: blue"</span>);          <span class="cmt">// ⑦ 背景を青に設定</span>
+            }
+        }
+    }
+}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うわ、長い……。CSSの3行がこんなに。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>長くて理解しにくいだけじゃない。<b>重大な問題</b>が2つある。1つめ、selectedクラスが取り除かれても（別ページをクリックしても）青色は取り除かれない。再実行しても変わらず、ページ全体がリロードされるまで青いまま。CSSなら、ルールが当てはまらなくなったのをブラウザが自動検出して、selectedが外れたらすぐ青も消える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>命令的だと、消す処理も自分で書かなきゃいけないんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。2つめ、性能改善の新しいAPI（getElementsByClassNameやdocument.evaluate()）を使おうとすると、コードを書き直さなきゃいけない。一方ブラウザのベンダーは、互換性を壊さずにCSSやXPathの性能を改善できる。つまりWebでも宣言的なCSSのほうが優れてる。同じくDBでもSQLみたいな宣言的言語のほうが、命令的なクエリAPIよりはるかに優れてるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：「青いラベルを貼る規則」を決めておく</h4>
+      <p>宣言的（CSS）は、図書館に「<b>『選択中』の札がついた棚の見出しは青くする</b>」という規則を1つ掲示しておくようなもの。札が外れれば青も自動で消えます。命令的（JS）は、司書が手作業で1つずつ見て回り青いシールを貼る方式。札が外れても、誰かがまた回って剥がさない限り青いシールは残ったまま。規則を掲げるほうが、状態の変化にも自動でついてくるし、貼り方の改善も規則を変えずに裏でできるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>宣言的の利点がDBだけでなくWeb（CSS）でも成り立つと、身近な例で理解できる。</li>
+        <li>命令的コードの弱点（状態追従できない、最適化に書き直しが要る）を具体的に説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>CSS/XSLは宣言的、JavaScript+DOM APIは命令的。</li>
+        <li>宣言的（CSS）は短く、状態変化に自動追従し（selected除去で青も消える）、ベンダーが裏で最適化できる。</li>
+        <li>命令的（JS）は長く、状態追従を自分で書く必要があり、新APIへ書き直しが要る。</li>
+        <li>同じ理屈で、DBでもSQLのような宣言的言語が命令的APIより優れる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.2.2 MapReduce ===== -->
+<section id="s222">
+  <div class="sec-head"><div class="sec-num">2.2.2</div><div><h2>MapReduceでのクエリ</h2><span class="tag">宣言的と命令的の中間 ― やがてSQLを再発明</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：MapReduceは大量データを多数マシンで処理するモデルで、宣言的と命令的の中間。<b>map</b>と<b>reduce</b>の純粋関数を書く（副作用なし、再実行可能）。書きにくいので宣言的なaggregation pipeline（JSONベース、SQLのサブセットに似る）が登場した。教訓は「NoSQLも結局SQLを再発明しがち」。分散クエリ実行はMapReduce専用ではない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「MapReduce」って聞いたことあります。あれもクエリ言語ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="大量データを多数のマシンで分担処理する仕組み。Googleが広めた。">MapReduce</span>は、大量のデータを多数のマシンにまたがって処理する<b>プログラミングモデル</b>で、Googleが広めた。MongoDBやCouchDBの一部が限定的にサポートしてて、大量ドキュメントへの<b>読み取りのみのクエリ</b>に使える。全体像は10章だけど、ここではMongoDBでの使い方を簡単に見よう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>宣言的ですか、命令的ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>どちらでもなく<b>中間</b>だ。クエリのロジックはコードで書くけど、そのコードは処理のフレームワークから繰り返し呼ばれる。多くの関数型言語が持つ<b>map</b>（collectとも）と<b>reduce</b>（fold/injectとも）を基盤にしてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体例で見たいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>海洋生物学者が、動物を見るたびに観測レコードを追加する。毎月のサメの目撃数レポートを作りたい。PostgreSQLならこうだ。</div></div>
+    </div>
+
+    <p>このSQLは、観測記録から「サメ科」だけを月ごとにまとめ、月別の合計目撃数を出すものです。</p>
+    <details class="code"><summary>PostgreSQL（宣言的）</summary>
+<pre><span class="cmt">-- 観測テーブルから「サメ科」だけを月ごとに集計し、月別の合計目撃数を出すSQL</span>
+<span class="kw">SELECT</span> <span class="fn">date_trunc</span>(<span class="str">'month'</span>, observation_timestamp) <span class="kw">AS</span> observation_month,  <span class="cmt">-- ① 観測日時をその月の初日に丸める</span>
+       <span class="fn">sum</span>(num_animals) <span class="kw">AS</span> total_animals                                  <span class="cmt">--    月ごとに目撃数を合計</span>
+<span class="kw">FROM</span> observations
+<span class="kw">WHERE</span> family = <span class="str">'Sharks'</span>        <span class="cmt">-- サメ科だけに絞り込む</span>
+<span class="kw">GROUP BY</span> observation_month;    <span class="cmt">-- 月でグループ化</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①のdate_trunc('month', ...)は日時をその月の初日に丸める。「2014年3月17日12時」なら「2014年3月1日0時」。サメに絞り、発生月でグループ化し、月ごとに動物数を合計する。同じことを、MongoDBのMapReduceで書くとこうだ。</div></div>
+    </div>
+
+    <p>このコードは、観測記録から「サメ科」だけを月別に集計するMapReduceです。mapが1件ずつ「年-月」と目撃数を出し、reduceが同じ月の値を合計します。</p>
+    <details class="code"><summary>MongoDB MapReduce（中間）</summary>
+<pre><span class="cmt">// observations コレクションから「サメ科」だけを月別に集計するMapReduce。</span>
+<span class="cmt">// map は1件ずつ呼ばれてキー（年-月）と値（目撃数）を出し、</span>
+<span class="cmt">// reduce は同じキーの値をまとめて合計する。</span>
+db.observations.<span class="fn">mapReduce</span>(
+    <span class="kw">function</span> <span class="fn">map</span>() {                                    <span class="cmt">// ② map: query にマッチした各ドキュメントで呼ばれる（this が1件分）</span>
+        <span class="kw">var</span> year  = <span class="kw">this</span>.observationTimestamp.<span class="fn">getFullYear</span>();   <span class="cmt">// 観測年を取り出す</span>
+        <span class="kw">var</span> month = <span class="kw">this</span>.observationTimestamp.<span class="fn">getMonth</span>() + <span class="num">1</span>;  <span class="cmt">// 観測月を取り出す（0始まりなので+1）</span>
+        <span class="fn">emit</span>(year + <span class="str">"-"</span> + month, <span class="kw">this</span>.numAnimals);      <span class="cmt">// ③ キー（"2013-12"など）と値（目撃数）を出力</span>
+    },
+    <span class="kw">function</span> <span class="fn">reduce</span>(key, values) {                      <span class="cmt">// ④ 同じキーの値の配列ごとに1回呼ばれる</span>
+        <span class="kw">return</span> Array.<span class="fn">sum</span>(values);                       <span class="cmt">// ⑤ その月の目撃数を合計</span>
+    },
+    {
+        query: { family: <span class="str">"Sharks"</span> },                    <span class="cmt">// ① サメだけに絞るフィルタ（MongoDB独自の宣言的拡張）</span>
+        out: <span class="str">"monthlySharkReport"</span>                       <span class="cmt">// ⑥ 最終結果を書き出す先のコレクション名</span>
+    }
+);</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①でサメだけに絞る（MongoDB独自の宣言的拡張）。②のmapはマッチした各ドキュメントで呼ばれthisにそれが入る。③でキー（"2013-12"など）と値（目撃数）を出力。④で同じキーがグループ化され、グループごとにreduceが一度呼ばれる。⑤で月内の目撃数を合計。⑥で結果がmonthlySharkReportに書き出される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>実際に2件データがあったら、どう動くんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>例えばこんな2件があるとしよう。</div></div>
+    </div>
+
+    <p>このコードは、データの中身の例です（どちらも1995年12月のサメの目撃記録）。</p>
+    <details class="code"><summary>観測データのサンプル2件</summary>
+<pre><span class="cmt">// observations コレクションのサンプル2件（どちらも1995年12月のサメの目撃）</span>
+{
+    observationTimestamp: Date.<span class="fn">parse</span>(<span class="str">"Mon, 25 Dec 1995 12:34:56 GMT"</span>),
+    family:     <span class="str">"Sharks"</span>,
+    species:    <span class="str">"ホホジロザメ"</span>,
+    numAnimals: <span class="num">3</span>
+}
+{
+    observationTimestamp: Date.<span class="fn">parse</span>(<span class="str">"Tue, 12 Dec 1995 16:17:18 GMT"</span>),
+    family:     <span class="str">"Sharks"</span>,
+    species:    <span class="str">"シロワニ"</span>,
+    numAnimals: <span class="num">4</span>
+}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>mapは各ドキュメントで一度ずつ呼ばれるから、emit("1995-12", 3)とemit("1995-12", 4)が呼ばれる。そしてreduceはreduce("1995-12", [3, 4])の形で呼ばれて、7を返す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>mapとreduceの中で、何でもできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>制約がある。これらは<b>純粋な（pure）関数</b>でなきゃいけない。入力に使えるのは渡されたデータだけで、追加でDBにクエリを投げられず、副作用も起こせない。だからDBは関数を任意の場所・順序で実行でき、障害があれば再実行もできる。それでも文字列のパースやライブラリ呼び出し、演算はできるから十分強力だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>MapReduceって、ちょっと書きにくそうです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが問題。協調する2つのJavaScript関数を慎重に書かなきゃならず、1つのクエリより難しいことが多い。オプティマイザから見ても宣言的な言語のほうが最適化の機会が多い。だからMongoDB 2.2では<b>aggregation pipeline</b>という宣言的なクエリ言語が追加された。さっきのサメのクエリはこうなる。</div></div>
+    </div>
+
+    <p>このコードは、同じ「月別サメ目撃数の集計」を、より簡潔な宣言的のやり方（aggregation pipeline）で書いたものです。</p>
+    <details class="code"><summary>MongoDB aggregation pipeline（宣言的）</summary>
+<pre><span class="cmt">// aggregation pipeline で書いた、月別サメ目撃数の集計（宣言的）。</span>
+<span class="cmt">// $match で絞り込み、$group で年・月ごとにまとめて合計する。</span>
+db.observations.<span class="fn">aggregate</span>([
+    { $match: { family: <span class="str">"Sharks"</span> } },          <span class="cmt">// サメ科だけに絞る</span>
+    { $group: {
+        _id: {
+            year:  { $year:  <span class="str">"$observationTimestamp"</span> },   <span class="cmt">// 観測年でグループ化</span>
+            month: { $month: <span class="str">"$observationTimestamp"</span> }    <span class="cmt">// 観測月でグループ化</span>
+        },
+        totalAnimals: { $sum: <span class="str">"$numAnimals"</span> }   <span class="cmt">// グループごとに目撃数を合計</span>
+    } }
+]);</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>表現力で見ると、aggregation pipelineはSQLのサブセット（一部）に似てるけど、構文は英語風のSQLじゃなくJSONベース。この差はたぶん好みの問題。ここから得られる教訓は、<b>装いは違っても、NoSQLシステムがSQLを再発明してしまうかもしれない</b>ってことだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結局SQLっぽくなるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そういうこと。ちなみにクエリ中でJavaScriptが使えるのはMapReduce限定じゃなく、SQLデータベースにもJS関数で拡張できるものがある。それと、MapReduceは複数マシンクラスタ上の分散処理のための<b>きわめて低レベルな</b>モデルだけど、SQLみたいな高レベル言語はMapReduceのパイプラインとして実装できる（10章）。逆にMapReduceを使わないSQLの分散実装もたくさんある。<b>SQLは単一マシン限定じゃないし、分散クエリ実行はMapReduceの専売特許じゃない</b>んだ。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">M</div><div class="line"></div></div><div class="body"><h4>map（手分けして数える）</h4><p>各データ1件ずつに対し、キー（年-月）と値（目撃数）を出力。純粋関数なので並列・再実行できる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">R</div><div class="line"></div></div><div class="body"><h4>reduce（同じキーで合算）</h4><p>同じキーの値をまとめて合計。これも純粋関数。</p></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：大勢の助手で手分けして数え、最後に合算</h4>
+      <p>MapReduceは、膨大な蔵書数を数えるのに<b>大勢の助手に書架を割り当て、各自が「ジャンルごとに何冊」と紙に書き出し（map）、最後に同じジャンルの紙を集めて足し合わせる（reduce）</b>方式です。各助手は自分の担当だけ見て、他に問い合わせず勝手な書き込みもしない（純粋関数）から、誰がどの順でやっても、途中で1人倒れてやり直しても結果は同じ。ただし「助手への指示書を2枚も書く」のは手間なので、結局「ジャンル別冊数を出して」と一言で頼める方式（aggregation pipeline）に落ち着いた――司書への頼み方（SQL）の再発明ですね。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>MapReduceのmap/reduceの役割と、純粋関数の制約（再実行可能になる理由）を理解できる。</li>
+        <li>MapReduceが書きにくく、宣言的なaggregation pipelineに進化した流れを説明できる。</li>
+        <li>「分散＝MapReduce」「単一マシン＝SQL」という誤解を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>MapReduceは大量データを多数マシンで処理するモデルで、宣言的と命令的の中間。</li>
+        <li>map/reduceは純粋関数でなければならず（副作用なし）、だから任意の順序・場所で実行・再実行できる。</li>
+        <li>書きにくいので宣言的なaggregation pipeline（JSONベース、SQLのサブセットに類似）が登場。</li>
+        <li>教訓：NoSQLも装いを変えてSQLを再発明しがち。</li>
+        <li>分散クエリ実行はMapReduce専用ではなく、SQLも分散実行できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.3 グラフ型データモデル ===== -->
+<section id="s23">
+  <div class="sec-head"><div class="sec-num">2.3</div><div><h2>グラフ型のデータモデル</h2><span class="tag">多対多が複雑になったら ― 点と線でつなぐ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：多対多が複雑になるとグラフモデルが自然。グラフは<b>頂点（点）</b>と<b>辺（線）</b>から成り、ソーシャル・Web・交通など多様なデータを表せ、最短パスやPageRankなどのアルゴリズムで操作できる。均一なデータだけでなく異種のオブジェクトも一貫して保存できる（Facebookの例）。実装はプロパティグラフとトリプルストア、クエリ言語はCypher/SPARQL/Datalog。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一対多と多対多の違いがモデル選びの鍵だと分かりました。多対多が多いと、どうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい質問だ。関係がほとんど一対多（ツリー）か、レコード同士が関係を持たないならドキュメントが向く。でもデータの中で<b>多対多が一般的</b>なら？ リレーショナルも単純な多対多は扱えるけど、つながりが複雑になると、データを<b>グラフ</b>としてモデル化するほうが自然になるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>グラフって、棒グラフとかのグラフですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、数学のグラフだ。<span class="term" data-tip="グラフの点。ノードやエンティティとも呼ぶ。人やモノ。">頂点</span>（vertex＝点）と<span class="term" data-tip="グラフの線。エッジや関係、弧とも呼ぶ。つながり。">辺</span>（edge＝点をつなぐ線）の2つから成る。<b>ソーシャルグラフ</b>は頂点が人・辺が知人関係、<b>Webグラフ</b>は頂点がWebページ・辺がリンク、<b>道路や鉄道</b>は頂点が接続点・辺が路線だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それで何ができるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>よく知られたアルゴリズムで操作できる。カーナビは道路ネットワークの2点間の<b>最短パス</b>を探すし、<b>PageRank</b>はWebグラフを処理してページの人気を判断し、検索結果のランキングを決める。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>グラフの点って、全部同じ種類じゃなきゃダメですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、そこが強み。<b>均一なデータだけじゃなく、まったく違う種類のオブジェクトも1つのデータストアに一貫して保存できる</b>。Facebookは単一のグラフで、頂点に人・場所・イベント・チェックイン・コメントを持たせ、辺に友人関係・チェックイン・誰がどの投稿にコメントしたか・誰がどのイベントに出たかを表してる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いろんなものを混ぜられるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。この節では例として、アイダホ出身のLucyと、フランスのボーヌ出身のAlainを使う。2人は結婚してロンドンに住んでる設定だ。構築とクエリにはいくつか方法があって、<b>プロパティグラフ</b>（Neo4j、Titan、InfiniteGraph）と<b>トリプルストア</b>（Datomic、AllegroGraph）を取り上げる。クエリ言語は宣言的な3つ――<b>Cypher</b>、<b>SPARQL</b>、<b>Datalog</b>。ほかにGremlinやPregel（10章）もあるよ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">👥</div><h4>ソーシャルグラフ</h4><p>頂点＝人、辺＝知人関係。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>Webグラフ</h4><p>頂点＝ページ、辺＝リンク。PageRankで人気を判断。</p></div>
+      <div class="mini"><div class="ic">🚇</div><h4>交通ネットワーク</h4><p>頂点＝接続点、辺＝路線。最短パスを探す。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：人物相関の系図で蔵書をつなぐ</h4>
+      <p>グラフは、図書館でいう<b>人物相関の系図（誰が誰の弟子、どの本がどの本を引用…）</b>です。点が人や本（頂点）、線がそのつながり（辺）。系図のいいところは、人・本・出来事という<b>違う種類のものを同じ1枚の図に混ぜて</b>描けること。そして「この人から3代さかのぼると誰？」のような、たどる関係の問いに強いのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>多対多が複雑なデータにはグラフが自然だと判断できる。</li>
+        <li>頂点と辺という基本構造を理解し、グラフで何を表現できるか（異種混在）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>多対多が複雑なほどグラフモデルが自然。</li>
+        <li>グラフ＝頂点（点）＋辺（線）。ソーシャル・Web・交通などを表現。</li>
+        <li>最短パスやPageRankなど既知のアルゴリズムで操作できる。</li>
+        <li>均一なデータだけでなく異種のオブジェクトも一貫保存できる（Facebook）。</li>
+        <li>実装：プロパティグラフ／トリプルストア。クエリ言語：Cypher／SPARQL／Datalog。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.3.1 プロパティグラフ ===== -->
+<section id="s231">
+  <div class="sec-head"><div class="sec-num">2.3.1</div><div><h2>プロパティグラフ</h2><span class="tag">頂点と辺に情報を詰める ― 自由で進化しやすい</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：プロパティグラフでは、頂点が一意ID・内外の辺・プロパティを持ち、辺が一意ID・始点・終点・ラベル・プロパティを持つ。リレーショナルの2テーブル（vertices/edges）で表現でき、始点・終点にインデックスを張って探索する。スキーマ制約がなく、どの頂点同士もつなげ、ラベルで種類を区別でき、粒度の違うデータも表せる。機能追加が容易で進化性に優れる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>プロパティグラフって、頂点と辺に何が入ってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各<b>頂点</b>は、①一意の識別子、②外向きの辺の集合、③内向きの辺の集合、④プロパティ（キーと値のペア）。各<b>辺</b>は、①一意の識別子、②辺の始まりの頂点（<b>始点</b>）、③辺の終わりの頂点（<b>終点</b>）、④関係の種類を示す<b>ラベル</b>、⑤プロパティ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>けっこう情報が詰まってますね。これをリレーショナルDBで表せますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>表せるよ。頂点と辺、2つのテーブルで考える。こんなスキーマだ。</div></div>
+    </div>
+
+    <p>このコードは、グラフを「頂点の表」と「辺の表」という2つの表で表すための設計（テーブル定義）です。</p>
+    <details class="code"><summary>プロパティグラフを2テーブルで表す（SQL）</summary>
+<pre><span class="cmt">-- プロパティグラフをリレーショナルなテーブル2つで表現するスキーマ。</span>
+<span class="cmt">-- vertices は頂点、edges は辺。properties は PostgreSQL の json 型で柔軟に持つ。</span>
+<span class="kw">CREATE TABLE</span> vertices (
+    vertex_id   <span class="kw">integer PRIMARY KEY</span>,   <span class="cmt">-- 頂点の一意な番号</span>
+    properties  <span class="kw">json</span>                   <span class="cmt">-- 頂点の属性（名前など）をまとめて持つ</span>
+);
+<span class="kw">CREATE TABLE</span> edges (
+    edge_id     <span class="kw">integer PRIMARY KEY</span>,                       <span class="cmt">-- 辺の一意な番号</span>
+    tail_vertex <span class="kw">integer REFERENCES</span> vertices (vertex_id),   <span class="cmt">-- 始点（辺の出発する頂点）</span>
+    head_vertex <span class="kw">integer REFERENCES</span> vertices (vertex_id),   <span class="cmt">-- 終点（辺の到達する頂点）</span>
+    label       <span class="kw">text</span>,                                      <span class="cmt">-- 関係の種類（"WITHIN" など）</span>
+    properties  <span class="kw">json</span>                                       <span class="cmt">-- 辺の属性</span>
+);
+<span class="kw">CREATE INDEX</span> edges_tails <span class="kw">ON</span> edges (tail_vertex);   <span class="cmt">-- 始点で辺を速く探すためのインデックス</span>
+<span class="kw">CREATE INDEX</span> edges_heads <span class="kw">ON</span> edges (head_vertex);   <span class="cmt">-- 終点で辺を速く探すためのインデックス</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>始点と終点は各辺に保存される。頂点に出入りする辺を取りたいときはedgesテーブルをhead_vertexやtail_vertexで検索するから、両方の列にインデックスを張ってる。このモデルで重要なことが3つある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ、教えてください。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①どの頂点も、辺で他のどの頂点とも接続できる（「この種類しかつなげない」みたいなスキーマ制約がない）。②任意の頂点の入出力の辺を効率よく見つけられるのでグラフを<b>探索（traverse＝たどる）</b>でき、パスをどちらの方向にもたどれる。③関係の種類ごとに違う<b>ラベル</b>を使えば、きれいに保ちながら1つのグラフに様々な情報を保存できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>自由度が高いんですね。これだとどんなデータを表せますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>すごく柔軟だ。国ごとに違う地域構造――フランスはdépartements（県）やrégions（地方）、アメリカは郡や州――とか、「国の中に国がある」複雑さ、さらに<b>粒度の違うデータ</b>――Lucyの現住所は市レベルだけど生誕地は州レベルでしか分からない、とか。リレーショナルスキーマでは表しにくいことが表せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>後から機能を足すのも楽そうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさに<b>進化性</b>に優れてる。食材のアレルギーを足したいなら、アレルゲンごとに頂点を持たせ、人とアレルゲンの間に辺を張ればいい。食べ物の頂点にアレルゲンからのリンクを張れば含有関係も表せる。「各人が食べても安全なもの」を知るクエリも書ける。機能追加でグラフを拡張するのが容易なんだ。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔓</div><h4>制約がない</h4><p>どの頂点も他のどの頂点へも辺を張れる。種類の縛りなし。</p></div>
+      <div class="mini"><div class="ic">🧭</div><h4>両方向に探索できる</h4><p>始点・終点にインデックス。パスをどちら向きにもたどれる。</p></div>
+      <div class="mini"><div class="ic">🏷️</div><h4>ラベルで区別</h4><p>関係の種類ごとにラベル。1つのグラフに多様な情報を混在。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：何でも書き足せる系図帳</h4>
+      <p>プロパティグラフは、図書館の<b>自由な系図帳</b>。人物カード（頂点）に好きなだけ続柄線（辺）を引け、線には「師弟」「夫婦」「引用」など名前（ラベル）を付けられます。決まった様式に縛られないから、国ごとに違う住所の段階（市・州・国）も、分かる範囲だけで書ける（粒度の違い）。あとから「アレルギー」みたいな新しい欄を足したくなっても、新しいカードと線を描き足すだけ。とても進化させやすい帳面なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>プロパティグラフの頂点・辺の構成要素を列挙できる。</li>
+        <li>グラフをリレーショナルの2テーブルで表現する方法を理解できる。</li>
+        <li>グラフの柔軟性（制約なし、ラベル、粒度の違い、進化性）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>頂点＝一意ID＋内外の辺＋プロパティ、辺＝一意ID＋始点＋終点＋ラベル＋プロパティ。</li>
+        <li>リレーショナルの2テーブル（vertices/edges）で表現でき、始点・終点にインデックスを張る。</li>
+        <li>重要な性質：どの頂点同士もつなげる／両方向に探索できる／ラベルで種類を区別。</li>
+        <li>スキーマ制約がなく粒度の違うデータも表せ、機能追加が容易（進化性が高い）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.3.2 Cypher ===== -->
+<section id="s232">
+  <div class="sec-head"><div class="sec-num">2.3.2</div><div><h2>Cypherクエリ言語</h2><span class="tag">矢印でパターンを描く宣言的言語（Neo4j）</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：Cypherはプロパティグラフ用の宣言的クエリ言語（Neo4j用）。<b>CREATE</b>で頂点とラベル付きの辺を作り、<b>MATCH</b>で矢印表記のパターンを探す。<b>:WITHIN*0..</b>は「WITHINの辺を0回以上たどる」。実行方法（全員スキャンか、場所から逆にたどるか）は書かず、オプティマイザが自動で選ぶ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Cypherって、どんな言語ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>Cypher</b>はプロパティグラフ用の宣言的クエリ言語で、グラフDBのNeo4j用に作られた。名前は映画「マトリックス」のキャラにちなんでて、暗号文のcipherとは関係ない。まずグラフにデータを入れるところから見よう。</div></div>
+    </div>
+
+    <p>このコードは、地名や人物を頂点として作り、矢印で「アイダホはアメリカの中、Lucyはアイダホ生まれ」というつながり（辺）を作るものです。</p>
+    <details class="code"><summary>Cypher：データの挿入</summary>
+<pre><span class="cmt">// Cypher でグラフにデータを挿入する。各頂点に USA や Idaho といったシンボル名を付け、</span>
+<span class="cmt">// 矢印 -[:ラベル]-&gt; で頂点どうしの辺を作る。</span>
+<span class="kw">CREATE</span>
+  (NAmerica:Location {name:<span class="str">'北アメリカ'</span>, type:<span class="str">'continent'</span>}),
+  (USA:Location      {name:<span class="str">'アメリカ合衆国'</span>, type:<span class="str">'country'</span>  }),
+  (Idaho:Location    {name:<span class="str">'アイダホ'</span>,       type:<span class="str">'state'</span>    }),
+  (Lucy:Person       {name:<span class="str">'Lucy'</span> }),
+  (Idaho) -[:WITHIN]-&gt;  (USA)  -[:WITHIN]-&gt; (NAmerica),   <span class="cmt">// アイダホ⊂アメリカ⊂北アメリカ</span>
+  (Lucy)  -[:BORN_IN]-&gt; (Idaho)                           <span class="cmt">// Lucy はアイダホ生まれ</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各頂点にUSAやIdahoというシンボル名を与え、他の部分でその名前を使って辺を作る。<b>(Idaho) -[:WITHIN]-&gt; (USA)</b>は「WITHINというラベルを付けて、Idahoを始点・USAを終点とする辺」を作る。これで「アイダホはアメリカの中、アメリカは北アメリカの中、Lucyはアイダホ生まれ」と表せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データが入ったら、どんな質問ができるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>例えば「<b>アメリカで生まれてヨーロッパに移住した人の名前を全部返す</b>」。正確には、アメリカ内の場所へのBORN_INの辺と、ヨーロッパ内の場所へのLIVES_INの辺の両方を持つ頂点を探して名前を返す。Cypherでこう書く。</div></div>
+    </div>
+
+    <p>このコードは、「アメリカ生まれで、かつヨーロッパに住んでいる人」を探して名前を返す問い合わせです。</p>
+    <details class="code"><summary>Cypher：移住者を探すクエリ</summary>
+<pre><span class="cmt">// アメリカで生まれ、かつヨーロッパに住んでいる人の名前を返す Cypher クエリ。</span>
+<span class="cmt">// *0.. は「WITHIN の辺を0回以上たどる」という意味（場所の階層をいくつでもさかのぼる）。</span>
+<span class="kw">MATCH</span>
+  (person) -[:BORN_IN]-&gt;  () -[:WITHIN*0..]-&gt; (us:Location {name:<span class="str">'アメリカ合衆国'</span>}),
+  (person) -[:LIVES_IN]-&gt; () -[:WITHIN*0..]-&gt; (eu:Location {name:<span class="str">'ヨーロッパ'</span>})
+<span class="kw">RETURN</span> person.name</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>同じ矢印表記が、パターンを探す<b>MATCH</b>節でも使われる。(person) -[:BORN_IN]-&gt; ()は、BORN_INラベルの辺でつながる2頂点の全ての組にマッチ。始点はpersonという変数にバインドされ、終点は名前なし。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>日本語で読み下すと？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「次の2条件を<b>両方</b>満たす全頂点（personと呼ぶ）を探せ。①personからBORN_INの辺がどこかに出ていて、そこからWITHINの辺の連鎖をたどると最終的にname"アメリカ合衆国"のLocationに着く。②同じpersonからLIVES_INの辺が出ていて、その先WITHINの連鎖をたどると最終的にname"ヨーロッパ"のLocationに着く。これを満たすpersonのnameを返せ」だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>このクエリ、どう実行されるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いくつかやり方がある。1つは全員をスキャンして各人の生誕地と住所を確認する方法。でも逆もできる。2つのLocation頂点（アメリカとヨーロッパ）から<b>逆にたどる</b>。nameにインデックスがあれば効率よく見つかり、入ってくるWITHINの辺をたどって域内の全場所を見つけ、最後にそこへBORN_INやLIVES_INで入ってくる人を探す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、どっちで実行するか書かなくていいんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。宣言的言語では普通のこと。実行の詳細は書かなくていい。クエリオプティマイザが最も効率的と予想した戦略を自動で選ぶから、開発者はアプリの他の部分に集中できるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：系図に「こういう線でつながる人を探して」と頼む</h4>
+      <p>Cypherは系図帳に対し、矢印の絵で「<b>『生まれ』の線でアメリカ圏に、『住む』の線でヨーロッパ圏につながっている人</b>」というパターンを描いて頼む頼み方です。<b>:WITHIN*0..</b>は「『○○の中』の線を何段でもさかのぼってよい」の意味。利用者は探す順番（全員見るか、地名から逆にたどるか）を指定しません。司書（オプティマイザ）が一番速い手順を選んでくれます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>Cypherで頂点・辺を作り、パターンマッチでグラフを問い合わせる書き方を理解できる。</li>
+        <li>可変長パス（*0..）の意味を理解し、階層をさかのぼる検索を表現できる。</li>
+        <li>宣言的なので実行戦略をオプティマイザに任せられると理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>Cypherはプロパティグラフ用の宣言的言語（Neo4j用）。</li>
+        <li>CREATEで頂点とラベル付き辺を作成、MATCHで矢印パターンを検索。</li>
+        <li>:WITHIN*0..＝WITHINの辺を0回以上たどる（正規表現の*に類似）。</li>
+        <li>実行戦略（全員スキャン or 場所から逆探索）は書かず、オプティマイザが自動選択。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.3.3 SQLでのグラフクエリ ===== -->
+<section id="s233">
+  <div class="sec-head"><div class="sec-num">2.3.3</div><div><h2>SQLでのグラフクエリ</h2><span class="tag">同じ問いがCypher4行→SQL29行</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：グラフクエリは結合の数が事前に決まらない（可変長パス）。SQLではSQL:1999の再帰共通テーブル式（<b>WITH RECURSIVE</b>）で表せるが、Cypherの4行が29行になるほど扱いづらい。同じクエリでも言語によって長さが激変することは、ユースケースに合ったデータモデル選びの重要性を示す。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきグラフをリレーショナルの2テーブルで表せましたよね。じゃあSQLでも同じクエリが書けますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>書ける。けど困難が伴う。リレーショナルでは普通、必要な結合が事前に分かってる。でもグラフクエリでは、目的の頂点に着くまでにたどる辺の数が<b>変動する</b>かもしれない。つまり<b>結合の数が事前に決まらない</b>んだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結合の数が決まらない、というのは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>さっきのCypherの() -[:WITHIN*0..]-&gt; ()の部分だ。ある人のLIVES_INの辺は、通り・市・地域・地方・州……どんな場所も指しうる。市が地方の中、地方が州の中、と階層を何段もたどるかもしれないし、直接指してるかも。Cypherは:WITHIN*0..と簡潔に書ける。正規表現の*に似てる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>SQLでこの「0回以上」をどう書くんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>SQL:1999から、可変長のパスを<b>再帰共通テーブル式</b>（WITH RECURSIVE）で書ける。同じ「アメリカ生まれでヨーロッパ在住の人」を返すクエリをSQLで書くとこうだ（PostgreSQL、DB2、Oracle、SQL Serverで動く）。ただしCypherよりずっと扱いづらい。</div></div>
+    </div>
+
+    <p>このコードは、Cypherの4行と同じ「アメリカ生まれでヨーロッパ在住の人」を、SQLで書いたものです。場所の階層を1段ずつ広げながらたどります。</p>
+    <details class="code"><summary>SQL：再帰共通テーブル式（29行）</summary>
+<pre><span class="cmt">-- アメリカで生まれ、かつヨーロッパに住む人の名前を返すSQL（再帰共通テーブル式を使う）。</span>
+<span class="cmt">-- in_usa はアメリカ内の全場所、in_europe はヨーロッパ内の全場所を再帰的に集める。</span>
+<span class="kw">WITH RECURSIVE</span>
+
+  <span class="cmt">-- in_usa はアメリカ国内のすべての場所の頂点IDの集合</span>
+  in_usa(vertex_id) <span class="kw">AS</span> (
+      <span class="kw">SELECT</span> vertex_id <span class="kw">FROM</span> vertices <span class="kw">WHERE</span> properties-&gt;&gt;<span class="str">'name'</span> = <span class="str">'アメリカ合衆国'</span>  <span class="cmt">-- ① まず「アメリカ合衆国」の頂点を起点にする</span>
+    <span class="kw">UNION</span>
+      <span class="kw">SELECT</span> edges.tail_vertex <span class="kw">FROM</span> edges                                          <span class="cmt">-- ② そこへ within で入ってくる場所を次々に加える</span>
+        <span class="kw">JOIN</span> in_usa <span class="kw">ON</span> edges.head_vertex = in_usa.vertex_id
+        <span class="kw">WHERE</span> edges.label = <span class="str">'within'</span>
+  ),
+
+  <span class="cmt">-- in_europe はヨーロッパ内のすべての場所の頂点IDの集合</span>
+  in_europe(vertex_id) <span class="kw">AS</span> (
+      <span class="kw">SELECT</span> vertex_id <span class="kw">FROM</span> vertices <span class="kw">WHERE</span> properties-&gt;&gt;<span class="str">'name'</span> = <span class="str">'ヨーロッパ'</span>        <span class="cmt">-- ③ 「ヨーロッパ」の頂点から同じことをする</span>
+    <span class="kw">UNION</span>
+      <span class="kw">SELECT</span> edges.tail_vertex <span class="kw">FROM</span> edges
+        <span class="kw">JOIN</span> in_europe <span class="kw">ON</span> edges.head_vertex = in_europe.vertex_id
+        <span class="kw">WHERE</span> edges.label = <span class="str">'within'</span>
+  ),
+
+  <span class="cmt">-- born_in_usa はアメリカ国内で生まれたすべての人の頂点IDの集合</span>
+  born_in_usa(vertex_id) <span class="kw">AS</span> (                                                       <span class="cmt">-- ④ in_usa の各場所へ born_in で入ってくる人を集める</span>
+    <span class="kw">SELECT</span> edges.tail_vertex <span class="kw">FROM</span> edges
+      <span class="kw">JOIN</span> in_usa <span class="kw">ON</span> edges.head_vertex = in_usa.vertex_id
+      <span class="kw">WHERE</span> edges.label = <span class="str">'born_in'</span>
+  ),
+
+  <span class="cmt">-- lives_in_europe は、ヨーロッパに住んでいるすべての人の頂点IDの集合</span>
+  lives_in_europe(vertex_id) <span class="kw">AS</span> (                                                   <span class="cmt">-- ⑤ in_europe の各場所へ lives_in で入ってくる人を集める</span>
+    <span class="kw">SELECT</span> edges.tail_vertex <span class="kw">FROM</span> edges
+      <span class="kw">JOIN</span> in_europe <span class="kw">ON</span> edges.head_vertex = in_europe.vertex_id
+      <span class="kw">WHERE</span> edges.label = <span class="str">'lives_in'</span>
+  )
+
+<span class="kw">SELECT</span> vertices.properties-&gt;&gt;<span class="str">'name'</span>
+<span class="kw">FROM</span> vertices
+<span class="cmt">-- アメリカで生まれ、かつヨーロッパに住む人を見つけるために結合する</span>
+<span class="kw">JOIN</span> born_in_usa     <span class="kw">ON</span> vertices.vertex_id = born_in_usa.vertex_id      <span class="cmt">-- ⑥ 両方の集合の積（重なり）を取る</span>
+<span class="kw">JOIN</span> lives_in_europe <span class="kw">ON</span> vertices.vertex_id = lives_in_europe.vertex_id;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①でname"アメリカ合衆国"の頂点を探しin_usaの最初の要素にする。②でin_usa内の頂点に入ってくるwithinの辺をたどってin_usaに加える、を辺がなくなるまで繰り返す。③で同じことを"ヨーロッパ"からやってin_europeを作る。④でin_usaの各頂点に入ってくるborn_inの辺をたどってアメリカ生まれの人を見つける。⑤で同様にin_europeからヨーロッパ在住の人を。⑥で両者を結合して積集合（両方に当てはまる人）を得る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Cypherだと4行なのに、SQLだと……これ、すごく長いですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>29行だ。同じクエリが、ある言語では4行、別の言語では29行。これが意味するのは、<b>ユースケースが違えば適切なデータモデルも違う</b>ってこと。アプリに合ったデータモデルを選ぶのは、本当に重要なんだよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：系図帳なら一言、台帳なら長い手順書</h4>
+      <p>「アメリカ圏で生まれヨーロッパ圏に住む人」を、系図帳（グラフ）に頼めば短い一言で済みます。でも同じことを<b>棚＋索引カードの台帳（リレーショナル）</b>でやろうとすると、「アメリカ圏の場所を1段ずつ集めて、ヨーロッパ圏も集めて、生まれの人を集めて、住む人を集めて、重ねて…」と<b>長い手順書（29行）</b>が必要に。やりたいことに合った帳面を選ぶことが、いかに大事かが分かります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>グラフクエリの「結合数が事前に決まらない」性質と、可変長パスの難しさを理解できる。</li>
+        <li>SQLの再帰共通テーブル式でグラフをたどる方法を知る。</li>
+        <li>同じクエリの行数差から、データモデル選択の重要性を実感できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>グラフクエリは結合数が事前に決まらない（たどる辺の数が変動）。</li>
+        <li>Cypherの:WITHIN*0..はSQL:1999の再帰共通テーブル式（WITH RECURSIVE）で表せる。</li>
+        <li>だがCypherの4行がSQLでは29行になるほど扱いづらい。</li>
+        <li>行数の差は「ユースケースに合うデータモデルを選ぶ重要性」を示す。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.3.4 トリプルストアとSPARQL ===== -->
+<section id="s234">
+  <div class="sec-head"><div class="sec-num">2.3.4</div><div><h2>トリプルストアとSPARQL</h2><span class="tag">(主語, 述語, 目的語) の3つ組で表す</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：トリプルストアはプロパティグラフと同等の内容を <b>(主語, 述語, 目的語)</b> の3つ組で表す。主語は頂点、目的語はプリミティブ値（＝プロパティ）か別の頂点（＝辺）。Turtle形式（N3のサブセット）で書け、<b>_:名前</b>で頂点を表し、セミコロンで同じ主語の複数の述語をまとめて簡潔にできる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もう1つのグラフの実装、トリプルストアって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="(主語,述語,目的語)の3つ組で情報を保存するグラフの実装。">トリプルストア</span>モデルは、だいたいプロパティグラフと同じことを違う用語で表す。すべての情報を<b>(主語, 述語, 目的語)</b>の形で保存する。例えば(Jim, likes, bananas)なら、Jimが主語、likesが述語（動詞）、bananasが目的語だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>主語・述語・目的語。英語の文みたいですね。目的語って何が入るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>主語はグラフの頂点に相当。目的語は2つのどちらか。①文字列や数値みたいな<b>プリミティブな型の値</b>。この場合、述語と目的語は主語の頂点のプロパティのキーと値に相当する（(lucy, age, 33)は{"age":33}のlucy頂点みたい）。②<b>グラフ中の別の頂点</b>。この場合、述語はグラフの辺で、主語が始点・目的語が終点（(lucy, marriedTo, alain)なら述語marriedToが辺のラベル）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>値か、別の頂点か。書き方の例を見たいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>同じデータを<b>Turtle</b>というフォーマット（Notation3＝N3のサブセット）で書くとこうだ。</div></div>
+    </div>
+
+    <p>このコードは、これまでのグラフ（Lucyや地名）を、トリプル（3つ組）の形で1行ずつ書き出したものです。</p>
+    <details class="code"><summary>Turtle形式（1行ずつ）</summary>
+<pre><span class="cmt"># Turtle 形式でグラフをトリプルとして書いたもの。</span>
+<span class="cmt"># _:名前 は頂点を表す（このファイル内でだけ意味を持つ名前）。a は「型は」という述語。</span>
+@prefix : &lt;urn:example:&gt;.
+_:lucy     a       :Person.
+_:lucy     :name   <span class="str">"Lucy"</span>.
+_:lucy     :bornIn _:idaho.
+_:idaho    a       :Location.
+_:idaho    :name   <span class="str">"アイダホ"</span>.
+_:idaho    :type   <span class="str">"state"</span>.
+_:idaho    :within _:usa.
+_:usa      a       :Location.
+_:usa      :name   <span class="str">"アメリカ合衆国"</span>.
+_:usa      :type   <span class="str">"country"</span>.
+_:usa      :within _:namerica.
+_:namerica a       :Location.
+_:namerica :name   <span class="str">"北アメリカ"</span>.
+_:namerica :type   <span class="str">"continent"</span>.</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>頂点は<b>_:someName</b>と書く。この名前はファイルの外では意味を持たない。なぜ要るかというと、これがないと「同じ頂点を参照してるトリプルがどれか」分からなくなるから。<b>_:idaho :within _:usa</b>のように述語が辺を表すときは目的語が頂点になり、<b>_:usa :name "アメリカ合衆国"</b>のように述語がプロパティのときは目的語が文字列リテラルになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じ_:lucyを何度も書くの、無駄じゃないですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいところに気づいた。同じ主語について複数のことを述べるときは<b>セミコロン</b>が使える。こうするとTurtleはぐっと読みやすくなる。</div></div>
+    </div>
+
+    <p>このコードは、同じ内容を「同じ主語は1回だけ書いてセミコロンでまとめる」より簡潔な書き方にしたものです。</p>
+    <details class="code"><summary>Turtle形式（セミコロンで簡潔に）</summary>
+<pre><span class="cmt"># セミコロン（;）で同じ主語を1回だけ書いて複数の述語をまとめた、より簡潔な Turtle。</span>
+@prefix : &lt;urn:example:&gt;.
+_:lucy     a :Person;   :name <span class="str">"Lucy"</span>;          :bornIn _:idaho.
+_:idaho    a :Location; :name <span class="str">"アイダホ"</span>;        :type <span class="str">"state"</span>;   :within _:usa.
+_:usa      a :Location; :name <span class="str">"アメリカ合衆国"</span>;  :type <span class="str">"country"</span>; :within _:namerica.
+_:namerica a :Location; :name <span class="str">"北アメリカ"</span>;      :type <span class="str">"continent"</span>.</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>だいぶスッキリしました。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：すべてを「主語・述語・目的語」の一言カードに</h4>
+      <p>トリプルストアは、図書館のあらゆる事実を<b>「○○は △△ が ××」という3語の付箋カード</b>1枚ずつに分解して箱に入れる方式です。「ルーシーは 名前が ルーシー」「ルーシーは 生まれが アイダホ」…。目的語が文字なら属性（プロパティ）、目的語が別の人物カードを指せばつながり（辺）。同じ人物を何枚にも書くのは大変なので、「ルーシーは…」を1回書いて続柄を並べる略記（セミコロン）も用意されています。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>トリプル（主語・述語・目的語）でグラフを表す発想を理解できる。</li>
+        <li>目的語が「値か頂点か」でプロパティか辺かが決まると説明できる。</li>
+        <li>Turtle形式の読み書き（_:名前、セミコロン省略）の基本を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>トリプルストアは (主語, 述語, 目的語) の3つ組で情報を保存（プロパティグラフと同等）。</li>
+        <li>主語＝頂点。目的語が値なら述語＝プロパティのキー、目的語が頂点なら述語＝辺のラベル。</li>
+        <li>Turtle（N3のサブセット）で記述。_:名前は頂点を表す（ファイル内限定の名前）。</li>
+        <li>セミコロンで同じ主語の複数の述語をまとめると読みやすい。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.3.4.1 セマンティックWeb ===== -->
+<section id="s2341">
+  <div class="sec-head"><div class="sec-num">2.3.4.1</div><div><h2>セマンティックWeb</h2><span class="tag">トリプルストアとは独立 ― 構想は壮大だが未実現</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：トリプルストアのデータモデルはセマンティックWebとは独立。セマンティックWebは「コンピュータが読めるデータをWebで公開し、RDFで一貫フォーマット化して巨大なweb of dataを作る」構想だが、過剰宣伝のわりに実現せず懐疑的に見られる。ただしトリプルはアプリ内部のデータモデルとして優れている。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トリプルストアを調べると「セマンティックWeb」がよく出てきます。関係あるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実は、トリプルストアのデータモデルは<b>セマンティックWebとは完全に独立</b>してる。DatomicというトリプルストアはセマンティックWebとの関係を一切主張してない。ただ多くの人の頭で2つが密接にリンクしてるから、説明しておこう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>セマンティックWebって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>基本はシンプルな考え。Webは今、人間が読めるテキストや画像で情報を公開してる。それなら<b>コンピュータが読めるデータとしても公開すればいい</b>、と。その仕組みが<span class="term" data-tip="Resource Description Framework。コンピュータ可読データの記述方式。">RDF</span>。いろんなサイトが一貫フォーマットでデータを公開し、自動で組み合わせて"web of data"――インターネット規模の「あらゆる情報のDB」を作ろうとした。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>すごく壮大ですね。実現したんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>残念ながら、2000年代初めに過剰に語られたわりに実現する兆しはほとんどなく、多くの人が懐疑的だ。短縮形の用語があふれ、複雑すぎる標準が提唱され、傲慢さも見られた、という問題もあった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ無駄だったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、欠点の裏に優れた成果もたくさん生まれた。<b>セマンティックWebにRDFデータを公開するつもりがなくても、トリプルはアプリの内部的なデータモデルとして優れてる</b>。そこは分けて考えるといい。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：世界中の図書館を1つの目録でつなぐ夢</h4>
+      <p>セマンティックWebは、<b>世界中の図書館が同じ様式の付箋カード（RDF）で蔵書情報を公開し、それを全部つなげて「人類の全知識の巨大目録」を作ろう</b>という壮大な夢でした。理想は美しかったものの、様式が複雑すぎて広く実現はしませんでした。ただし、その付箋カード方式（トリプル）自体は、<b>1つの図書館の中の整理術としては十分に優秀</b>です。夢と道具は切り離して考えましょう。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>トリプルストアとセマンティックWebを混同せず区別できる。</li>
+        <li>セマンティックWeb構想（RDFによるweb of data）の狙いと現状を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>トリプルストアのデータモデルはセマンティックWebと独立（Datomicは関係を主張しない）。</li>
+        <li>セマンティックWeb＝コンピュータ可読データをWeb公開し、RDFで巨大なweb of dataを作る構想。</li>
+        <li>過剰宣伝のわりに実現せず懐疑的に見られるが、トリプル自体はアプリ内部のモデルとして優秀。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.3.4.2 RDFデータモデル ===== -->
+<section id="s2342">
+  <div class="sec-head"><div class="sec-num">2.3.4.2</div><div><h2>RDFデータモデル</h2><span class="tag">URIで名前の衝突を防ぐ ― データ交換のための設計</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：TurtleはRDFの人間に優しいフォーマットで、RDF/XMLは同内容でも冗長（ツールで相互変換可能）。RDFはインターネット上のデータ交換用に設計され、主語・述語・目的語をURIにすることで、他人のデータと組み合わせても名前の衝突を防ぐ。URIは必ずしもアクセス可能である必要はなく、単なる名前空間でよい。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきのTurtleはRDFのフォーマットの1つなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、Turtleは人間が読めるRDFデータのフォーマットだ。RDFはXMLでも書けるけど、同じ内容でもはるかに冗長になる。見てごらん。</div></div>
+    </div>
+
+    <p>このコードは、さっきと同じデータ（Lucyや地名）を、RDF/XMLという別の書き方で書いたものです。Turtleよりずっと長くなります。</p>
+    <details class="code"><summary>RDF/XML（冗長）</summary>
+<pre><span class="cmt">&lt;!-- 同じデータを RDF/XML 構文で書いたもの。Turtle よりずっと冗長。 --&gt;</span>
+<span class="kw">&lt;rdf:RDF</span> xmlns=<span class="str">"urn:example:"</span>
+    xmlns:rdf=<span class="str">"http://www.w3.org/1999/02/22-rdf-syntax-ns#"</span><span class="kw">&gt;</span>
+
+  <span class="kw">&lt;Location</span> rdf:nodeID=<span class="str">"idaho"</span><span class="kw">&gt;</span>
+    <span class="kw">&lt;name&gt;</span>アイダホ<span class="kw">&lt;/name&gt;</span>
+    <span class="kw">&lt;type&gt;</span>state<span class="kw">&lt;/type&gt;</span>
+    <span class="kw">&lt;within&gt;</span>
+
+      <span class="kw">&lt;Location</span> rdf:nodeID=<span class="str">"usa"</span><span class="kw">&gt;</span>
+        <span class="kw">&lt;name&gt;</span>アメリカ合衆国<span class="kw">&lt;/name&gt;</span>
+        <span class="kw">&lt;type&gt;</span>country<span class="kw">&lt;/type&gt;</span>
+        <span class="kw">&lt;within&gt;</span>
+          <span class="kw">&lt;Location</span> rdf:nodeID=<span class="str">"namerica"</span><span class="kw">&gt;</span>
+            <span class="kw">&lt;name&gt;</span>北アメリカ<span class="kw">&lt;/name&gt;</span>
+            <span class="kw">&lt;type&gt;</span>continent<span class="kw">&lt;/type&gt;</span>
+          <span class="kw">&lt;/Location&gt;</span>
+        <span class="kw">&lt;/within&gt;</span>
+      <span class="kw">&lt;/Location&gt;</span>
+    <span class="kw">&lt;/within&gt;</span>
+  <span class="kw">&lt;/Location&gt;</span>
+
+  <span class="kw">&lt;Person</span> rdf:nodeID=<span class="str">"lucy"</span><span class="kw">&gt;</span>
+    <span class="kw">&lt;name&gt;</span>Lucy<span class="kw">&lt;/name&gt;</span>
+    <span class="kw">&lt;bornIn</span> rdf:nodeID=<span class="str">"idaho"</span><span class="kw">/&gt;</span>
+  <span class="kw">&lt;/Person&gt;</span>
+<span class="kw">&lt;/rdf:RDF&gt;</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Turtle/N3のほうがずっと目に優しいよね。Apache Jenaみたいなツールが、必要に応じてRDFのフォーマット間を自動変換してくれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RDFって、なんか独特な癖がありますね。urn:example:とか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>RDFが<b>インターネット上でのデータ交換</b>のために設計されたからだ。トリプルの主語・述語・目的語は、しばしば<b>URI</b>になる。述語が単にWITHINじゃなく&lt;http://my-company.com/namespace#within&gt;みたいになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでわざわざURLにするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>自分のデータを他人のデータと組み合わせられるようにするため。仮に他人がWITHINに違う意味を与えてても、&lt;http://other.org/foo#within&gt;なら衝突しない。名前空間で区別するわけ。ただしこのURLは、必ずしも何かに解決できる（アクセスできる）必要はなく、RDFから見れば単なる名前空間だ。だから例では混乱を避けるためurn:example:withinみたいな解決できないURIを使ってる。このプレフィックスはファイル先頭で一度指定すればいい。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：世界共通の請求記号で「同名違い」を防ぐ</h4>
+      <p>図書館どうしが目録を持ち寄ると、同じ「内」という言葉でも館ごとに意味が違うかもしれません。そこでRDFは、言葉に<b>世界で一意の長い住所（URI）</b>を付けて「これはA館の『内』」「これはB館の『内』」と区別します。住所といっても、実際にそこへ手紙が届く必要はなく、<b>名札として一意であればいい</b>。だから他館のカードと混ぜても取り違えが起きないのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>TurtleとRDF/XMLの関係（同内容・冗長さの違い・相互変換）を理解できる。</li>
+        <li>RDFがURIを使う理由（データ交換時の名前衝突回避）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>TurtleはRDFの読みやすいフォーマット、RDF/XMLは冗長（Apache Jenaなどで相互変換）。</li>
+        <li>RDFはデータ交換用設計で、主語・述語・目的語をURIにする。</li>
+        <li>URIで名前空間を区別し、他人のデータと組み合わせても衝突を防ぐ。</li>
+        <li>URIはアクセス可能である必要はなく、単なる名前空間でよい（例ではurn:example:）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2.3.4.3 SPARQL ===== -->
+<section id="s2343">
+  <div class="sec-head"><div class="sec-num">2.3.4.3</div><div><h2>SPARQLクエリ言語</h2><span class="tag">CypherのルーツでCypherより簡潔</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：SPARQLはRDFトリプルストア用の宣言的クエリ言語（「スパークル」）。CypherはSPARQLのパターンマッチングを取り入れたので両者は酷似する。SPARQLは変数を<b>?</b>で始め、<b>/</b>でパスをつなぎ<b>*</b>で可変長パスを表し、Cypherより簡潔。RDFはプロパティと辺を区別せず述語を使うため、両方に同じ構文が使える。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>RDFをクエリする言語が、SPARQLですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。<b>SPARQL</b>（"SPARQL Protocol and RDF Query Language"の略、「スパークル」と発音）は、RDFモデルを使うトリプルストア用のクエリ言語だ。SPARQLはCypherより前からあって、Cypherのパターンマッチングは実はSPARQLから取られてる。だから2つはよく似てる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきの「アメリカ生まれでヨーロッパ移住」のクエリ、SPARQLだとどうなりますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Cypher以上に簡潔になる。</div></div>
+    </div>
+
+    <p>このコードは、「アメリカ生まれでヨーロッパ在住の人」を探す問い合わせを、SPARQLで書いたものです。Cypherよりさらに短くなります。</p>
+    <details class="code"><summary>SPARQL：移住者を探すクエリ</summary>
+<pre><span class="cmt"># アメリカで生まれ、かつヨーロッパに住む人の名前を返す SPARQL クエリ。</span>
+<span class="cmt"># 変数は ? で始まる。/ はパスをつなぎ、:within* は within を0回以上たどる。</span>
+PREFIX : &lt;urn:example:&gt;
+
+<span class="kw">SELECT</span> ?personName <span class="kw">WHERE</span> {
+  ?person :name ?personName.
+  ?person :bornIn  / :within* / :name <span class="str">"アメリカ合衆国"</span>.
+  ?person :livesIn / :within* / :name <span class="str">"ヨーロッパ"</span>.
+}</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>構造はCypherにそっくりだ。SPARQLの変数は疑問符<b>?</b>で始まる。次の2つの式は等価だよ。</div></div>
+    </div>
+
+    <p>このコードは、Cypherの矢印表記とSPARQLのパス表記が同じ意味になることを並べて示したものです。</p>
+    <details class="code"><summary>Cypher と SPARQL の対応（辺）</summary>
+<pre>(person) -[:BORN_IN]-&gt; () -[:WITHIN*0..]-&gt; (location)   <span class="cmt"># Cypher</span>
+?person :bornIn / :within* ?location.                   <span class="cmt"># SPARQL</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ほんとに似てますね。プロパティのマッチも同じですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこがRDFの面白いところ。<b>RDFはプロパティと辺を区別せず、どちらにも述語を使う</b>から、プロパティのマッチにも同じ構文が使える。次の2つも等価だ。</div></div>
+    </div>
+
+    <p>このコードは、プロパティ（名前）のマッチも、CypherとSPARQLで同じ意味になることを示したものです。</p>
+    <details class="code"><summary>Cypher と SPARQL の対応（プロパティ）</summary>
+<pre>(usa {name:<span class="str">'アメリカ合衆国'</span>})   <span class="cmt"># Cypher</span>
+?usa :name <span class="str">"アメリカ合衆国"</span>.    <span class="cmt"># SPARQL</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>SPARQLは優れたクエリ言語でね。たとえセマンティックWebが普及しなくても、SPARQLはアプリ内部で使える強力なツールになり得るんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：付箋カードの箱への、より短い頼み方</h4>
+      <p>SPARQLは、トリプルの付箋カードの箱（RDF）に対する頼み方で、Cypherの兄貴分（先にできた）です。だからCypherとそっくり。<b>?</b>で「探したい人」を表し、<b>/</b>で「カードをたどる順路」をつなぎ、<b>*</b>で「何段でもさかのぼってよい」を表す。しかも付箋カードは属性も続柄も同じ「述語」で書くので、<b>名前を調べるのも、つながりをたどるのも、まったく同じ書き方</b>で頼めるのが楽なところです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>SPARQLとCypherの類似（パターンマッチング、可変長パス）を理解できる。</li>
+        <li>RDFがプロパティと辺を区別しない（どちらも述語）という特徴を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>SPARQLはRDFトリプルストア用の宣言的クエリ言語。CypherはSPARQL由来で酷似。</li>
+        <li>変数は?始まり、/でパス連結、*で可変長パス。Cypherより簡潔。</li>
+        <li>RDFはプロパティと辺を区別せず述語を使うので、両方に同じ構文が使える。</li>
+        <li>セマンティックWebが普及しなくてもSPARQLは強力なツール。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ネットワークモデルとの比較 ===== -->
+<section id="s234net">
+  <div class="sec-head"><div class="sec-num">⚖️</div><div><h2>グラフDBのネットワークモデルとの比較</h2><span class="tag">CODASYLの再来ではない ― 4つの違い</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：グラフDBはCODASYLの再来ではない。違いは4つ――①スキーマ制約がない（どの頂点も自由につなげる）、②一意IDやインデックスで頂点に直接アクセスできる（パスをたどる必要がない）、③頂点・辺は順序づけされない、④宣言的クエリ言語（Cypher/SPARQL）をサポートする。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>グラフDBって、さっきの古いCODASYL（ネットワークモデル）の再登場じゃないんですか？ 似てる気がします。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一見そう思えるよね。でも答えは<b>No</b>。重要な違いがいくつかある。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①CODASYLは「どのレコード型がどれとネストできるか」を決めるスキーマを持つ。グラフDBには制約がなく、どの頂点も他のどの頂点へも辺をいくつでも持てる。だから要求変化に柔軟。②CODASYLは特定レコードに着くにはパスをたどるしかなかった。グラフDBは任意の頂点を一意のIDで直接参照でき、インデックスで特定の値を持つ頂点も見つけられる。③CODASYLではレコードの子が<b>順序づけられた集合</b>でDBが順序を保つ必要があった。グラフDBでは頂点も辺も順序づけされない（クエリ時にソートできるだけ）。④CODASYLは全クエリが命令的で書きにくくスキーマ変更ですぐ動かなくなった。グラフDBは命令的に辺をたどるコードも書けるが、たいていCypherやSPARQLみたいな高級な宣言的言語もサポートする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、見た目は似てても中身は全然違うんですね。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>観点</th><th>CODASYL（ネットワークモデル）</th><th>現代のグラフDB</th></tr>
+      <tr><td>スキーマ制約</td><td>どの型がどれとネストできるか固定</td><td>制約なし。どの頂点同士も自由に接続</td></tr>
+      <tr><td>アクセス方法</td><td>パスをたどるしかない</td><td>一意IDやインデックスで直接アクセス</td></tr>
+      <tr><td>順序</td><td>子は順序づけられた集合（順序を保つ必要）</td><td>頂点・辺は順序づけなし（クエリ時にソート）</td></tr>
+      <tr><td>クエリ言語</td><td>命令的のみ。変更に弱い</td><td>宣言的（Cypher/SPARQL）もサポート</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：見た目は同じ「系図」でも、扱いやすさが段違い</h4>
+      <p>昔のCODASYLも今のグラフDBも、どちらも「系図のように線でつなぐ」点は同じに見えます。でも昔の系図帳は、<b>つなげる相手の種類が決まっていて、目当ての人には決まった順路をたどるしかなく、並び順も守らねばならず、頼み方も逐一手順指示</b>でした。今の系図帳は、誰とでも自由につなげ、名前から直接めくれ、並び順は自由、しかも「こういう人を探して」と一言で頼める。見た目は系図でも、使い勝手はまるで別物なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>グラフDBと古いネットワークモデルの本質的な違い（柔軟性・直接アクセス・宣言的クエリ）を説明できる。</li>
+        <li>「昔の技術の焼き直し」という誤解を避けられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>グラフDBはCODASYL（ネットワークモデル）の再来ではない。違いは4つ。</li>
+        <li>①スキーマ制約なし（自由に接続）、②一意IDやインデックスで直接アクセス可能。</li>
+        <li>③頂点・辺は順序づけされない、④宣言的クエリ言語（Cypher/SPARQL）をサポート。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<!-- ===== 2.3.5 Datalog ===== -->
+<section id="s235">
+  <div class="sec-head"><div class="sec-num">2.3.5</div><div><h2>礎となったもの：Datalog</h2><span class="tag">ファクト＋ルールで組み立てる ― 後の言語の祖先</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：DatalogはSPARQL/Cypherより古く、後のクエリ言語の礎（Prologのサブセット）。<b>predicate(subject, object)</b>でファクトを書き、<b>:-</b>でルールを定義する。ルールは右辺の全述語がマッチすると左辺を導出し、他のルールや自分を再帰参照できる。<b>within_recursive</b>を繰り返し適用して階層を広げ、<b>migrated</b>で答えを出す。ルールの再利用が強力で、複雑なデータに向く。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最後のグラフクエリ言語、Datalogですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>Datalog</b>は、SPARQLやCypherよりずっと古く、1980年代からアカデミックな分野で研究されてきた。あまり知られてないけど、<b>その後のクエリ言語の礎</b>になったから重要。実際DatomicはDatalogをクエリ言語に使い、CascalogはHadoop内の巨大データへのDatalog実装だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データの書き方はどうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>データモデルはトリプルストアに似てて、もう少し汎用的だ。(subject, predicate, object)じゃなく<b>predicate(subject, object)</b>と書く。これまでのデータをDatalogで書くとこうだ。</div></div>
+    </div>
+
+    <p>このコードは、これまでのグラフを「○○の△△は××」という事実（ファクト）の並びとして書いたものです。</p>
+    <details class="code"><summary>Datalog：ファクト（事実）</summary>
+<pre><span class="cmt">% これまでのグラフを Datalog の「ファクト（事実）」として書いたもの。</span>
+<span class="cmt">% predicate(subject, object) の形。name(usa, 'アメリカ合衆国') は「usa の名前はアメリカ合衆国」。</span>
+<span class="fn">name</span>(namerica, <span class="str">'北アメリカ'</span>).
+<span class="fn">type</span>(namerica, continent).
+
+<span class="fn">name</span>(usa, <span class="str">'アメリカ合衆国'</span>).
+<span class="fn">type</span>(usa, country).
+
+<span class="fn">within</span>(usa, namerica).
+<span class="fn">name</span>(idaho, <span class="str">'アイダホ'</span>).
+
+<span class="fn">type</span>(idaho, state).
+<span class="fn">within</span>(idaho, usa).
+
+<span class="fn">name</span>(lucy, <span class="str">'Lucy'</span>).
+<span class="fn">born_in</span>(lucy, idaho).</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>これでデータが定義できた。同じ「アメリカ生まれでヨーロッパ移住」のクエリはこう書く。CypherやSPARQLとは見かけが違うけど、気にしなくていい。DatalogはPrologのサブセットなんだ。</div></div>
+    </div>
+
+    <p>このコードは、まず「○○は××の中にある」という関係を再帰的にたどるルールを定義し、それを使って「アメリカ生まれでヨーロッパ在住の人」を探すものです。</p>
+    <details class="code"><summary>Datalog：ルールとクエリ</summary>
+<pre><span class="cmt">% Datalog で「アメリカ生まれでヨーロッパ在住の人」を探すクエリ。</span>
+<span class="cmt">% :- の右がすべて成り立つとき左が導かれる。大文字始まりは変数。</span>
+<span class="fn">within_recursive</span>(Location, Name) :- <span class="fn">name</span>(Location, Name).     <span class="cmt">/* ルール 1: 場所そのものは within_recursive */</span>
+
+<span class="fn">within_recursive</span>(Location, Name) :- <span class="fn">within</span>(Location, Via),    <span class="cmt">/* ルール 2: Location が Via の中にあり、 */</span>
+                                    <span class="fn">within_recursive</span>(Via, Name). <span class="cmt">/*           Via が Name の中にあるなら成立（再帰） */</span>
+
+<span class="fn">migrated</span>(Name, BornIn, LivingIn) :- <span class="fn">name</span>(Person, Name),       <span class="cmt">/* ルール 3: 人の名前・生誕地・居住地を組み合わせる */</span>
+                                    <span class="fn">born_in</span>(Person, BornLoc),
+                                    <span class="fn">within_recursive</span>(BornLoc, BornIn),
+                                    <span class="fn">lives_in</span>(Person, LivingLoc),
+                                    <span class="fn">within_recursive</span>(LivingLoc, LivingIn).
+
+?- <span class="fn">migrated</span>(Who, <span class="str">'アメリカ合衆国'</span>, <span class="str">'ヨーロッパ'</span>).
+<span class="cmt">/* Who = 'Lucy'. */</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>CypherはすぐSELECTが出るのに、Datalogは細かくステップを踏みますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。Datalogはまず、DBに新しい述語を伝える<b>ルール</b>を定義する。ここではwithin_recursiveとmigratedの2つ。これらはDBに保存されたトリプルじゃなく、データや他のルールから<b>導出される</b>。関数が他の関数や自分自身を呼べるように、ルールは他のルールを参照できる。だから複雑なクエリを小さな部品から組み上げられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>大文字で始まるLocationとかNameは何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが<b>変数</b>だ。述語はCypherやSPARQL同様にマッチする。name(Location, Name)にLocation = namerica、Name = '北アメリカ'とバインドすれば、name(namerica, '北アメリカ')というトリプルにマッチする。<b>ルールは、:- の右辺の全部の述語にマッチが見つかったときに適用される</b>。適用されると左辺がDBに追加されたかのようになる（変数はマッチした値で置き換わる）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>実際にどう動くのか、追ってみたいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいね。①name(namerica, '北アメリカ')があるのでルール1が適用され、within_recursive(namerica, '北アメリカ')が生成される。②within(usa, namerica)があり、①ができたのでルール2が適用され、within_recursive(usa, '北アメリカ')が生成される。③within(idaho, usa)があり、②ができたのでルール2が適用され、within_recursive(idaho, '北アメリカ')が生成される。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ルール1と2を繰り返すと、だんだん範囲が広がっていくんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。これを繰り返すと、within_recursiveから北アメリカにある全場所が分かる。そのうえでルール3で、BornInの場所で生まれLivingInの場所に住む人を探す。BornIn = 'アメリカ合衆国'、LivingIn = 'ヨーロッパ'でクエリし、見つかった人をWhoに残せば、当てはまる値（Lucy）が見つかる。最終的にCypherやSPARQLと同じ答えが出るんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ちょっと考え方が違いますね。これって便利なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>他のクエリ言語とは違う考え方が要るけど、<b>ルールを組み合わせて様々なクエリで再利用できる</b>から強力なんだ。一度きりの単純なクエリにはそれほど便利じゃないけど、データが複雑ならうまく使える。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>ルール1：場所そのもの</h4><p>name(namerica,'北アメリカ') → within_recursive(namerica,'北アメリカ') を生成。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>ルール2：1段さかのぼる（再帰）</h4><p>within(usa,namerica) と①から within_recursive(usa,'北アメリカ')。さらに idaho まで広がる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>ルール3：人を組み合わせる</h4><p>生誕地と居住地を within_recursive でたどり、条件に合う人（Lucy）を見つける。</p></div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>📚 たとえ話：「事実カード」と「導き出すルール」で推理する</h4>
+      <p>Datalogは、図書館に<b>「○○の△△は××」という事実カード</b>を並べ、別に<b>「もしAでBなら、Cと言える」という推論ルール</b>を貼っておく方式です。「アイダホはアメリカの中、アメリカは北アメリカの中 → だからアイダホは北アメリカの中」とルールを繰り返し当てはめて、隠れた事実をどんどん導きます。一度作ったルールは別の調べ物にも使い回せるので、込み入った蔵書の関係をたどるのに向いています。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>Datalogの「ファクト＋ルール」という独特の発想を理解できる。</li>
+        <li>ルールの再帰適用で階層をたどる仕組みを追える。</li>
+        <li>ルールを部品として再利用する強力さを理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>DatalogはSPARQL/Cypherより古く、後のクエリ言語の礎（Prologのサブセット）。</li>
+        <li>predicate(subject, object)でファクトを、:-でルールを定義（大文字は変数）。</li>
+        <li>ルールは右辺の全述語がマッチすると左辺を導出し、再帰や他ルール参照ができる。</li>
+        <li>within_recursiveの繰り返しで階層を広げ、migratedで答えを得る。</li>
+        <li>ルールを再利用できるので、複雑なデータに強い。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 振り返り ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で5つを言ってみる</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日も盛りだくさんでした。1つ目は「データモデルには<b>リレーショナル・ドキュメント・グラフ</b>の3つの代表があって、データのつながり方で向き不向きが決まる」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。歴史的にはまず階層モデル（1つの大きなツリー）から始まり、多対多をうまく表せなかったからリレーショナルが生まれた。その後、合わない用途があると気づいてNoSQLが2方向に分かれた。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目は「NoSQLは<b>ドキュメント</b>と<b>グラフ</b>に分岐した。ドキュメントは自己完結したデータで関係が少ない用途、グラフは逆に何でも関係しうる用途」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいね。一対多のツリーならドキュメント、関係が複雑ならグラフ、その中間がリレーショナル、という感じだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目は「ドキュメントとグラフは普通<b>スキーマを強制しない</b>けど、それは『スキーマがない』んじゃなくて、書き込み時に強制する（スキーマオンライト）か、読み取り時に解釈する（スキーマオンリード）かの違い」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>静的型チェックと動的型チェックの対比だったね。優劣はない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目は「クエリ言語には<b>宣言的</b>（SQL・Cypher・SPARQL）と<b>命令的</b>があって、宣言的は簡潔・最適化しやすい・並列化しやすい。今日はSQL、MapReduce、aggregation pipeline、Cypher、SPARQL、Datalogを見ました。CSSやXSL/XPathも宣言的でしたね」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>よく覚えてた。MapReduceは宣言的と命令的の中間だったね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目は「同じモデルを別のモデルで真似ることもできる（グラフをリレーショナルで表すとか）けど、扱いにくい。だから<b>目的ごとに違うシステム</b>があって、万能の1つ（one-size-fits-all）はない」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>完璧だ。今日扱えなかったモデルもまだあって、ゲノムデータの<b>配列相同性検索</b>（似た長い文字列を大量のDBと照合）にはGenBankみたいな特化ソフトを書く。素粒子物理は数百ペタバイト級でカスタムソリューションが要る。<b>全文検索</b>もよく使うデータモデルだ（検索インデックスは3章と第Ⅲ部で）。次章では、これらのデータモデルが実際にどう<b>実装</b>されてるか、ストレージエンジンの中身を見ていくよ。</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① 3つの代表</h4><p>リレーショナル・ドキュメント・グラフ。データのつながり方で向き不向きが決まる。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② NoSQLの分岐</h4><p>ドキュメント（一対多ツリー）とグラフ（何でも関係しうる）に分岐。中間がリレーショナル。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ スキーマ</h4><p>強制しない＝「ない」ではなく、オンライト（書く時）かオンリード（読む時）かの違い。優劣なし。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ クエリ言語</h4><p>宣言的（簡潔・最適化・並列化）vs 命令的。MapReduceは中間。SQL/Cypher/SPARQL/Datalog。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>⑤ 万能はない</h4><p>別モデルで真似られるが扱いにくい。目的ごとに違うシステム。one-size-fits-allはない。</p></div>
+    </div>
+    <div class="loopback">🧭 次章は、これらのモデルがディスク上でどう保存・検索されるか（ストレージエンジン）へ潜る</div>
+  </div>
+</section>
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ「分かっていなかった部分」</span></div></div>
+
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>一対多とドキュメントモデル</div>
+      <p style="font-size:14px;margin:0">履歴書（プロフィール）のようなデータがJSONドキュメントに向いている理由を、「一対多」「ローカリティ」という言葉を使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">履歴書は、1人のユーザーに複数のポジションや学歴がぶら下がる「一対多」のツリー構造になっています。JSONドキュメントはこのツリー構造をそのまま入れ子で表現でき、構造が見た目にも明示的になります。さらに、関連する情報がすべて1カ所にまとまる「ローカリティ」に優れているため、プロフィール全体を取り出すのに一度のクエリで済みます。リレーショナルで複数テーブルに分けると、複数回のクエリや込み入った結合が必要になります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 履歴書が一対多のツリー構造であると説明している ／ □ JSONがツリー構造を入れ子で明示的に表せると述べている ／ □ ローカリティ（関連情報が1カ所、一度のクエリで済む）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>スキーマオンリードとスキーマオンライト</div>
+      <p style="font-size:14px;margin:0">「スキーマオンリード」と「スキーマオンライト」の違いを説明し、それぞれがプログラミング言語のどんな型チェックに似ているかも述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">スキーマオンライトは、スキーマ（データの決められた形）を事前に明示し、データを書き込む時にDBがその形に従っているか保証する方式です（リレーショナルの伝統的なやり方）。スキーマオンリードは、データの構造を強制せず、データを読み取る時にだけ構造を解釈する方式です（多くのドキュメントDB）。スキーマオンライトは静的（コンパイル時）型チェックに、スキーマオンリードは動的（実行時）型チェックに似ています。どちらが正しいという答えはなく、用途によります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ スキーマオンライト＝書き込み時に強制、スキーマオンリード＝読み取り時に解釈、と説明している ／ □ それぞれが静的型チェック・動的型チェックに似ていると述べている ／ □ 一般的な優劣はなく用途次第、と触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>宣言的クエリと命令的クエリ</div>
+      <p style="font-size:14px;margin:0">SQLのような宣言的クエリ言語が、forループで書くような命令的コードより優れている点を、2つ以上挙げて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①宣言的クエリは「ほしい結果のパターン」だけを指定し「どう達成するか」は指定しないため、簡潔で扱いやすいです。②DBエンジンの実装の詳細が隠れるので、クエリを書き換えなくてもDB側が裏で性能を改善できます（命令的だと順序に依存しているか分からず、勝手に最適化できません）。③結果のパターンだけを指定しアルゴリズムを指定しないため、複数のコアやマシンに並列化しやすく、マルチコア時代に有利です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 宣言的＝結果のパターンだけ指定、命令的＝手順を順序通り指定、と区別している ／ □ 「実装を隠すので書き換えなしに最適化できる」を挙げている ／ □ 「並列化しやすい」または「簡潔」を挙げている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>グラフモデルが向くデータ</div>
+      <p style="font-size:14px;margin:0">ドキュメントモデルが向くデータと、グラフモデルが向くデータの違いを、「一対多」「多対多」という言葉を使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ドキュメントモデルは、データの関係がほとんど「一対多」（ツリー構造）で、レコード同士のつながりが少なく、ふつうツリー全体を一度に読むような用途に向いています。一方グラフモデルは、データの中で「多対多」の関係が一般的で、つながりが複雑な場合に自然です。たとえばソーシャルネットワークや、人・場所・イベントなどあらゆるものが関係しうるデータに向きます。関係性が強いほど、ドキュメントは扱いにくく、リレーショナルは許容範囲、グラフが最も自然になります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ドキュメント＝一対多（ツリー）・関係が少ない用途、と説明している ／ □ グラフ＝多対多・つながりが複雑な用途、と説明している ／ □ 関係性が強いほどグラフが自然、と述べている（具体例があるとなお良い）</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>グラフDBはネットワークモデルの再来か</div>
+      <p style="font-size:14px;margin:0">現代のグラフデータベースが、1970年代のネットワークモデル（CODASYL）の単なる再登場ではない理由を、2つ以上挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">①CODASYLは「どのレコード型がどれとネストできるか」のスキーマ制約がありましたが、グラフDBには制約がなく、どの頂点も他のどの頂点へも自由に辺を張れます。②CODASYLは特定のレコードに着くにはパスをたどるしかありませんでしたが、グラフDBは一意のIDやインデックスで頂点に直接アクセスできます。③CODASYLのクエリは命令的で書きにくく変更に弱かったのに対し、グラフDBはCypherやSPARQLのような宣言的クエリ言語をサポートします（頂点・辺が順序づけされない点も違いです）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ スキーマ制約の有無（グラフは自由に接続できる）に触れている ／ □ アクセス方法の違い（パスをたどる vs 一意IDやインデックスで直接）に触れている ／ □ クエリ言語の違い（命令的 vs 宣言的なCypher/SPARQL）に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして体感する</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>手元のデータを3モデルで描いてみる</h4><p>自分のアプリの主要データ（ユーザー・投稿・コメントなど）を、リレーショナルのテーブル、JSONドキュメント、グラフ（点と線）の3通りで紙に描き、どれが一番自然か比べてみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>同じ問い合わせをSQLと命令的コードで書く</h4><p>簡単なデータ（配列）に対して「条件に合うものを抽出する」処理を、SQL（または宣言的な書き方）とforループの両方で書き、長さと読みやすさの差を体感してください。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>PostgreSQLのJSON型を触る</h4><p>手元のPostgreSQLにJSON型の列を作り、<b>-&gt;&gt;</b>演算子で中身を取り出すクエリを試して、「リレーショナルとドキュメントの融合」を実感しましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>Neo4jのCypherを試す</h4><p>Neo4j（無料のSandboxやデスクトップ版）で、本章のLucyとAlainの例を<b>CREATE</b>し、<b>MATCH</b>で移住者を検索すると、グラフクエリの簡潔さが分かります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>正規化と非正規化を考える</h4><p>自分のデータで「同じ情報を複数の場所に複製している」箇所を探し、IDで参照する形（正規化）に直すとどうなるか、更新のしやすさの観点で考えてみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">6</div><div class="line"></div></div><div class="body"><h4>次章へ</h4><p>3章「ストレージと抽出」では、本章のデータモデルが実際にディスク上でどう保存・検索されるか（ストレージエンジンの中身）を学びます。本章の「ローカリティ」や「インデックス」が、そこでどう実装されるかを意識して読み進めてください。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『データ指向アプリケーションデザイン』第2章 図解 ／ たとえ話メタファー：📚 図書館の蔵書整理と目録 ／ データモデルとクエリ言語</p>
+
+</div>
+</body>
+</html>

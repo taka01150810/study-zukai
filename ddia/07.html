@@ -1,0 +1,2440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第7章 トランザクション ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第7章</span>
+  <h1>トランザクション ― 全部やるか、全部なかったことにするか</h1>
+  <p>「送金したらお金が一瞬消えて見える」「在庫が二重に売れる」――そんな不思議なバグの正体は<b>並行性</b>。データベースが複数の読み書きを<b>1つのまとまり</b>として安全に扱う仕組み＝<b>トランザクション</b>を、新人ハルとベテラン カイ先輩の対話で根っこから学びます。ACIDという4つの約束、弱い分離レベルで起きるレース条件、全部を防ぐ直列化可能性まで。</p>
+  <div class="badge-row">
+    <span class="badge">🏦 たとえ話は「銀行の窓口と帳簿処理」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a class="sub" href="#s00">トランザクションとは何か（章の導入）</a>
+  <a href="#s71">7.1 トランザクションというとらえどころのない概念</a>
+  <a class="sub" href="#s711">7.1.1 ACIDの意味</a>
+  <a class="sub" href="#s7111">7.1.1.1 原子性</a>
+  <a class="sub" href="#s7112">7.1.1.2 一貫性</a>
+  <a class="sub" href="#s7113">7.1.1.3 分離性</a>
+  <a class="sub" href="#s7114">7.1.1.4 永続性</a>
+  <a class="sub" href="#s712">7.1.2 単一／複数オブジェクトの操作</a>
+  <a class="sub" href="#s7121">7.1.2.1 単一オブジェクトへの書き込み</a>
+  <a class="sub" href="#s7122">7.1.2.2 複数オブジェクトの必要性</a>
+  <a class="sub" href="#s7123">7.1.2.3 エラーと中断の処理</a>
+  <a href="#s72">7.2 弱い分離レベル</a>
+  <a class="sub" href="#s721">7.2.1 Read Committed</a>
+  <a class="sub" href="#s722">7.2.2 スナップショット分離とリピータブルリード</a>
+  <a class="sub" href="#s723">7.2.3 更新のロストの回避</a>
+  <a class="sub" href="#s724">7.2.4 書き込みスキューとファントム</a>
+  <a href="#s73">7.3 直列化可能性</a>
+  <a class="sub" href="#s731">7.3.1 完全な順次実行</a>
+  <a class="sub" href="#s732">7.3.2 ツーフェーズ（2相）ロック（2PL）</a>
+  <a class="sub" href="#s733">7.3.3 直列化可能スナップショット分離（SSI）</a>
+  <a href="#wrapup">🔁 章のまとめ（弟子の振り返り）</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コードです。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🏦</div><div><b>たとえ話はぜんぶ銀行で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「銀行の窓口と帳簿処理」</b>に置きかえて説明します。トランザクション＝1件の取引、データ＝口座の残高、お客さん＝同時に来る利用者です。別世界のたとえは混ぜません。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、銀行のたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">トランザクション <span>transaction</span></div><p>複数の読み書きを「1つの取引」としてまとめ、全部成功か全部なかったことにするか、にする仕組み。銀行でいう<b>1件の取引（振込など）</b>。</p></div>
+    <div class="item"><div class="w">コミット <span>commit</span></div><p>取引を確定すること。<b>「記帳しました、確定です」</b>と帳簿に書き終える瞬間。</p></div>
+    <div class="item"><div class="w">中断／ロールバック <span>abort / rollback</span></div><p>取引を取り消し、途中の書き込みを全部なかったことにすること。<b>「やっぱり今の取引はナシ」</b>と書きかけを消す。</p></div>
+    <div class="item"><div class="w">ACID</div><p>トランザクションの4つの約束。原子性・一貫性・分離性・永続性。<b>取引が守るべき4か条</b>。</p></div>
+    <div class="item"><div class="w">原子性 <span>Atomicity</span></div><p>全部やるか全部やめるか。振込は<b>引き落としと入金がセット</b>で、片方だけは絶対に起きない。</p></div>
+    <div class="item"><div class="w">一貫性 <span>Consistency</span></div><p>データが「良い状態（不変性）」を保つこと。<b>帳簿の貸方と借方の合計が必ず一致</b>する、など。守るのはアプリの責任。</p></div>
+    <div class="item"><div class="w">分離性 <span>Isolation</span></div><p>同時に来た客の処理が互いに混ざらないこと。<b>隣の窓口の途中作業が見えない</b>ようにする。</p></div>
+    <div class="item"><div class="w">永続性 <span>Durability</span></div><p>確定（記帳）したデータは障害でも消えないこと。<b>帳簿に書いたら消えない</b>。</p></div>
+    <div class="item"><div class="w">分離レベル <span>isolation level</span></div><p>「同時処理をどこまで安全に分けるか」の強さの段階。弱いと安く速いが事故が残る。</p></div>
+    <div class="item"><div class="w">レース条件 <span>race condition</span></div><p>同じデータに同時アクセスして、タイミング次第で起きる事故。<b>2人の客の処理が競って混ざる</b>。</p></div>
+    <div class="item"><div class="w">ダーティリード <span>dirty read</span></div><p>まだ確定していない（記帳前の）他人の途中処理を覗き見てしまう勘違い。</p></div>
+    <div class="item"><div class="w">ダーティライト <span>dirty write</span></div><p>確定前の他人の書き込みを上書きしてしまう異常。<b>取引が混ざる</b>。</p></div>
+    <div class="item"><div class="w">読み取りスキュー <span>read skew / nonrepeatable read</span></div><p>帳簿の別ページを別の時刻に見て、合計が一瞬合わなく見える勘違い。</p></div>
+    <div class="item"><div class="w">更新のロスト <span>lost update</span></div><p>2人が「読んで→足して→書き戻す」を同時にやり、片方の変更が消えること。</p></div>
+    <div class="item"><div class="w">書き込みスキュー <span>write skew</span></div><p>同じ帳簿を見て別々の場所を書き、両方の前提が崩れる事故（当直0人など）。</p></div>
+    <div class="item"><div class="w">ファントム <span>phantom</span></div><p>ある取引の書き込みが、別の取引の検索結果を変えてしまう効果。<b>まだ存在しない記録</b>に関わる。</p></div>
+    <div class="item"><div class="w">スナップショット分離 <span>snapshot isolation</span></div><p>取引開始時点の「帳簿の写真」から読む方式。途中の変更は見えず矛盾しない。</p></div>
+    <div class="item"><div class="w">MVCC</div><p>複数バージョンを保持して並行処理を制御する方式。<b>帳簿の各版を残しておく</b>。</p></div>
+    <div class="item"><div class="w">直列化可能性 <span>serializability</span></div><p>並行でも「順番に一人ずつ処理した」のと同じ結果を保証する最強の分離。<b>窓口を1つにして順番に</b>。</p></div>
+    <div class="item"><div class="w">ロック <span>lock</span></div><p>あるデータを占有して他人を待たせること。<b>記帳台を1人で占有</b>する。</p></div>
+    <div class="item"><div class="w">デッドロック <span>deadlock</span></div><p>互いに相手の占有を待って動けなくなる状態。<b>互いに相手の記帳台を待って固まる</b>。</p></div>
+    <div class="item"><div class="w">2PL <span>two-phase locking</span></div><p>ロックを使って直列化可能を実現する古典手法（取得フェーズ→解放フェーズ）。</p></div>
+    <div class="item"><div class="w">SSI <span>serializable snapshot isolation</span></div><p>楽観的に進めてコミット時に衝突を確認する新しい直列化可能手法。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>新人エンジニアのハルは、自分が作った送金機能で「お金が一瞬消えて見える」「在庫が二重に売れてしまう」といった不思議なバグに頭を悩ませていました。テストでは出ないのに、本番でユーザーが増えると、たまに変なことが起きる。夜のツバサ社のオフィスで、コーヒー片手のカイ先輩が「それ、トランザクションの分離レベルの話だね」とつぶやきます。そこから、データベースが「複数の読み書きをひとまとめにして安全に扱う」ための仕組み――トランザクションをめぐる長い対話が始まります。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：トランザクションとは、複数の読み書きを「1つのまとまり（論理単位）」として扱い、<b>全部成功（コミット）か、全部なかったことにする（中断・ロールバック）か</b>のどちらかにする仕組み。これがあると、途中でクラッシュしても「中途半端な状態」が残らず、エラー処理がぐっと簡単になる。ただし「どこまで安全を保証するか」には強さの段階（<b>分離レベル</b>）があり、弱い段階ではこっそり危険なバグ（レース条件）が残る。この章は、その安全保証の中身（ACID）と、弱い分離レベルで起きる事故、そして全部防ぐ直列化可能性の作り方を、具体的なシナリオで丁寧に学ぶ回。</div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：これから「銀行の窓口と帳簿処理」の話をします</h4>
+      <p>この章を通して、トランザクション＝<b>1件の取引（振込・引き出しなど）</b>、データ＝<b>口座の残高や帳簿の記録</b>、利用者＝<b>同時に窓口へ来るお客さん</b>に置きかえて読みます。よい銀行とは「① 振込は引き落としと入金がセットで片方だけにならない（原子性）、② 帳簿の合計がいつも合う（一貫性）、③ 同時に来た客の処理が混ざらない（分離性）、④ 記帳したら消えない（永続性）」銀行。この4つの約束が、この章ぜんぶを貫く合言葉です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>本物の事故を防げる</b>：トランザクションは「当たり前」に見えて細部に落とし穴が多い。曖昧な理解だと、お金や在庫を扱うコードで本物の事故を起こす。</li>
+        <li><b>ラベルに騙されない</b>：「ACID準拠」はマーケティング用語化しており、実際の保証はDBごとにバラバラ。中身を知らないと信じすぎて痛い目を見る。</li>
+        <li><b>再現しないバグから抜け出せる</b>：並行性のバグはタイミング依存でテストでは見つけにくい。原理を知れば、再現しないバグに延々と苦しまずに済む。</li>
+        <li><b>適切な対策を選べる</b>：ダーティリード・更新のロスト・書き込みスキュー・ファントムなど典型的なレース条件を見抜き、アトミック操作・明示的ロック・直列化可能分離などを選べる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章の導入：トランザクションとは何か ===== -->
+<section id="s00">
+  <div class="sec-head"><div class="sec-num">🏦</div><div><h2>トランザクションとは何か ― 章の導入</h2><span class="tag">過酷なデータの世界を、1つの解決策でまとめて防ぐ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：データシステムの現実は過酷で、障害・クラッシュ・ネットワーク断・並行書き込みなど多くの問題が起こりうる。トランザクションは複数の読み書きを「1つの論理単位」にまとめ、<b>コミット（成功）か中断（ロールバック）か</b>のどちらかにする。目的はプログラミングを単純にすること（安全性の保証）で、自然法則ではなく人間が作った道具。全アプリに必要なわけではなく、保証とコストを天秤にかけて使うかを決める。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩……。僕の送金機能、テストは全部通るのに、本番でたまに「合計残高が合わない」って報告が来るんです。再現もできなくて、もうわけが分かりません。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>お、それは「並行性」のにおいがするね。複数のユーザーが同時に同じデータをいじると、タイミング次第で変なことが起きるんだ。今日はその対策の本命――<b>トランザクション</b>の話をしようか。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トランザクションって、言葉は聞いたことあります。<b>BEGIN</b>して<b>COMMIT</b>するやつですよね。でも何のためにあるのか、正直ピンと来てなくて。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい正直さだ。まず、データシステムの現実はけっこう過酷でね。問題が起きうるポイントを並べてみるよ。</div></div>
+    </div>
+
+    <h3 class="blk">データシステムで起こりうる問題</h3>
+    <table class="t">
+      <tr><th>こんなにたくさんの問題が起こりうる</th></tr>
+      <tr><td>DBのソフトやハードが、書き込みの最中に障害を起こすかもしれない</td></tr>
+      <tr><td>アプリが、一連の操作の途中でクラッシュするかもしれない</td></tr>
+      <tr><td>ネットワークが切れて、アプリとDB、あるいはDBノード同士が切り離されるかもしれない</td></tr>
+      <tr><td>複数のクライアントが同時に書き込み、お互いの変更を上書きしあうかもしれない</td></tr>
+      <tr><td>クライアントが「部分的にしか更新されていない」中途半端なデータを読むかもしれない</td></tr>
+      <tr><td>クライアント間のレース条件で、驚くようなバグが起きるかもしれない</td></tr>
+    </table>
+
+    <details class="code"><summary>原文メモ：起こりうる問題のリスト</summary>
+<pre><span class="cmt"># データシステムで起こりうる問題</span>
+- DBのソフトやハードが、書き込みの最中に障害を起こすかもしれない
+- アプリが、一連の操作の途中でクラッシュするかもしれない
+- ネットワークが切れて、アプリとDB、あるいはDBノード同士が切り離されるかもしれない
+- 複数のクライアントが同時に書き込み、お互いの変更を上書きしあうかもしれない
+- クライアントが「部分的にしか更新されていない」中途半端なデータを読むかもしれない
+- クライアント間のレース条件で、驚くようなバグが起きるかもしれない</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うわ、僕が今ハマってるやつ、全部ここに書いてあります……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>だろう？ こういうフォールトに一つひとつ手で対処しようとすると、膨大な注意とテストが必要になる。そこで数十年前から選ばれてきた解決策が<b>トランザクション</b>なんだ。複数の読み書きを「1つの論理的な単位」にまとめて、概念上は1回の操作として実行する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1回の操作として……というと？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>トランザクションは全体として<b>成功（コミット）</b>するか、<b>失敗（中断＝abort、ロールバック＝rollback）</b>するか、どちらかしかない。途中まで成功して途中で失敗、みたいな中途半端がない。失敗したら安全にリトライできる。だからエラー処理が劇的にシンプルになる。「一部成功して一部失敗」という<b>部分的な失敗</b>を気にしなくてよくなるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、「全部やるか、全部なかったことにするか」なんですね。それって自然法則みたいに、DBに最初から備わってるものなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこは誤解しやすい。トランザクションは自然法則じゃない。<b>アプリのプログラミングモデルをシンプルにする</b>目的で人間が作り出した道具なんだ。これを使うと、ある種のエラー状況や並行性の問題はDBが面倒を見てくれて、アプリは気にしなくてよくなる。これを<b>安全性の保証</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、どんなアプリでも絶対トランザクションを使うべき、なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、そうとも限らない。保証を弱めたり、いっそ使わなかったりすることで、パフォーマンスや可用性が上がるメリットもある。だから「自分のアプリに本当に必要か」を判断するには、提供できる保証の中身とコストを正確に知らないといけない。この章はまさにそれを学ぶんだ。単一ノードのDBにも分散DBにも当てはまる話だよ（分散特有の難しさは8章）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：1件の取引は「全部やるか、全部やめるか」</h4>
+      <p>振込を考えてみましょう。「Aさんの口座から1万円引く」「Bさんの口座に1万円足す」という2つの作業は、<b>かならずセット</b>で行わなければなりません。もし片方だけ起きたら、お金が消えたり湧いたりして帳簿が狂います。トランザクションは、この一連の作業を<b>「1件の取引」</b>として束ね、最後に「確定（コミット）」するか「取り消し（中断）」するかのどちらかにします。途中で停電が起きても、確定前なら<b>何もなかったこと</b>にできる。だから窓口係は安心して、もう一度やり直せばいいのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「途中まで成功」という最悪のケースを排除でき、失敗時は安全にリトライするだけで済む。</li>
+        <li>トランザクションが必要かどうかを、保証とコストを天秤にかけて判断できるようになる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>データシステムでは障害・クラッシュ・ネットワーク断・並行書き込みなど、多くの問題が起こりうる。</li>
+        <li>トランザクションは複数の読み書きをまとめ、コミットか中断（ロールバック）かのどちらかにする。</li>
+        <li>目的はプログラミングモデルの単純化（安全性の保証）。自然法則ではなく道具。</li>
+        <li>全アプリに必要なわけではなく、保証を弱める・使わない選択もありうる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1 ===== -->
+<section id="s71">
+  <div class="sec-head"><div class="sec-num">7.1</div><div><h2>トランザクションというとらえどころのない概念</h2><span class="tag">「捨てるしかない」も「必須」も両方とも誇張</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：トランザクションは1975年のSystem R以来ほぼ変わらない発想で、主要なリレーショナルDBに共通する。NoSQL流行でいったん捨てられたが、「トランザクションは大規模では捨てるしかない」も「重要アプリには必須」も両方とも誇張。実際はメリットと限界のトレードオフ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トランザクションって、いつからあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>今のリレーショナルDBはほぼ全部サポートしてる。多くは、1975年にIBMの最初のSQLデータベース<b>System R</b>が導入したスタイルを踏襲してる。実装の細部は変わったけど、大まかな発想は40年間ほぼ変わってない。MySQL、PostgreSQL、Oracle、SQL Serverのトランザクションは、不思議なほどSystem Rに似てるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>NoSQLってトランザクションないって聞きますけど。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2000年代終わりに非リレーショナル（NoSQL）が流行ったとき、レプリケーションやパーティショニングを売りにする代わりに、犠牲にされたのがトランザクションだった。完全に放棄するか、「トランザクション」という言葉を、それまでよりずっと弱い保証を指すものに再定義したんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、大規模なら「トランザクションは捨てるべき」が正解なんですね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが要注意。「トランザクションはスケーラビリティと対立する、大規模では捨てるしかない」という考えが広まった一方、ベンダーは「価値あるデータを持つ重要アプリにはトランザクションが必須」と言う。<b>どっちも純然たる誇張</b>なんだよ。他のどんな技術的な選択とも同じで、トランザクションにはメリットも限界もある。そのトレードオフを理解するために、保証の詳細を見ていこう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：取引のルールは40年、ほぼ変わっていない</h4>
+      <p>銀行の「取引は確定するか取り消すか、中途半端はナシ」という基本ルールは、1975年の最初の仕組みからほとんど変わっていません。ある人は「大きな銀行ほどこのルールは重すぎる、捨てろ」と言い、別の人は「お金を扱うなら絶対に必須」と言う。でも本当は、どちらも言いすぎ。<b>守りが堅いほど処理は遅くなる</b>というトレードオフを、銀行ごとに自分で選ぶのが正解です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「トランザクション不要論」も「トランザクション万能論」も鵜呑みにせず、自分の状況で判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>今のトランザクションの発想は1975年のSystem R由来で、40年ほぼ不変。</li>
+        <li>NoSQLはトランザクションを放棄または弱く再定義した。</li>
+        <li>「スケールには捨てるしかない」も「重要なら必須」も誇張。実際はトレードオフ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.1 ACID ===== -->
+<section id="s711">
+  <div class="sec-head"><div class="sec-num">7.1.1</div><div><h2>ACIDの意味</h2><span class="tag">取引が守るべき4か条 ― でもラベルは当てにならない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ACIDは<b>原子性・一貫性・分離性・永続性</b>の4つの保証。だが実装はDBごとに異なり、特に分離性は曖昧で、「ACID準拠」はほぼマーケティング用語。BASE（ACIDでない）はさらに曖昧。ラベルでなく中身を見るべき。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「ACID」って単語、よく見ます。あれ何の略ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>トランザクションの安全性の保証を表す、有名な頭字語だ。1983年にTheo HärderとAndreas Reuterが提唱した。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">⚛️</div><h4>A：原子性 <span style="font-size:11px;color:#8b93bf">Atomicity</span></h4><p>全部やるか、全部なかったことにするか。</p></div>
+      <div class="mini"><div class="ic">⚖️</div><h4>C：一貫性 <span style="font-size:11px;color:#8b93bf">Consistency</span></h4><p>データが「良い状態（不変性）」を保つ。</p></div>
+      <div class="mini"><div class="ic">🚪</div><h4>I：分離性 <span style="font-size:11px;color:#8b93bf">Isolation</span></h4><p>並行するトランザクション同士が干渉しない。</p></div>
+      <div class="mini"><div class="ic">💾</div><h4>D：永続性 <span style="font-size:11px;color:#8b93bf">Durability</span></h4><p>コミットしたデータは失われない。</p></div>
+    </div>
+
+    <details class="code"><summary>ACIDの4つの保証</summary>
+<pre><span class="cmt"># ACID = トランザクションの4つの保証</span>
+A: 原子性 (Atomicity)    … 全部やるか、全部なかったことにするか
+C: 一貫性 (Consistency)  … データが「良い状態（不変性）」を保つ
+I: 分離性 (Isolation)    … 並行するトランザクション同士が干渉しない
+D: 永続性 (Durability)   … コミットしたデータは失われない</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ「ACID準拠」って書いてあるDBを選べば安心ですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>……そう思うだろ？ でも実は、ACIDの実装はDBごとに違うんだ。特に<b>分離性</b>の意味には曖昧な部分が山ほどある。だから「ACID準拠」と言われても、実際にどんな保証が得られるかははっきりしない。残念ながらACIDはほとんど<b>マーケティング用語</b>になってしまった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ええ……。ラベルを信じちゃダメなんですね。じゃあ「BASE」っていうのも聞いたことあります。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ACIDの条件を満たさないシステムが<b>BASE</b>と呼ばれることがある。Basically Available（基本的に利用可能）、Soft state（厳密ではない状態遷移）、Eventual consistency（結果整合性）の頭文字だ。でもこれはACIDよりさらに曖昧で、唯一妥当な定義は「ACIDではない」ということだけ、というくらい。ほとんど好きに解釈できてしまう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり名前で判断せず、中身を1つずつ見ろ、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。じゃあ原子性・一貫性・分離性・永続性を1つずつ掘り下げよう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「うちは安全な銀行です」の看板は当てにならない</h4>
+      <p>銀行の入口に「安心・安全な4か条を守っています」と大きな看板が出ていても、実際にどこまで守っているかは銀行ごとにバラバラ。特に「同時に来た客の処理を混ぜない（分離性）」のレベルは、看板の言葉だけでは分かりません。だから<b>看板（ACIDというラベル）を信じず、4か条を1つずつ確認</b>するのが大事なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「ACID準拠」というラベルを過信せず、各保証の実際の中身を確認する習慣がつく。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ACID = 原子性・一貫性・分離性・永続性（1983年提唱）。</li>
+        <li>実装はDBごとに違い、特に分離性は曖昧。「ACID準拠」はマーケティング用語化している。</li>
+        <li>BASEはACIDの否定で、さらに曖昧。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.1.1 原子性 ===== -->
+<section id="s7111">
+  <div class="sec-head"><div class="sec-num">7.1.1.1</div><div><h2>原子性</h2><span class="tag">本質は「中断可能性」 ― 並行性とは無関係</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ACIDの原子性は並行性とは無関係（それは分離性の担当）。複数の書き込みの途中で障害が起きたら、トランザクションを中断し、それまでの書き込みを全部破棄する「オールオアナッシング」の保証。これがあるから、中断後は「何も変更されていない」と確信して安全にリトライできる。本質は<b>中断可能性</b>。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まず原子性。「アトミック」って、それ以上分けられない、って意味でしたっけ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、<b>原子（アトミック）</b>はそれ以上小さく分割できないものを指す。ただ、コンピュータの分野によって少しずつ意味が違う。マルチスレッドだと「アトミックな処理」は「他のスレッドから処理の途中が見えない」という意味になる。状態は処理前か処理後だけ、中間はない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあACIDの原子性も、その「途中が見えない」って意味ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、ここが大事。ACIDの原子性は<b>並行性とは関係ない</b>。複数プロセスが同時アクセスしたときの話は、ACIDの<b>I（分離性）</b>が担当する。原子性が言ってるのは別のことなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ何を言ってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるクライアントが複数の書き込みをしようとして、いくつか書いた後にクラッシュ・ネットワーク断・ディスクフル・整合性違反みたいな障害が起きたとする。もしその書き込みたちが1つのアトミックなトランザクションにまとめられていて、障害でコミットできなかったら、トランザクションは<b>中断</b>され、それまでの書き込みはすべて破棄・取り消しされる。これが原子性だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もし原子性がなかったら、どうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>途中でエラーが起きたとき、「どの変更が効いて、どれが効いてないか」が分からなくなる。リトライしようにも、同じ変更を2回やってしまうリスクがある。データが重複したり不正確になったりね。原子性があれば、中断されたら「何も変更されてない」のが確実だから、安全にリトライできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど。じゃあ「原子性」より良い名前があったりします？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実は<b>中断可能性（abortability）</b>のほうが本質を表してると思う。でも本書では通例にならって「原子性」を使うよ。エラー時に中断して全書き込みを破棄できること、これがACIDの原子性を決定づける特徴なんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：振込は「引き落としと入金がセット」、途中なら全部チャラ</h4>
+      <p>振込の途中――Aさんから1万円を引いたところで停電が起きたとします。原子性があれば、確定（コミット）していないこの取引は<b>まるごと取り消され</b>、Aさんの残高は元どおり。「引いたのに入金されていない」という最悪の中途半端は起きません。だから窓口係は「失敗したな、もう一度やり直そう」と安心して再実行できる。これは「同時に来た別の客から途中が見えない（分離性）」とは別の話で、純粋に<b>「途中で失敗したらチャラにできるか」</b>の保証なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>エラー時に「どこまで進んだか分からない」混乱を避け、リトライを安全にできる。</li>
+        <li>原子性と分離性を混同せず、それぞれの役割を区別できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ACIDの原子性は並行性とは無関係（並行性は分離性が担当）。</li>
+        <li>途中で障害が起きたらトランザクションを中断し、それまでの書き込みを全破棄する。</li>
+        <li>これにより中断後は「何も変わっていない」と確信でき、安全にリトライできる。</li>
+        <li>本質を表すなら「中断可能性」だが、通例で「原子性」と呼ぶ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.1.2 一貫性 ===== -->
+<section id="s7112">
+  <div class="sec-head"><div class="sec-num">7.1.1.2</div><div><h2>一貫性</h2><span class="tag">守るのは実はアプリの責任 ― Cは語呂合わせ？</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ACIDの一貫性は「データが満たすべき不変性（常に真であるべき言明）を保つ」というアプリ固有の概念。これを保つのはアプリの責任で、DBの保証ではない（一部の制約はDBがチェックできるが）。原子性・分離性・永続性はDBの特性だが、一貫性はアプリの特性。Cは実はACIDに属さない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>次は一貫性。これも「データが正しい」みたいな感じですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが、<b>一貫性</b>という言葉はあまりにいろんな意味で使われてて厄介なんだ。少なくとも4つの意味がある。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>「一貫性」という言葉</th><th>意味・出てくる場所</th></tr>
+      <tr><td>レプリカの一貫性 / 結果整合性</td><td>5章。非同期レプリケーションで生じる話</td></tr>
+      <tr><td>コンシステントハッシュ法</td><td>パーティショニング（リバランシング）の手法</td></tr>
+      <tr><td>線形化可能性</td><td>CAP定理（9章）での「一貫性」の意味</td></tr>
+      <tr><td>ACIDの一貫性</td><td>データが「良い状態」にあるというアプリ固有の概念</td></tr>
+    </table>
+
+    <details class="code"><summary>「一貫性」という言葉の4つの意味</summary>
+<pre><span class="cmt"># 「一貫性」という言葉の4つの意味</span>
+- レプリカの一貫性 / 結果整合性 … 5章。非同期レプリケーションで生じる話
+- コンシステントハッシュ法     … パーティショニング（リバランシング）の手法
+- 線形化可能性               … CAP定理（9章）での「一貫性」の意味
+- ACIDの一貫性               … データが「良い状態」にあるというアプリ固有の概念</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じ言葉なのに4つも……。じゃあACIDの一貫性は、その4つ目ですね。具体的には？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ACIDの一貫性は、「データについて常に真でなければならない言明＝<b>不変性（invariant）</b>がある」という考え方だ。たとえば会計システムなら「全アカウントを合計すれば、貸方と借方は常に等しい」とかね。不変性を満たす良い状態でトランザクションを始め、トランザクション中のどの書き込みもこの状態を保つなら、不変性はずっと満たされる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それってDBが保証してくれるんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここが肝心。一貫性は<b>アプリ固有の不変性</b>に依存してる。一貫性を保つようにトランザクションを正しく定義するのは<b>アプリの責任</b>で、DBの保証じゃない。アプリが不変性に違反する悪いデータを書いても、DBは止められない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、でも外部キー制約とかユニーク制約とか、DBがチェックしてくれるじゃないですか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある種の不変性はそうやってDBがチェックできる。でも一般的には、データが適正かどうかを決めるのはアプリで、DBはただ保存するだけ。だから原子性・分離性・永続性はDBの特性だけど、<b>一貫性はアプリの特性</b>なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ってことは、Cは実はACIDの仲間じゃない……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、Cは実際にはACIDに属していないと言える。ある研究者は「ACIDのCは頭字語を成立させるために付け加えられた」とまで言ってる。語呂合わせのために入った、というわけ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「帳簿の合計が必ず合う」を守るのは銀行のルール</h4>
+      <p>銀行の大原則は「全口座の貸方と借方の合計は、いつでもピタッと一致する」。これが<b>不変性</b>です。ただし、この合計を狂わせない取引を作るのは<b>銀行の業務ルール（アプリ）の責任</b>であって、帳簿そのもの（DB）が勝手に守ってくれるわけではありません。帳簿は、係員が「Aから引かずにBへ足す」というおかしな取引を書いても、ただ記録するだけ。「引き落としと入金は同額セット」というルールを定めるのは人間の仕事なのです。だから一貫性だけは、ほかの3つと違って<b>銀行（アプリ）側の約束</b>なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「一貫性はDBが勝手に守ってくれる」という誤解を捨て、アプリ側で不変性を正しく定義する責任を意識できる。</li>
+        <li>「一貫性」という多義語に出会ったとき、どの意味かを区別できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>「一貫性」は少なくとも4つの意味で使われる多義語。</li>
+        <li>ACIDの一貫性は、アプリ固有の不変性（例: 貸方＝借方）を保つこと。</li>
+        <li>一貫性を保つのはアプリの責任で、DBの保証ではない（一部の制約は例外）。</li>
+        <li>Cは実際にはACIDに属さない（語呂合わせ的に加わった）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.1.3 分離性 ===== -->
+<section id="s7113">
+  <div class="sec-head"><div class="sec-num">7.1.1.3</div><div><h2>分離性</h2><span class="tag">並行する取引を「順番にやったのと同じ」に見せる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ACIDの分離性は、並行するトランザクション同士が干渉しないこと。古典的には<b>直列化可能性</b>として形式化され、「各トランザクションが順番に1つずつ実行されたのと同じ結果になる」保証。ただしパフォーマンスのペナルティが大きく、ほとんど使われず、より弱いスナップショット分離などが使われる（Oracleの「serializable」も実体はスナップショット分離）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分離性。これがさっき言ってた「並行性の問題」を扱うやつですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。DBは複数のクライアントから同時にアクセスされる。別々の場所を読み書きしてるなら問題ないけど、同じレコードにアクセスすると並行性の問題、つまり<b>レース条件</b>が起きうる。簡単な例を見よう。DBに保存したカウンタを、2つのクライアントが同時に1増やそうとする。</div></div>
+    </div>
+
+    <h3 class="blk">カウンタのインクリメントで起きるレース条件（図7-1相当）</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>前提</h4><p>DBに「インクリメント命令」はなく、各クライアントが「読む→1足す→書き戻す」をやるとする。初期値は42。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>AとBが同時に「42」を読む</h4><p>両方とも、まだ誰も更新していない42を読んでしまった。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>AとBがそれぞれ「43」を書く</h4><p>どちらも自分が読んだ42に1足して43を書き戻す。
+        <div class="branch ng">❌ 本来は42→43→44になるべきなのに、結果は43。1回分が消えた！</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>カウンタのレース条件の流れ</summary>
+<pre><span class="cmt"># カウンタのインクリメントで起きるレース条件（図7-1相当）</span>
+前提: DBに「インクリメント命令」はなく、各クライアントが
+      「読む → 1足す → 書き戻す」をやるとする。初期値は42。
+
+クライアントA: 42を読む ──┐
+クライアントB: 42を読む ──┤ （両方とも42を読んでしまった）
+クライアントA: 43を書く    │
+クライアントB: 43を書く ───┘ （Bも自分が読んだ42に1足して43）
+
+本来は42→43→44になるべきなのに、結果は43。1回分が消えた！</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あっ、これ、まさに僕の残高バグと同じ構造だ……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>だろうね。ACIDの<b>分離性</b>は、並行して動くトランザクション同士が互いから分離されていて、「お互いのつま先を踏みつけあう」ようなことがない、という意味だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「分離されてる」って、どれくらい強く分離されてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>古典的な教科書では、分離性を<b>直列化可能性（serializability）</b>として形式化してる。これは「各トランザクションが、DBの中で唯一動いているトランザクションであるかのように振る舞う」という意味。実際は並行に動いていても、コミット後の結果は、それぞれが<b>順番に（1つずつ）</b>実行された場合と同じになることをDBが保証する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それなら完璧じゃないですか。なんでみんな使わないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>パフォーマンスのペナルティが大きいからだ。実は直列化可能な分離はほとんど使われてない。広く使われてるDBでも実装してないものすらある。たとえばOracle 11gには「serializable（直列化可能）」という分離レベルがあるけど、実際に実装してるのは<b>スナップショット分離</b>という、直列化可能性より弱い保証なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>名前は「直列化可能」なのに、中身は違う……。やっぱりラベルは当てにならないんですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：窓口を1つにして「順番に一人ずつ」処理する</h4>
+      <p>2人の客が同時に同じ口座の残高を「読んで→足して→書き戻す」と、片方の入金が消えてしまいます。これがレース条件。もし窓口を1つにして<b>「一人終わってから次の人」</b>と完全に順番に処理すれば、絶対に混ざりません。これが<b>直列化可能性</b>です。ただし窓口を1つにすると行列ができて遅い。だから多くの銀行は、もっと緩い（でも速い）やり方を選ぶのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>レース条件（同じデータへの並行アクセスで起きる事故）の正体を理解できる。</li>
+        <li>「直列化可能性」が最も強い分離だが高コストで、実際は弱い分離が多用される現実を知れる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>分離性は並行トランザクション同士の干渉を防ぐ。</li>
+        <li>形式化すると直列化可能性＝「順番に1つずつ実行したのと同じ結果」の保証。</li>
+        <li>高コストのため実際はほとんど使われず、より弱い分離（スナップショット分離など）が多い。</li>
+        <li>Oracleの「serializable」は実体がスナップショット分離など、ラベルと中身が違う例がある。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.1.4 永続性 ===== -->
+<section id="s7114">
+  <div class="sec-head"><div class="sec-num">7.1.1.4</div><div><h2>永続性</h2><span class="tag">記帳したら消えない ― でも完全な永続性は存在しない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：永続性はコミットしたデータが障害でも失われない約束。ディスク（＋write-aheadログ）やレプリケーションで実現するが、<b>完全な永続性は存在しない</b>。ディスク・SSD・レプリケーションそれぞれに穴があり、1手法で絶対の保証はできない。複数手法（ディスク書き込み・レプリケーション・バックアップ）を併用してリスクを下げる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最後の永続性。これは「保存したら消えない」ですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。<b>永続性</b>は、トランザクションのコミットが成功したら、ハード障害やDBのクラッシュがあっても、書き込んだデータは失われないという約束だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体的にはどうやって実現するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>単一ノードなら、ハードディスクやSSDみたいな不揮発性ストレージに書く。普通は<b>write-aheadログ（先行書き込みログ）</b>みたいな仕組みも含まれてて、ディスク上のデータ構造が壊れてもリカバリできるようにする。レプリケーションしてるDBなら、永続性は「一定数のノードへのコピーが成功したこと」を意味する場合もある。だからコミット成功を報告する前に、その書き込みやレプリケーションの完了を待つんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それなら絶対に消えないんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、<b>完全な永続性は存在しない</b>。全部のディスクとバックアップが同時に壊れたら、DBにできることは何もない。</div></div>
+    </div>
+
+    <h3 class="blk">コラム：レプリケーションと永続性</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「コラム」があるんですね。レプリケーションと永続性、ですか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>永続性の意味は歴史的に変わってきた。昔はアーカイブテープに書くこと、次にディスクやSSDに書くこと、近年はレプリケーション（複製）を意味すると解釈されるようになった。じゃあどれが一番優れてるか？ 答えは「完璧なものはない」だ。理由を並べるね。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>どの永続性の手法にも穴がある</th></tr>
+      <tr><td>ディスクに書いた後にマシンが壊れると、データは無事でも、修復するかディスクを別マシンに移すまでアクセスできない。レプリケーションなら使い続けられる。</td></tr>
+      <tr><td>関連性のあるフォールト（停電や、特定入力で全ノードを落とすバグ）は、全レプリカを同時にやられメモリ上のデータを失わせる。だからインメモリDBでもディスク書き込みが要る。</td></tr>
+      <tr><td>非同期レプリケーションでは、リーダーが落ちると直近の書き込みが失われうる。</td></tr>
+      <tr><td>突然の電源喪失では、特にSSDは fsync が正しく動く保証すらない。ディスクのファームウェアにもバグがありうる。</td></tr>
+      <tr><td>ストレージエンジンとファイルシステムの微妙なやりとりで、クラッシュ後にファイルが壊れることがある。</td></tr>
+      <tr><td>ディスク上のデータは、気づかれずに徐々に破損していくことがある。その場合、レプリカや直近バックアップも破損しているかもしれない。</td></tr>
+      <tr><td>運用4年で30〜80%のSSDに不良ブロックが生じたという研究がある。磁気ディスクの不良セクター率は低いが、完全障害の発生率はSSDより高い。</td></tr>
+      <tr><td>SSDは電源から外すと、温度次第で数週間でデータを失いはじめることがある。</td></tr>
+    </table>
+
+    <details class="code"><summary>永続性の手法それぞれの穴</summary>
+<pre><span class="cmt"># どの永続性の手法にも穴がある</span>
+- ディスクに書いた後にマシンが壊れると、データは無事でも、修復するか
+  ディスクを別マシンに移すまでアクセスできない。レプリケーションなら使い続けられる。
+- 関連性のあるフォールト（停電や、特定入力で全ノードを落とすバグ）は、
+  全レプリカを同時にやられ、メモリ上のデータを失わせる。
+  だからインメモリDBでもディスク書き込みが要る。
+- 非同期レプリケーションでは、リーダーが落ちると直近の書き込みが失われうる。
+- 突然の電源喪失では、特にSSDは fsync が正しく動く保証すらない。
+  ディスクのファームウェアにもバグがありうる。
+- ストレージエンジンとファイルシステムの微妙なやりとりで、
+  クラッシュ後にファイルが壊れることがある。
+- ディスク上のデータは、気づかれずに徐々に破損していくことがある。
+  その場合、レプリカや直近バックアップも破損しているかもしれない。
+- 運用4年で30〜80%のSSDに不良ブロックが生じたという研究がある。
+  磁気ディスクの不良セクター率は低いが、完全障害の発生率はSSDより高い。
+- SSDは電源から外すと、温度次第で数週間でデータを失いはじめることがある。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うわ、ストレージってそんなに信用できないんですか……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>現実には、1つの手法で絶対的な保証はできない。あるのは「リスクを下げる複数の手法」――ディスク書き込み、リモートへのレプリケーション、バックアップ――で、これらは併用できるし、併用すべきだ。理論的な「保証」はそのまま受け取らないのが賢明、これは世の中の常なんだよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：帳簿は1冊だけじゃ危ない、控えを何重にも</h4>
+      <p>記帳したら消えない――それが永続性。でも、たった1冊の帳簿に書いただけでは、火事や水害で全部失われます。だから銀行は、<b>原本（ディスク）＋別支店への控え（レプリケーション）＋定期的な複写の保管（バックアップ）</b>を何重にも持ちます。それでも「全部の控えが同時に焼ける」可能性はゼロにはならない。完璧な保証はなく、できるのは<b>リスクを下げる多重化</b>だけなのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「保存したから安全」と過信せず、複数の手法でリスクを下げる発想を持てる。</li>
+        <li>永続性の「保証」の限界を理解し、バックアップ戦略を多層で考えられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>永続性はコミット済みデータを障害から守る約束（ディスク＋ログ、レプリケーションで実現）。</li>
+        <li>完全な永続性は存在しない。</li>
+        <li>ディスク・SSD・レプリケーションそれぞれに弱点があり、併用してリスクを下げるべき。</li>
+        <li>理論上の「保証」は鵜呑みにしない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.2 単一/複数オブジェクト ===== -->
+<section id="s712">
+  <div class="sec-head"><div class="sec-num">7.1.2</div><div><h2>単一オブジェクトと複数オブジェクトの操作</h2><span class="tag">複数の口座やメモを同時に変える ― そこが原子性・分離性の出番</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：原子性（オールオアナッシング）と分離性（中途半端な状態は見えない）は、複数のオブジェクトを同時に変える<b>マルチオブジェクトトランザクション</b>で重要。メールの未読数カウンタの例では、分離性がないとダーティリード（コミット前のデータを読む）が、原子性がないと同期崩れが起きる。同じトランザクションの判別は、リレーショナルDBではTCP接続ベース。非リレーショナルでは操作のグループ化手段がないことも多い。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ACIDの4つ、なんとなく分かりました。次は何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>原子性と分離性は「1つのトランザクションで複数の書き込みをするとき」の話だったね。整理しよう。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>おさらい</th><th>意味</th></tr>
+      <tr><td>原子性</td><td>途中でエラーが出たら中断し、それまでの書き込みを破棄する（部分的な失敗を気にしなくていい「オールオアナッシング」）</td></tr>
+      <tr><td>分離性</td><td>並行するトランザクションが互いに影響しない（他からは、書き込みが「全部見える」か「全く見えない」かのどちらか）</td></tr>
+    </table>
+
+    <details class="code"><summary>原子性と分離性のおさらい</summary>
+<pre><span class="cmt"># 原子性と分離性のおさらい</span>
+- 原子性: 途中でエラーが出たら中断し、それまでの書き込みを破棄する
+         （部分的な失敗を気にしなくていい「オールオアナッシング」）
+- 分離性: 並行するトランザクションが互いに影響しない
+         （他からは、書き込みが「全部見える」か「全く見えない」かのどちらか）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これって、複数のオブジェクト（行とかドキュメント）を同時に変えるときの話ですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、それを<b>マルチオブジェクトトランザクション</b>と呼ぶ。複数のデータの同期を取りたいときによく必要になる。メールアプリの例を見よう。ユーザーに未読数を表示するために、こんなクエリが使えるとする。</div></div>
+    </div>
+
+    <p style="font-size:14px;margin:6px 0">下のクエリは「ユーザー2に届いた未読メールの数を数える」もの。読まなくてOKです。</p>
+    <details class="code"><summary>未読メール数を数えるSQL</summary>
+<pre><span class="cmt">-- ユーザー2の未読メール数を数えるクエリ</span>
+<span class="kw">SELECT</span> <span class="fn">COUNT</span>(*) <span class="kw">FROM</span> emails
+  <span class="kw">WHERE</span> recipient_id = <span class="num">2</span> <span class="kw">AND</span> unread_flag = <span class="kw">true</span>;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>でもメールが多いとこのクエリは遅い。だから未読数を別フィールドに保存しておく（非正規化の一種）。新着メールが来たらカウンタを増やし、既読になったら減らす。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、カウントを毎回数えずに済むように。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ところがここで分離性がないと、こんな異常が起きる。ユーザー2のメール一覧には新しい未読メールが表示されてるのに、カウンタのインクリメントがまだ終わってなくて、未読数が0になってる。これは<b>ダーティリード</b>――他のトランザクションのコミット前の書き込みを読んでしまった――という異常だ。分離性があれば、ユーザー2は「挿入されたメールも更新されたカウンタも両方見える」か「両方見えない」かのどちらかで、中途半端な状態は見えない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>原子性のほうはどう効くんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>トランザクションの途中でエラーが起きたとき、メール一覧とカウンタの同期が崩れる。原子性があれば、カウンタの更新が失敗したらトランザクションは中断され、メールの挿入もロールバックされる。だから一貫性のない状態にならない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、「同じトランザクションに属する操作」って、どうやって見分けるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>リレーショナルDBでは、普通クライアントとDBサーバーのTCP接続に基づいて判断する。ある接続上で<b>BEGIN TRANSACTION</b>から<b>COMMIT</b>までの操作が、同じトランザクションの一部だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>非リレーショナルだと違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くの非リレーショナルDBは、そもそも操作をグループ化する方法を持ってない。キー-バリューストアに複数キーを一度に更新する<b>multi-put</b>操作があっても、それがトランザクションの性格を持つとは限らない。一部のキーは更新成功、他は失敗、で部分更新のまま残ることもありうるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「メモした件数」と「メモの束」を必ずセットで合わせる</h4>
+      <p>窓口に届いた書類を「束（メール一覧）」に追加したら、横に貼った「件数メモ（カウンタ）」も一緒に増やさないといけません。もし束には足したのに件数メモがまだ古いままなら、客は「書類があるのに件数は0」という<b>覗き見の勘違い（ダーティリード）</b>をします。分離性は「束と件数メモは両方そろってから見せる」を保証し、原子性は「件数メモの更新に失敗したら束への追加も取り消す」を保証する。どちらも<b>複数の場所を一斉にそろえる</b>ための約束です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>非正規化したデータ（カウンタなど）の同期崩れバグの原因を、原子性・分離性の観点で説明できる。</li>
+        <li>自分のDBが操作をどうグループ化するか（TCP接続単位など）を意識できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>原子性＝オールオアナッシング、分離性＝中途半端な状態は見えない。</li>
+        <li>複数オブジェクトの同期（例: 未読数カウンタ）にはマルチオブジェクトトランザクションが要る。</li>
+        <li>分離性がないとダーティリード、原子性がないと同期崩れが起きる。</li>
+        <li>同じトランザクションの判別はリレーショナルDBではTCP接続ベース。非リレーショナルはグループ化手段を持たないことも多い。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.2.1 単一オブジェクトへの書き込み ===== -->
+<section id="s7121">
+  <div class="sec-head"><div class="sec-num">7.1.2.1</div><div><h2>単一のオブジェクトへの書き込み</h2><span class="tag">1つだけ書くときも原子性・分離性は要る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：単一オブジェクトの書き込みでも、原子性（断片や継ぎ接ぎを防ぐ）と分離性（部分更新を読ませない）は必要で、ストレージエンジンはログとロックでこれを提供する。インクリメントやcompare-and-setなどのアトミック操作はread-modify-writeを不要にし更新ロストを防ぐが、これらは「軽量トランザクション」「ACID」と呼ばれても本来のトランザクション（複数オブジェクト・複数操作のまとめ）ではない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数オブジェクトじゃなくて、1つのオブジェクトだけ書くときも、原子性とか分離性って要るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>要るんだ。たとえば20KBのJSONドキュメントを1つ書くとする。こんな疑問が出る。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>単一オブジェクト書き込みで起きうる問題</th></tr>
+      <tr><td>先頭10KBを送った時点でネットワークが切れたら、パースできない10KBの断片が保存される？</td></tr>
+      <tr><td>ディスク上の古い値を書き換え中に電源障害が起きたら、新旧が継ぎ合わさる？</td></tr>
+      <tr><td>書き込み中に他のクライアントが読んだら、部分更新の値が見える？</td></tr>
+    </table>
+
+    <details class="code"><summary>単一オブジェクト書き込みで起きうる問題</summary>
+<pre><span class="cmt"># 単一オブジェクト書き込みで起きうる問題</span>
+- 先頭10KBを送った時点でネットワークが切れたら、
+  パースできない10KBの断片が保存される？
+- ディスク上の古い値を書き換え中に電源障害が起きたら、新旧が継ぎ合わさる？
+- 書き込み中に他のクライアントが読んだら、部分更新の値が見える？</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どれも嫌すぎますね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ひどい混乱を招くから、ストレージエンジンはほぼ必ず、単一ノードの単一オブジェクト（キー-バリューペアなど）のレベルで原子性と分離性を提供することを目指してる。原子性はクラッシュリカバリ用のログで実装でき、分離性は各オブジェクトのロックで実装できる（ある時点でアクセスできるスレッドを1つに限定する）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきのカウンタのレース条件も、これで防げるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DBによっては、<b>インクリメント操作</b>みたいなアトミック操作を提供して、「読む→足す→書く（read-modify-write）」のサイクル自体を不要にしてる。もう1つ広く使われるのが<b>compare-and-set（比較して設定）</b>操作。これは「値が他の人に並行して変更されていないときだけ書き込む」というものだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それってもう「トランザクション」って呼んでいいんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが注意点。これらの単一オブジェクト操作は、並行書き込みでの更新ロストを防いでくれて有益だけど、<b>通常の意味でのトランザクションではない</b>。compare-and-setなどは「軽量トランザクション」とか、マーケティング上「ACID」とすら呼ばれることがあるけど、それは誤解を招く。普通トランザクションといえば「複数のオブジェクトに対する複数の操作を1つの実行単位にまとめる仕組み」を指すんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：1枚の伝票でも「書きかけ」を見せない</h4>
+      <p>たった1枚の伝票を書き換えるときも、書きかけの半分だけが他の係に見えてはいけません。停電で新旧の数字が混ざった伝票が残るのも困る。だから「伝票を書く台（記帳台）は1人で占有（ロック）」「書き損じはログで元に戻せる」ようにします。さらに「残高を1だけ増やす」という<b>専用ボタン（アトミック操作）</b>があれば、読んで足して書く手間自体が消え、二重処理の事故も防げます。ただしこの専用ボタンは便利でも、<b>「複数の取引をまとめる」本来のトランザクションとは別物</b>なのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>単一オブジェクトでも原子性・分離性が必要な理由（断片化・部分読み取り）を理解できる。</li>
+        <li>「軽量トランザクション」「ACID」というラベルが本来のトランザクションを意味しないことを見抜ける。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>単一オブジェクトの書き込みでも原子性・分離性は必要（断片・継ぎ接ぎ・部分読み取りを防ぐ）。</li>
+        <li>原子性はログ、分離性はオブジェクトごとのロックで実装される。</li>
+        <li>インクリメントやcompare-and-setはread-modify-writeを不要にし更新ロストを防ぐ。</li>
+        <li>ただしこれらは本来のトランザクション（複数オブジェクト・複数操作のまとめ）ではない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.2.2 複数オブジェクトの必要性 ===== -->
+<section id="s7122">
+  <div class="sec-head"><div class="sec-num">7.1.2.2</div><div><h2>複数オブジェクトのトランザクションの必要性</h2><span class="tag">外部キー・非正規化・インデックスでは協調が要る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：多くの分散データストアは複数オブジェクトのトランザクションを放棄しているが、根本的に不可能なわけではない。外部キー参照・非正規化データの同期・セカンダリインデックスの更新など、複数オブジェクトへの書き込みを協調させる必要があるケースは多い。トランザクションなしでも作れるが、原子性がないとエラー処理が複雑になり、分離性がないと並行性の問題が生じる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも、複数オブジェクトのトランザクションって本当に要るんですか？ 単一オブジェクト操作だけで全部作れないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい問いだ。多くの分散データストアは複数オブジェクトのトランザクションを放棄してる。パーティションをまたいで実装するのが難しいのと、高い可用性・パフォーマンスが要る状況で難題になるからだ。でも根本的には分散DBでトランザクションが不可能な理由はない（実装は9章）。本当に必要かというと――単一オブジェクト操作で十分なケースもあるけど、多くのケースで複数オブジェクトへの書き込みを協調させる必要がある。例を挙げよう。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔗</div><h4>外部キー参照</h4><p>あるテーブルの行が他テーブルの行を参照する（グラフなら頂点が辺を持つ）。参照関係を持つ複数レコードを挿入するとき、外部キーが正しく最新でないとデータが無意味になる。</p></div>
+      <div class="mini"><div class="ic">📑</div><h4>非正規化されたデータ</h4><p>ドキュメントモデルで結合がないと非正規化が推奨される。非正規化された情報（例: 未読数カウンタ）を更新するとき、複数のドキュメントを一度に更新する必要がある。</p></div>
+      <div class="mini"><div class="ic">🗂️</div><h4>セカンダリインデックス</h4><p>値を変えるたびにインデックスも更新する。分離性がないと、あるレコードが1つのインデックスには現れるが、未更新の別インデックスには現れない、が起きうる。</p></div>
+    </div>
+
+    <details class="code"><summary>複数オブジェクトのトランザクションが必要なケース</summary>
+<pre><span class="cmt"># 複数オブジェクトのトランザクションが必要なケース</span>
+- 外部キー参照: あるテーブルの行が他テーブルの行を参照する（グラフなら頂点が辺を持つ）。
+  参照関係を持つ複数レコードを挿入するとき、外部キーが正しく最新でないとデータが無意味になる。
+- 非正規化されたデータ: ドキュメントモデルで結合がないと非正規化が推奨される。
+  非正規化された情報（例: 未読数カウンタ）を更新するとき、複数のドキュメントを一度に更新する必要がある。
+- セカンダリインデックス: 値を変えるたびにインデックスも更新する。
+  分離性がないと、あるレコードが1つのインデックスには現れるが、未更新の別インデックスには現れない、が起きうる。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トランザクションなしでも作れはするんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>作れはする。でも原子性がなければエラー処理がはるかに複雑になり、分離性がなければ並行性の問題が生じる。これらは次の「弱い分離レベル」で詳しく見ていくよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：口座台帳・索引カード・控えは「足並みをそろえて」更新</h4>
+      <p>1件の取引でも、本台帳の残高・名前順の索引カード・別支店への控えを<b>すべて足並みをそろえて</b>更新しないと、台帳には載っているのに索引には出てこない、といったちぐはぐが起きます。これらを「1件の取引」としてまとめて確定するのが複数オブジェクトトランザクション。まとめずに1つずつやっても作れますが、途中で失敗したときの後始末が地獄になります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自分のデータモデルに複数オブジェクトトランザクションが必要かを判断できる（外部キー・非正規化・インデックスの有無で）。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>多くの分散データストアは複数オブジェクトトランザクションを放棄するが、不可能ではない。</li>
+        <li>外部キー参照・非正規化データの同期・セカンダリインデックス更新で必要になる。</li>
+        <li>トランザクションなしでも実装できるが、エラー処理が複雑化し並行性の問題が生じる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.1.2.3 エラーと中断の処理 ===== -->
+<section id="s7123">
+  <div class="sec-head"><div class="sec-num">7.1.2.3</div><div><h2>エラーと中断の処理</h2><span class="tag">中断して安全にリトライ ― でも落とし穴がある</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ACIDデータベースは「保証できなくなりそうなら完全に破棄する」哲学で、中断後に安全にリトライできる。ただしベストエフォート型（リーダーレスなど）は途中処理を残す。ORMの多くは自動リトライしない。リトライには落とし穴があり、二重実行（重複排除が必要）・過負荷の悪化（バックオフ）・恒久エラーのリトライは無意味・DB外の副作用・リトライ中のクラッシュに注意。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トランザクションって、エラーが出たら中断してリトライするんでしたよね。これがいいところだと。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。ACIDデータベースは「原子性・分離性・永続性を保証できなくなりそうなら、途中状態を残さず完全に破棄する」という哲学を基盤にしてる。中断して安全にリトライできるのが肝なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部のDBがそうなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、従っていないものもある。特にリーダーレスレプリケーションのデータストアは「ベストエフォート」で動くことが多い。つまり「できる限り処理を進めて、エラーが起きても済んだ処理は取り消さない」。だからエラーからのリカバリはアプリが受け持つことになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リトライって、フレームワークが自動でやってくれそうですけど。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが意外とそうじゃない。RailsのActiveRecordやDjangoみたいな広く使われるORM（オブジェクト-リレーショナルマッピング）フレームワークは、中断されたトランザクションのリトライをしないんだ。エラーが出ると例外がスタックを昇っていって、ユーザーには入力破棄＆エラーメッセージが返るだけ。せっかく中断＝安全なリトライのためにあるのに、もったいない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ自分でリトライを書けばいいんですね。注意点はありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>リトライはシンプルで効率的だけど、完璧じゃない。落とし穴を並べるね。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>中断トランザクションのリトライの落とし穴</th></tr>
+      <tr><td>コミットは実際に成功したのに、成功の承認をクライアントに送る途中でネットワーク障害が起きると、クライアントは失敗と誤認しリトライ → トランザクションが2回実行される。防ぐにはアプリレベルの重複排除の仕組みが要る。</td></tr>
+      <tr><td>過負荷が原因のエラーをリトライすると、問題が悪化する。リトライ回数を制限し、指数的（exponential）バックオフを使い、過負荷系のエラーは他と区別して扱うとよい。</td></tr>
+      <tr><td>リトライすべきは一時的なエラー（デッドロック、分離性違反、一時的ネットワーク障害、フェイルオーバーなど）だけ。恒久的なエラー（制約違反など）のリトライは無意味。</td></tr>
+      <tr><td>トランザクションがDB外に副作用（例: メール送信）を持つなら、中断時にも副作用が起きているかも。リトライのたびにメールを送り直したくはない。複数システムをまとめてコミット/中断したいなら2相コミット（2PC）が役立つ（9章）。</td></tr>
+      <tr><td>クライアントのプロセスがリトライ中に落ちたら、書こうとしていたデータは失われる。</td></tr>
+    </table>
+
+    <details class="code"><summary>リトライの落とし穴リスト</summary>
+<pre><span class="cmt"># 中断トランザクションのリトライの落とし穴</span>
+- コミットは実際に成功したのに、成功の承認をクライアントに送る途中でネットワーク障害が起きると、
+  クライアントは失敗と誤認しリトライ → トランザクションが2回実行される。
+  防ぐにはアプリレベルの重複排除の仕組みが要る。
+- 過負荷が原因のエラーをリトライすると、問題が悪化する。
+  リトライ回数を制限し、指数的（exponential）バックオフを使い、
+  過負荷系のエラーは他と区別して扱うとよい。
+- リトライすべきは一時的なエラー（デッドロック、分離性違反、一時的ネットワーク障害、
+  フェイルオーバーなど）だけ。恒久的なエラー（制約違反など）のリトライは無意味。
+- トランザクションがDB外に副作用（例: メール送信）を持つなら、
+  中断時にも副作用が起きているかも。リトライのたびにメールを送り直したくはない。
+  複数システムをまとめてコミット/中断したいなら2相コミット（2PC）が役立つ（9章）。
+- クライアントのプロセスがリトライ中に落ちたら、書こうとしていたデータは失われる。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「リトライすればOK」って単純じゃないんですね。重複排除とか、副作用とか……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。安全にリトライできるのは強力だけど、その周辺の配慮が要るんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：取引のやり直しは、二重振込と過剰な再送に注意</h4>
+      <p>取引が失敗したら「もう一度やればいい」のが基本。でも、<b>記帳は済んだのに「完了しました」の連絡だけが届かなかった</b>場合、客は失敗と思い再度振込を依頼 → 二重振込になります。これを防ぐには「同じ取引番号は1回だけ」という重複チェックが要る。また、窓口が混雑して失敗したのに何度も再送すると、さらに混んで悪化する（だから間隔を空けて再送＝バックオフ）。「口座番号が存在しない」のような直らないエラーを何度やってもムダ。さらに「振込の確認メール送信」のような<b>窓口の外の作業</b>は、やり直すたびにメールが二重送信されないよう気をつけねばなりません。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>リトライを正しく実装でき、二重実行や過負荷の連鎖などの事故を避けられる。</li>
+        <li>ORMが自動リトライしないことを知り、自分でリトライ戦略を組める。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ACIDデータベースはエラー時に途中状態を残さず破棄し、安全なリトライを可能にする。</li>
+        <li>ベストエフォート型（リーダーレス等）はリカバリをアプリに任せる。</li>
+        <li>ORMの多くは自動リトライしない。</li>
+        <li>リトライの注意点: 二重実行（重複排除）・過負荷の悪化（バックオフ）・恒久エラー除外・DB外副作用・リトライ中クラッシュ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.2 弱い分離レベル ===== -->
+<section id="s72">
+  <div class="sec-head"><div class="sec-num">7.2</div><div><h2>弱い分離レベル</h2><span class="tag">速いけれど、こっそりバグが残る世界</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：並行性の問題は同じデータへの並行アクセスで起き、タイミング依存でテストしにくい。DBは分離性で隠そうとするが、直列化可能な分離は高コストなので、多くのDBは「ある種の問題だけ防ぐ」弱い分離レベルを使う。弱い分離のバグは実害（損失・データ破損）を生んできた。「ACID」を名乗るDBも弱い分離が多いので、ツールを信じすぎず、どんな問題があり、どう避けるかを理解すべき。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いよいよ「弱い分離レベル」ですね。なんだか不穏な響きです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つのトランザクションが同じデータにアクセスしないなら、並行に実行しても安全だ。問題になるのは、片方が他方の並行変更中のデータを読むとき、あるいは2つが同時に同じデータを変えようとするときだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そういうバグって、テストで見つからないんですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、並行性のバグはタイミングが悪いときだけ起きるから、テストで見つけにくいし、滅多に起こらず再現も難しい。だからDBは長年、<b>トランザクションの分離性</b>を提供して、並行性の問題を開発者から隠そうとしてきた。理論上、分離性で「並行処理なんてないかのように」見せれば開発者は楽になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ分離性で全部解決ですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが、そう単純じゃない。直列化可能な分離はパフォーマンスの負担が大きいから、多くのDBはその負担を避けて、<b>もっと弱いレベル</b>を使う。弱いレベルは「すべての並行性の問題」じゃなく「ある種の問題」だけを防ぐ。理解が難しく、微妙なバグにつながるけど、実際に広く使われてるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>弱い分離のバグって、本当に実害があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>単なる理論じゃない。過去には、こういうバグで多額の損失が出たり、会計監査が必要になったり、顧客データが破損したりしてる。よく「財務データならACIDデータベースを！」と言われるけど、これは的外れ。広く「ACID」とされるリレーショナルDBの多くも弱い分離を使ってるから、必ずしもバグを防げない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ僕らがやるべきことは……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>何も考えずツールを信じるんじゃなく、「どんな並行性の問題があるか」「どう回避するか」をしっかり理解すること。そうすれば手持ちのツールで信頼できるアプリを作れる。これから弱い分離レベルを1つずつ見て、どんなレース条件が起きるか/起きないかを論じよう。形式的じゃなく、例で進めるよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：窓口を増やすほど速いが、客の処理が混ざる危険も増える</h4>
+      <p>窓口を1つにして順番に処理すれば絶対に安全（直列化可能）ですが、行列ができて遅い。そこで多くの銀行は窓口を増やして<b>同時に複数の客を速くさばきます（弱い分離）</b>。でも窓口が並行に動くほど、隣の客の途中処理を覗き見たり、同じ口座を取り合ったりする<b>勘違いの事故</b>が忍び込む。「うちはACID銀行です」の看板があっても、緩い運用のせいで事故が起きることは実際にあった。だから「どんな事故が起きうるか／どう防ぐか」を窓口係が理解しておく必要があるのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「ACIDだから安全」という思い込みを捨て、弱い分離で残る危険を意識できる。</li>
+        <li>並行性バグがテストで見つけにくい理由を理解し、設計段階で対策を考えられる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>並行性の問題は同じデータへの並行アクセスで起き、タイミング依存で再現困難。</li>
+        <li>直列化可能な分離は高コストなので、弱い分離レベルが広く使われる。</li>
+        <li>弱い分離は「ある種の問題」だけ防ぎ、微妙なバグを残す。</li>
+        <li>過去に実害があり、「ACID」を名乗るDBも弱い分離が多い。ツールを過信せず理解すべき。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.2.1 Read Committed ===== -->
+<section id="s721">
+  <div class="sec-head"><div class="sec-num">7.2.1</div><div><h2>Read Committed（コミット済み読み取り）</h2><span class="tag">確定したものだけ読む・確定したものだけ上書きする</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：read committedは最も基本的な分離レベルで、<b>ダーティリード</b>（コミット前のデータを読む）と<b>ダーティライト</b>（コミット前のデータを上書きする）の両方を防ぐ。さらに弱いread uncommittedはダーティライトのみ防ぐ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>一番弱い、というか基本的な分離レベルは何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>read committed（リードコミッティド, コミット済み読み取り）</b>だ。これが保証するのは2つ。ちなみにこれよりさらに弱い<b>read uncommitted</b>もあって、こっちはダーティライトは防ぐけどダーティリードは防がない。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">👀</div><h4>① ダーティリードを防ぐ</h4><p>読み取り時に見えるのはコミット済みのデータだけ。</p></div>
+      <div class="mini"><div class="ic">✍️</div><h4>② ダーティライトを防ぐ</h4><p>書き込み時に上書きするのはコミット済みのデータだけ。</p></div>
+    </div>
+
+    <details class="code"><summary>read committedの2つの保証</summary>
+<pre><span class="cmt"># read committedの2つの保証</span>
+1. 読み取り時に見えるのはコミット済みのデータだけ（ダーティリードは起きない）
+2. 書き込み時に上書きするのはコミット済みのデータだけ（ダーティライトは起きない）</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：確定済みの記録だけを見る・上書きする</h4>
+      <p>read committedの銀行は、窓口係が「<b>まだ確定（コミット）していない隣の係の書きかけ</b>」を絶対に見ない（ダーティリード防止）し、書きかけの記録を上書きもしない（ダーティライト防止）。見るのも上書きするのも<b>「確定済みの記録」だけ</b>。これが守られるべき最低限のマナーです。</p>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ（導入）</h4>
+      <ul>
+        <li>read committedはダーティリードとダーティライトの両方を防ぐ最も基本的な分離レベル。</li>
+        <li>さらに弱いread uncommittedはダーティライトのみ防ぐ。</li>
+      </ul>
+    </div>
+
+    <h3 class="blk" id="s7211">7.2.1.1 ダーティリードが生じないこと</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ダーティリードって、さっきも出てきました。コミット前のデータを読んじゃうやつ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。あるトランザクションがデータを書いたけど、まだコミットも中断もしてない。他のトランザクションがそのコミット前のデータを見られたら、それが<b>ダーティリード（dirty read）</b>だ。read committedではこれが起きてはいけない。書き込みが他から見えるのは、書いたトランザクションがコミットした後だけ（しかもそのとき全書き込みが一斉に見える）。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>ユーザー1: x を 2 → 3 に変更（まだコミットしていない）</h4><p>書きかけの状態。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>ユーザー2: x を読む → まだ「2」が見える</h4><p>確定前なので古い値のまま。<div class="branch ok">✅ コミット前の値（書きかけ）は見せない。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>ユーザー1: コミット → ユーザー2: 読むと初めて「3」</h4><p>確定して初めて新しい値が見える。</p></div></div>
+    </div>
+
+    <details class="code"><summary>ダーティリードを防ぐ動き（図7-4相当）</summary>
+<pre><span class="cmt"># ダーティリードを防ぐ動き（図7-4相当）</span>
+ユーザー1: x を 2 → 3 に変更（まだコミットしていない）
+ユーザー2: x を読む → まだ「2」が見える（古い値）
+ユーザー1: コミット
+ユーザー2: x を読む → ここで初めて「3」が見える</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ダーティリードを防ぐと、何が嬉しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つ理由がある。1つは「部分更新が見えない」こと（新着メールは見えるがカウンタは0のまま、みたいな中途半端を防ぐ）。もう1つは「ロールバックされる値を見せない」こと（中断されたら全ロールバックされるのに、後で取り消される値を見て混乱するのを防ぐ）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど。コミットされてない＝まだ確定してないデータを見せると、後で覆って困る、と。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>ダーティリードを避ける利点</th></tr>
+      <tr><td>部分更新が見えない: 複数オブジェクト更新の途中で、一部だけ見える事態（例: 新着メールは見えるがカウンタは0）を防ぐ。中途半端な状態は混乱や誤った判断を招く。</td></tr>
+      <tr><td>ロールバックされる値を見せない: 中断されたら書き込みは全ロールバックされる。後で取り消される（実はコミットされていない）値を他が見てしまい、混乱するのを防ぐ。</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：隣の係の「書きかけ」を覗くと、取り消されて赤っ恥</h4>
+      <p>隣の窓口係がまだ確定していない振込を書きかけている途中で、その数字を覗き見て客に伝えたとします。ところがその取引が取り消し（中断）になったら、伝えた数字はウソだったことに。だから「確定するまでは隣の書きかけを見ない」――これがダーティリードを防ぐ意味です。</p>
+    </div>
+
+    <h3 class="blk" id="s7212">7.2.1.2 ダーティライトが生じないこと</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ダーティライトは「コミット前のデータを上書き」でしたね。これって何が問題なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>2つのトランザクションが並行して同じオブジェクトを更新する。普通は後の書き込みが先の書き込みを上書きする。でも、先の書き込みがまだコミットされてないトランザクションの一部で、後の書き込みがそのコミット前の値を上書きしたら、それが<b>ダーティライト（dirty write）</b>だ。read committedではこれを防ぐ。だから2番目の書き込みは、最初のトランザクションがコミット/中断するまで遅らせられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体的にどんな事故が起きるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>中古車販売サイトの例だ。AliceとBobが同時に同じ車を買おうとする。購入には2つの書き込みが要る――出品リストの購入者を更新するのと、購入者に請求書を送るのと。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">!</div><div class="line"></div></div><div class="body"><h4>listing（出品）テーブル: Bobの書き込みが勝つ</h4><p>購入者は「Bob」になる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">!</div><div class="line"></div></div><div class="body"><h4>invoice（請求書）テーブル: Aliceの書き込みが勝つ</h4><p>請求書は「Alice」へ送られる。<div class="branch ng">❌ 車はBobのものなのに、請求書はAliceに届く！（書き込みが混ざった）</div><div class="branch ok">✅ read committedならこの混ざり合いは起きない。</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>ダーティライトで起きる事故（図7-5相当・中古車販売）</summary>
+<pre><span class="cmt"># ダーティライトで起きる事故（図7-5相当・中古車販売）</span>
+listing（出品）テーブル: Bobの書き込みが勝ち残る → 購入者は「Bob」
+invoice（請求書）テーブル: Aliceの書き込みが勝ち残る → 請求書は「Alice」へ
+
+結果: 車はBobのものなのに、請求書はAliceに届く！（書き込みが混ざった）
+read committedならこの混ざり合いは起きない。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>車はBob、請求はAlice……。最悪ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。ただし注意。read committedは、さっきのカウンタのインクリメントのレース条件は<b>防いでくれない</b>。あの場合、最初のトランザクションがコミットされた後の2回目の書き込みはダーティライトじゃないからね。でも別の理由で正しくない。これは後で「更新のロストの回避」で扱う。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：2件の振込が混ざって「お金はBへ、控えはAへ」</h4>
+      <p>同じ口座に対して2人の係が同時に取引を書き、しかも片方の係が相手の<b>確定前の書きかけ</b>を上書きしてしまうと、「本台帳ではBが受取人」「控えではAが受取人」のように記録が<b>ねじれて混ざります</b>。read committedの銀行は「確定前の書きかけは上書き禁止、相手が確定するまで待つ」ことで、この混ざり合いを防ぎます。</p>
+    </div>
+
+    <h3 class="blk" id="s7213">7.2.1.3 read committedの実装</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>read committedって、どうやって実装するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まずread committedは非常に広く使われてる。Oracle 11g、PostgreSQL、SQL Server 2012、MemSQLなど多くのDBのデフォルトだ。ダーティライトはほぼ一般的に<b>行レベルロック</b>を使う。更新したいオブジェクトのロックを取り、コミットか中断まで保持。1つのオブジェクトのロックを持てるのは1トランザクションだけ。他は解放まで待つ。これはDBが自動でやる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ダーティリードのほうは？ 同じようにロックでいけそうですけど。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>読み取りも短くロックを取る手はあるけど、実際はうまくいかない。長時間の書き込みトランザクションがあると、読み取り専用が全部その完了まで待たされる。レスポンスタイムが悪化して、ある部分の遅さが全く別の部分に波及してしまう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ほとんどのDBは別の手を使う。書き込まれた各オブジェクトについて、<b>コミット済みの古い値</b>と、<b>書き込みロックを持つトランザクションが設定した新しい値</b>の両方を覚えておく。進行中はそのオブジェクトを読む他のトランザクションに古い値を返す。新しい値がコミットされて初めて、新しい値が見える。これなら読み取りはロックを待たずに済む。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>異常</th><th>実装方法</th></tr>
+      <tr><td>ダーティライト防止</td><td>行レベルロック（更新時にロックを取り、コミット/中断まで保持）</td></tr>
+      <tr><td>ダーティリード防止</td><td>「コミット済みの古い値」と「新しい値」を両方保持し、コミット前は古い値を返す</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：記帳台は1人で占有・問い合わせには「確定済みの数字」を答える</h4>
+      <p>書き込みが混ざらないよう、ある口座を書き換える間は<b>記帳台を1人で占有（ロック）</b>します。一方、残高を問い合わせてくる客には、いちいち占有解除を待たせるのではなく、<b>「直近で確定した数字」</b>をすぐ答える。新しい数字は確定してから初めて答えに反映する。こうすれば、書き込みの最中でも問い合わせを待たせずに済むのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「確定前のデータを見ない・上書きしない」だけで防げる事故（中古車の混ざり合いなど）の範囲が分かる。</li>
+        <li>read committedでもカウンタの更新ロストは防げない、という限界を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ（7.2.1全体）</h4>
+      <ul>
+        <li>read committedはダーティリードとダーティライトを防ぐ（最も基本的な分離レベル）。</li>
+        <li>ダーティリードはコミット前のデータを読む異常（部分更新の混乱や、ロールバックされる値の露出を防ぐ）。</li>
+        <li>ダーティライトはコミット前のデータを上書きする異常（中古車の例: 車はBob・請求はAlice の混ざり合いを防ぐ）。</li>
+        <li>実装はダーティライト＝行レベルロック、ダーティリード＝古い値と新しい値を両方保持する方式。</li>
+        <li>read committedはカウンタの更新ロストは防げない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.2.2 スナップショット分離 ===== -->
+<section id="s722">
+  <div class="sec-head"><div class="sec-num">7.2.2</div><div><h2>スナップショット分離とリピータブルリード</h2><span class="tag">取引開始時点の「帳簿の写真」から読む</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：read committedでも<b>読み取りスキュー（nonrepeatable read）</b>が残る。送金中に口座を見ると合計$900に見えて$100が消えたように見える異常で、read committedでは許容される。一時的なら問題ないが、バックアップ（不整合が恒久化）や分析クエリ（部分ごとに時刻が違う）では深刻。解決策が<b>スナップショット分離</b>で、各トランザクションは開始時点の一貫したスナップショット（写真）から読む。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>read committedって、けっこう良くないですか？ 中断もできるし、不完全な結果も読めないし、書き込みの混ざり合いも防ぐし。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>確かに有益で、トランザクションなしよりずっと強い。でもread committedでも並行性のバグは多くの形で残るんだ。例を見よう。Aliceは銀行に$1,000あって、$500ずつ2口座に分かれてる。片方からもう片方へ$100送金するトランザクションが走る。その処理中にAliceが残高一覧を見ると――</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>口座1: $500 → $400（送金で減った）</h4><p>出金は済んだ。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>Aliceが残高一覧を見る（悪いタイミング）</h4><p>口座1＝$400（出金後）、口座2＝$500（入金前）。<div class="branch ng">❌ 合計 $900 に見える！ $100が消えたように見える。</div></p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>口座2: $500 → $600（入金で増える）</h4><p>送金完了後にもう一度見れば合計$1,000に戻る。</p></div></div>
+    </div>
+
+    <details class="code"><summary>読み取りスキューの例（図7-6相当・口座送金）</summary>
+<pre><span class="cmt"># 読み取りスキューの例（図7-6相当・口座送金）</span>
+口座1: $500 → $400（送金で減った）
+口座2: $500 → $600（送金で増える）
+
+タイミングが悪いと、Aliceには:
+  口座1 = $400（出金後）
+  口座2 = $500（入金前）
+合計 $900 に見える！ $100が消えたように見える。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、お金が消えたように見える……。これって僕の残高バグと同じやつだ！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、この異常を<b>nonrepeatable read（反復不能読み取り）</b>または<b>読み取りスキュー（read skew）</b>と呼ぶ。Aliceが終了時に口座1をもう一度読めば、今度は$600が見える。read committedの下ではこれは許容される。見た残高は、見た時点では実際にコミット済みだったからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ちょっと待ってください。「スキュー」って前にも聞いた気が。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいツッコミ。<b>スキュー（skew）</b>という言葉は複数の意味で使われる。6章では「ホットスポットを伴う不均衡なワークロード」の意味で使ったけど、ここでは「タイミングの異常」という意味だ。混同しないように。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Aliceの場合、数秒後にリロードすれば直りますよね。それなら大した問題じゃ……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一時的だから許される状況もある。でも許されない状況もある。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>読み取りスキューが許されない状況</th></tr>
+      <tr><td>バックアップ: 大規模DBのバックアップは数時間かかり、その間も書き込みは続く。バックアップの一部は古い版、一部は新しい版になる。そこからリストアすると、不整合（例: 金銭の消失）が恒久化してしまう。</td></tr>
+      <tr><td>分析的なクエリと整合性チェック: DBの大部分をスキャンするクエリ（分析処理や、データ破損を調べる定期チェック）は、部分ごとに読む時刻が違うと意味のない結果を返す。</td></tr>
+    </table>
+
+    <details class="code"><summary>読み取りスキューが許されない状況</summary>
+<pre><span class="cmt"># 読み取りスキューが許されない状況</span>
+- バックアップ: 大規模DBのバックアップは数時間かかり、その間も書き込みは続く。
+  バックアップの一部は古い版、一部は新しい版になる。
+  そこからリストアすると、不整合（例: 金銭の消失）が恒久化してしまう。
+- 分析的なクエリと整合性チェック: DBの大部分をスキャンするクエリ（分析処理や、
+  データ破損を調べる定期チェック）は、部分ごとに読む時刻が違うと意味のない結果を返す。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バックアップが中途半端な状態だと、復元したときに矛盾が永久に残るのか……。怖いですね。じゃあどう解決するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最も一般的な解決策が<b>スナップショット分離（snapshot isolation）</b>だ。各トランザクションは、DBの<b>一貫性のあるスナップショット</b>から読む。読むデータはすべて「そのトランザクションの開始時点でコミット済みだったもの」だけ。その後に他が変更しても、見えるのは開始時点の古いデータのままだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スナップショット＝開始時点の写真、ってことですね。送金中でも「写真」を見るから矛盾しない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。バックアップや長時間の分析クエリに特に有益だ。PostgreSQL、InnoDBを使うMySQL、Oracle、SQL Serverなどでサポートされてる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：照会を始めた瞬間の「帳簿の写真」を見続ける</h4>
+      <p>送金の最中に残高一覧を照会すると、「片方は引き落とし済み、片方はまだ未入金」という<b>合計が一瞬合わない写真</b>を見てしまいます。これが読み取りスキュー。とくに、何時間もかかる帳簿の<b>全コピー（バックアップ）</b>では致命的で、コピーの前半と後半で時刻がズレ、矛盾したまま保存されます。解決策は、照会を始めた<b>その瞬間の帳簿の写真</b>を最後まで見続けること（スナップショット分離）。途中で誰が書き換えても、写真の中身は変わらないので、合計はいつでもピタッと合います。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「合計が一瞬合わない」「バックアップが矛盾する」バグの正体（読み取りスキュー）を理解できる。</li>
+        <li>スナップショット分離が、長時間の読み取り（バックアップ・分析）に有効だと判断できる。</li>
+      </ul>
+    </div>
+
+    <h3 class="blk" id="s7221">7.2.2.1 スナップショット分離の実装</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スナップショット分離って、どうやって実装するんですか？ 開始時点のデータを全部コピーするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、コピーはしない。read committedと同様、ダーティライトを避けるために書き込みには書き込みロックを使う。でも<b>読み取りはロックを必要としない</b>。これが重要な原則でね。「読み取りが書き込みをブロックすることはなく、書き込みが読み取りをブロックすることもない」。長時間の読み取りクエリを、書き込みと同時に、ロック競合なしで処理できる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>読み取りと書き込みがぶつからないんですね。でも、開始時点のデータをどうやって見せるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>オブジェクトの<b>複数のコミット済みバージョン</b>を保持するんだ。進行中の複数トランザクションが、それぞれ異なる時点の状態を見る必要があるからね。この手法を<b>MVCC（multi-version concurrency control, マルチバージョン並行性制御）</b>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>read committedとの違いは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>read committedだけなら、1オブジェクトにつき2バージョンで足りる。でもスナップショット分離をサポートするストレージエンジンは、read committedの実装にもMVCCを使うのが普通。違いは、read committedは<b>クエリごと</b>に個別のスナップショットを使い、スナップショット分離は<b>トランザクション全体</b>で同じスナップショットを使う点だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>PostgreSQLだと具体的にどうなってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>トランザクション開始時にユニークな<b>トランザクションID（txid）</b>が割り当てられる。これは単調増加（だんだん大きくなる）だ。書き込んだデータには、書き込んだトランザクションのIDがタグ付けされる。</div></div>
+    </div>
+
+    <details class="code"><summary>PostgreSQLのMVCC（図7-7相当・口座送金）</summary>
+<pre><span class="cmt"># PostgreSQLのMVCC（図7-7相当・口座送金）</span>
+各行に2つのフィールド:
+  created_by: その行を挿入したトランザクションのID
+  deleted_by: その行を削除したトランザクションのID（最初は空）
+
+更新 = 内部的には「削除 + 作成」に変換される。
+例: トランザクション13が口座2を $500 → $400 に変更すると、
+    accounts テーブルに口座2の行が一時的に2つ存在する:
+    - 残高 $500 の行: deleted_by = 13（トランザクション13が削除マーク）
+    - 残高 $400 の行: created_by = 13（トランザクション13が作成）
+
+削除は実際には消さず deleted_by にマークするだけ。
+後でガベージコレクションが、もう誰も見ないと確実な行を取り除いて領域を解放する。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>消さずにマークするから、古いバージョンも残ってて、開始時点の値を見せられるんですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：帳簿は消しゴムを使わず、各版を残しておく</h4>
+      <p>スナップショット分離の帳簿は、書き換えるとき<b>古い行を消しゴムで消さず</b>、「この行は取引13で無効化」と印をつけ、横に新しい行を「取引13が作成」と書き足します。だから過去の各版がそのまま残り、「あの照会の開始時点ではいくらだったか」をいつでも見せられる。読む人は占有（ロック）を待たずに、自分の見るべき版を選んで読めます。古くてもう誰も見ない版は、後でまとめて掃除（ガベージコレクション）します。</p>
+    </div>
+
+    <h3 class="blk" id="s7222">7.2.2.2 一貫したスナップショットを見るための可視化ルール</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数バージョンが残ってるとして、トランザクションは「どのバージョンが自分から見えるべきか」をどう決めるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>トランザクションIDを使って、見える/見えないを判断する。要は「自分が始まる前にコミット済みだったものだけ見える」だ。ルールはこうなる。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>一貫したスナップショットの可視化ルール</th></tr>
+      <tr><td>① 開始時点で進行中（コミットも中断もしていない）の他の全トランザクションのリストを作る。それらの書き込みは、後でコミットされても無視する。</td></tr>
+      <tr><td>② 中断されたトランザクションの書き込みは無視する。</td></tr>
+      <tr><td>③ 後から始まったトランザクション（自分の開始後に始まったID）の書き込みは、コミット済みかどうかに関わらず無視する。</td></tr>
+      <tr><td>④ それ以外の書き込みは、すべて見える。</td></tr>
+    </table>
+
+    <details class="code"><summary>可視化ルールと、オブジェクトが見える条件</summary>
+<pre><span class="cmt"># 一貫したスナップショットの可視化ルール</span>
+1. 開始時点で進行中（コミットも中断もしていない）の他の全トランザクションのリストを作る。
+   それらの書き込みは、後でコミットされても無視する。
+2. 中断されたトランザクションの書き込みは無視する。
+3. 後から始まったトランザクション（自分の開始後に始まったID）の書き込みは、
+   コミット済みかどうかに関わらず無視する。
+4. それ以外の書き込みは、すべて見える。
+
+<span class="cmt"># オブジェクトが見える条件（両方が真のとき見える）</span>
+- そのオブジェクトを生成したトランザクションが、リーダーの開始時点でコミット済み。
+- そのオブジェクトに削除マークがない、または削除マークがあっても、
+  その削除をしたトランザクションがリーダーの開始時点でまだコミットされていない。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり「自分が始まる前にコミット済みだったものだけ見える」ってことですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。生成にも削除にも適用される。トランザクション13がやった「$500の削除」も「$400の作成」も、ルール3でトランザクション12からは見えない（13は12より後だから）。だから12からは$500が見える。値を上書きせず変更のたびに新バージョンを作ることで、DBは小さなオーバーヘッドで一貫したスナップショットを提供できるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：照会開始の瞬間に「確定済みだった版」だけを認める</h4>
+      <p>どの版を見るかのルールは単純で、「<b>自分が照会を始めた瞬間に、すでに確定（コミット）していた記録だけを正規の数字と認める</b>」。それより後に確定した取引や、まだ確定していない取引、取り消された取引は、すべて見えないことにします。だから長い照会の間に窓口が忙しく書き換えても、自分の見る数字はブレません。</p>
+    </div>
+
+    <h3 class="blk" id="s7223">7.2.2.3 インデックスとスナップショット分離</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数バージョンがあると、インデックスはどう動くんですか？ インデックスって特定の値を指してますよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いくつか方法がある。1つは、インデックスはオブジェクトの<b>全バージョン</b>を指すようにしておき、クエリは現在のトランザクションから見えないバージョンをフィルタリングで除く。GCで古いバージョンが消えて誰からも見えなくなったら、対応するインデックスのエントリも消せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>他の方法は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>PostgreSQLでは、同じオブジェクトの複数バージョンが同じページに入るならインデックス更新を避ける最適化をしてる。CouchDB、Datomic、LMDBは別のアプローチで、<b>append-only/copy-on-write（追記専用/書き込み時コピー）</b>という変種のBツリーを使う。</div></div>
+    </div>
+
+    <details class="code"><summary>append-only / copy-on-write のBツリー</summary>
+<pre><span class="cmt"># append-only / copy-on-write のBツリー</span>
+- ツリー更新時にページを上書きせず、変更されたページの新コピーを作る。
+- ルートに至る親ページも、子の新バージョンを指すようコピー更新する。
+- 影響を受けないページはコピー不要でそのまま残る。
+- 各書き込みトランザクションが新しいルートを作り、
+  そのルートが「作成時点の一貫したスナップショット」になる。
+- 既存ツリーは変更されないので、トランザクションIDでのフィルタリングが不要。
+- ただしコンパクションとGCのバックグラウンド処理は必要。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>上書きしないから、過去のルートをたどれば過去のスナップショットがそのまま見えるんですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：索引も「版ごと」に残すか、新しい目次ごと作り直す</h4>
+      <p>名前順の索引カード（インデックス）も、複数版の記録に対応させる必要があります。1つの方法は「索引は全部の版を指しておき、照会のとき自分に見えない版を除く」。もう1つは、変更のたびに<b>影響した部分の目次だけ新しく作り直し</b>、古い目次はそのまま残す方法（copy-on-write）。すると過去の目次をたどれば、その時点の帳簿がまるごと再現できます。</p>
+    </div>
+
+    <h3 class="blk" id="s7224">7.2.2.4 リピータブルリードと名前の混乱</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ところで「リピータブルリード」って分離レベル、聞きますよね。スナップショット分離とは別物ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ここがややこしいんだ。スナップショット分離を実装してるDBの多くが、別の名前で呼んでる。Oracleでは<b>SERIALIZABLE</b>、PostgreSQLやMySQLでは<b>リピータブルリード（repeatable read）</b>と呼んでる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じものなのに名前がバラバラ……。なんでそんなことに？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>SQL標準に「スナップショット分離」という概念がないからだ。SQL標準は1975年のSystem Rの分離レベルに基づいてて、その頃スナップショット分離はまだ発明されてなかった。代わりに標準にあるのが<b>リピータブルリード</b>で、表面的にはスナップショット分離に似てる。PostgreSQLやMySQLは、自分のスナップショット分離が標準のリピータブルリードの要求を満たすと主張するために、そう呼んでるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあリピータブルリードって、ちゃんと定義されてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが残念で、SQL標準の分離レベルの定義は欠陥がある。曖昧で、精密でなく、標準というには実装依存すぎる。リピータブルリードを実装するDBはいくつもあるけど、提供する保証は大きく違う。正式な定義は研究文献にあるけど、ほとんどの実装はそれを満たしてない。さらにIBM DB2は「リピータブルリード」を直列化可能性の意味で使ってる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり……「リピータブルリード」が何を意味するか、誰も本当には知らない？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そういうことになる。だからこそ、名前じゃなく「どんなレース条件を防げるか」で考えるべきなんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：同じサービスなのに、銀行ごとに呼び名がバラバラ</h4>
+      <p>「照会開始時点の写真を見続ける」という同じサービスを、ある銀行は「最上位プラン（SERIALIZABLE）」と呼び、別の銀行は「リピート照会（リピータブルリード）」と呼ぶ。さらに「リピート照会」の意味も銀行ごとにバラバラで、何を守ってくれるか看板からは分かりません。だから<b>呼び名ではなく「実際にどの事故を防いでくれるか」</b>で確認するしかないのです。</p>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ（7.2.2全体）</h4>
+      <ul>
+        <li>read committedでも読み取りスキュー（nonrepeatable read）が残る（送金で合計が合わなく見える）。</li>
+        <li>スナップショット分離は各トランザクションが開始時点の一貫スナップショットから読む。バックアップや分析クエリに有益。</li>
+        <li>実装はMVCC（複数バージョン保持、トランザクションIDと可視化ルール）。読み取りと書き込みは互いにブロックしない。</li>
+        <li>インデックスは全バージョン参照やcopy-on-writeのBツリーで扱う。</li>
+        <li>「SERIALIZABLE」「リピータブルリード」など名前が混乱しており、名前で判断してはいけない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.2.3 更新のロストの回避 ===== -->
+<section id="s723">
+  <div class="sec-head"><div class="sec-num">7.2.3</div><div><h2>更新のロストの回避</h2><span class="tag">「読んで→足して→書き戻す」が同時に走ると片方が消える</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：<b>更新のロスト</b>は、read-modify-writeサイクル（読む→変更→書き戻す）を2つのトランザクションが並行に行い、後の書き込みが先の変更を無視して上書きし、変更が失われる異常。カウンタ・口座残高・JSONリスト・wiki編集などで起きる。一般的な問題で、複数の解決策がある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまで、読み取り専用トランザクションが何を見るか、の話が中心でしたよね。書き込み同士がぶつかる話は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいところに気づいた。これまで論じた書き込み同士の衝突はダーティライトだけだった。でも他にも種類がある。最も有名なのが<b>更新のロスト（lost update）</b>だ。さっきのカウンタのインクリメントがその例。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ、僕の残高バグの本命かも。どういうときに起きるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリが値を読んで、変更して、書き戻す――<b>read-modify-writeサイクル</b>――をするときだ。2つのトランザクションが並行にこれをやると、2番目の書き込みは1番目の変更を踏まえてないから、変更の1つが失われる。後の書き込みが先の書き込みを<b>ひっぱたく（clobber）</b>とも言う。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>更新のロストが起きるパターン</th></tr>
+      <tr><td>カウンタや口座残高の更新（現在値を読み、新値を計算し、書き戻す）。</td></tr>
+      <tr><td>複雑な値の一部を変更（例: JSONドキュメント内のリストに要素追加。パース→変更→書き戻し）。</td></tr>
+      <tr><td>2人が同時に同じwikiページを編集し、それぞれページ全体を送信して、保存済み内容を上書きする。</td></tr>
+    </table>
+
+    <details class="code"><summary>更新のロストが起きるパターン</summary>
+<pre><span class="cmt"># 更新のロストが起きるパターン</span>
+- カウンタや口座残高の更新（現在値を読み、新値を計算し、書き戻す）。
+- 複雑な値の一部を変更（例: JSONドキュメント内のリストに要素追加。
+  パース → 変更 → 書き戻し）。
+- 2人が同時に同じwikiページを編集し、それぞれページ全体を送信して、
+  保存済み内容を上書きする。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これ、めちゃくちゃありそうですね。どう防ぐんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>とても一般的な問題だから、いろんな解決策が開発されてきた。1つずつ見よう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：2人の係が同じ残高を「読んで足して書き戻す」と片方が消える</h4>
+      <p>口座残高を更新するとき、係は「今いくらか読む → 入金分を足す → 書き戻す」をやります。2人の係が同時に同じ残高（たとえば1000円）を読み、それぞれ500円・300円を足して書き戻すと、後に書いた人の数字だけが残り、もう片方の入金が<b>まるごと消えます</b>。これが更新のロスト。防ぎ方を順に見ていきましょう。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「同時更新で変更が消える」バグ（残高・カウンタ・wiki）の正体を理解できる。</li>
+      </ul>
+    </div>
+
+    <h3 class="blk" id="s7231">7.2.3.1 アトミックな書き込み操作</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>最初の解決策は何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>アトミックな書き込み操作</b>だ。多くのDBが、アプリ側でread-modify-writeを実装しなくて済む更新処理を提供してる。表現できるなら、これが普通は最良の解決策。リレーショナルDBでこれは並行性の問題を起こさない。</div></div>
+    </div>
+
+    <p style="font-size:14px;margin:6px 0">下は「カウンタを安全に1増やす」専用の書き方。読まなくてOKです。</p>
+    <details class="code"><summary>アトミックなインクリメント（SQL）</summary>
+<pre><span class="cmt">-- カウンタを安全に1増やすアトミック操作（read-modify-writeを書かなくていい）</span>
+<span class="kw">UPDATE</span> counters <span class="kw">SET</span> value = value + <span class="num">1</span> <span class="kw">WHERE</span> key = <span class="str">'foo'</span>;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、DBの中で「読んで足して書く」をまとめてやってくれるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。MongoDBもJSONドキュメントの一部を局所変更するアトミック操作を、Redisも優先順位付きキューなどを変更するアトミック操作を提供してる。ただし全部の書き込みがアトミック操作で簡単に表現できるわけじゃない。wikiページの編集はどんなテキスト編集が含まれるか分からないからね。でも使えるなら最良の選択肢だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>アトミック操作って、内部ではどう実装されてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>普通は読み取り時に排他ロックを取って、更新が終わるまで他のトランザクションがそのオブジェクトを読めないようにする。これを<b>カーソル固定（cursor stability）</b>と呼ぶこともある。もう1つの手は、全アトミック操作を単一スレッドで実行すること。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>注意点はありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ORMフレームワークを使うと、DBのアトミック操作じゃなく、安全でないread-modify-writeサイクルを意図せず書いてしまいやすい。自分が何をやってるか分かってれば問題ないけど、テストで見つけにくい微妙なバグの源になりうる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「残高を○○円増やす」専用ボタンで一発処理</h4>
+      <p>係が手作業で「読んで足して書く」とミスや競合が起きます。そこで帳簿システムに<b>「この口座を○○円増やす」専用ボタン</b>を用意すれば、機械が中で一気に正しく処理してくれて、二重処理も消える。これがアトミック操作。ただし「自由文の議事録を一部だけ直す」みたいな複雑な編集には専用ボタンが作れません。そういうときは次の方法を使います。</p>
+    </div>
+
+    <h3 class="blk" id="s7232">7.2.3.2 明示的なロック</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>アトミック操作で表現できない場合は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリが<b>明示的に</b>更新対象のオブジェクトをロックする手がある。ロックすれば、アプリがread-modify-writeを実行する間、他のトランザクションは同じオブジェクトを並行に読めず、待たされる。例えば複数プレイヤーが同じキャラクターを動かすゲーム。操作がゲームのルールに沿うか保証する必要があって、それはDBのクエリでは表現しにくい。だからロックで、他のプレイヤーが並行に同じキャラを動かせないようにする。</div></div>
+    </div>
+
+    <p style="font-size:14px;margin:6px 0">下は <b>FOR UPDATE</b> という句で対象の行を占有する例。読まなくてOKです。</p>
+    <details class="code"><summary>例7-1: 更新のロストを防ぐための明示的な行ロック</summary>
+<pre><span class="cmt">-- 例7-1: 更新のロストを防ぐための明示的な行ロック</span>
+<span class="kw">BEGIN TRANSACTION</span>;
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> figures
+  <span class="kw">WHERE</span> name = <span class="str">'ロボット'</span> <span class="kw">AND</span> game_id = <span class="num">222</span>
+  <span class="kw">FOR UPDATE</span>; <span class="cmt">-- ① この句で、返る全行のロックをDBが取得する</span>
+
+<span class="cmt">-- 移動が妥当かを確認してから、上のSELECTが返した値を使って位置を更新する</span>
+<span class="kw">UPDATE</span> figures <span class="kw">SET</span> position = <span class="str">'c4'</span> <span class="kw">WHERE</span> id = <span class="num">1234</span>;
+
+<span class="kw">COMMIT</span>;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①の<b>FOR UPDATE</b>が「このクエリが返す全行をロックせよ」とDBに指示する句だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これでバッチリですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>うまくいくけど、正しくやるにはアプリのロジックを慎重に考えないといけない。どこかでロックを付け忘れて、レース条件を作ってしまうことは簡単に起きるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「この口座は今、私が処理中」と札を立てて占有する</h4>
+      <p>複雑な処理でアトミック操作が使えないときは、係が「<b>この口座（記帳台）は今、私が占有中</b>」という札（ロック）を立て、自分が読んで確認して書き終えるまで他の係を待たせます。これで二重処理を防げます。ただし、ある口座だけ札を立て忘れると、そこで事故が起きる。<b>占有のかけ忘れ</b>が怖いのです。</p>
+    </div>
+
+    <h3 class="blk" id="s7233">7.2.3.3 更新のロストの自動検出</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ロックって付け忘れが怖いんですよね。もっと自動でやってくれないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるよ。別の手として「並列実行は許して、トランザクションマネージャが更新のロストを検出したら中断してリトライさせる」というやり方がある。スナップショット分離と併用すると効率的に検出できる。PostgreSQLのリピータブルリード、Oracleのserializable、SQL Serverのスナップショット分離は、更新のロストを自動検出して問題のトランザクションを中断する。でも<b>MySQL/InnoDBのリピータブルリードは検出しない</b>。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>自動検出のいいところは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>アプリのコードで特別な機能を使う必要がないこと。ロックやアトミック操作を忘れてバグを埋め込んでも、自動検出が働くからエラーが起きにくい。素晴らしい機能だよ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>DB</th><th>更新のロストの自動検出</th></tr>
+      <tr><td>PostgreSQL（リピータブルリード）</td><td>✅ 検出する</td></tr>
+      <tr><td>Oracle（serializable）</td><td>✅ 検出する</td></tr>
+      <tr><td>SQL Server（スナップショット分離）</td><td>✅ 検出する</td></tr>
+      <tr><td>MySQL/InnoDB（リピータブルリード）</td><td>❌ 検出しない</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：本部が「その記録、二重処理ですよ」と自動で気づく</h4>
+      <p>係が札を立て忘れても、<b>本部のチェック係（トランザクションマネージャ）</b>が「あれ、この口座、同時に2人が読んで書き戻していますね、片方の変更が消えますよ」と自動で気づき、片方の取引をやり直させてくれる仕組みです。係が特別なことをしなくても守られるので便利。ただし、この本部チェックを<b>備えていない銀行（MySQL/InnoDBのリピータブルリード）</b>もあるので、自分の銀行が備えているか確認が要ります。</p>
+    </div>
+
+    <h3 class="blk" id="s7234">7.2.3.4 compare-and-set</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>トランザクションがないDBだと、どうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そういうDBにはよく<b>compare-and-set（比較して設定）</b>操作がある。目的は「最後に読んだときから値が変わってなければだけ更新する」こと。現在値が以前の読み取り時と違えば更新せず、read-modify-writeをリトライする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>wikiの例だと？</div></div>
+    </div>
+
+    <p style="font-size:14px;margin:6px 0">下は「編集前の内容と一致するときだけ更新」する書き方。読まなくてOKです。</p>
+    <details class="code"><summary>compare-and-set（wikiページ更新）</summary>
+<pre><span class="cmt">-- 編集開始時の内容から変わっていないときだけ更新する（これが安全かはDB実装次第）</span>
+<span class="kw">UPDATE</span> wiki_pages <span class="kw">SET</span> content = <span class="str">'新しい内容'</span>
+  <span class="kw">WHERE</span> id = <span class="num">1234</span> <span class="kw">AND</span> content = <span class="str">'古い内容'</span>;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>内容が更新されてて<b>'古い内容'</b>に一致しなければ更新は行われない。だから更新が有効だったか確認して、必要ならリトライできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これなら安心ですね！</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>落とし穴がある。もし古いスナップショットから読めるDBだと、並行して他の書き込みがあってもWHERE節の条件が常に真になってしまって、更新のロストを防げないことがある。だからcompare-and-setを頼る前に、それが安全かをちゃんと調べないといけない。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「私が見たときの数字のままなら書き換える」</h4>
+      <p>札を立てる代わりに、書き換えるとき「<b>私が見たときの残高（古い内容）と今も一致しているときだけ書き換える</b>」と条件をつけます。誰かが先に書き換えていれば一致しないので書き込みは失敗し、もう一度やり直せる。これがcompare-and-set。ただし、その銀行が「照会開始時点の古い写真」を見るタイプだと、いつでも条件が一致してしまって防げないことがある。安全かどうかの確認が必要です。</p>
+    </div>
+
+    <h3 class="blk" id="s7235">7.2.3.5 衝突の解決とレプリケーション</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>レプリケーションしてる（コピーが複数ノードにある）DBだと、更新のロストはどうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>別の角度から見ないといけない。同じデータのコピーが複数ノードにあって、別々のノードで並行に変更されうるから、回避の手順が増えるんだ。ロックやcompare-and-setは「データの最新コピーが1つしかない」前提なんだ。マルチリーダーやリーダーレスは複数の書き込みが並行して起き、レプリケーションが非同期だから、単一の最新コピーを保証できない。だからこれらの手法は適用できない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一般的なのは、並行書き込みで衝突する複数バージョン（<b>sibling, きょうだい</b>と呼ぶ）の生成を許して、後でアプリのコードや特別なデータ構造で衝突解決・マージする方法だ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>レプリケーション環境での更新のロスト対策</th></tr>
+      <tr><td>衝突する複数バージョン（sibling）の生成を許し、事後にマージする。</td></tr>
+      <tr><td>アトミック操作は、特に「交換可能」（適用順序が変わっても結果が同じ）なら有効。例: カウンタのインクリメント、集合への要素追加。Riak 2.0のデータ型は、この概念で並行更新を一切ロストせずマージする。</td></tr>
+      <tr><td>LWW（last write wins, 最後の書き込みを勝たせる）を衝突解決に使うと、更新のロストが起きやすい。残念ながら多くのレプリケーションDBでLWWがデフォルト。</td></tr>
+    </table>
+
+    <details class="code"><summary>レプリケーション環境での対策</summary>
+<pre><span class="cmt"># レプリケーション環境での更新のロスト対策</span>
+- 衝突する複数バージョン（sibling）の生成を許し、事後にマージする。
+- アトミック操作は、特に「交換可能」（適用順序が変わっても結果が同じ）なら有効。
+  例: カウンタのインクリメント、集合への要素追加。
+  Riak 2.0のデータ型は、この概念で並行更新を一切ロストせずマージする。
+- LWW（last write wins, 最後の書き込みを勝たせる）を衝突解決に使うと、
+  更新のロストが起きやすい。残念ながら多くのレプリケーションDBでLWWがデフォルト。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>順序が関係ない操作（インクリメントとか）なら、並行でも安全にマージできるんですね。逆にLWWは1つ勝って他は消えるから危ない、と。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：複数支店の帳簿を後で突き合わせて合算する</h4>
+      <p>同じ口座の控えを複数支店が持ち、それぞれが並行に記帳すると、最新の1冊を決められません。だから「<b>両方の版を残しておき、あとで突き合わせて合算（マージ）</b>」します。「○○円足す」のような<b>順番が関係ない処理</b>なら、どちらを先に足しても合計は同じなので安全にマージできる。逆に「最後に書いた人の数字だけ残す（LWW）」だと、もう片方の入金が消えてしまい危険です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ（7.2.3全体）</h4>
+      <ul>
+        <li>更新のロストはread-modify-writeの並行実行で変更が消える異常。</li>
+        <li>対策: ①アトミック操作（最良） ②明示的ロック（FOR UPDATE、付け忘れ注意） ③自動検出（PostgreSQL等は検出、MySQL/InnoDBは非検出） ④compare-and-set（古いスナップショットに注意）。</li>
+        <li>レプリケーション環境では sibling のマージや交換可能なアトミック操作を使う。LWWは危険。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.2.4 書き込みスキューとファントム ===== -->
+<section id="s724">
+  <div class="sec-head"><div class="sec-num">7.2.4</div><div><h2>書き込みスキューとファントム</h2><span class="tag">同じものを見て別々の場所を書き、前提が崩れる</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：<b>書き込みスキュー</b>は、2つのトランザクションが同じオブジェクト群を読み、別々のオブジェクトを更新することで起きるレース条件（病院の当直: 両方が「相手がいる」と誤判断し全員抜ける）。ダーティライトでも更新のロストでもなく、それらを一般化したもの。単一オブジェクトのアトミック操作も更新ロスト自動検出も効かず、自動回避には直列化可能分離が必要。次善策は依存行の明示的ロック（SELECT ... FOR UPDATE）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>書き込み同士の衝突って、ダーティライトと更新のロストだけですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、もっと微妙なやつがある。例で考えよう。病院で医師の当直を管理するアプリ。ルールは「常に最低1人は当直がいなければならない」。医師は、最低1人同僚が当直なら、自分の当直を取り消せる（自分が病気のときとか）。AliceとBobが同じ時間帯の2人の当直医だとする。2人とも体調が悪くて帰りたい。運悪く、ほぼ同時に「当直取り消し」ボタンを押した。何が起きるか。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">A</div><div class="line"></div></div><div class="body"><h4>Aliceのトランザクション</h4><p>「当直医は何人？」→ 2人。1人減ってもOKと判断 → Aliceを当直から外す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">B</div><div class="line"></div></div><div class="body"><h4>Bobのトランザクション</h4><p>「当直医は何人？」→ 2人。1人減ってもOKと判断 → Bobを当直から外す。<br>（両方とも、相手がまだ当直中の「スナップショット」を見ているので 2 が返る）</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">!</div><div class="line"></div></div><div class="body"><h4>両方コミット</h4><p><div class="branch ng">❌ 当直医が0人に！ 「最低1人」のルールが破られた。</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>書き込みスキューの例（図7-8相当・病院の当直）</summary>
+<pre><span class="cmt"># 書き込みスキューの例（図7-8相当・病院の当直）</span>
+スナップショット分離を使っているとする。当直医は現在2人（Alice, Bob）。
+
+Aliceのトランザクション: 「当直医は何人？」→ 2人。1人減ってもOKと判断 → Aliceを当直から外す
+Bobのトランザクション  : 「当直医は何人？」→ 2人。1人減ってもOKと判断 → Bobを当直から外す
+（両方とも、相手がまだ当直中の「スナップショット」を見ているので 2 が返る）
+
+両方コミット → 当直医が0人に！ 「最低1人」のルールが破られた。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、両方とも「相手がいるから大丈夫」と思って抜けちゃった……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。2人とも、相手がまだ当直中の写真（スナップショット）を見て判断したから、両方とも「自分が抜けても1人残る」と誤解したんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：2人の窓口係が「相手がいるから休める」と同時に席を立つ</h4>
+      <p>銀行のルールは「窓口には常に最低1人いること」。AさんとBさんの2人が窓口にいて、2人とも同時に「相手がいるから自分は休憩しよう」と判断します。ところがどちらも<b>「相手はまだ席にいる」という同じ瞬間の様子</b>を見て決めたので、2人そろって席を立ち、窓口は無人に。これが書き込みスキューです。</p>
+    </div>
+
+    <h3 class="blk" id="s7241">7.2.4.1 書き込みスキューとは何か</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これって更新のロストですか？ それともダーティライト？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>どちらでもない。2つのトランザクションが更新してるのは<b>別々のオブジェクト</b>だ（AliceとBobはそれぞれ自分のレコードを更新してる）。だからダーティライトでも更新のロストでもない。これは<b>書き込みスキュー（write skew）</b>という別のレース条件だ。2つのトランザクションが同じオブジェクト群を読み、そのいくつかを更新する（更新先が違ってもいい）ときに起きる。同じオブジェクトを更新する特殊ケースが、ダーティライトや更新のロストなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>更新のロストの対策は使えますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが、選択肢がもっと限られる。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>書き込みスキューへの対策の制約</th></tr>
+      <tr><td>複数オブジェクトが関わるので、単一オブジェクトのアトミック操作は役に立たない。</td></tr>
+      <tr><td>更新のロストの自動検出も役に立たない。書き込みスキューは PostgreSQL/MySQLのリピータブルリード、Oracleのserializable、SQL Serverのスナップショット分離 では自動検出されない。自動回避には本当の直列化可能分離が必要。</td></tr>
+      <tr><td>DBが強制できる制約（ユニーク制約・外部キー・特定値の制限）が使えることもあるが、「最低1人の医師が当直」は複数オブジェクトに関わる制約で、ほとんどのDBは未サポート。トリガやマテリアライズドビューで実装できる場合もある。</td></tr>
+      <tr><td>直列化可能分離が使えないなら、次善策は依存する行を明示的にロックすること。</td></tr>
+    </table>
+
+    <details class="code"><summary>書き込みスキューへの対策の制約 ＋ 例（医師の当直）</summary>
+<pre><span class="cmt"># 書き込みスキューへの対策の制約</span>
+- 複数オブジェクトが関わるので、単一オブジェクトのアトミック操作は役に立たない。
+- 更新のロストの自動検出も役に立たない。書き込みスキューは
+  PostgreSQL/MySQLのリピータブルリード、Oracleのserializable、
+  SQL Serverのスナップショット分離 では自動検出されない。
+  自動回避には本当の直列化可能分離が必要。
+- DBが強制できる制約（ユニーク制約・外部キー・特定値の制限）が使えることもあるが、
+  「最低1人の医師が当直」は複数オブジェクトに関わる制約で、ほとんどのDBは未サポート。
+  トリガやマテリアライズドビューで実装できる場合もある。
+- 直列化可能分離が使えないなら、次善策は依存する行を明示的にロックすること。
+
+<span class="cmt">-- 書き込みスキューを防ぐための明示的な行ロック（医師の当直）</span>
+<span class="kw">BEGIN TRANSACTION</span>;
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> doctors
+  <span class="kw">WHERE</span> on_call = <span class="kw">true</span>
+  <span class="kw">AND</span> shift_id = <span class="num">1234</span> <span class="kw">FOR UPDATE</span>; <span class="cmt">-- ① 返る全行をロックせよ、とDBに指示</span>
+
+<span class="kw">UPDATE</span> doctors
+  <span class="kw">SET</span> on_call = <span class="kw">false</span>
+  <span class="kw">WHERE</span> name = <span class="str">'Alice'</span>
+  <span class="kw">AND</span> shift_id = <span class="num">1234</span>;
+
+<span class="kw">COMMIT</span>;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>①の<b>FOR UPDATE</b>で、当直中の医師の行を全部ロックする。これで2人が同時に判断できなくなる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：当直名簿そのものを占有してから判断する</h4>
+      <p>「相手がいるか」を確認してから席を立つなら、確認に使った<b>当直名簿（依存する行）を占有（ロック）</b>してから判断すればよい。AさんがロックすればBさんは待たされ、Aさんが抜けて確定したあとにBさんが見ると「もう1人しかいない」と分かり、抜けられません。これが次善策の明示的ロックです。</p>
+    </div>
+
+    <h3 class="blk" id="s7242">7.2.4.2 書き込みスキューの他の例</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>当直の例は分かりました。他にもあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一度認識できると、あちこちで起きてることが分かる。例を挙げよう。</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📅</div><h4>会議室予約</h4><p>同じ部屋に同時に2つの予約。「重なる予約がないか確認→なければ作成」だが、スナップショット分離では他ユーザーの並行挿入を防げない。ダブルブッキング防止には直列化可能分離が要る。</p></div>
+      <div class="mini"><div class="ic">🎮</div><h4>マルチプレイヤーゲーム</h4><p>ロックで「同じキャラを同時に動かす」は防げても、「2人が同じマスに動かす」など他の違反は防げない。ユニーク制約が使えることも。</p></div>
+      <div class="mini"><div class="ic">🆔</div><h4>ユーザー名の要求</h4><p>2人が同じ名前で同時にアカウント作成。スナップショット分離では安全でない。ただしユニーク制約が簡単な解決策（2番目が制約違反で中断）。</p></div>
+      <div class="mini"><div class="ic">💳</div><h4>二重支払いの防止</h4><p>残高以上に使わせない。出費を一時的に入れて合計を確認する実装だと、2つの出費が同時挿入され互いに気づかず残高がマイナスになりうる。</p></div>
+    </div>
+
+    <details class="code"><summary>書き込みスキューの他の例 ＋ 会議室予約のSQL（例7-2）</summary>
+<pre><span class="cmt"># 書き込みスキューの他の例</span>
+- 会議室予約システム: 同じ部屋に同時に2つの予約を入れさせたくない。
+  「重なる予約がないか確認 → なければ作成」だが、スナップショット分離では
+  他ユーザーが並行に重なる予約を挿入するのを防げない。ダブルブッキングを防ぐには直列化可能分離が要る。
+- マルチプレイヤーゲーム: ロックで「同じキャラを同時に動かす」は防げても、
+  「2人がそれぞれのキャラを同じマスに動かす」など他のルール違反は防げない。
+  ユニーク制約が使えることもあるが、使えなければ書き込みスキューに脆弱。
+- ユーザー名の要求: 2人が同じユーザー名で同時にアカウント作成しようとする。
+  スナップショット分離では安全でない。ただしこの場合はユニーク制約が簡単な解決策
+  （2番目のトランザクションが制約違反で中断される）。
+- 二重支払いの防止: 残高以上に使わせない。出費を一時的に入れて合計がプラスか確認する実装だと、
+  書き込みスキューで2つの出費が同時に挿入され、互いに気づかず残高がマイナスになりうる。
+
+<span class="cmt">-- 例7-2: 会議室予約のダブルブッキング回避（スナップショット分離では安全でない）</span>
+<span class="kw">BEGIN TRANSACTION</span>;
+
+<span class="cmt">-- 正午〜午後1時に重なる既存の予約がないか調べる</span>
+<span class="kw">SELECT</span> <span class="fn">COUNT</span>(*) <span class="kw">FROM</span> bookings
+  <span class="kw">WHERE</span> room_id = <span class="num">123</span> <span class="kw">AND</span>
+    end_time &gt; <span class="str">'2015-01-01 12:00'</span> <span class="kw">AND</span> start_time &lt; <span class="str">'2015-01-01 13:00'</span>;
+
+<span class="cmt">-- 上のクエリが0を返した場合だけ、予約を挿入する:</span>
+<span class="kw">INSERT INTO</span> bookings
+  (room_id, start_time, end_time, user_id)
+  <span class="kw">VALUES</span> (<span class="num">123</span>, <span class="str">'2015-01-01 12:00'</span>, <span class="str">'2015-01-01 13:00'</span>, <span class="num">666</span>);
+
+<span class="kw">COMMIT</span>;</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>スナップショット分離は、他のユーザーが並行に重なる会議を挿入するのを防いでくれない。重複を防ぐには直列化可能分離が必要なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ユーザー名の例だけはユニーク制約で解決できる、っていうのが面白いですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「同じ番号札は1枚だけ」「貸金庫は二重予約禁止」</h4>
+      <p>「貸金庫の同じ枠を2人に同時に貸さない」「同じ口座番号は1つだけ」――どれも「条件を確認してから登録」という同じ形です。多くは窓口を1つにして順番に処理（直列化可能分離）しないと防げません。ただし「口座番号の重複」のように<b>『重複禁止』を帳簿側のルールで強制できる場合（ユニーク制約）</b>は、2人目を自動で弾けます。</p>
+    </div>
+
+    <h3 class="blk" id="s7243">7.2.4.3 書き込みスキューを生じさせるファントム</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これらの例、なんだか共通のパターンがありますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。全部こうなってる。</div></div>
+    </div>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>SELECTで特定条件の行を検索し、要求が満たされているか確認</h4><p>当直医が2人以上、部屋が空いている、座標に他キャラがいない、ユーザー名が未使用、残高があるか。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>結果に応じて、処理を続けるか中断するか判断</h4><p>「大丈夫そうだから進めよう」と決める。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>続けるなら書き込み（INSERT/UPDATE/DELETE）してコミット</h4><p>この書き込みが、ステップ2の判断の前提となった条件を変えてしまう。<div class="branch ng">❌ ステップ1のSELECTを書き込み後にやり直せば、違う結果が返るかもしれない。</div></p></div></div>
+    </div>
+
+    <details class="code"><summary>書き込みスキューの共通パターン</summary>
+<pre><span class="cmt"># 書き込みスキューの共通パターン</span>
+1. SELECTで特定条件の行を検索し、ある要求が満たされているか確認する
+   （当直医が2人以上、部屋が空いている、座標に他キャラがいない、ユーザー名が未使用、残高があるか）。
+2. 最初のクエリの結果に応じて、処理を続けるか中断するか判断する。
+3. 続けるなら書き込み（INSERT/UPDATE/DELETE）してコミットする。
+   この書き込みが、ステップ2の判断の前提となった条件を変えてしまう。
+   （もしステップ1のSELECTを書き込み後にやり直せば、違う結果が返るかもしれない）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>当直の例だと、ステップ1で読んだ行をロックすれば防げますよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。当直のケースは、ステップ3で変更する行がステップ1で返る行に含まれるから、SELECT FOR UPDATEでロックすれば安全になる。でも他の4つの例は事情が違う。他の例は、条件を満たす行が<b>存在しないこと</b>をチェックして、書き込みでその条件を満たす行を<b>追加</b>する。ステップ1のクエリが行を返さないなら、SELECT FOR UPDATEはロックする対象がない。何もロックできないんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あー、まだ存在しない行はロックできない……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。あるトランザクションの書き込みが、他のトランザクションの検索クエリの結果を変えてしまう、この効果を<b>ファントム（phantom, 幻）</b>と呼ぶ。スナップショット分離は読み取り専用クエリのファントムは防ぐけど、読み書きトランザクションでは、ファントムが特に複雑な書き込みスキューを生むんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：まだ存在しない「未来の予約」には札を立てられない</h4>
+      <p>当直名簿のように<b>既にある記録</b>なら占有（ロック）できます。でも会議室予約は「その枠にまだ予約が存在しないこと」を確認して、新しい予約を<b>追加</b>します。まだ存在しない記録には占有の札を立てようがありません。だから2人が同時に「空いてる」と確認して両方予約を入れ、ダブルブッキング。ある人の追加が、別の人の検索結果（空き状況）を変えてしまう――これがファントムです。</p>
+    </div>
+
+    <h3 class="blk" id="s7244">7.2.4.4 衝突の実体化</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ロックする対象が存在しないなら、対象を人工的に作っちゃえばいいんじゃないですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにその発想がある。会議室予約なら、「時間と会議室のスロット」のテーブルを作る。各行は特定の部屋の特定の期間（例: 15分）を表す。事前に、6ヶ月分くらいの全組み合わせの行を作っておく。予約したいトランザクションは、対象の部屋・期間に対応する行をSELECT FOR UPDATEでロックできる。ロックを取ったら重複を確認して挿入する。この追加テーブルは予約情報の保存には使わず、純粋に「同じ時間帯が並行に修正されないようにするためのロックの集合」だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これってちゃんとした解決策なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ファントムを「DB中の行の集合のロック衝突」に置き換えるので、<b>衝突の実体化（materializing conflicts）</b>と呼ぶ。でも残念ながら、どう実体化するかを見つけるのは難しく、間違いやすい。並行性制御の仕組みをアプリのデータモデルに漏らすのは不格好だ。だから<b>最後の手段</b>として考えるべき。たいていは直列化可能分離のほうがはるかに望ましいんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：先に「全枠の整理券」を用意して、それを占有させる</h4>
+      <p>未来の予約に札を立てられないなら、あらかじめ<b>「○号室・○時の枠」という整理券を全部作っておく</b>。予約したい人はまず該当する整理券を占有（ロック）してから、重複を確認して予約する。これで「存在しない記録」を「存在する整理券」に置き換え、占有できるようにします（衝突の実体化）。ただし整理券を漏れなく用意するのは難しく間違いやすいので、できれば窓口を1つにする（直列化可能分離）ほうが望ましい、最後の手段です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項のまとめ（7.2.4全体）</h4>
+      <ul>
+        <li>書き込みスキューは、同じオブジェクト群を読み別々のオブジェクトを更新することで起きるレース条件。</li>
+        <li>病院の当直・会議室予約・ゲーム・ユーザー名・二重支払いなどで発生。</li>
+        <li>共通パターン: 条件を検索 → 判断 → 書き込みが前提を変える。</li>
+        <li>書き込みが他の検索結果を変える効果がファントム。存在しない行はロックできない。</li>
+        <li>対策: 直列化可能分離（本命）、明示的ロック（行が存在する場合）、ユニーク制約（表せる場合）、衝突の実体化（最後の手段）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.3 直列化可能性 ===== -->
+<section id="s73">
+  <div class="sec-head"><div class="sec-num">7.3</div><div><h2>直列化可能性</h2><span class="tag">全レース条件を防ぐ最強の分離 ― 実装は3つ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：弱い分離レベルは理解が難しく実装がバラバラで、安全性の判断もツールも乏しい。根本的な答えは<b>直列化可能分離</b>（最も強い分離で、全レース条件を回避し、各トランザクションが単独で正しければ並行でも正しいと保証）。だがパフォーマンスの問題で敬遠される。実装手法は3つ: ①完全な順次実行 ②ツーフェーズロック(2PL) ③直列化可能スナップショット分離(SSI)。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでで、レース条件がいろいろあって、弱い分離レベルだと防げないものがあるって分かりました。なんだか八方塞がりです……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その気持ち、よく分かる。問題を整理するとこうだ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>弱い分離レベルの困りごと</th></tr>
+      <tr><td>分離レベルの理解は難しく、DBごとに実装がバラバラ（「repeatable read」の意味も実装で大差）。</td></tr>
+      <tr><td>アプリのコードを見ても、特定の分離レベルで安全か判断するのが難しい（大規模だと特に）。</td></tr>
+      <tr><td>レース条件の検出を助ける良いツールがない。静的解析は原理的には役立つかもしれないが実用化されていない。並行性の問題は非決定的（タイミング次第）で、テストが難しい。</td></tr>
+    </table>
+
+    <details class="code"><summary>弱い分離レベルの困りごと</summary>
+<pre><span class="cmt"># 弱い分離レベルの困りごと</span>
+- 分離レベルの理解は難しく、DBごとに実装がバラバラ（「repeatable read」の意味も実装で大差）。
+- アプリのコードを見ても、特定の分離レベルで安全か判断するのが難しい（大規模だと特に）。
+- レース条件の検出を助ける良いツールがない。静的解析は原理的には役立つかもしれないが実用化されていない。
+  並行性の問題は非決定的（タイミング次第）で、テストが難しい。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ根本的な答えはないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>研究者の答えは1970年代から最初からシンプルだ。<b>直列化可能分離レベルを使え</b>、と。これは通常、最も強い分離レベルとされる。並行して実行されても、最終結果はそれぞれが順番に1つずつ実行された場合と同じになることを保証する。各トランザクションが単独で正しく動くなら、並行に実行されても正しく動くことをDBが保証してくれる。<b>考えられる全レース条件を回避</b>してくれるんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それ、最強じゃないですか。なんでみんな使わないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実装方法とパフォーマンスの問題だ。今、直列化可能分離を提供するDBのほとんどは、これから見る3つの手法のどれかを使ってる。今は主に単一ノードの観点で論じる（分散システムへの一般化は9章）。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">1️⃣</div><h4>完全な順次実行</h4><p>文字通りトランザクションを1つずつ順番に実行。</p></div>
+      <div class="mini"><div class="ic">2️⃣</div><h4>ツーフェーズロック（2PL）</h4><p>数十年間、唯一の現実的な選択肢だった。</p></div>
+      <div class="mini"><div class="ic">3️⃣</div><h4>直列化可能スナップショット分離（SSI）</h4><p>楽観的並行制御の手法。新しい。</p></div>
+    </div>
+
+    <details class="code"><summary>直列化可能分離の3つの実装手法</summary>
+<pre><span class="cmt"># 直列化可能分離の3つの実装手法</span>
+1. 完全な順次実行（文字通りトランザクションを1つずつ順番に実行）
+2. ツーフェーズロック（2PL）… 数十年間、唯一の現実的な選択肢だった
+3. 直列化可能スナップショット分離（SSI）… 楽観的並行制御の手法</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：窓口を1つにして「一人ずつ」処理すれば事故ゼロ</h4>
+      <p>これまで見たレース条件は、すべて窓口が並行に動くから起きました。<b>窓口を1つにして客を順番に一人ずつ処理</b>すれば、どんな事故も起きません。これが直列化可能性。ただし行列ができて遅いので、銀行はその「順番に処理したのと同じ結果」を、できるだけ速く実現する3つの工夫（順次実行・2PL・SSI）を編み出しました。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「全レース条件を防ぐ唯一の手段が直列化可能分離」と理解し、本当に必要な場面で選べる。</li>
+        <li>直列化可能分離の3つの実装の存在を知り、選択肢を持てる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.3.1 完全な順次実行 ===== -->
+<section id="s731">
+  <div class="sec-head"><div class="sec-num">7.3.1</div><div><h2>完全な順次実行</h2><span class="tag">並行をやめて、1つずつ順番に処理する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：完全な順次実行は、単一スレッドでトランザクションを1つずつ実行し、並行性を排除することで定義上の直列化可能性を得る。RAMの低価格化（データをメモリに置ける）とOLTPトランザクションが短いという理解により、2007年頃から現実的になった。VoltDB・Redis・Datomicが採用。ロック調整がない分高速なこともあるが、スループットは単一CPUコアが上限。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つ目の「完全な順次実行」。これって、並行処理を全部やめる、ってことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、並行性を完全に排除する。ある時点で実行するトランザクションは1つだけ、単一スレッドで順番に処理する。こうすればトランザクション間の衝突の検出・回避の問題が完全に消える。得られる分離レベルは、定義上、直列化可能だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、それって遅くないですか？ 昔から「並行処理しないと性能出ない」って言いますよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。単一スレッドの実行が現実的だとDB設計者が判断したのは、ごく最近――2007年頃だ。2つの進歩が後押しした。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>単一スレッド実行が現実的になった2つの理由</th></tr>
+      <tr><td>RAMが安くなり、多くのケースでアクティブなデータセット全体をメモリに置けるようになった。必要なデータが全部メモリにあれば、ディスク待ちがなく、トランザクションは非常に高速。</td></tr>
+      <tr><td>OLTPトランザクションは通常短く、少数の読み書きしかしないと理解された。長時間の分析クエリは普通読み取り専用なので、順次実行のループの外で一貫スナップショット（スナップショット分離）に対して実行できる。</td></tr>
+    </table>
+
+    <details class="code"><summary>単一スレッド実行が現実的になった2つの理由</summary>
+<pre><span class="cmt"># 単一スレッド実行が現実的になった2つの理由</span>
+- RAMが安くなり、多くのケースでアクティブなデータセット全体をメモリに置けるようになった。
+  必要なデータが全部メモリにあれば、ディスク待ちがなく、トランザクションは非常に高速。
+- OLTPトランザクションは通常短く、少数の読み書きしかしないと理解された。
+  対照的に、長時間の分析クエリは普通読み取り専用なので、順次実行のループの外で
+  一貫スナップショット（スナップショット分離）に対して実行できる。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>順次実行はVoltDB/H-Store、Redis、Datomicで実装されてる。単一スレッド設計のシステムは、ロック調整のオーバーヘッドがないから、並行システムより高性能なこともある。ただしスループットは単一CPUコアが上限だ。最大限に性能を出すには、トランザクションを旧来とは違う構成にする必要がある。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：超高速の窓口を1つだけにして、客を順番にさばく</h4>
+      <p>窓口を1つにすると遅そうですが、<b>必要な台帳が全部すぐ手元（メモリ）にあって、各取引が一瞬で終わる</b>なら、行列はすぐ進みます。鍵をかけ合う調整の手間もないので、かえって速いことすらある。ただし「窓口は1つ」なので、1時間にさばける件数には<b>その1人の処理速度という上限</b>があります。</p>
+    </div>
+
+    <h3 class="blk" id="s7311">7.3.1.1 ストアドプロシージャへのトランザクションのカプセル化</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「旧来とは違う構成」って、何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その話の前に、昔のトランザクションがどうだったか。初期のDBでは、トランザクションはユーザーの活動全体を包めるものとして意図されてた。航空券予約なら、経路検索・運賃・空席確認・旅程作成・各フライト予約・乗客情報登録・支払いまで全部を1トランザクションで、と。でも人間の意思決定は非常に遅い。トランザクションがユーザー入力を待つと、DBは膨大な数の並行トランザクション（しかもほとんど遊んでる）を抱えることになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それで解決ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くのOLTPアプリは、トランザクション内でユーザー応答を待つのを避け、トランザクションを短く保つ。Webなら1つのHTTPリクエスト内でコミットする。でもまだ問題がある。トランザクションはクライアント/サーバー間で「1回のやりとりで1文ずつ」実行するスタイルのままだった。アプリがクエリを投げ、結果を読み、次のクエリを投げる……これが別マシン同士を行き来する。並行性なしで一度に1トランザクションしか処理できないなら、DBは「次のクエリが来るのを待つ」だけでほとんどの時間を浪費する。だから順次実行システムでは、外部とやりとりする複数文トランザクションを禁止し、トランザクションのコード全体を事前に<b>ストアドプロシージャ（stored procedure）</b>としてDBに登録するんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>インタラクティブなトランザクション vs ストアドプロシージャ（図7-9相当）</summary>
+<pre><span class="cmt"># インタラクティブなトランザクション vs ストアドプロシージャ（図7-9相当）</span>
+[インタラクティブ]
+  アプリ → クエリ1 → DB → 結果1 → アプリ（考える/次を決める）
+  アプリ → クエリ2 → DB → 結果2 → アプリ ...（毎回ネットワーク往復、DBは待ちが多い）
+
+[ストアドプロシージャ]
+  アプリ → 「このプロシージャを実行して」（1回）→ DB
+  DB内部で全クエリを一気に実行（必要なデータが全部メモリにあれば、
+  ネットワークもディスクI/Oも待たず超高速）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、処理のまとまりを丸ごとDBに渡しちゃえば、往復が1回で済むんですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：1文ずつ電話で確認せず、手順書を丸ごと渡す</h4>
+      <p>窓口係（DB）に対して、本部（アプリ）が「まず残高を教えて → では引いて → 次に……」と<b>1ステップごとに電話で往復</b>していたら、窓口係はずっと次の指示待ちで手が空き、行列が進みません。代わりに「この取引の手順書を全部まとめて渡す（ストアドプロシージャ）」と、窓口係は手元の台帳で一気に処理でき、待ち時間が消えます。お客の長考（人間の入力待ち）も、取引の中に入れないようにします。</p>
+    </div>
+
+    <h3 class="blk" id="s7312">7.3.1.2 ストアドプロシージャの長所と短所</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ストアドプロシージャって、なんか評判悪いイメージがあります。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。リレーショナルDBには昔からあって、1999年からSQL標準（SQL/PSM）の一部だけど、いくつかの理由で悪評があった。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>ストアドプロシージャの従来の問題点</th></tr>
+      <tr><td>各ベンダーが独自言語を使う（OracleのPL/SQL、SQL ServerのT-SQL、PostgreSQLのPL/pgSQLなど）。汎用言語の進歩についていけず、不格好で時代遅れ、ライブラリのエコシステムも乏しい。</td></tr>
+      <tr><td>DB上のコードは管理が難しい。デバッグ・バージョン管理・デプロイ・テスト・モニタリングとの結合がアプリサーバーより面倒。</td></tr>
+      <tr><td>DBはアプリサーバーより性能が重要なことが多い（1つのDBを多数のアプリサーバーが共用）。下手なストアドプロシージャ（CPU/メモリ大量消費）はアプリサーバーの下手なコードより深刻。</td></tr>
+    </table>
+
+    <details class="code"><summary>ストアドプロシージャの従来の問題点</summary>
+<pre><span class="cmt"># ストアドプロシージャの従来の問題点</span>
+- 各ベンダーが独自言語を使う（OracleのPL/SQL、SQL ServerのT-SQL、PostgreSQLのPL/pgSQLなど）。
+  汎用言語の進歩についていけず、不格好で時代遅れ、ライブラリのエコシステムも乏しい。
+- DB上のコードは管理が難しい。デバッグ・バージョン管理・デプロイ・テスト・
+  モニタリングとの結合がアプリサーバーより面倒。
+- DBはアプリサーバーより性能が重要なことが多い（1つのDBを多数のアプリサーバーが共用）。
+  下手なストアドプロシージャ（CPU/メモリ大量消費）はアプリサーバーの下手なコードより深刻。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ順次実行のためにストアドプロシージャを使うのって、これらの問題を抱えるってことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、これらは解決できる。現代的な実装はPL/SQLみたいな専用言語を捨てて、既存の汎用言語を使ってる。VoltDBはJavaかGroovy、DatomicはJavaかClojure、RedisはLua。ストアドプロシージャとインメモリデータがあれば、I/O待ちも他の並行性制御のオーバーヘッドもなく、単一スレッドで非常に優れたスループットが出せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>VoltDBはレプリケーションもストアドプロシージャでやるって聞きました。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。書き込みをノード間でコピーする代わりに、同じプロシージャを各レプリカで実行する。だからプロシージャは<b>決定的（deterministic）</b>でないといけない――異なるノードで実行しても同じ結果を生む必要がある。たとえば現在日時を使うなら、特別な決定的APIを使わないとダメだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：手順書は昔は独自フォーマットで扱いにくかった</h4>
+      <p>窓口に渡す「手順書（ストアドプロシージャ）」は、昔は銀行ごとの独自フォーマットで、書きにくく管理しにくく評判が悪かった。今は<b>普通の言葉（汎用言語）</b>で書けるので扱いやすい。さらに、控えを持つ各支店で<b>同じ手順書を実行すれば同じ結果になる</b>ように、「現在時刻」のような毎回変わるものは特別な決まった方法で扱う必要があります（決定的であること）。</p>
+    </div>
+
+    <h3 class="blk" id="s7313">7.3.1.3 パーティショニング</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも単一スレッドだと、1つのCPUコアの速度が天井ですよね。書き込みが多いと困りませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。読み取り専用はスナップショット分離で別の場所で実行できるけど、書き込みスループットが高いと単一スレッドは重大なボトルネックになる。そこで<b>データのパーティショニング（partitioning, 分割）</b>だ（6章）。VoltDBがサポートしてる。データセットを分割して、各トランザクションが1つのパーティション内だけを読み書きすればいい方法があるなら、各パーティションに専用のトランザクション処理スレッドを割り当てて独立に動かせる。各CPUコアに1パーティション。すると書き込みスループットはCPUコア数に比例してスケールする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>複数パーティションにまたがるトランザクションは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが弱点。複数パーティションにアクセスするトランザクションは、DBが全パーティションにわたって調整しないといけない。直列化可能性を保つため、ストアドプロシージャを全パーティションで歩調を揃えて実行する必要がある。調整のオーバーヘッドが加わって、単一パーティションより極端に遅くなる。VoltDBはパーティションをまたぐ書き込みを約1,000回/秒と報告してて、これは単一パーティションのスループットより数桁低く、マシンを足しても上がらない。単一パーティションで済むかは、データの構造に強く依存する。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：支店ごとに窓口を分けて並列にさばく</h4>
+      <p>窓口が1つだと処理件数に限界があります。そこで<b>口座を支店ごとに分け（パーティショニング）、各支店に専用の高速窓口を置く</b>と、支店の数だけ並列にさばけて全体の処理量が増えます。ただし「A支店からB支店への振込」のような<b>複数支店にまたがる取引</b>は、両支店で歩調を合わせる調整が必要で、極端に遅くなる。支店内で完結する取引が多いほど、この方式は有利です。</p>
+    </div>
+
+    <h3 class="blk" id="s7314">7.3.1.4 順次実行のまとめ</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>順次実行、まとめるとどういう条件で使えるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>こういう制約の下で、直列化可能分離の現実的な方法になる。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>順次実行が現実的になる制約</th></tr>
+      <tr><td>全トランザクションが小さくて高速であること（遅いのが1つあると全処理が詰まる）。</td></tr>
+      <tr><td>アクティブなデータセットがメモリに収まること（まれにしか使わないデータはディスクでもよいが、単一スレッドからアクセスすると大きく遅くなる）。</td></tr>
+      <tr><td>書き込みスループットが単一CPUコアで処理できる程度に低いこと。あるいはパーティションをまたぐ調整なしに分割できること。</td></tr>
+      <tr><td>パーティションをまたぐトランザクションも実行できるが、その使用にハードリミットを設けられること。</td></tr>
+    </table>
+
+    <details class="code"><summary>順次実行が現実的になる制約</summary>
+<pre><span class="cmt"># 順次実行が現実的になる制約</span>
+- 全トランザクションが小さくて高速であること（遅いのが1つあると全処理が詰まる）。
+- アクティブなデータセットがメモリに収まること（まれにしか使わないデータはディスクでもよいが、
+  単一スレッドからアクセスすると大きく遅くなる）。
+- 書き込みスループットが単一CPUコアで処理できる程度に低いこと。
+  あるいはパーティションをまたぐ調整なしに分割できること。
+- パーティションをまたぐトランザクションも実行できるが、その使用にハードリミットを設けられること。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「小さくて速いトランザクションだけ」「データはメモリに収まる」が肝なんですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：客がみんな手早い・台帳がすぐ手元・支店内で完結</h4>
+      <p>窓口1つで回すには、①どの客の用事も<b>手早く終わる</b>（長考する客が1人いると行列が詰まる）、②使う台帳が<b>すぐ手元にある</b>、③だいたい<b>支店内で完結</b>する、という条件が要ります。これが満たせれば、順次実行は現実的に直列化可能を達成できます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>順次実行が使える条件（短いトランザクション・メモリに収まる・分割可能）を見極められる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ（7.3.1全体）</h4>
+      <ul>
+        <li>完全な順次実行は単一スレッドで1つずつ実行し、定義上の直列化可能性を得る。</li>
+        <li>RAMの低価格化とOLTPトランザクションの短さで2007年頃から現実的に（VoltDB・Redis・Datomic）。</li>
+        <li>性能を出すにはストアドプロシージャ化（インタラクティブ・スタイルを避ける）が必要。現代的実装は汎用言語を使う。</li>
+        <li>書き込みスケールにはパーティショニング。ただしパーティションまたぎは遅い。</li>
+        <li>「小さく高速なトランザクション」「データがメモリに収まる」が前提。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.3.2 2PL ===== -->
+<section id="s732">
+  <div class="sec-head"><div class="sec-num">7.3.2</div><div><h2>ツーフェーズ（2相）ロック（2PL）</h2><span class="tag">読み手も書き手も互いにブロックする古典の定番</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：2PL（ツーフェーズロック）は約30年間、直列化可能分離の唯一の実用的アルゴリズムだった（2相コミット2PCとは別物）。ダーティライト防止のロックより強く、書き込みがあるとき読み取りもブロックする（ライターがリーダーを、リーダーがライターをブロック）。スナップショット分離の「互いにブロックしない」と正反対だが、全レース条件を防ぐ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目はツーフェーズロック。これが昔の定番だったんですよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、約30年間、直列化可能分離のために広く使われた唯一のアルゴリズムだ。<b>ツーフェーズロック（two-phase locking, 2PL）</b>。ただし注意、名前が似てるけど<b>2相コミット（2PC）とは全くの別物</b>だ。2PCは9章で扱う。混同しないように。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ダーティライトを防ぐのにロックを使うのは見ましたよね。それと同じですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>似てるけど、ロックの要求がもっと強い。ダーティライト防止のロックは「書き込み同士」を直列化するだけだった。2PLは書き込みがあるとき、読み取りもブロックする。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>2PLのロックの動き</th></tr>
+      <tr><td>トランザクションAがオブジェクトを読み、Bがそれに書こうとする: Bは、Aがコミット/中断するまで待つ（BがAの知らぬ間に変更しないことを保証）。</td></tr>
+      <tr><td>トランザクションAがオブジェクトに書き、Bがそれを読もうとする: Bは、Aがコミット/中断するまで待つ（古いバージョンを読むことは2PLでは許されない）。</td></tr>
+    </table>
+
+    <details class="code"><summary>2PLのロックの動き</summary>
+<pre><span class="cmt"># 2PLのロックの動き</span>
+- トランザクションAがオブジェクトを読み、Bがそれに書こうとする:
+  Bは、Aがコミット/中断するまで待つ（BがAの知らぬ間に変更しないことを保証）。
+- トランザクションAがオブジェクトに書き、Bがそれを読もうとする:
+  Bは、Aがコミット/中断するまで待つ（古いバージョンを読むことは2PLでは許されない）。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり、ライターがリーダーもブロックするし、リーダーもライターをブロックする、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。スナップショット分離の教義は「リーダーはライターをブロックせず、ライターはリーダーをブロックせず」だった。これが2PLとの主要な違いだ。一方で、2PLは直列化可能性を提供するから、更新のロストや書き込みスキューを含む、これまで論じた全レース条件を防いでくれる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：誰かが書いている口座は、読むのも書くのも全員待つ</h4>
+      <p>2PLの銀行は厳格です。ある口座を誰かが<b>書いている間は、他の人はその口座を読むことすらできず</b>、確定するまで全員待ちます。逆に誰かが読んでいる間は、その口座への書き込みも待たされる。「写真を見る（スナップショット分離）」とは正反対で、待ち時間は増えますが、そのぶん<b>あらゆる事故を完全に防げます</b>。</p>
+    </div>
+
+    <h3 class="blk" id="s7321">7.3.2.1 ツーフェーズロックの実装</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2PLって、どう実装するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>MySQL（InnoDB）とSQL Serverの直列化可能分離、DB2のrepeatable read分離で使われてる。各オブジェクトにロックを持たせて、<b>共有（shared）モード</b>と<b>排他（exclusive）モード</b>を取れるようにする。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>2PLのロックの使い方</th></tr>
+      <tr><td>読み取り: まず共有モードのロックを取得。共有ロックは複数トランザクションが同時に持てるが、他が排他ロックを持っていたら解放を待つ。</td></tr>
+      <tr><td>書き込み: まず排他モードのロックを取得。他が（共有でも排他でも）ロックを持っていたら解放を待つ。</td></tr>
+      <tr><td>読んでから書く場合: 共有ロックを排他ロックに格上げできる（排他ロックを直接取るのと同じ動作）。</td></tr>
+      <tr><td>ロックはトランザクション終了（コミット/中断）まで保持。「ツーフェーズ」の名はここから: 第1フェーズ（実行中）でロックを取得し、第2フェーズ（終了時）で全ロックを解放する。</td></tr>
+    </table>
+
+    <details class="code"><summary>2PLのロックの使い方</summary>
+<pre><span class="cmt"># 2PLのロックの使い方</span>
+- 読み取り: まず共有モードのロックを取得する。共有ロックは複数トランザクションが同時に持てるが、
+  他が排他ロックを持っていたら、その解放を待つ。
+- 書き込み: まず排他モードのロックを取得する。他のトランザクションが
+  （共有でも排他でも）ロックを持っていたら、その解放を待つ。
+- 読んでから書く場合: 共有ロックを排他ロックに格上げできる（排他ロックを直接取るのと同じ動作）。
+- ロックはトランザクション終了（コミット/中断）まで保持する。
+  「ツーフェーズ」の名はここから: 第1フェーズ（実行中）でロックを取得し、
+  第2フェーズ（終了時）で全ロックを解放する。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>大量のトランザクションがロックを取り合うと、なんか詰まりそうですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさに。トランザクションAがBのロック解放を待ち、BもAのロック解放を待つ、という<b>デッドロック（deadlock）</b>が容易に起きる。DBは自動でデッドロックを検出して、片方を中断し、もう片方を進ませる。中断されたトランザクションは、アプリがリトライしなきゃいけない。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：互いに相手の記帳台を待って、二人とも固まる（デッドロック）</h4>
+      <p>共有の閲覧（複数人OK）と独占の記帳（1人だけ）を、口座ごとに使い分けます。問題は、Aさんが口座1を占有して口座2を待ち、Bさんが口座2を占有して口座1を待つ状況。<b>互いに相手の記帳台が空くのを待って、二人とも永遠に動けません</b>。これがデッドロック。本部が気づいて片方の取引を中止させ、もう一方を進めます。中止された人はやり直しです。</p>
+    </div>
+
+    <h3 class="blk" id="s7322">7.3.2.2 ツーフェーズロックのパフォーマンス</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2PLが全レース条件を防ぐなら最強じゃないですか。なんで1970年代から広まらなかったんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>パフォーマンス</b>だ。弱い分離レベルに比べ、2PLではトランザクションのスループットやクエリのレスポンスタイムが大きく悪化する。ロックの取得・解放のオーバーヘッドもあるけど、もっと重要なのは<b>並行性の低下</b>。2PLの設計上、2つの並行トランザクションが何らかのレース条件を起こしうるなら、片方が他方を待たないといけない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>待ち時間ってどれくらいになるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>旧来のリレーショナルDBはトランザクションの長さを制限してない（人間の入力を待つインタラクティブなアプリ用に設計されたから）。だから待ち時間に上限がない。全トランザクションを短くできても、同じオブジェクトに複数がアクセスすれば待ち行列ができて、あるトランザクションが複数の他の終了を待つこともある。だから2PLのレイテンシは非常に不安定になりうる。競合があると高いパーセンタイルの速度が悪化する。1つの遅いトランザクションや、大量データにアクセスして多くのロックを取るトランザクションが1つあるだけで、システムを停止状態に追い込める。さらにデッドロックは2PLでははるかに起きやすく、中断＆リトライで処理が無駄になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>だからレスポンスが安定しないんですね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：1人の長考客が、後ろの行列を丸ごと止める</h4>
+      <p>2PLでは、ある客が多くの口座を占有して長く処理すると、その口座に用がある後続の客が<b>軒並み待たされ</b>ます。待ち時間に上限がないので、待ち時間がバラバラで予測できず、ときに行列が完全に止まる。さらに「互いに待ち合って固まる（デッドロック）」も頻発し、中止された取引はやり直しになって労力がムダになります。これが2PLが広まらなかった理由です。</p>
+    </div>
+
+    <h3 class="blk" id="s7323">7.3.2.3 述語（predicate）ロック</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>さっきのファントム――まだ存在しない行――は、2PLでも問題になりませんか？ ロックする対象がないって話でしたよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい記憶力だ。直列化可能分離のDBはファントムを発生させてはいけない。会議室予約なら、あるトランザクションが特定時間帯のある部屋の予約を検索したら、他がその時間帯のその部屋に予約を入れたり消したりは許されない（別の部屋や影響しない時間帯ならOK）。概念的には<b>述語ロック（predicate lock）</b>が必要だ。共有/排他ロックと似てるけど、特定のオブジェクト（1つの行）じゃなく、<b>ある検索条件にマッチする全オブジェクト</b>に属する。</div></div>
+    </div>
+
+    <details class="code"><summary>述語ロックの対象クエリと動き</summary>
+<pre><span class="cmt">-- この検索条件にマッチする「全オブジェクト」に対する述語ロックを考える</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> bookings
+  <span class="kw">WHERE</span> room_id = <span class="num">123</span> <span class="kw">AND</span>
+    end_time &gt; <span class="str">'2018-01-01 12:00'</span> <span class="kw">AND</span>
+    start_time &lt; <span class="str">'2018-01-01 13:00'</span>;
+
+<span class="cmt"># 述語ロックの動き</span>
+- Aが上の条件にマッチするオブジェクトを読むとき、Aはこの条件への共有述語ロックを取る。
+  Bがその時点でこの条件にマッチするどれかに排他ロックを持つなら、Aは解放を待つ。
+- Aがオブジェクトを挿入/更新/削除するとき、新旧の値が既存の述語ロックにマッチするか調べる。
+  マッチする述語ロックをBが持つなら、AはBのコミット/中断を待つ。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鍵は、述語ロックは<b>まだ存在しないが将来追加されるかもしれないオブジェクト（ファントム）にも適用できる</b>こと。2PLが述語ロックも含めば、あらゆる書き込みスキューやレース条件を排除できて、直列化可能になる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「条件そのもの」を占有する ― 未来の予約にも効く札</h4>
+      <p>1件1件の記録ではなく、<b>「123号室・正午〜1時」という条件そのもの</b>に札を立てます。すると、その条件に当てはまる予約が<b>今はまだ存在しなくても</b>、誰かが新しく入れようとした瞬間に札にぶつかって待たされる。だから「まだ存在しない未来の予約（ファントム）」にも効く。これが述語ロックです。</p>
+    </div>
+
+    <h3 class="blk" id="s7324">7.3.2.4 インデックス範囲（range）ロック</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>述語ロック、便利そうですけど、性能は大丈夫なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが良くない。アクティブなトランザクションが多くのロックを持つと、マッチするロックを調べるのに時間がかかる。だから多くの2PLのDBが実装してるのは<b>インデックス範囲ロック（index-range lock, next-keyロックとも）</b>だ。述語ロックを単純化した近似なんだ。述語を単純化して、マッチするオブジェクトの集合を<b>大きくしても安全</b>。たとえば「123号室を正午〜午後1時」の代わりに「123号室を全時間」とか「全部屋を正午〜午後1時」をロックする。元の述語にマッチする書き込みは、この近似にも必ずマッチするから安全なんだ。</div></div>
+    </div>
+
+    <details class="code"><summary>インデックス範囲ロックの仕組み（会議室予約）</summary>
+<pre><span class="cmt"># インデックス範囲ロックの仕組み（会議室予約）</span>
+- room_id にインデックスがあるなら: 123号室のインデックスエントリに共有ロックを持たせ、
+  「あるトランザクションが123号室を検索中」と示す。
+- 時間ベースのインデックスがあるなら: そのインデックスの値の範囲に共有ロックを持たせ、
+  「ある時間帯の予約を検索中」と示す。
+
+他のトランザクションが同じ部屋や重なる時間帯の予約を挿入/更新/削除するには、
+インデックスの同じ部分を更新せねばならず、その過程で共有ロックにぶつかって待たされる。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>述語ロックより大ざっぱだけど、軽いんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。ロック対象が厳密に必要な範囲より大きくなるかもしれないけど、オーバーヘッドははるかに低い。優れた妥協点だ。適したインデックスがない場合は、テーブル全体への共有ロックにフォールバックできる。これはそのテーブルへの全書き込みを止めるから性能は悪いけど、安全なフォールバック先だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「123号室まるごと」を占有する、ざっくり札</h4>
+      <p>「条件そのもの」を厳密に占有すると照合に時間がかかるので、もっとざっくり<b>「123号室は今日まるごと押さえる」</b>のように少し広めに占有します。本当に必要な「正午〜1時」より広いですが、必要な範囲を必ず含むので安全で、しかも判定が軽い。ちょうどいい妥協点です。手がかりになる索引が無ければ、最後は「その帳簿まるごと押さえる」という重いやり方に逃げます。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>2PLが全レース条件を防ぐ仕組み（ロックと述語/範囲ロック）と、その性能上の代償を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ（7.3.2全体）</h4>
+      <ul>
+        <li>2PLは約30年間、直列化可能分離の唯一の実用アルゴリズム（2PCとは別物）。</li>
+        <li>共有ロック（読み取り）と排他ロック（書き込み）を使い、終了まで保持（取得＝第1、解放＝第2フェーズ）。</li>
+        <li>ライターとリーダーが互いにブロックし、全レース条件を防ぐ。</li>
+        <li>パフォーマンスが悪く（並行性低下・待ち時間無制限・レイテンシ不安定・デッドロック多発）、広まらなかった。</li>
+        <li>ファントム対策に述語ロックが必要だが性能が悪く、近似のインデックス範囲ロックを使う。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7.3.3 SSI ===== -->
+<section id="s733">
+  <div class="sec-head"><div class="sec-num">7.3.3</div><div><h2>直列化可能なスナップショット分離（SSI）</h2><span class="tag">楽観的に進めて、コミット時に衝突を確認する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：SSIは完全な直列化可能性を低いペナルティで提供する新しいアルゴリズム（2008年、PostgreSQL 9.1以降やFoundationDBで採用）。2PLや順次実行が<b>悲観的</b>（安全になるまで待つ）なのに対し、SSIは<b>楽観的</b>（ブロックせず進め、コミット時に問題を確認して必要なら中断・リトライ）。競合が低ければ高性能。スナップショット分離の上に、書き込み間の直列化可能性の衝突検出を加えたもの。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまで聞くと、直列化可能分離って「2PLは遅い」「順次実行はスケールしない」で、いいとこなしですね……。直列化可能性と良い性能は両立しないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>おそらく、そんなことはない。大きな期待が持てるアルゴリズムがある。<b>直列化可能スナップショット分離（SSI）</b>だ。完全な直列化可能性を提供しながら、スナップショット分離に比べてパフォーマンスのペナルティが少ない。とても新しくて、最初に言及されたのは2008年、Michael Cahillの博士論文がテーマだった。単一ノードならPostgreSQL（9.1以降の直列化可能分離）、分散ならFoundationDBが同様のアルゴリズムを使ってる。とても若いので現場の性能はまだ検証段階だけど、将来は新しいデフォルトになるだけの速度を持ってるだろう。</div></div>
+    </div>
+
+    <h3 class="blk" id="s7331">7.3.3.1 悲観的な並行性制御と楽観的な並行性制御</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>SSIって、2PLとは何が根本的に違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>「悲観的」か「楽観的」かだ。2PLは<b>悲観的（pessimistic）</b>な並行性制御。「何でもおかしくなる可能性がある」と考え、安全になるまで待ってから進める。マルチスレッドプログラミングの<b>相互排他</b>に似てる。順次実行はある意味、究極の悲観主義だ。各トランザクションが実行中ずっとDB全体に排他ロックを取るのと同じ。その埋め合わせに各トランザクションを超高速に実行する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ楽観的、というのは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>楽観的（optimistic）</b>な制御は、危険なことが起きても<b>ブロックせずそのまま進めて、結局問題なかったと期待する</b>。トランザクションがコミットしようとしたとき、DBが問題（分離違反など）がないか確認する。問題があれば中断してリトライ。コミットできるのは、直列化可能に実行できたトランザクションだけだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>楽観的って、競合が多いと困りませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。激しい競合（多くのトランザクションが同じオブジェクトを取り合う）だと、中断率が上がって性能が悪化する。すでに最大スループット近くだと、リトライによる負荷増加でさらに悪化する。でも、十分な容量があって競合がそれほど高くなければ、楽観的のほうが悲観的より高性能だ。競合は交換可能なアトミック操作で減らせる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、SSIの「スナップショット」の部分は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>名前の通り、SSIはスナップショット分離に基づく。トランザクション内の全読み取りは一貫したスナップショットから行う。これが従来の楽観的制御との主な違い。SSIは、スナップショット分離の上に<b>書き込み間の直列化可能性の衝突を検出するアルゴリズム</b>を加えて、どのトランザクションを中断すべきか判断するんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：とりあえず処理して、確定の瞬間に「矛盾なかった？」と検算する</h4>
+      <p>2PLや順次実行は<b>悲観的</b>＝「事故るかもしれないから、安全になるまで待ってから動く」。SSIは<b>楽観的</b>＝「とりあえず止まらず処理して、<b>確定（コミット）する瞬間に検算</b>し、矛盾が見つかったらその取引だけ取り消してやり直す」。客が少なく混雑していなければ、待たない分こちらのほうが速い。混雑して取り合いが激しいと、やり直しが増えて遅くなります。読むときは「帳簿の写真」を使うのは従来どおりです。</p>
+    </div>
+
+    <h3 class="blk" id="s7332">7.3.3.2 古くなったプレミスに基づく判断</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>SSIは「衝突を検出する」って言いましたけど、何を検出するんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>書き込みスキューを思い出して。トランザクションがデータを読み、結果を調べ、それに基づいて書き込みを判断する。でもスナップショット分離だと、コミットまでにデータが変わってるかもしれず、元のクエリ結果はもう最新じゃないかもしれない。それを<b>プレミス（premise, 前提）</b>と呼ぶ。「今、当直医が2人いる」――この開始時点では真だった事実に基づいて行動しようとしてる。でもコミット時には、元のデータが変わって、プレミスがもう真じゃないかもしれない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「結果が変わったかも」って、どうやって知るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>DBは安全のために「クエリ結果（プレミス）に変化があれば、このトランザクションの書き込みは無効になるかも」と前提を置く。つまり、先行するクエリと後続の書き込みの間に因果関係があるかもしれない、と考える。直列化可能分離のため、DBは「古くなったプレミスに基づいて処理したトランザクション」を検出して中断する必要がある。考慮すべきケースは2つだ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>プレミスが古くなったと検出すべき2つのケース</th></tr>
+      <tr><td>① 古くなったMVCCオブジェクトを読んだ場合（読み取りの「前」にコミットされていない書き込みがあった）。</td></tr>
+      <tr><td>② 以前の読み取りに影響する書き込みが行われた場合（読み取りの「後」に書き込みがあった）。</td></tr>
+    </table>
+
+    <details class="code"><summary>プレミスが古くなったと検出すべき2つのケース</summary>
+<pre><span class="cmt"># プレミスが古くなったと検出すべき2つのケース</span>
+1. 古くなったMVCCオブジェクトを読んだ場合（読み取りの「前」にコミットされていない書き込みがあった）。
+2. 以前の読み取りに影響する書き込みが行われた場合（読み取りの「後」に書き込みがあった）。</pre>
+    </details>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「相手がいる」という前提が、確定までに崩れていないか確かめる</h4>
+      <p>当直の例で、Aさんは「今、相手（Bさん）がいる」という<b>前提（プレミス）</b>で席を立とうとします。SSIは、この前提が確定の瞬間まで本当に保たれているかを見張ります。前提が「読む前に既に崩れていた（古い写真を見た）」か「読んだ後に崩された（相手も席を立った）」か――この2パターンを検出して、矛盾があればやり直させるのです。</p>
+    </div>
+
+    <h3 class="blk" id="s7333">7.3.3.3 古くなったMVCCの読み取りの検出</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まず1つ目、「読み取り前の書き込み」のケース。具体的には？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>スナップショット分離はMVCCで実装される。一貫スナップショットから読むとき、トランザクションはスナップショット時点で未コミットだった他の書き込みを無視する。図で説明しよう。</div></div>
+    </div>
+
+    <details class="code"><summary>古くなったMVCC読み取りの検出（図7-10相当・当直医）</summary>
+<pre><span class="cmt"># 古くなったMVCC読み取りの検出（図7-10相当・当直医）</span>
+トランザクション42: Aliceの当直状況を書き換える（まだコミットしていない）
+トランザクション43: 当直医を検索 → 42は未コミットなので、Aliceは on_call = true に見える
+                    → 「Aliceがいる」というプレミスで判断
+
+トランザクション42: コミットする
+トランザクション43: コミットしようとする
+  → 一貫スナップショットで無視していた42の書き込みが、今や有効になっている。
+  → トランザクション43のプレミスはもう真ではない！</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>43は42を無視して判断したのに、42が先にコミットしちゃったんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。回避するには、DBは「あるトランザクションが、MVCCの可視性ルールで他の書き込みを無視したこと」を追跡する。コミットしようとするとき、無視した書き込みのどれかが今コミットされてないか調べる。コミットされてたら中断する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでコミットの時点まで待つんですか？ 古い読み取りを検出した瞬間に中断すればいいのに。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい質問。もし43が読み取り専用なら、書き込みスキューのリスクはないから中断不要だ。読み取り時点では、DBはどのトランザクションが後で書き込むか知らない。さらに、42は中断されるかもしれないし、43のコミット時にまだ未コミットかもしれない。結局43の読み取りが安全だった、ということもありうる。不要な中断を避けることで、SSIは長時間の読み取りのサポートをそのまま残せるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「無視した取引」が確定したら、自分の取引を取り消す</h4>
+      <p>Aさんは「写真」を見て判断するとき、まだ確定していなかった隣の取引（42）を無視しました。SSIは「Aさんが何を無視したか」を覚えておき、Aさんが確定する瞬間に「<b>無視したあの取引、もう確定してない？</b>」と確認します。確定していたら、Aさんの前提は崩れているので取り消し。すぐ取り消さず確定時まで待つのは、Aさんが結局ただ眺めるだけ（読み取り専用）で済んだり、無視した取引が逆に取り消されたりして、<b>結果的に問題なかった</b>場合があるからです。</p>
+    </div>
+
+    <h3 class="blk" id="s7334">7.3.3.4 先行する読み取りに影響する書き込みの検出</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目のケース、「読み取り後の書き込み」のほうは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるトランザクションが読んだデータを、後で他が変更するケースだ。2PLのインデックス範囲ロックを覚えてる？ 条件にマッチする全行のアクセスをロックできるやつ。SSIでも似た手法を使うけど、<b>SSIのロックは他のトランザクションをブロックしない</b>。</div></div>
+    </div>
+
+    <details class="code"><summary>先行読み取りへの影響の検出（図7-11相当・当直医）</summary>
+<pre><span class="cmt"># 先行読み取りへの影響の検出（図7-11相当・当直医）</span>
+トランザクション42と43は、どちらもシフト1234の当直医を検索している。
+shift_id にインデックスがあれば、DBはインデックスエントリ1234を使って
+「42と43がこのデータを読んだ」と記録できる（インデックスがなければテーブルレベルで追跡）。
+この記録は短期間だけ保持（並行トランザクションが全部終われば忘れてよい）。
+
+トランザクションが書き込むとき、インデックスを見て、
+直近で他のトランザクションがそのデータを読んでいないか調べる。
+これは書き込みロックに似ているが、ブロックせず「罠」として働く:
+読んだデータが古くなったとき、そのトランザクションに通知するだけ。
+
+42 と 43 は互いに「あなたが読んだ内容は古くなった」と通知し合う。
+42 が先にコミット → 成功。
+43 がコミットしようとする → 42の競合する書き込みが既にコミット済み → 43 は中断。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ロックだけど待たせない、「罠」として通知するだけなんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。43が書こうとした時点では43はまだコミットしてないから42に影響しない。でも43がコミットしようとすると、42の競合書き込みがすでにコミットされてるので、43は中断しなきゃいけない。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：「あなたが見た名簿、変わりましたよ」と知らせる罠を仕掛ける</h4>
+      <p>「誰がどの名簿（データ）を見たか」を短期間メモしておきます。後で誰かがその名簿を書き換えるとき、<b>「この名簿を見て判断中の人がいますよ」</b>と気づく。ただし2PLと違って<b>待たせはせず、罠（通知）として働く</b>だけ。名簿を見て判断した人が確定しようとした瞬間、すでに名簿が書き換わって確定済みなら、その人は取り消されます。</p>
+    </div>
+
+    <h3 class="blk" id="s7335">7.3.3.5 直列化可能スナップショット分離のパフォーマンス</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>SSIのパフォーマンスって、結局どうなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いつも通り、細かいエンジニアリングに左右される。トレードオフの1つが「読み書きを追跡する粒度」だ。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>SSIの追跡粒度のトレードオフ</th></tr>
+      <tr><td>詳細に追跡 → 中断すべきトランザクションを精密に決められるが、追跡のオーバーヘッドが大きい。</td></tr>
+      <tr><td>大ざっぱに追跡 → 高速だが、厳密には必要ないトランザクションまで中断してしまうことがある。</td></tr>
+    </table>
+
+    <details class="code"><summary>SSIの追跡粒度のトレードオフ</summary>
+<pre><span class="cmt"># SSIの追跡粒度のトレードオフ</span>
+- 詳細に追跡 → 中断すべきトランザクションを精密に決められるが、追跡のオーバーヘッドが大きい。
+- 大ざっぱに追跡 → 高速だが、厳密には必要ないトランザクションまで中断してしまうことがある。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あと、他のトランザクションが上書きした情報を読んでても、それでも結果が直列化可能だと証明できることがある。PostgreSQLはこの理論で不要な中断を減らしてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2PLと比べた利点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きな利点は、<b>他のトランザクションのロック待ちでブロックされないこと</b>。スナップショット分離と同じく、ライターはリーダーをブロックせず、リーダーもライターをブロックしない。だからクエリのレイテンシがはるかに予測しやすく、変動が少ない。読み取り専用クエリはロック不要で一貫スナップショット上で実行でき、読み取り負荷の高いワークロードに大きな魅力だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>順次実行と比べると？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>SSIは単一CPUコアに限定されない。FoundationDBは衝突検出を複数マシンに分配して、非常に高いスループットまでスケールできる。データが複数マシンに分割されてても、直列化可能分離を保ったまま複数パーティションを読み書きできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>中断率が大事って言ってましたよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。中断率がSSIの全体性能に大きく影響する。長時間読み書きするトランザクションは衝突して中断しやすいから、SSIでは読み書きトランザクションをごく短くすることが求められる（読み取り専用なら長時間でもおそらく問題ない）。でも2PLや順次実行に比べると、SSIは遅いトランザクションの影響を受けにくいんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏦 たとえ話：待たせない・1人の窓口に縛られない・短い取引が得意</h4>
+      <p>SSIの良さは、誰も占有で<b>待たせない</b>ので行列の進みが安定し予測しやすいこと。順次実行と違って<b>1つの窓口に縛られず複数支店に分散</b>でき、大きな処理量までさばけること。一方で、長い取引はやり直し（中断）が起きやすいので、<b>取引はなるべく短く</b>するのがコツ（ただ眺めるだけの照会は長くてもOK）。それでも、長考客に行列全体が止められる2PLや順次実行よりは、遅い取引に強いのです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「直列化可能性と性能は両立しうる」と理解し、SSIを選択肢として持てる。</li>
+        <li>SSIの性能を出すコツ（読み書きトランザクションを短く保つ）が分かる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ（7.3.3全体）</h4>
+      <ul>
+        <li>SSIは完全な直列化可能性を低いペナルティで提供する新しい楽観的アルゴリズム（PostgreSQL 9.1以降、FoundationDB）。</li>
+        <li>悲観的（2PL・順次実行）と違い、ブロックせず進めてコミット時に問題を確認・中断する。</li>
+        <li>検出するのは「古くなったプレミスに基づく判断」: ①古いMVCC読み取り ②先行読み取りへの影響。</li>
+        <li>ロック待ちでブロックされず、レイテンシが予測しやすく、複数マシンにスケールできる。</li>
+        <li>中断率が性能を左右するため、読み書きトランザクションは短く保つべき。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ（弟子の振り返り） ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉でトランザクションを言ってみる</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日は長かった……。整理してみます。まず「トランザクションは複数の読み書きを1つの単位にして、<b>全部成功か、全部なかったことにするか</b>を保証する仕組み」。これでエラー処理がシンプルになる。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。トランザクションは抽象化のレイヤーで、ある種の並行性の問題やハード・ソフトの問題が「存在しないかのように」振る舞えるようにしてくれる。エラーはまとめて「中断」にして、リトライすればいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目は「<b>ACID</b>＝原子性・一貫性・分離性・永続性。でも一貫性は実はアプリの責任で、ACIDはマーケティング用語になってる」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ラベルを信じすぎるな、中身を見ろ、だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、弱い分離レベルで起きるレース条件。整理するとこうです。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>レース条件</th><th>内容</th><th>防げる分離レベル</th></tr>
+      <tr><td>ダーティリード</td><td>コミット前の書き込みを読む</td><td>read committed以上</td></tr>
+      <tr><td>ダーティライト</td><td>コミット前の書き込みを上書き</td><td>ほぼ全実装が防ぐ</td></tr>
+      <tr><td>読み取りスキュー（nonrepeatable read）</td><td>異なる時刻に異なる部分を見る</td><td>スナップショット分離（MVCC）</td></tr>
+      <tr><td>更新のロスト</td><td>並行read-modify-writeで片方の変更が消える</td><td>スナップショット分離の自動検出 / 明示的ロック</td></tr>
+      <tr><td>書き込みスキュー</td><td>読んで判断し書くとき、前提（プレミス）がもう真でない</td><td>直列化可能分離のみ</td></tr>
+      <tr><td>ファントムリード</td><td>検索条件にマッチする対象に、他が影響する書き込み</td><td>スナップショット分離は単純なものを防ぐ。書き込みスキューを伴う場合はインデックス範囲ロック等が必要</td></tr>
+    </table>
+
+    <details class="code"><summary>レース条件と、それを防げる分離レベル</summary>
+<pre><span class="cmt"># レース条件と、それを防げる分離レベル</span>
+- ダーティリード: コミット前の書き込みを読む。→ read committed以上で防ぐ。
+- ダーティライト: コミット前の書き込みを上書き。→ ほぼ全実装が防ぐ。
+- 読み取りスキュー(nonrepeatable read): 異なる時刻に異なる部分を見る。
+  → スナップショット分離（MVCCで実装）で防ぐ。
+- 更新のロスト: 並行read-modify-writeで片方の変更が消える。
+  → スナップショット分離の自動検出や、明示的ロック（SELECT FOR UPDATE）で防ぐ。
+- 書き込みスキュー: 読んで判断し書くとき、判断の前提（プレミス）がもう真でない。
+  → 直列化可能分離のみが防ぐ。
+- ファントムリード: 検索条件にマッチするオブジェクトに、他が影響する書き込みをする。
+  → スナップショット分離は単純なものを防ぐが、書き込みスキューを伴う場合は
+    インデックス範囲ロックなど特別な対応が要る。</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>弱い分離はいくつかは防ぐけど、残りはアプリ任せ。全部防ぐのは直列化可能分離だけだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、その直列化可能分離の実装は3つ。「①完全な順次実行（小さく速いトランザクション・データがメモリに収まるなら有効） ②ツーフェーズロック2PL（数十年の標準だが性能が悪い） ③直列化可能スナップショット分離SSI（新しく、楽観的で、ブロックせずコミット時にチェック）」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>完璧だ。本章の例はリレーショナルモデルだったけど、トランザクションはデータモデルに関わらず価値ある機能だ。それと、今日は主に単一マシンの話。分散DBのトランザクションには新たな難題があって、それは次の章以降で扱うよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>自分の送金バグ、たぶん「更新のロスト」か「書き込みスキュー」ですね。明日、分離レベルを確認してみます！</div></div>
+    </div>
+
+    <div class="cycle">
+      <div class="node"><h4>① トランザクション</h4><p>複数の読み書きを1単位に。全部成功か全部なかったことに。エラー処理が単純化。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② ACID</h4><p>原子性・一貫性・分離性・永続性。Cはアプリの責任。ラベルでなく中身を見る。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 弱い分離のレース条件</h4><p>ダーティ読み書き・読み取りスキュー・更新のロスト・書き込みスキュー・ファントム。</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>④ 直列化可能性</h4><p>全レース条件を防ぐ最強。実装は順次実行・2PL・SSIの3つ。</p></div>
+    </div>
+    <div class="loopback">🧭 今日は単一マシンの話。分散DBのトランザクションの難題は次章以降へ</div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう。詰まる問題こそ「分かっていなかった部分」</span></div></div>
+
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>原子性とは何か</div>
+      <p style="font-size:14px;margin:0">ACIDの「原子性」とは何かを、初めて聞く人に説明してください。マルチスレッドでの「アトミック」との意味の違いと、原子性があると何が嬉しいかにも触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ACIDの原子性は、複数の書き込みの途中でエラー（クラッシュ・ネットワーク断など）が起きたら、トランザクションを中断し、それまでの書き込みを全部破棄する「オールオアナッシング」の保証です。マルチスレッドでの「アトミック」は「処理の途中が他のスレッドから見えない」という並行性の話ですが、ACIDの原子性は並行性とは無関係（並行性は分離性の担当）で、障害時の取り消しの話です。原子性があると、中断後は「何も変更されていない」と確信できるので、安全にリトライできます。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 原子性＝途中で失敗したら全書き込みを破棄するオールオアナッシング、と説明できている ／ □ マルチスレッドの「アトミック」（並行性）とACIDの原子性（並行性と無関係）の違いに触れている ／ □ 原子性があると安全にリトライできる、と述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>ダーティリードと読み取りスキューの違い</div>
+      <p style="font-size:14px;margin:0">「ダーティリード」と「読み取りスキュー（nonrepeatable read）」の違いを、それぞれが起きる状況とともに説明してください。また、それぞれどの分離レベルで防げるかも述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ダーティリードは「他のトランザクションのコミット前（まだ確定していない）の書き込みを読んでしまう」異常です。後でロールバックされるかもしれない値を見てしまいます。これはread committed以上の分離レベルで防げます。読み取りスキューは「DBの異なる部分を異なる時刻に読むことで、一貫しない状態が見える」異常で、たとえば送金中に口座を見ると合計残高が一瞬合わなく見えます。読む値はそれぞれの時点でコミット済みなので、read committedでは許容されてしまいます。これを防ぐにはスナップショット分離（各トランザクションが開始時点の一貫したスナップショットから読む）が必要です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ダーティリード＝コミット前の値を読む、read committedで防ぐ、と説明できている ／ □ 読み取りスキュー＝異なる時刻に異なる部分を見て一貫しない状態が見える（送金で合計が合わない等）、と説明できている ／ □ 読み取りスキューはスナップショット分離で防ぐ、と述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>更新のロストと書き込みスキューの違い</div>
+      <p style="font-size:14px;margin:0">「更新のロスト」と「書き込みスキュー」の違いを説明してください。具体例（カウンタや病院の当直など）を使い、それぞれを防ぐ方法にも触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">更新のロストは、2つのトランザクションが同じオブジェクトに対してread-modify-write（読む→変更→書き戻す）を並行に行い、後の書き込みが先の変更を無視して上書きするため、片方の変更が失われる異常です。例: カウンタを2回インクリメントすべきが1回分しか増えない。アトミック操作・明示的ロック・自動検出・compare-and-setで防げます。書き込みスキューは、2つのトランザクションが同じオブジェクト群を読んで判断し、別々のオブジェクトを更新することで起きます。例: 病院で当直医が2人いるとき、2人とも「相手がいるから大丈夫」と判断して同時に当直を抜け、誰もいなくなる。更新先が別なので更新のロストとは異なり、防ぐには本当の直列化可能分離（または依存行の明示的ロック）が必要です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 更新のロスト＝同じオブジェクトへの並行read-modify-writeで変更が消える、と説明できている ／ □ 書き込みスキュー＝同じものを読んで別々のオブジェクトを更新し前提が崩れる、と説明できている ／ □ それぞれの防ぎ方（更新のロスト＝アトミック操作/ロック/自動検出、書き込みスキュー＝直列化可能分離）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>ファントムとは何か</div>
+      <p style="font-size:14px;margin:0">「ファントム」とは何かを説明してください。なぜ<b>SELECT FOR UPDATE</b>のような行ロックだけでは防げないことがあるのか、会議室予約の例で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ファントムは、あるトランザクションの書き込みが、他のトランザクションの検索クエリの結果を変えてしまう効果です。会議室予約では、「ある部屋・時間帯に重なる予約が存在しないこと」を確認してから予約を挿入します。ここで防ぎたいのは「条件を満たす行が存在しないこと」のチェックですが、SELECT FOR UPDATEは検索でヒットした行をロックするものなので、まだ存在しない（これから挿入される）行はロックできません。だから2人が同時に「予約なし」を確認して両方挿入し、ダブルブッキングが起きます。これを防ぐには、述語ロックやインデックス範囲ロックを持つ直列化可能分離が必要です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ファントム＝書き込みが他の検索クエリの結果を変える効果、と説明できている ／ □ 「存在しない行はロックできない」ため行ロックでは防げない、と説明できている ／ □ 会議室予約のダブルブッキングの例を使い、直列化可能分離（述語/インデックス範囲ロック）が必要と述べている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>直列化可能性の3つの実装</div>
+      <p style="font-size:14px;margin:0">直列化可能分離を実装する3つの手法を挙げ、それぞれの特徴（長所・短所）を簡単に説明してください。特に「悲観的」と「楽観的」の違いに触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">3つは①完全な順次実行 ②ツーフェーズロック(2PL) ③直列化可能スナップショット分離(SSI)です。①順次実行は単一スレッドで1つずつ実行し、衝突問題を完全に消します。シンプルですが単一CPUコアが上限で、小さく速いトランザクション・データがメモリに収まることが前提です。②2PLは共有/排他ロックで読み書きを互いにブロックし、全レース条件を防ぎます。数十年の標準でしたが、並行性が下がりレイテンシが不安定で、デッドロックも多く性能が悪いです。①と②は「悲観的」で、危険を避けるため待ってから進めます。③SSIは「楽観的」で、ブロックせず進め、コミット時に「古くなった前提に基づく判断」がなかったか確認し、問題があれば中断・リトライします。ロック待ちがなくレイテンシが予測しやすく複数マシンにスケールできますが、競合が激しいと中断率が上がって性能が落ちます。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 3手法（順次実行・2PL・SSI）を挙げている ／ □ 順次実行＝単一スレッド/単一コア上限、2PL＝ロックで全レース条件防止だが性能悪い、SSI＝楽観的で新しい、と特徴を述べている ／ □ 悲観的（順次実行・2PL）＝待ってから進む、楽観的（SSI）＝進めてコミット時に確認、の違いに触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして体感する</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>自分のDBの分離レベルを確認する</h4><p>使っているDB（PostgreSQL・MySQLなど）のデフォルト分離レベルを調べ、<b>SHOW</b>コマンドなどで確認してみましょう。「リピータブルリード」が実際に何を防ぐかは実装次第なので、ドキュメントで具体的に確認するのが大事です。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>レース条件を実際に再現してみる</h4><p>2つのターミナルから同じDBに接続し、片方で<b>BEGIN</b>して値を読み、もう片方で同じ値を更新してから、最初の側で更新する、という手順で更新のロストや読み取りスキューを自分の目で再現してみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>SELECT FOR UPDATEを試す</h4><p>明示的ロックを使って、更新のロストや書き込みスキューが防げる様子（と、付け忘れると防げない様子）を実験してみてください。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>Hermitageを読む</h4><p>Martin Kleppmann の「Hermitage: Testing the 'I' in ACID」は、各DBが実際にどのレース条件を防ぐかをテストしたものです。ラベルと中身の違いを実感できます。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次章へ</h4><p>この章は主に単一マシンのトランザクションでした。次のステップ（8章・9章）では、ネットワーク越しの分散システムで起きる新たな問題（ノード障害・ネットワーク遅延・分散トランザクション・2相コミットなど）を学びます。本章のACIDや分離レベルの知識が、分散環境でどう難しくなるかを意識しながら読み進めてください。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『データ指向アプリケーションデザイン』第7章 図解 ／ たとえ話メタファー：🏦 銀行の窓口と帳簿処理 ／ トランザクション・ACID・弱い分離レベル・直列化可能性</p>
+
+</div>
+</body>
+</html>

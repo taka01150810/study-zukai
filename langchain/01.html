@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1. LangChainによるLLMの基礎 ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ／ 第1章</span>
+  <h1>1. LangChainによるLLMの基礎</h1>
+  <p>LangChainアプリの「土台になる部品」を1つずつ触る章です。LLMを呼ぶ、役割を使い分ける、プロンプトをテンプレート化する、出力をJSONなどの形にする、そして部品を組み合わせる——プログラミング未経験でも、会話とたとえ話を追えば全体像がつかめます。</p>
+  <div class="badge-row">
+    <span class="badge">🟧 コードは読み飛ばしてOK</span>
+    <span class="badge">💬 会話で理解</span>
+    <span class="badge">🧱 たとえ話は「ブロック組み立て工房」で統一</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#gist">🎯 要するに</a>
+  <a href="#why">📌 なぜ必要か／できるようになること</a>
+  <a href="#intro">はじめに：なぜLangChainを使うのか</a>
+  <a class="sub" href="#s11">1.1 LangChainを設定する</a>
+  <a class="sub" href="#s12">1.2 LangChainでLLMを使う</a>
+  <a class="sub" href="#s13">1.3 LLMプロンプトを再利用する</a>
+  <a class="sub" href="#s14">1.4 LLMの出力形式を指定する</a>
+  <a class="sub" href="#s141">　1.4.1 JSON出力</a>
+  <a class="sub" href="#s142">　1.4.2 出力パーサー</a>
+  <a class="sub" href="#s15">1.5 多くのピースを組み立てる</a>
+  <a class="sub" href="#s151">　1.5.1 Runnableインターフェース</a>
+  <a class="sub" href="#s152">　1.5.2 命令型コンポジション</a>
+  <a class="sub" href="#s153">　1.5.3 宣言型コンポジション（LCEL）</a>
+  <a class="sub" href="#s16">1.6 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コード。開かなくても、すぐ上の説明と本文だけで意味が分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>弟子のソラと先生のリクの対話が本筋です。むずかしい話も、ここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🧱</div><div><b>たとえ話は「ブロック組み立て工房」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「規格化されたブロックでロボットを組み立てる工房」</b>に置きかえて説明します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる言葉を、やさしい言葉に言い換えました。分からなくなったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">LLM <span>大規模言語モデル</span></div><p>大量の文章を学んだ「文章の続きを予想するすごく賢いAI」。文字を入れると、それらしい続きを返します。</p></div>
+    <div class="item"><div class="w">LangChain <span>ラングチェーン</span></div><p>LLMを使うアプリを作るための「規格のそろった部品セット」。部品を組み合わせてアプリを作れます。</p></div>
+    <div class="item"><div class="w">コンポーネント <span>部品</span></div><p>LangChainの「ひとつひとつの部品」。LLM・プロンプト・出力パーサーなどがこれにあたります。</p></div>
+    <div class="item"><div class="w">チャットモデル <span>対話AI</span></div><p>役割（指示・質問・返答）を分けて会話できるLLM。普段使うチャットAIはこのタイプです。</p></div>
+    <div class="item"><div class="w">役割（ロール） <span>system / user / assistant</span></div><p>会話の発言を3種類に分けたもの。systemは「AIへの指示」、userは「ユーザーの発言」、assistantは「AIの返答」。</p></div>
+    <div class="item"><div class="w">プロンプト <span>AIへの指示文</span></div><p>AIに渡す文章。これ次第で答えが大きく変わります。</p></div>
+    <div class="item"><div class="w">プロンプトテンプレート <span>指示文のひな型</span></div><p>毎回同じ部分はそのまま、変わる部分だけ穴あきにした指示文のひな型。穴に値を入れて使い回せます。</p></div>
+    <div class="item"><div class="w">プレースホルダー <span>差し替え枠</span></div><p>テンプレートの中の <code>{...}</code> の部分。あとから実際の値を入れる「差し替え用の枠」です。</p></div>
+    <div class="item"><div class="w">構造化出力 <span>形のそろった出力</span></div><p>ただの文章ではなく、JSONなど「決まった形」で答えを返すこと。他のプログラムにそのまま渡せます。</p></div>
+    <div class="item"><div class="w">JSON <span>ジェイソン</span></div><p>「名前: 値」で情報を並べる、機械が読みやすいデータの書き方。アプリ同士のやり取りでよく使います。</p></div>
+    <div class="item"><div class="w">スキーマ <span>形の取り決め</span></div><p>「答えはこういう項目をこの型で持つこと」という出力の設計図。これに沿った答えだけを受け取れます。</p></div>
+    <div class="item"><div class="w">出力パーサー <span>整形係</span></div><p>AIが返した文章を、リストやXMLなど「使いやすい形」に変換してくれる部品。</p></div>
+    <div class="item"><div class="w">Runnableインターフェース <span>共通の操作口</span></div><p>すべての部品が共通で持つ「同じ操作のしかた」。<code>invoke / batch / stream</code> の3つの呼び方が全部品で使えます。</p></div>
+    <div class="item"><div class="w">invoke / batch / stream <span>呼び方3種</span></div><p>invoke=1個入れて1個もらう、batch=まとめて入れてまとめてもらう、stream=少しずつ受け取る。</p></div>
+    <div class="item"><div class="w">命令型コンポジション <span>手で組む</span></div><p>部品を関数にまとめて、普通のプログラムとして手書きで組み合わせる方法。自由に細工できます。</p></div>
+    <div class="item"><div class="w">LCEL（宣言型） <span>パイプでつなぐ</span></div><p><code>部品 | 部品</code> のように記号でつなぐだけで組み合わせる方法。自動でうまく実行してくれます。</p></div>
+    <div class="item"><div class="w">temperature <span>ゆらぎ</span></div><p>出力のばらつき具合。小さいと毎回ほぼ同じ、大きいと創造的でバラバラになります。</p></div>
+    <div class="item"><div class="w">max_tokens <span>長さの上限</span></div><p>出力の長さ（とコスト）の上限。小さすぎると文が途中で切れます。</p></div>
+    <div class="item"><div class="w">APIキー <span>合鍵</span></div><p>OpenAIなどのサービスを使うための「あなた専用の合鍵」。これがないと呼び出せません。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>この章のあらすじ</h2><span class="tag">これから何をやるのか</span></div></div>
+  <div class="card">
+    <p class="lead">「いよいよコードですか！」と身を乗り出すソラ。リク先輩は「まずはLangChainの“基本部品”を1つずつ触ろう」と、開発環境のセットアップから始めます。</p>
+    <p>LLMを呼び出す → チャットモデルで役割（system / user / assistant）を使い分ける → プロンプトをテンプレート化して再利用する → 出力をJSONなど構造化された形式で受け取る → そして部品を組み合わせる。この章で、LangChainアプリの土台となる構成要素をすべて体験します。最後に、すべての部品が共通の<span class="term" data-tip="すべての部品が共通で持つ「同じ操作のしかた」。invoke/batch/streamの3つの呼び方が全部品で使えます。">Runnableインターフェース</span>で動くこと、組み合わせ方には<b>命令型</b>と<b>LCEL（宣言型）</b>の2つがあることを学びます。</p>
+    <div class="analogy">
+      <h4>🧱 たとえ話：今日は「ブロック組み立て工房」に入門</h4>
+      <p>この章は、規格のそろったブロックでロボットを組み立てる<b>工房</b>に弟子入りする日です。ブロックには「文章を予想するブロック（LLM）」「指示を整えるブロック（プロンプト）」「形を整えるブロック（出力パーサー）」があります。すごいのは、<b>どのブロックも差し込み口の形が同じ</b>こと。だから自由に差し替えたり、つなげたりできます。今日は、これらのブロックを1個ずつ手に取り、最後にカチッとつなげてロボット（アプリ）を組み立てます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに ===== -->
+<section id="gist">
+  <div class="sec-head"><div class="sec-num">🎯</div><div><h2>要するに</h2><span class="tag">一言でいうと</span></div></div>
+  <div class="card">
+    <p class="lead"><b>LangChainは、LLMアプリでよく使うパターンを「部品（コンポーネント）」として提供する。</b>すべての部品が共通の操作口（<code>invoke・batch・stream</code>）を持ち、差し替え可能で、組み合わせられます。</p>
+    <p>この章で身につくのは4つ。①LLMの呼び出し ②プロンプトの再利用 ③構造化出力 ④部品の組み立て方（命令型とLCEL）。これがLangChainアプリの土台です。</p>
+    <div class="analogy">
+      <h4>🧱 たとえ話：工房の合言葉「規格がそろっているから自由」</h4>
+      <p>この工房のブロックは、メーカーが違っても差し込み口がぴったり同じ規格です。だから「このブロックをあのブロックに替えても」「ブロック同士をつなげても」設計をやり直さずに済みます。今日覚える4つの作業は、ブロックの使い方の基本セットです。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== なぜ必要か ===== -->
+<section id="why">
+  <div class="sec-head"><div class="sec-num">📌</div><div><h2>なぜこれが必要か／これを知ったらできること</h2><span class="tag">学ぶ意味とゴール</span></div></div>
+  <div class="card">
+    <div class="why">
+      <h4>🤔 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>LLMプロバイダーのAPIを直接叩くこともできるが、<b>プロバイダーごとの細かな差異</b>に悩まされる。LangChainがそれを抽象化してくれるから。</li>
+        <li>プロンプトをハードコード（ベタ書き）すると再利用できない。<b>テンプレート化</b>を知らないと、同じ文章を何度も書く羽目になるから。</li>
+        <li>LLMの出力がただのテキストだと、他のコードに渡しにくい。<b>構造化（JSONなど）</b>の方法を知ると、アプリの一部として組み込めるから。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ これを知ったらできるようになること</h4>
+      <ul>
+        <li>LangChainでLLM／チャットモデルを呼び出し、system / user / assistantの役割を使い分けられる。</li>
+        <li>プロンプトテンプレートで動的入力を扱い、プロンプトを再利用できる。</li>
+        <li><code>with_structured_output</code> や出力パーサーで、JSON・CSVなど構造化された出力を得られる。</li>
+        <li>共通のRunnableインターフェース（invoke/batch/stream）を理解し、命令型とLCELで部品を組み合わせられる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== はじめに：なぜLangChain ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">★</div><div><h2>はじめに：なぜLangChainを使うのか</h2><span class="tag">3つの理由</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>リク先輩、いよいよコードですね！でも、なんでLangChainを使うんですか？OpenAIのAPIを直接叩いてもいいんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>いい疑問だ。もちろん直接叩いてもアプリは作れる。でも、LangChainを学ぶ価値は短期にも長期にもあるんだ。理由を3つ挙げよう。</div></div>
+    </div>
+
+    <h3 class="blk">LangChainを使う3つの理由</h3>
+    <div class="grid3">
+      <div class="mini">
+        <div class="ic">🧩</div>
+        <h4>① 一般的なパターンが組み込み済み</h4>
+        <p>CoT（考えを順に書かせる）やツール呼び出しなど、よく使うパターンのリファレンス実装が同梱。LLMを素早く試す最短ルート。</p>
+        <span class="pill">すぐ試せる</span>
+      </div>
+      <div class="mini">
+        <div class="ic">🔄</div>
+        <h4>② 置き換え可能なコンポーネント</h4>
+        <p>各部品は同一仕様だから、LLM・チャットモデル・出力パーサーを、コードを書き直さずに差し替えられる。</p>
+        <span class="pill">差し替え自由</span>
+      </div>
+      <div class="mini">
+        <div class="ic">🎛️</div>
+        <h4>③ オーケストレーション機能</h4>
+        <p>可観測性のためのコールバック、共通インターフェース、長時間実行の中断・再開・再試行。</p>
+        <span class="pill">運用を支える</span>
+      </div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>差し替えられるって、たとえば？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>OpenAIとAnthropic、2つの主要プロバイダーのチャットモデルを考えてみて。両方とも「型」と「内容」を持つメッセージを受け取って、生成したメッセージを返す。でも、同じ会話で両方を使おうとすると、メッセージ形式のわずかな違いで問題が起きる。LangChainはこの差異を抽象化して、特定プロバイダーに縛られないアプリを作れるようにする。実際、OpenAIとAnthropicを同じチャットボットセッション内で動かしても問題なく機能するんだ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>それは便利！本書ではどの部品を使うんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>LLM／チャットモデルと埋め込みはOpenAI、ベクトルストアはPGVectorだ。でもどれも代替品（Anthropic、Ollama、Cohere、Weaviate、OpenSearchなど）に入れ替えられる。じゃあ、まずセットアップからだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：差し込み口が同じだから、別メーカーのブロックでも置ける</h4>
+      <p>OpenAI製のブロックとAnthropic製のブロックは、見た目や中身が少し違います。でもこの工房では、<b>差し込み口の形（共通の規格）が同じ</b>になるよう調整されています。だから、ロボットの「頭」のブロックをOpenAI製からAnthropic製に取り替えても、土台を作り直す必要はありません。同じ作業台の上で、2社のブロックを混ぜて使うこともできます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.1 ===== -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">1.1</div><div><h2>LangChainを設定する</h2><span class="tag">道具をそろえる</span></div></div>
+  <div class="card">
+    <p class="lead">まず手元のマシンにLangChainをインストールし、<span class="term" data-tip="OpenAIなどのサービスを使うための、あなた専用の合鍵。これがないと呼び出せません。">OpenAIのAPIキー</span>（合鍵）を用意します。PythonでもJavaScriptでもOK。両言語のコードは等価です。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>OpenAIのAPIキーを作って控えておく（OpenAIのWebサイトのAPI Keysページで作れる）。本書はPythonとJavaScript両方でコード例を示すから、慣れている言語を選んでいい。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>ぼくはPythonでやってみます。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコマンドがやること：LangChain関連のライブラリをインストールし、合鍵を環境変数にセットする（Python版）。</p>
+    <details class="code"><summary>Python のセットアップ（bash）</summary><pre><span class="cmt"># Python のセットアップ: LangChain関連ライブラリをインストールする</span>
+pip install langchain langchain-openai langchain-community
+pip install langchain-text-splitters langchain-postgres
+
+<span class="cmt"># OpenAI APIキーを環境変数に設定する（your-key を自分のキーに置き換える）</span>
+export OPENAI_API_KEY=your-key
+
+<span class="cmt"># Jupyter Notebook を起動する（任意）</span>
+jupyter notebook</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ 同じことをJavaScriptで行う場合のコマンド。</p>
+    <details class="code"><summary>JavaScript のセットアップ（bash）</summary><pre><span class="cmt"># JavaScript のセットアップ</span>
+export OPENAI_API_KEY=your-key
+npm install langchain @langchain/openai @langchain/community
+npm install @langchain/core pg
+<span class="cmt"># 各コード例を .js ファイルに保存し node ./file.js で実行する</span></pre></details>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：工房に入る前に、道具箱と入館証を用意する</h4>
+      <p>ブロックを触る前に、まず<b>道具箱（ライブラリ）</b>を作業台に並べ、工房の<b>入館証（APIキー）</b>を首から下げます。入館証がないと、ブロックの中で動くAIに作業を頼めません。これで準備完了です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.2 ===== -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">1.2</div><div><h2>LangChainでLLMを使う</h2><span class="tag">2種類の呼び出し口</span></div></div>
+  <div class="card">
+    <p class="lead">LangChainがLLMとやり取りする入口は<b>2種類</b>。①<b>LLMインターフェース</b>（文字列を入れると続きを予測して返すだけ）と、②<b>チャットモデルインターフェース</b>（役割つきの双方向対話）です。</p>
+
+    <div class="grid2">
+      <div class="mini">
+        <div class="ic">📝</div>
+        <h4>① LLMインターフェース</h4>
+        <p>文字列のプロンプトを入れると、その続き（予測結果）をテキストで返すだけ。シンプル。</p>
+        <span class="pill">入力＝ただの文章</span>
+      </div>
+      <div class="mini">
+        <div class="ic">💬</div>
+        <h4>② チャットモデルインターフェース</h4>
+        <p>役割（system / user / assistant）つきのメッセージで、双方向の対話ができる。</p>
+        <span class="pill">入力＝役割つきメッセージ</span>
+      </div>
+    </div>
+
+    <h3 class="blk">まずはLLMインターフェース</h3>
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：OpenAIのLLMを呼び出し、「The sky is（空は）」の続きを予測させる。</p>
+    <details class="code"><summary>LLMを呼び出す（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: OpenAIのLLMを呼び出し、「The sky is（空は）」の続きを予測させる。</span>
+<span class="kw">from</span> langchain_openai.llms <span class="kw">import</span> OpenAI
+
+model = <span class="fn">OpenAI</span>(model=<span class="str">"gpt-3.5-turbo-instruct"</span>)
+
+model.<span class="fn">invoke</span>(<span class="str">"The sky is"</span>)  <span class="cmt"># 「空は」の続きを予測</span></pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="cmt">// 同じことを JavaScript で行う</span>
+<span class="kw">import</span> { OpenAI } <span class="kw">from</span> <span class="str">"@langchain/openai"</span>;
+
+<span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">OpenAI</span>({ model: <span class="str">"gpt-3.5-turbo-instruct"</span> });
+
+<span class="kw">await</span> model.<span class="fn">invoke</span>(<span class="str">"The sky is"</span>);</pre></details>
+
+    <details class="code"><summary>出力例（bash）</summary><pre><span class="cmt"># 出力（「空は青い！」と予測した）</span>
+Blue!</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span><code>model</code> パラメータって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>LLMやチャットモデルで最もよく設定する項目で、使う基盤モデルを指定する。大きいモデルほど高性能だが高価で遅い。他に便利なのが2つ。<span class="term" data-tip="出力のばらつき具合。小さいと毎回ほぼ同じ、大きいと創造的でバラバラに。">temperature</span>（出力の揺らぎ。小さいと予測可能、大きいと創造的）と <span class="term" data-tip="出力の長さとコストの上限。小さすぎると文が途中で切れる。">max_tokens</span>（出力トークン数とコストの上限）だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>0章で出た temperature ですね。次はチャットモデル？</div></div>
+    </div>
+
+    <h3 class="blk">次にチャットモデルインターフェース</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>そう。チャットモデルは双方向の対話ができる。メッセージを <b>system（指示）・user（質問）・assistant（モデルの返答）</b>の役割に分けて扱うんだ。</div></div>
+    </div>
+
+    <h4 class="blk">3つの役割（ロール）</h4>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧭</div><h4>system（指示）</h4><p>AIが従うべき指示・枠組み。「丁寧に答えて」など、振る舞いを設定する。</p></div>
+      <div class="mini"><div class="ic">🙋</div><h4>user（質問）</h4><p>ユーザーからの質問やコンテンツ。<code>HumanMessage</code> で表す。</p></div>
+      <div class="mini"><div class="ic">🤖</div><h4>assistant（返答）</h4><p>モデルが生成したレスポンス。<code>AIMessage</code> で返ってくる。</p></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：チャットモデルに「フランスの首都は？」と尋ねる（<code>HumanMessage</code>＝ユーザーからのメッセージを表す入れ物）。</p>
+    <details class="code"><summary>チャットモデルに質問する（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: チャットモデルに「フランスの首都は？」と尋ねる。</span>
+<span class="cmt"># HumanMessage = 人間（ユーザー）からのメッセージを表す入れ物。</span>
+<span class="kw">from</span> langchain_openai.chat_models <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+
+model = <span class="fn">ChatOpenAI</span>()
+prompt = [<span class="fn">HumanMessage</span>(<span class="str">"フランスの首都は？"</span>)]
+model.<span class="fn">invoke</span>(prompt)</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { ChatOpenAI } <span class="kw">from</span> <span class="str">"@langchain/openai"</span>;
+<span class="kw">import</span> { HumanMessage } <span class="kw">from</span> <span class="str">"@langchain/core/messages"</span>;
+
+<span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">ChatOpenAI</span>();
+<span class="kw">const</span> prompt = [<span class="kw">new</span> <span class="fn">HumanMessage</span>(<span class="str">"フランスの首都は？"</span>)];
+<span class="kw">await</span> model.<span class="fn">invoke</span>(prompt);</pre></details>
+
+    <details class="code"><summary>出力例（bash）</summary><pre><span class="cmt"># 出力（AIMessage = アシスタント役の返答）</span>
+AIMessage(content=<span class="str">'フランスの首都はパリです。'</span>)</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>単一の文字列じゃなく、役割つきの複数メッセージを使う。代表的なメッセージ型は——<code>HumanMessage</code>（ユーザー役）、<code>AIMessage</code>（アシスタント役）、<code>SystemMessage</code>（システム役、AIが従う指示）、<code>ChatMessage</code>（任意の役割）だ。<code>SystemMessage</code> を組み込んでみよう。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：<code>SystemMessage</code> で「感嘆符を3つ付けて答えよ」と指示し、その上で「フランスの首都は？」と尋ねる。</p>
+    <details class="code"><summary>SystemMessageでスタイルを指定する（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: SystemMessage で「感嘆符を3つ付けて答えよ」と指示し、</span>
+<span class="cmt"># その上で「フランスの首都は？」と尋ねる。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage, SystemMessage
+<span class="kw">from</span> langchain_openai.chat_models <span class="kw">import</span> ChatOpenAI
+
+model = <span class="fn">ChatOpenAI</span>()
+system_msg = <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたは優秀なアシスタントです。質問に対して3つの感嘆符を付けて回答してください。"</span>
+)
+human_msg = <span class="fn">HumanMessage</span>(<span class="str">"フランスの首都は？"</span>)
+model.<span class="fn">invoke</span>([system_msg, human_msg])</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { ChatOpenAI } <span class="kw">from</span> <span class="str">"@langchain/openai"</span>;
+<span class="kw">import</span> { HumanMessage, SystemMessage } <span class="kw">from</span> <span class="str">"@langchain/core/messages"</span>;
+
+<span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">ChatOpenAI</span>();
+<span class="kw">const</span> prompt = [
+  <span class="kw">new</span> <span class="fn">SystemMessage</span>(
+    <span class="str">"あなたは優秀なアシスタントです。質問に対して3つの感嘆符を付けて回答してください。"</span>
+  ),
+  <span class="kw">new</span> <span class="fn">HumanMessage</span>(<span class="str">"フランスの首都は？"</span>),
+];
+
+<span class="kw">await</span> model.<span class="fn">invoke</span>(prompt);</pre></details>
+
+    <details class="code"><summary>出力例（bash）</summary><pre><span class="cmt"># 出力（system の指示に従い、感嘆符が3つ付いた）</span>
+AIMessage(<span class="str">'パリ！！！'</span>)</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>ユーザーの質問には「感嘆符を付けて」なんて書いてないのに、ちゃんと付きましたね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>そこがポイント。<code>SystemMessage</code> で一貫したレスポンスのスタイルをあらかじめ設定できるんだ。ユーザーの入力に関係なくね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：ブロックに2つの差し込み口がある</h4>
+      <p>「文章を予想するブロック」には差し込み口が2種類あります。①<b>シンプル口（LLM）</b>は、紙きれ（ただの文章）を1枚差すと続きを書いて返す。②<b>会話口（チャット）</b>は、付箋を3色に分けて差せます——青＝ユーザーの質問、黄＝AIへの作業指示（system）、緑＝AIの返答。黄色い「作業指示メモ（SystemMessage）」を先に貼っておくと、どんな質問が来ても同じ調子で答えてくれます。</p>
+    </div>
+
+    <div class="summary">
+      <h4>この項のまとめ</h4>
+      <ul>
+        <li>入口は2種類：LLM（文字列→予測）とチャットモデル（役割つき双方向対話）。</li>
+        <li>チャットモデルの役割：system（指示）・user（質問）・assistant（返答）。</li>
+        <li>メッセージ型：HumanMessage / AIMessage / SystemMessage / ChatMessage。</li>
+        <li>SystemMessageで、ユーザー入力に関係なく応答スタイルを固定できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.3 ===== -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-num">1.3</div><div><h2>LLMプロンプトを再利用する</h2><span class="tag">指示文のひな型</span></div></div>
+  <div class="card">
+    <p class="lead">プロンプトは出力に大きく影響します。でも具体的な指示文を毎回ベタ書きするのは面倒。そこで<b>プロンプトテンプレート</b>を使い、「毎回同じ部分（静的テキスト）」と「差し替える部分（プレースホルダー）」を分けて書きます。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>プロンプトは出力に大きく影響する。でも、こういう具体的なプロンプトを毎回ベタ書きするのは面倒だ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ これは「コンテキスト」と「質問」が固定で書かれた、再利用できないプロンプトの例（テキスト）。</p>
+    <details class="code"><summary>ベタ書きのプロンプト（text）</summary><pre><span class="cmt"># コンテキスト付きの質問プロンプト（コンテキストと質問がハードコードされている）</span>
+以下のコンテキストに基づいて質問に答えてください。提供された情報で答えられない場合は
+「I don't know」と答えてください。
+
+コンテキスト: NLPの最新の進歩は大規模言語モデル（LLM）によって牽引されています。…
+（中略）開発者は Hugging Face の transformers ライブラリや、OpenAI・Cohere の
+ライブラリを通じてこれらのモデルを利用できます。
+
+質問: どのモデルプロバイダーがLLMを提供していますか？
+
+回答:</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>コンテキストと質問が固定されてますね。動的に変えたい……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>そこで<span class="term" data-tip="毎回同じ部分はそのまま、変わる部分だけ穴あきにした指示文のひな型。穴に値を入れて使い回せます。">プロンプトテンプレート</span>だ。静的なテキストと、送信ごとに差し替える<span class="term" data-tip="テンプレートの中の {...} の部分。あとから実際の値を入れる差し替え用の枠。">プレースホルダー</span>を分けて書ける。波括弧 <code>{...}</code> がプレースホルダーになる。</div></div>
+    </div>
+
+    <h3 class="blk">テンプレートの仕組み</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>静的テキスト＋プレースホルダーでひな型を作る</h4><p>「以下のコンテキストに基づいて…」は固定。<code>{context}</code> と <code>{question}</code> は差し替え枠。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>invoke に実際の値を渡す</h4><p><code>{"context": "...", "question": "..."}</code> のように、枠に入れる値を渡す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>値が置換されて、完成したプロンプトができる</h4><p>枠が埋まり、その場限りの具体的なプロンプトが生成される。これをLLMに渡す。</p></div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：<code>{context}{question}</code> を差し替え枠にして、<code>invoke</code> で実際の値を埋め込む再利用可能なテンプレートを作る。</p>
+    <details class="code"><summary>PromptTemplateを作る（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: コンテキストと質問を {context}{question} のプレースホルダーにし、</span>
+<span class="cmt"># invoke で実際の値を埋め込む再利用可能なテンプレートを作る。</span>
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> PromptTemplate
+
+template = PromptTemplate.<span class="fn">from_template</span>(<span class="str">"""以下のコンテキストに基づいて質問に答えてください。
+提供された情報で答えられない場合は「わかりません」と答えてください。
+
+コンテキスト: {context}
+
+質問: {question}
+
+回答: """</span>)
+
+template.<span class="fn">invoke</span>({
+    <span class="str">"context"</span>: <span class="str">"""NLPの最新の進歩は大規模言語モデル（LLM）によって牽引されています。
+        これらのモデルはより小規模なモデルより高い性能を発揮し、NLP機能を備えた
+        アプリケーションを開発する開発者にとって不可欠な存在です。開発者は
+        Hugging Face の transformers ライブラリを通じて、または OpenAI と Cohere が
+        提供する openai や cohere ライブラリを通じて利用できます。"""</span>,
+    <span class="str">"question"</span>: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>
+})</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { PromptTemplate } <span class="kw">from</span> <span class="str">"@langchain/core/prompts"</span>;
+
+<span class="kw">const</span> template = PromptTemplate.<span class="fn">fromTemplate</span>(<span class="str">`以下のコンテキストに基づいて質問に
+答えてください。提供された情報で答えられない場合は「わかりません」と答えてください。
+
+コンテキスト: {context}
+
+質問: {question}
+
+回答: `</span>);
+
+<span class="kw">await</span> template.<span class="fn">invoke</span>({
+  context: <span class="str">`NLPの最新の進歩は大規模言語モデル（LLM）によって牽引されています。…`</span>,
+  question: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>,
+});</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><code>invoke</code> に渡した値で <code>{context}</code> と <code>{question}</code> が置換されて、静的なプロンプトが生成される。テンプレートは「複数の具体的なプロンプトを生成するレシピ」みたいなものだ。LangChainのプロンプトはデフォルトでPythonのf-string構文を使う。これをLLMに渡すと、こうなる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：テンプレートとモデルを用意し、テンプレートで作ったプロンプトをLLMに渡して回答を得る（template と model は何度も再利用できる）。</p>
+    <details class="code"><summary>テンプレート＋モデルで回答を得る（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: テンプレートとモデルを用意し、テンプレートで作ったプロンプトを</span>
+<span class="cmt"># LLMに渡して回答を得る。template と model は何度も再利用できる。</span>
+<span class="kw">from</span> langchain_openai.llms <span class="kw">import</span> OpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> PromptTemplate
+
+template = PromptTemplate.<span class="fn">from_template</span>(<span class="str">"""以下のコンテキストに基づいて質問に答えてください。
+提供された情報で答えられない場合は「わかりません」と答えてください。
+
+コンテキスト: {context}
+
+質問: {question}
+
+回答: """</span>)
+
+model = <span class="fn">OpenAI</span>()
+
+prompt = template.<span class="fn">invoke</span>({
+    <span class="str">"context"</span>: <span class="str">"""NLPの最新の進歩は大規模言語モデル（LLM）によって牽引されています。…"""</span>,
+    <span class="str">"question"</span>: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>
+})
+
+completion = model.<span class="fn">invoke</span>(prompt)</pre></details>
+
+    <details class="code"><summary>出力例（bash）</summary><pre><span class="cmt"># 出力（コンテキストに基づいて正しく答えた）</span>
+Hugging Face の transformers ライブラリ、OpenAI の openai ライブラリ、
+Cohere の cohere ライブラリがLLMを提供しています。</pre></details>
+
+    <h3 class="blk">チャット用のテンプレート（ChatPromptTemplate）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>チャットアプリなら <code>ChatPromptTemplate</code> を使って、役割ごとに動的入力を与えられる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：system（指示）と human（コンテキスト・質問）の役割つきテンプレートを作る。</p>
+    <details class="code"><summary>ChatPromptTemplateを作る（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: system（指示）と human（コンテキスト・質問）の役割つきテンプレートを作る。</span>
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+template = ChatPromptTemplate.<span class="fn">from_messages</span>([
+    (<span class="str">'system'</span>, <span class="str">'''以下のコンテキストに基づいて質問に答えてください。提供された情報で
+        答えられない場合は「わかりません」と答えてください。'''</span>),
+    (<span class="str">'human'</span>, <span class="str">'コンテキスト: {context}'</span>),
+    (<span class="str">'human'</span>, <span class="str">'質問: {question}'</span>),
+])
+
+template.<span class="fn">invoke</span>({
+    <span class="str">"context"</span>: <span class="str">"""NLPの最新の進歩は大規模言語モデル（LLM）によって牽引されています。…"""</span>,
+    <span class="str">"question"</span>: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>
+})</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { ChatPromptTemplate } <span class="kw">from</span> <span class="str">"@langchain/core/prompts"</span>;
+
+<span class="kw">const</span> template = ChatPromptTemplate.<span class="fn">fromMessages</span>([
+  [<span class="str">"system"</span>, <span class="str">`以下のコンテキストに基づいて質問に答えてください。提供された情報で
+    答えられない場合は「わかりません」と答えてください。`</span>],
+  [<span class="str">"human"</span>, <span class="str">"コンテキスト: {context}"</span>],
+  [<span class="str">"human"</span>, <span class="str">"質問: {question}"</span>],
+]);
+
+<span class="kw">await</span> template.<span class="fn">invoke</span>({
+  context: <span class="str">`NLPの最新の進歩は大規模言語モデル（LLM）によって牽引されています。…`</span>,
+  question: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>,
+});</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span><code>SystemMessage</code> と2つの <code>HumanMessage</code>（コンテキストと質問）に分かれるんですね。これも <code>ChatOpenAI</code> に渡せば回答が得られる、と。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>その通り。テンプレート化で、同じプロンプトを使い回せるようになった。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：穴あきの「指示カード」を作っておく</h4>
+      <p>「指示を整えるブロック」には、よく使う指示を<b>穴あきカード</b>として登録できます。文章の大部分は印刷済みで、<code>{context}</code> と <code>{question}</code> のところだけ四角い穴。この穴に毎回ちがう紙きれを差し込めば、同じカードから無数の指示文を作れます。チャット用カードなら、黄（system）・青（human）と色分けの穴も使えます。<b>毎回ゼロから書かなくていい</b>のが嬉しいポイントです。</p>
+    </div>
+
+    <div class="summary">
+      <h4>この項のまとめ</h4>
+      <ul>
+        <li>テンプレートで「静的テキスト」と「差し替え枠（プレースホルダー）」を分けて書ける。</li>
+        <li><code>{context}</code> のような波括弧が枠。<code>invoke</code> の値で実行時に置換される。</li>
+        <li>同じプロンプトを再利用でき、コンテキストや質問だけを動的に変えられる。</li>
+        <li>チャット用は <code>ChatPromptTemplate</code> で、役割ごとに動的入力を与えられる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.4 ===== -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-num">1.4</div><div><h2>LLMの出力形式を指定する</h2><span class="tag">機械が読みやすい形で受け取る</span></div></div>
+  <div class="card">
+    <p class="lead">プレーンテキストも便利ですが、JSON・XML・CSV・コードのような<b>構造化された（機械が読みやすい）形式</b>で出力させたいこともあります。そうすれば、他のコードにそのまま渡して、大規模アプリの一部にできます。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>プレーンテキストは便利だけど、JSON・XML・CSV・コードみたいな構造化されたマシンリーダブルな形式で出力させたいこともある。そうすれば、他のコードにそのまま渡して、大規模アプリの一部にできる。</div></div>
+    </div>
+  </div>
+
+  <!-- 1.4.1 -->
+  <div class="card" id="s141">
+    <h3 class="blk">1.4.1　JSON出力</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><span class="term" data-tip="名前: 値で情報を並べる、機械が読みやすいデータの書き方。">JSON</span>はLLMが生成する最も一般的な形式だ。フロントエンドに送ったり、DBに保存したりできる。まずLLMが守るべき<span class="term" data-tip="答えはこういう項目をこの型で持つこと、という出力の設計図。">スキーマ</span>を定義して、それをプロンプトに含める。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：「回答(answer)とその根拠(justification)を持つJSON」を返すようスキーマを定義し、<code>with_structured_output</code> でモデルに守らせる。質問は「レンガ1ポンドと羽毛1ポンド、どちらが重い？」。</p>
+    <details class="code"><summary>with_structured_output でJSONを得る（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: 「回答(answer)とその根拠(justification)を持つJSON」を返すよう</span>
+<span class="cmt"># スキーマ（Pydanticモデル）を定義し、with_structured_output でモデルに守らせる。</span>
+<span class="cmt"># 質問は「レンガ1ポンドと羽毛1ポンド、どちらが重い？」。</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="kw">class</span> <span class="fn">AnswerWithJustification</span>(BaseModel):
+    <span class="str">'''ユーザーの質問への回答と、その回答の正当性（根拠）を含むデータモデル'''</span>
+    answer: str
+    <span class="str">'''ユーザーの質問への回答'''</span>
+    justification: str
+    <span class="str">'''回答の正当性を示す根拠'''</span>
+
+llm = <span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+structured_llm = llm.<span class="fn">with_structured_output</span>(AnswerWithJustification)
+structured_llm.<span class="fn">invoke</span>(<span class="str">"レンガ1ポンドと羽毛1ポンドではどちらが重いですか？"</span>)</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { ChatOpenAI } <span class="kw">from</span> <span class="str">"@langchain/openai"</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">const</span> answerSchema = z
+  .<span class="fn">object</span>({
+    answer: z.<span class="fn">string</span>().<span class="fn">describe</span>(<span class="str">"ユーザーの質問への回答"</span>),
+    justification: z.<span class="fn">string</span>().<span class="fn">describe</span>(<span class="str">`回答の正当性を示す根拠`</span>),
+  })
+  .<span class="fn">describe</span>(<span class="str">"ユーザーの質問への回答と、その回答の正当性（根拠）を含むデータモデル"</span>);
+
+<span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">ChatOpenAI</span>({
+  model: <span class="str">"gpt-4o-mini"</span>,
+  temperature: <span class="num">0</span>,
+}).<span class="fn">withStructuredOutput</span>(answerSchema);
+<span class="kw">await</span> model.<span class="fn">invoke</span>(<span class="str">"レンガ1ポンドと羽毛1ポンドではどちらが重いですか？"</span>);</pre></details>
+
+    <details class="code"><summary>出力例（bash）</summary><pre><span class="cmt"># 出力（answer と justification を持つJSONが返る）</span>
+{
+  answer: <span class="str">"重さは同じです"</span>,
+  justification: <span class="str">"レンガも羽毛もどちらも1ポンドなので重さは同じです。しかし、体積は…"</span>
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>Pythonは Pydantic、JavaScriptは Zod でスキーマを定義するんですね。<code>with_structured_output</code> は何をしてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>2つのことをしている。①スキーマを <code>JSON Schema</code>（型・名前・説明などを表す形式）に変換してLLMに渡す。②返ってきた出力を同じスキーマで検証する。だからLLMがスキーマ通りの形式を確実に返してくれるんだ。</div></div>
+    </div>
+
+    <h4 class="blk">with_structured_output がやる2つのこと</h4>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📤</div><h4>① スキーマをLLMに渡す</h4><p>定義した設計図を JSON Schema に変換して「この形で答えて」とLLMに伝える。</p></div>
+      <div class="mini"><div class="ic">✅</div><h4>② 出力を検証する</h4><p>返ってきた答えを同じスキーマでチェック。だから確実にスキーマ通りの形になる。</p></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：完成品を入れる「仕切り箱」を先に渡す</h4>
+      <p>AIに「適当に部品を渡して」と頼むと、バラバラの形で返ってきて困ります。そこで、<b>「ここに answer、ここに justification を入れてね」と仕切りの決まった箱（スキーマ）</b>を先に渡します。AIはその仕切りに合わせて部品を入れて返してくれるうえ、受け取り口で「ちゃんと仕切り通りか」を検査します。これで、後工程のブロックにそのまま渡せる、形のそろった完成品が手に入ります。</p>
+    </div>
+  </div>
+
+  <!-- 1.4.2 -->
+  <div class="card" id="s142">
+    <h3 class="blk">1.4.2　出力パーサーを用いたマシンリーダブルな形式での出力</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>CSVやXMLみたいな別の形式で出力させたいときは、<span class="term" data-tip="AIが返した文章を、リストやXMLなど使いやすい形に変換してくれる部品。">出力パーサー</span>が役立つ。これはLLMのレスポンスを構造化するクラスで、2つの機能がある。①<b>形式を指示する</b>（パーサーが解釈できる形式で生成するようプロンプトに指示を追加）②<b>出力の検証と解析</b>（テキスト出力をリストやXMLなど構造化された形式に変換）。</div></div>
+    </div>
+
+    <h4 class="blk">出力パーサーの2つの機能</h4>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📝</div><h4>① 形式を指示する</h4><p>「この形式で生成してね」という指示を、自動でプロンプトに追加してくれる。</p></div>
+      <div class="mini"><div class="ic">🔧</div><h4>② 検証と解析</h4><p>返ってきたテキストを、リストやXMLなど使いやすい構造に変換してくれる。</p></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：カンマ区切りのテキストを、リストに変換する出力パーサーを使う。</p>
+    <details class="code"><summary>カンマ区切り→リストに変換する（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: カンマ区切りのテキストを、リストに変換する出力パーサーを使う。</span>
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> CommaSeparatedListOutputParser
+parser = <span class="fn">CommaSeparatedListOutputParser</span>()
+items = parser.<span class="fn">invoke</span>(<span class="str">"apple, banana, cherry"</span>)</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { CommaSeparatedListOutputParser } <span class="kw">from</span> <span class="str">"@langchain/core/output_parsers"</span>;
+
+<span class="kw">const</span> parser = <span class="kw">new</span> <span class="fn">CommaSeparatedListOutputParser</span>();
+<span class="kw">await</span> parser.<span class="fn">invoke</span>(<span class="str">"apple, banana, cherry"</span>);</pre></details>
+
+    <details class="code"><summary>出力例（bash）</summary><pre><span class="cmt"># 出力（カンマ区切りの文字列が、リストに変換された）</span>
+[<span class="str">'apple'</span>, <span class="str">'banana'</span>, <span class="str">'cherry'</span>]</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>LangChainはCSV・XMLなど多様な出力パーサーを提供している。次は、これらをモデルやプロンプトと組み合わせる方法だ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：仕分け係のブロックを最後にカチッと付ける</h4>
+      <p>AIが「りんご, バナナ, さくらんぼ」とひとつながりの紙で返してきても、そのままでは次の作業で使いにくい。そこで出力口に<b>「仕分け係ブロック（出力パーサー）」</b>を取り付けます。この係は、紙をハサミで切って「りんご」「バナナ」「さくらんぼ」と3枚のカードに分けてくれます。しかも上流のブロックに「カンマ区切りで書いてね」とお願いまでしてくれる、気の利いた係です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>この項のまとめ</h4>
+      <ul>
+        <li>構造化出力なら、他のコードに渡せてアプリの一部に組み込める。</li>
+        <li>JSONは <code>with_structured_output</code>＋スキーマ（Pydantic / Zod）で確実に得られる。</li>
+        <li><code>with_structured_output</code> は「スキーマをLLMに渡す」＋「出力を検証する」の2役。</li>
+        <li>CSVやXMLは出力パーサーで。「形式を指示」＋「検証と解析」の2機能を持つ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.5 ===== -->
+<section id="s15">
+  <div class="sec-head"><div class="sec-num">1.5</div><div><h2>LLMアプリケーションの多くのピースを組み立てる</h2><span class="tag">部品をつなぐ</span></div></div>
+
+  <!-- 1.5.1 -->
+  <div class="card" id="s151">
+    <h3 class="blk">1.5.1　Runnableインターフェース</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>ここまでのコード例、全部 <code>invoke()</code> を使っていたことに気づいたかな。実は、モデルもプロンプトテンプレートも出力パーサーも、<b>共通のインターフェース</b>を持っているんだ。これが<span class="term" data-tip="すべての部品が共通で持つ同じ操作のしかた。invoke/batch/streamの3つの呼び方が全部品で使える。">Runnableインターフェース</span>だ。3つのメソッドがある。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>3つ？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>①<code>invoke()</code>——単一の入力を単一の出力に変換。②<code>batch()</code>——複数の入力を効率よく複数の出力に変換。③<code>stream()</code>——単一の入力を受け取り、生成され次第その一部をストリームとして返す。さらにリトライ・フォールバック・スキーマ検証も組み込まれていて、Pythonでは各メソッドに <code>asyncio</code> 版がある。だから、1つの部品で覚えたインターフェースが、他のすべてに適用できる。</div></div>
+    </div>
+
+    <h4 class="blk">3つの共通メソッド</h4>
+    <div class="grid3">
+      <div class="mini"><div class="ic">①</div><h4>invoke()</h4><p>単一の入力 → 単一の出力。いちばん基本の呼び方。</p><span class="pill">1個→1個</span></div>
+      <div class="mini"><div class="ic">②</div><h4>batch()</h4><p>複数の入力 → 効率よく複数の出力。まとめて処理。</p><span class="pill">まとめて</span></div>
+      <div class="mini"><div class="ic">③</div><h4>stream()</h4><p>単一の入力 → 生成され次第、少しずつ返す。</p><span class="pill">逐次</span></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：同じ <code>model</code> に対して invoke / batch / stream の3メソッドを使う。</p>
+    <details class="code"><summary>3つの呼び方を試す（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: 同じ model に対して invoke / batch / stream の3メソッドを使う。</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+model = <span class="fn">ChatOpenAI</span>()
+
+completion = model.<span class="fn">invoke</span>(<span class="str">'Hi there!'</span>)        <span class="cmt"># 単一入力→単一出力</span>
+<span class="cmt"># Hi!</span>
+
+completions = model.<span class="fn">batch</span>([<span class="str">'Hi there!'</span>, <span class="str">'Bye!'</span>])  <span class="cmt"># 複数入力→複数出力</span>
+<span class="cmt"># ['Hi!', 'See you!']</span>
+
+<span class="kw">for</span> token <span class="kw">in</span> model.<span class="fn">stream</span>(<span class="str">'Bye!'</span>):            <span class="cmt"># 単一入力→少しずつストリーム出力</span>
+    <span class="fn">print</span>(token)
+    <span class="cmt"># Good</span>
+    <span class="cmt"># bye</span>
+    <span class="cmt"># !</span></pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { ChatOpenAI } <span class="kw">from</span> <span class="str">"@langchain/openai"</span>;
+
+<span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">ChatOpenAI</span>();
+
+<span class="kw">const</span> completion = <span class="kw">await</span> model.<span class="fn">invoke</span>(<span class="str">"Hi there!"</span>);      <span class="cmt">// Hi!</span>
+<span class="kw">const</span> completions = <span class="kw">await</span> model.<span class="fn">batch</span>([<span class="str">"Hi there!"</span>, <span class="str">"Bye!"</span>]); <span class="cmt">// ['Hi!', 'See you!']</span>
+
+<span class="kw">for await</span> (<span class="kw">const</span> token <span class="kw">of</span> <span class="kw">await</span> model.<span class="fn">stream</span>(<span class="str">"Bye!"</span>)) {
+  console.<span class="fn">log</span>(token);  <span class="cmt">// Good / bye / !</span>
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>これらの部品は、2つの方法で組み合わせられる。①<b>命令型</b>——<code>model.invoke(...)</code> のように直接呼び出す。②<b>宣言型</b>——LCEL（LangChain Expression Language）を使う。表で違いを見よう。</div></div>
+    </div>
+
+    <h4 class="blk">表1-1　命令型構文と宣言型構文の主な違い</h4>
+    <table class="t">
+      <tr><th></th><th>命令型</th><th>宣言型（LCEL）</th></tr>
+      <tr><td>構文</td><td>PythonまたはJavaScript</td><td>LCEL</td></tr>
+      <tr><td>並列実行</td><td>Python: スレッド/コルーチン、JS: <code>Promise.all</code></td><td>自動</td></tr>
+      <tr><td>ストリーミング</td><td><code>yield</code> を使用</td><td>自動</td></tr>
+      <tr><td>非同期実行</td><td><code>async</code> 関数を使用</td><td>自動</td></tr>
+    </table>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：全ブロック共通の「差し込み口の形」</h4>
+      <p>この工房のすごさは、<b>どのブロックも差し込み口の形（操作のしかた）がまったく同じ</b>こと。差し込み方は3パターン——「カチッ1回（invoke）」「まとめてカチカチ（batch）」「少しずつスルスル（stream）」。一度この差し込み方を覚えれば、文章ブロックでも指示ブロックでも仕分けブロックでも、同じ手つきで扱えます。だから初めて触るブロックでも迷いません。</p>
+    </div>
+  </div>
+
+  <!-- 1.5.2 -->
+  <div class="card" id="s152">
+    <h3 class="blk">1.5.2　命令型コンポジション</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><span class="term" data-tip="部品を関数にまとめて、普通のプログラムとして手書きで組み合わせる方法。自由に細工できる。">命令型コンポジション</span>は、部品を関数やクラスにまとめて、普段通りにコードを書く手法だ。プロンプト・モデル・（必要なら出力パーサー）を組み合わせる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：テンプレートとモデルを1つの関数 <code>chatbot</code> にまとめる（<code>@chain</code> デコレーターが、その関数にRunnableインターフェースを付与する）。</p>
+    <details class="code"><summary>関数にまとめる（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: テンプレートとモデルを1つの関数 chatbot にまとめる。</span>
+<span class="cmt"># @chain デコレーターが、その関数に Runnable インターフェース（invoke等）を付与する。</span>
+<span class="kw">from</span> langchain_openai.chat_models <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> chain
+
+<span class="cmt"># 構成要素を定義する</span>
+template = ChatPromptTemplate.<span class="fn">from_messages</span>([
+    (<span class="str">'system'</span>, <span class="str">'あなたは親切なアシスタントです。'</span>),
+    (<span class="str">'human'</span>, <span class="str">'{question}'</span>),
+])
+
+model = <span class="fn">ChatOpenAI</span>()
+
+<span class="cmt"># それらを関数にまとめる</span>
+<span class="kw">@chain</span>
+<span class="kw">def</span> <span class="fn">chatbot</span>(values):
+    prompt = template.<span class="fn">invoke</span>(values)
+    <span class="kw">return</span> model.<span class="fn">invoke</span>(prompt)
+
+<span class="cmt"># 実行例</span>
+chatbot.<span class="fn">invoke</span>({<span class="str">"question"</span>: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>})</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { ChatOpenAI } <span class="kw">from</span> <span class="str">"@langchain/openai"</span>;
+<span class="kw">import</span> { ChatPromptTemplate } <span class="kw">from</span> <span class="str">"@langchain/core/prompts"</span>;
+<span class="kw">import</span> { RunnableLambda } <span class="kw">from</span> <span class="str">"@langchain/core/runnables"</span>;
+
+<span class="kw">const</span> template = ChatPromptTemplate.<span class="fn">fromMessages</span>([
+  [<span class="str">"system"</span>, <span class="str">"あなたは親切なアシスタントです。"</span>],
+  [<span class="str">"human"</span>, <span class="str">"{question}"</span>],
+]);
+
+<span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">ChatOpenAI</span>();
+
+<span class="cmt">// RunnableLambda が、定義した関数に Runnable インターフェースを付与する</span>
+<span class="kw">const</span> chatbot = RunnableLambda.<span class="fn">from</span>(<span class="kw">async</span> (values) =&gt; {
+  <span class="kw">const</span> prompt = <span class="kw">await</span> template.<span class="fn">invoke</span>(values);
+  <span class="kw">return await</span> model.<span class="fn">invoke</span>(prompt);
+});
+
+<span class="kw">await</span> chatbot.<span class="fn">invoke</span>({
+  question: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>,
+});</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>慣れ親しんだ構文で、関数内に自由にロジックを書ける。ストリーミングしたいなら、<code>yield</code> を使って書き換える。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：<code>model.stream</code> の結果を <code>yield</code> して、<code>chatbot</code> 自体をストリーム対応にする。</p>
+    <details class="code"><summary>ストリーム対応にする（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: model.stream の結果を yield して、chatbot 自体をストリーム対応にする。</span>
+<span class="kw">@chain</span>
+<span class="kw">def</span> <span class="fn">chatbot</span>(values):
+    prompt = template.<span class="fn">invoke</span>(values)
+    <span class="kw">for</span> token <span class="kw">in</span> model.<span class="fn">stream</span>(prompt):
+        <span class="kw">yield</span> token
+
+<span class="kw">for</span> part <span class="kw">in</span> chatbot.<span class="fn">stream</span>({<span class="str">"question"</span>: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>}):
+    <span class="fn">print</span>(part)</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>非同期にしたいなら <code>async def</code> と <code>ainvoke</code> に書き換える（JavaScriptは元々非同期前提だから、これはPythonだけ必要だ）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：自分の手で配線して、間に細工を入れる</h4>
+      <p>命令型は、ブロック同士を<b>自分の手で配線する</b>やり方です。「指示ブロックに値を入れて → 出てきた結果を文章ブロックに渡す」という配線を、自分の作業手順書（関数）として書きます。途中に「ここでチェックを入れる」「条件で分岐する」など好きな細工を挟めるのが強み。<code>@chain</code> という名札を付ければ、この手作り装置にも工房共通の差し込み口（invoke等）が付きます。</p>
+    </div>
+  </div>
+
+  <!-- 1.5.3 -->
+  <div class="card" id="s153">
+    <h3 class="blk">1.5.3　宣言型コンポジション（LCEL）</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><span class="term" data-tip="部品 | 部品 のように記号でつなぐだけで組み合わせる方法。自動でうまく実行してくれる。">LCEL（LangChain Expression Language）</span>は、部品を組み合わせる宣言型言語だ。自動並列化・ストリーミング・トレース・非同期をサポートして、最適化された実行計画にコンパイルしてくれる。さっきの例をLCELで書き直すと——</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">▼ このコードがやること：テンプレートとモデルを、パイプ演算子 <code>|</code> でつなぐだけ。</p>
+    <details class="code"><summary>パイプ | でつなぐ（Python）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: テンプレートとモデルを、パイプ演算子 | でつなぐだけ。</span>
+<span class="kw">from</span> langchain_openai.chat_models <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+template = ChatPromptTemplate.<span class="fn">from_messages</span>([
+    (<span class="str">'system'</span>, <span class="str">'あなたは親切なアシスタントです。'</span>),
+    (<span class="str">'human'</span>, <span class="str">'{question}'</span>),
+])
+
+model = <span class="fn">ChatOpenAI</span>()
+
+<span class="cmt"># | 演算子で組み合わせる</span>
+chatbot = template | model
+
+chatbot.<span class="fn">invoke</span>({<span class="str">"question"</span>: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>})</pre></details>
+
+    <details class="code"><summary>同じことを JavaScript で（JavaScript）</summary><pre><span class="cmt">// JavaScript</span>
+<span class="kw">import</span> { ChatOpenAI } <span class="kw">from</span> <span class="str">"@langchain/openai"</span>;
+<span class="kw">import</span> { ChatPromptTemplate } <span class="kw">from</span> <span class="str">"@langchain/core/prompts"</span>;
+
+<span class="kw">const</span> template = ChatPromptTemplate.<span class="fn">fromMessages</span>([
+  [<span class="str">"system"</span>, <span class="str">"あなたは親切なアシスタントです。"</span>],
+  [<span class="str">"human"</span>, <span class="str">"{question}"</span>],
+]);
+
+<span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">ChatOpenAI</span>();
+
+<span class="cmt">// .pipe() で組み合わせる</span>
+<span class="kw">const</span> chatbot = template.<span class="fn">pipe</span>(model);
+
+<span class="kw">await</span> chatbot.<span class="fn">invoke</span>({
+  question: <span class="str">"どのモデルプロバイダーがLLMを提供していますか？"</span>,
+});</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span><code>template | model</code> ……パイプでつなぐの、すっきりしてますね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>そう。重要なのは、命令型でもLCELでも、最後の行（<code>invoke</code>/<code>stream</code>/<code>batch</code> の呼び出し）は同じってこと。しかもLCELなら、ストリーミングの追加設定は一切いらない——<code>chatbot.stream(...)</code> を呼ぶだけで動く。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>どっちを使えばいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>命令型はカスタムロジックを多く書きたいとき、宣言型（LCEL）は既存部品を最小限のカスタマイズで組み立てたいとき、だ。場面で使い分けよう。</div></div>
+    </div>
+
+    <h4 class="blk">命令型 vs LCEL：どっちを使う？</h4>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔧</div><h4>命令型コンポジション</h4><p>関数（<code>@chain</code> / <code>RunnableLambda</code>）にまとめて、普通に書く。途中に自由なロジックを書ける。</p><span class="pill">カスタムロジックが多いとき</span></div>
+      <div class="mini"><div class="ic">🔗</div><h4>LCEL（宣言型）</h4><p><code>template | model</code> のようにパイプでつなぐ。自動で並列化・ストリーミング・最適化。</p><span class="pill">最小カスタマイズで組むとき</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🧱 たとえ話：レール式で「カチッ」とつなぐ</h4>
+      <p>LCELは、ブロックを<b>レールに沿ってカチッとつなぐ</b>やり方です。<code>指示ブロック | 文章ブロック</code> と書くだけで、間の配線は工房が自動でやってくれます。しかも「速く流す（並列化）」「少しずつ出す（ストリーミング）」といった最適化まで自動。手で配線する命令型に比べて細かい細工はしにくいけれど、<b>既製ブロックをサッと組むなら最速</b>です。どちらで組んでも、完成した装置の最後の差し込み口（invoke等）は同じなので安心です。</p>
+    </div>
+
+    <div class="lead"><b>要するに：</b>LangChainの部品（LLM/チャットモデル・プロンプトテンプレート・出力パーサー）は、すべて共通のRunnableインターフェース（invoke/batch/stream）を持つ。組み合わせ方は2つ——命令型（関数にまとめて普通に書く、カスタムロジック向き）とLCEL（<code>|</code> でつなぐ宣言型、最小カスタマイズで自動最適化）。</div>
+
+    <div class="summary">
+      <h4>この項のまとめ</h4>
+      <ul>
+        <li>すべての部品は共通のRunnableインターフェース：invoke（単一）・batch（複数）・stream（逐次）。リトライ・フォールバック等も組み込み。</li>
+        <li>命令型コンポジション：関数（<code>@chain</code>/<code>RunnableLambda</code>）にまとめて普通に書く。カスタムロジックを多く書きたいとき向き。</li>
+        <li>LCEL（宣言型）：<code>template | model</code> のようにパイプでつなぐ。自動並列化・ストリーミング・非同期。最小カスタマイズ向き。</li>
+        <li>どちらも最後の呼び出し方（invoke/stream/batch）は同じ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 1.6 ===== -->
+<section id="s16">
+  <div class="sec-head"><div class="sec-num">1.6</div><div><h2>まとめ</h2><span class="tag">この章の総括</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>この章のまとめだ。LLMアプリは「LLMによる予測＋プロンプト指示＋（任意の）出力パーサー」からなる<b>チェーン</b>だ。すべてのLangChainコンポーネントは <code>invoke()</code>・<code>stream()</code>・<code>batch()</code> を備えた共通インターフェースを共有する。これらを直接呼んで命令的に組み合わせることも、LCELで宣言的に構成することもできる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>命令型はカスタムロジック向き、宣言型は最小カスタマイズ向き、でしたね。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>その通り。次の2章は「RAGによるデータのインデックス化」だ。AIチャットボットに外部データを<b>コンテキスト</b>として渡して、自分のデータと「チャット」できるアプリを作っていくよ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>0章で出たRAGですね！楽しみです。</div></div>
+    </div>
+
+    <h3 class="blk">LLMアプリ＝チェーン（部品の連なり）</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>プロンプト指示</h4><p>テンプレートで、AIへの指示文を組み立てる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>LLMによる予測</h4><p>LLM／チャットモデルが、指示に沿って答えを生成する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>（任意の）出力パーサー</h4><p>必要なら、出力をJSONやリストなど使いやすい形に整える。</p><div class="branch ok">この連なり全体が「チェーン」。命令型でもLCELでも組める。</div></div></div>
+    </div>
+
+    <div class="lead"><b>要するに：</b>LLMアプリは「予測＋プロンプト＋出力パーサー」のチェーン。すべての部品が共通インターフェース（invoke/stream/batch）を持ち、命令型（カスタム向き）とLCEL（最小カスタマイズ向き）で組み合わせられる。次章はRAG。</div>
+
+    <div class="summary">
+      <h4>この項のまとめ</h4>
+      <ul>
+        <li>LLMアプリ＝LLMの予測＋プロンプト指示＋（任意の）出力パーサーのチェーン。</li>
+        <li>全コンポーネントが共通インターフェース（invoke/stream/batch）を共有。</li>
+        <li>命令型（カスタムロジック向き）とLCEL（最小カスタマイズ向き）を使い分ける。</li>
+        <li>次章は外部データをコンテキストとして渡すRAG。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが今日の5ポイントを確認</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>今日のポイントです。1つ目は「LangChainを使う理由は、組み込みパターン・差し替え可能なコンポーネント・オーケストレーション」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>OpenAIとAnthropicを同じ会話で使える、が象徴的だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>2つ目は「LLMインターフェース（文字列）とチャットモデルインターフェース（system/user/assistantの役割）の2種類がある」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>SystemMessageでスタイルを設定できる、も。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>3つ目は「プロンプトテンプレートで静的テキストとプレースホルダーを分けて、プロンプトを再利用できる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><code>{context}</code> <code>{question}</code> のプレースホルダーだね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>4つ目は「with_structured_output や出力パーサーで、JSON・CSVなど構造化された出力を得られる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>スキーマで検証してくれる、が安心だ。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>5つ目は「すべての部品は共通のRunnableインターフェース（invoke/batch/stream）で、命令型とLCELで組み合わせられる」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>完璧だ。次はRAGに進もう。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🧱 たとえ話：今日のロボット組み立て、5つの工程を振り返る</h4>
+      <p>①工房選びの理由（規格・差し替え・運用支援）、②2つの差し込み口（シンプル口と会話口）、③穴あき指示カード（テンプレート）、④仕切り箱と仕分け係（構造化出力）、⑤全ブロック共通の差し込み口（Runnable）と2つの組み立て方（手配線とレール式）。これでロボット作りの基本動作はマスターです。次回は、ロボットに「外部の資料を見ながら答える力」を付けます（RAG）。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 理解度チェック ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック</h2><span class="tag">自分の言葉で答えてみよう</span></div></div>
+  <div class="card">
+    <p class="lead">読み終わったあと、自分の言葉で答えてみてください。スラスラ書ける問題は理解できています。<b>詰まる問題こそが「実は分かっていなかった部分」</b>です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>なぜLangChainか</div>
+      <p style="font-size:14px;margin:0">LLMプロバイダーのAPIを直接叩けるのに、なぜLangChainを使う価値があるのですか。理由を挙げて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">理由は3つ。①組み込みパターン：CoTやツール呼び出しなどよく使うパターンのリファレンス実装が同梱され、素早く試せる。②置き換え可能なコンポーネント：LLM・チャットモデル・出力パーサーなどが同一仕様なので、コードを書き直さずに差し替えられ、プロバイダーロックインを避けられる（OpenAIとAnthropicを同じ会話で使うことすら可能）。③オーケストレーション：可観測性のためのコールバック、共通インターフェース、長時間実行の中断・再開・再試行。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 組み込みパターン（リファレンス実装）に触れている<br>□ 差し替え可能なコンポーネント（プロバイダーロックイン回避）に触れている<br>□ オーケストレーション（共通インターフェース等）に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>2つのインターフェース</div>
+      <p style="font-size:14px;margin:0">LLMインターフェースとチャットモデルインターフェースの違いを説明してください。チャットモデルの3つの役割（ロール）も挙げてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">LLMインターフェースは、文字列プロンプトを入力に受け取り、予測結果（テキスト）を返すだけのシンプルなもの。チャットモデルインターフェースは、ユーザーとモデルの双方向の対話ができ、メッセージをsystem（モデルへの指示・枠組み）・user（ユーザーの質問やコンテンツ）・assistant（モデルが生成したレスポンス）の3つの役割に分けて扱う。SystemMessageで一貫した応答スタイルをあらかじめ設定できる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ LLM＝文字列入力→予測、チャット＝役割つきの双方向対話、の違いに触れている<br>□ system/user/assistantの3役割を挙げている<br>□ SystemMessageで応答スタイルを設定できる、に触れている（できれば）</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>プロンプトテンプレート</div>
+      <p style="font-size:14px;margin:0">プロンプトテンプレートを使うと何が嬉しいのですか。<code>{context}</code> のようなプレースホルダーの役割とともに説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">プロンプトテンプレートを使うと、プロンプトの「静的なテキスト（毎回同じ部分）」と「送信ごとに差し替える部分」を分けて書ける。<code>{context}</code> や <code>{question}</code> のような波括弧で囲んだ部分がプレースホルダーで、<code>invoke</code> に渡した値で実行時に置換される。これにより、同じプロンプトを毎回ベタ書きせずに再利用でき、コンテキストや質問だけを動的に変えられる。テンプレートは「複数の具体的なプロンプトを生成するレシピ」のようなもの。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 静的テキストとプレースホルダーを分けて書ける、に触れている<br>□ プレースホルダーが実行時に値で置換される、に触れている<br>□ プロンプトを再利用できる、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>構造化出力</div>
+      <p style="font-size:14px;margin:0">なぜLLMにJSONなどの構造化された出力をさせたいのですか。<code>with_structured_output</code> は何をしてくれますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">プレーンテキストではなくJSONなど構造化された形式で出力させると、その出力を他のコードにそのまま渡せて、フロントエンドへの送信やDBへの保存ができ、LLMを大規模アプリの一部として組み込める。<code>with_structured_output</code> は、定義したスキーマ（PythonはPydantic、JavaScriptはZod）をJSON Schemaに変換してLLMに渡し、さらに返ってきた出力を同じスキーマで検証する。これにより、LLMがスキーマ通りの形式を確実に返してくれる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 構造化出力は他のコードに渡せてアプリに組み込める、に触れている<br>□ スキーマをLLMに渡す、に触れている<br>□ 返ってきた出力をスキーマで検証する、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>命令型とLCEL</div>
+      <p style="font-size:14px;margin:0">部品を組み合わせる「命令型」と「LCEL（宣言型）」の違いを説明し、それぞれどんなときに向くかを述べてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">命令型は、部品を関数（<code>@chain</code>やRunnableLambda）にまとめて、普段通りのPython/JavaScript構文で書く方法。関数内に自由にロジックを書けるので、カスタムロジックを多く書きたいときに向く。LCEL（宣言型）は、<code>template | model</code> のようにパイプ演算子で部品をつなぐ方法で、自動並列化・ストリーミング・非同期をサポートし、最適化された実行計画にコンパイルされる。既存の部品を最小限のカスタマイズで組み立てたいときに向く。どちらも最後の呼び出し方（invoke/stream/batch）は同じ。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 命令型＝関数にまとめて普通に書く、カスタムロジック向き、に触れている<br>□ LCEL＝パイプでつなぐ宣言型、自動最適化、最小カスタマイズ向き、に触れている<br>□ どちらも呼び出し方は共通、に触れている（できれば）</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして定着</span></div></div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">🚀</div><h4>最初の呼び出しを動かす</h4><p>セットアップを済ませ、<code>ChatOpenAI()</code> に「フランスの首都は？」を投げて返答を受け取ってみましょう。LangChainの最初の一歩です。</p></div>
+      <div class="mini"><div class="ic">🗣️</div><h4>SystemMessageで遊ぶ</h4><p>SystemMessageを「関西弁で答えて」「絵文字を付けて」などに変えて、同じ質問への出力がどう変わるか観察しましょう。</p></div>
+      <div class="mini"><div class="ic">🧩</div><h4>テンプレートを作る</h4><p><code>{name}</code> のようなプレースホルダーを含む自分のプロンプトテンプレートを作り、複数の値で <code>invoke</code> して再利用を体験しましょう。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>構造化出力を試す</h4><p>Pydantic（またはZod）で簡単なスキーマ（例：name・age）を定義し、<code>with_structured_output</code> でJSONを得てみましょう。</p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>LCELと命令型を書き比べる</h4><p>同じチャットボットを「命令型（関数）」と「LCEL（<code>|</code>）」の両方で書いて、最後の呼び出しが同じことを確かめましょう。</p></div>
+      <div class="mini"><div class="ic">📖</div><h4>公式ドキュメントで部品を探す</h4><p>LangChainの概念ドキュメントで、Runnable・Prompt templates・Output parsersのページを眺めましょう。</p></div>
+    </div>
+    <div class="analogy">
+      <h4>🧱 たとえ話：自分の作業台で、ブロックを1個ずつ触ってみる</h4>
+      <p>本を読むだけでは、ブロックの手触りは分かりません。実際に作業台に1個ずつ並べて、差し込んだり、指示カードを差し替えたり、仕切り箱を付けたりしてみましょう。手が覚えれば、次のRAGの章でロボットに「資料を見る力」を付けるのもスムーズです。</p>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ／ 第1章「LangChainによるLLMの基礎」 ― プログラミング未経験者向け図解版　🧱 たとえ話はすべて「ブロック組み立て工房」で統一</p>
+
+</div>
+</body>
+</html>

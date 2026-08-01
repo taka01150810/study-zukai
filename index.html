@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study 図解 — 技術書のやさしい図解ノート</title>
+<style>
+:root{
+  --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+  --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+  color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+  line-height:1.7; letter-spacing:.01em; min-height:100vh;}
+.wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+  background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+  position:relative; overflow:hidden;}
+header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+  background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+.chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+  background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+header.hero h1{margin:.1em 0 .3em; font-size:32px; line-height:1.35}
+header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+section.book{margin-top:44px}
+.sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+.sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 14px; border-radius:14px;
+  display:grid; place-items:center; font-weight:800; font-size:14px; color:#0c0f1e;
+  background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+.sec-head h2{margin:0; font-size:23px}
+.sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px}
+a.card{display:flex; gap:14px; align-items:flex-start; text-decoration:none;
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:16px 18px; box-shadow:var(--shadow); transition:.15s}
+a.card:hover{border-color:var(--accent); transform:translateY(-2px)}
+a.card .no{flex:0 0 auto; min-width:34px; height:34px; border-radius:10px; display:grid;
+  place-items:center; font-size:13px; font-weight:700; color:#c5d0ff;
+  background:#6c8cff1f; border:1px solid #6c8cff44}
+a.card .t{color:var(--ink); font-size:14.5px; line-height:1.5}
+footer{margin-top:64px; padding-top:24px; border-top:1px solid var(--line);
+  color:var(--sub); font-size:13px}
+footer a{color:var(--accent2)}
+@media(max-width:680px){
+  header.hero{padding:26px 20px}
+  header.hero h1{font-size:25px}
+  .wrap{padding:20px 14px 80px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<span class="chip">技術書の図解ノート</span>
+<h1>Study 図解</h1>
+<p>読んだ技術書の内容を、専門用語を極力使わずに図で読める形にまとめたノートです。現在 4 冊 / 全 36 章。各ページは単体で完結した HTML です。</p>
+</header>
+<section class="book">
+<div class="sec-head">
+<div class="sec-num">11章</div>
+<div><h2>詳解 Terraform 第3版</h2><span class="tag">Infrastructure as Code</span></div>
+</div>
+<div class="grid">
+<a class="card" href="terraform/00.html"><span class="no">序</span><span class="t">はじめに</span></a>
+<a class="card" href="terraform/01.html"><span class="no">1</span><span class="t">なぜTerraformを使うのか</span></a>
+<a class="card" href="terraform/02.html"><span class="no">2</span><span class="t">Terraformをはじめよう</span></a>
+<a class="card" href="terraform/03.html"><span class="no">3</span><span class="t">Terraformステートを管理する</span></a>
+<a class="card" href="terraform/04.html"><span class="no">4</span><span class="t">モジュールで再利用可能なインフラを作る</span></a>
+<a class="card" href="terraform/05.html"><span class="no">5</span><span class="t">Terraformを使うためのヒントとコツ：ループ、条件分岐、デプロイ、その他つまずきポイント</span></a>
+<a class="card" href="terraform/06.html"><span class="no">6</span><span class="t">シークレットを管理する</span></a>
+<a class="card" href="terraform/07.html"><span class="no">7</span><span class="t">複数のプロバイダを使う</span></a>
+<a class="card" href="terraform/08.html"><span class="no">8</span><span class="t">本番レベルのTerraformコード</span></a>
+<a class="card" href="terraform/09.html"><span class="no">9</span><span class="t">Terraformのコードをテストする</span></a>
+<a class="card" href="terraform/10.html"><span class="no">10</span><span class="t">チームでTerraformを使う</span></a>
+</div>
+</section>
+<section class="book">
+<div class="sec-head">
+<div class="sec-num">12章</div>
+<div><h2>初めての LangChain</h2><span class="tag">LLM アプリケーション開発</span></div>
+</div>
+<div class="grid">
+<a class="card" href="langchain/00.html"><span class="no">序</span><span class="t">はじめに</span></a>
+<a class="card" href="langchain/01.html"><span class="no">1</span><span class="t">LangChainによるLLMの基礎</span></a>
+<a class="card" href="langchain/02.html"><span class="no">2</span><span class="t">RAGによるデータのインデックス化</span></a>
+<a class="card" href="langchain/03.html"><span class="no">3</span><span class="t">RAGによるデータとのチャット</span></a>
+<a class="card" href="langchain/04.html"><span class="no">4</span><span class="t">LangGraphを使ってチャットボットにメモリを追加する</span></a>
+<a class="card" href="langchain/05.html"><span class="no">5</span><span class="t">LangGraphによる認知アーキテクチャ</span></a>
+<a class="card" href="langchain/06.html"><span class="no">6</span><span class="t">エージェントアーキテクチャの基本</span></a>
+<a class="card" href="langchain/07.html"><span class="no">7</span><span class="t">エージェントアーキテクチャの拡張</span></a>
+<a class="card" href="langchain/08.html"><span class="no">8</span><span class="t">LLMを最大限に活用するパターン</span></a>
+<a class="card" href="langchain/09.html"><span class="no">9</span><span class="t">AIアプリケーションのデプロイ</span></a>
+<a class="card" href="langchain/10.html"><span class="no">10</span><span class="t">テスト評価、モニタリング、継続的改善</span></a>
+<a class="card" href="langchain/11.html"><span class="no">11</span><span class="t">LLMを使って構築する</span></a>
+</div>
+</section>
+<section class="book">
+<div class="sec-head">
+<div class="sec-num">12章</div>
+<div><h2>データ指向アプリケーションデザイン</h2><span class="tag">分散システムとデータ基盤</span></div>
+</div>
+<div class="grid">
+<a class="card" href="ddia/01.html"><span class="no">1</span><span class="t">信頼性、スケーラビリティ、メンテナンス性に優れたアプリケーション</span></a>
+<a class="card" href="ddia/02.html"><span class="no">2</span><span class="t">データモデルとクエリ言語</span></a>
+<a class="card" href="ddia/03.html"><span class="no">3</span><span class="t">ストレージと抽出</span></a>
+<a class="card" href="ddia/04.html"><span class="no">4</span><span class="t">エンコーディングと進化</span></a>
+<a class="card" href="ddia/05.html"><span class="no">5</span><span class="t">レプリケーション</span></a>
+<a class="card" href="ddia/06.html"><span class="no">6</span><span class="t">パーティショニング</span></a>
+<a class="card" href="ddia/07.html"><span class="no">7</span><span class="t">トランザクション</span></a>
+<a class="card" href="ddia/08.html"><span class="no">8</span><span class="t">分散システムの問題</span></a>
+<a class="card" href="ddia/09.html"><span class="no">9</span><span class="t">一貫性と合意</span></a>
+<a class="card" href="ddia/10.html"><span class="no">10</span><span class="t">バッチ処理</span></a>
+<a class="card" href="ddia/11.html"><span class="no">11</span><span class="t">ストリーム処理</span></a>
+<a class="card" href="ddia/12.html"><span class="no">12</span><span class="t">データシステムの将来</span></a>
+</div>
+</section>
+<section class="book">
+<div class="sec-head">
+<div class="sec-num">1章</div>
+<div><h2>FastAPI</h2><span class="tag">Python の Web API フレームワーク</span></div>
+</div>
+<div class="grid">
+<a class="card" href="fastapi/00.html"><span class="no">序</span><span class="t">何が新しいのか？</span></a>
+</div>
+</section>
+<footer>
+書籍の内容そのものではなく、学習のために自分の言葉で要約・図解したノートです。詳細は各書籍の原典を参照してください。 / <a href="https://github.com/taka01150810/study-zukai">GitHub</a>
+</footer>
+</div>
+</body>
+</html>

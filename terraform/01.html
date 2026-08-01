@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1章 なぜTerraformを使うのか — やさしい図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">詳解 Terraform ／ 第1章</span>
+  <h1>なぜTerraformを使うのか<br>― 手作業の大工から、設計図で街を建てる工房へ</h1>
+  <p>新人「ハル」が街づくり工房に弟子入りし、棟梁から「なぜ手作業ではなく"設計図に基づく街づくり"を目指すのか」を学びます。インフラ自動化の道具を仲間と並べて見比べ、その中でTerraformがどこに座るのかを知る章です。</p>
+  <div class="badge-row">
+    <span class="badge">🔰 プログラミング未経験OK</span>
+    <span class="badge">💬 棟梁×ハルの対話で進む</span>
+    <span class="badge">🏗️ たとえは「街づくり工房」で統一</span>
+    <span class="badge">🟧 コードは読み飛ばしOK</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（全セクション）</h2>
+  <a href="#intro">🎬 この章のあらすじ・要するに</a>
+  <a href="#deliver">ソフトウェアは「届けて」はじめて完成</a>
+  <a href="#s11">1.1 DevOpsとは何か</a>
+  <a href="#s12">1.2 Infrastructure as Codeとは何か</a>
+  <a class="sub" href="#s121">1.2.1 アドホックなスクリプト</a>
+  <a class="sub" href="#s122">1.2.2 設定管理ツール</a>
+  <a class="sub" href="#s123">1.2.3 サーバテンプレーティングツール</a>
+  <a class="sub" href="#s124">1.2.4 オーケストレーションツール</a>
+  <a class="sub" href="#s125">1.2.5 プロビジョニングツール</a>
+  <a href="#s13">1.3 IaCの利点とは</a>
+  <a href="#s14">1.4 Terraformはどう動くのか</a>
+  <a href="#s15">1.5 他のIaCツールとの違い</a>
+  <a class="sub" href="#s151">1.5.1 設定管理かプロビジョニングか</a>
+  <a class="sub" href="#s152">1.5.2 ミュータブルかイミュータブルか</a>
+  <a class="sub" href="#s153">1.5.3 手続き型か宣言型か</a>
+  <a class="sub" href="#s154">1.5.4 汎用言語かDSLか</a>
+  <a class="sub" href="#s155">1.5.5 マスタかマスタレスか</a>
+  <a class="sub" href="#s156">1.5.6 エージェントかエージェントレスか</a>
+  <a class="sub" href="#s157">1.5.7 有償か無償か</a>
+  <a class="sub" href="#s158">1.5.8 コミュニティの大小</a>
+  <a class="sub" href="#s159">1.5.9 成熟か最先端か</a>
+  <a class="sub" href="#s1510">1.5.10 複数ツールの組み合わせ</a>
+  <a href="#s16">1.6 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コード。開かなくても本文と図で分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルと棟梁の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🏗️</div><div><b>たとえ話は「街づくり工房」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「街づくり・建築の工房」</b>に置きかえて説明します。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、街づくりのたとえでやさしくまとめました。本文中の点線つきの言葉にカーソルを乗せても同じ説明が出ます。</p>
+  <div class="gl">
+    <div class="item"><div class="w">インフラ <span>infrastructure</span></div><p>サーバ・データベース・ネットワークなど、ソフトを動かす土台のこと。街でいう道路・水道・土地。</p></div>
+    <div class="item"><div class="w">IaC <span>Infrastructure as Code</span></div><p>インフラを手作業ではなく「設計図（コード）」として書いて建てる考え方。手の勘を図面に落とす。</p></div>
+    <div class="item"><div class="w">DevOps <span>デブオプス</span></div><p>作る人（Dev）と土台を守る人（Ops）が協力し、ソフトを効率よく届けるための考え方の集まり。</p></div>
+    <div class="item"><div class="w">プロビジョニング <span>provisioning</span></div><p>土地を造成してサーバそのものや設備を用意すること。Terraformの担当。街の不動産デベロッパー。</p></div>
+    <div class="item"><div class="w">設定管理 <span>configuration管理</span></div><p>すでに建ったサーバの中身を整える道具。Chef/Puppet/Ansible。建った家の内装職人。</p></div>
+    <div class="item"><div class="w">サーバテンプレート <span>server templating</span></div><p>全部入りの「型（イメージ）」を作って量産する道具。Docker/Packer/Vagrant。モデルハウスの型。</p></div>
+    <div class="item"><div class="w">オーケストレーション <span>orchestration</span></div><p>たくさんのサーバ/コンテナを束ねて指揮する道具。Kubernetes。大勢の職人を束ねる総監督。</p></div>
+    <div class="item"><div class="w">クラウド <span>cloud</span></div><p>AWS・Azure・GCPなど、土地（サーバ）を貸してくれる大地主。自前で機械を持たずに借りる。</p></div>
+    <div class="item"><div class="w">プロバイダ <span>provider</span></div><p>AWSなどクラウドの提供業者。Terraformはその「入口（API）」を代わりに呼ぶ。</p></div>
+    <div class="item"><div class="w">冪等性 <span>idempotence</span></div><p>何度実行しても結果が同じになる性質。何度押しても安全なボタン。</p></div>
+    <div class="item"><div class="w">設定ドリフト <span>configuration drift</span></div><p>サーバの設定が一台ずつ少しずつズレていくこと。改築を重ねて家がバラバラになる。</p></div>
+    <div class="item"><div class="w">イミュータブル <span>immutable</span></div><p>一度建てたら変えない方式。更新は新しい型で建て直す。改築せず建て替え。</p></div>
+    <div class="item"><div class="w">宣言型 <span>declarative</span></div><p>「完成形」だけを書き、やり方は道具に任せる。完成写真を渡す。Terraform流。</p></div>
+    <div class="item"><div class="w">手続き型 <span>procedural</span></div><p>「一手一手の手順」を書く。料理レシピのように手順を並べる。Chef/Ansible流。</p></div>
+    <div class="item"><div class="w">マスタ／エージェント <span>master / agent</span></div><p>全体を仕切る親方サーバと、各サーバに常駐する代理人。Terraformはどちらも要らない（マスタレス・エージェントレス）。</p></div>
+    <div class="item"><div class="w">API <span>エーピーアイ</span></div><p>クラウドへの「注文の入口」。Terraformはここに発注して土台を建ててもらう。</p></div>
+  </div>
+</div>
+
+<!-- イントロ -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><h2>この章のあらすじ・要するに<span class="tag">グラウンドワークス工房に新人ハルがやってきた</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>この章で一番伝えたいのは「インフラ（コンピュータの土台）は、職人の手と勘で組むのではなく、設計図（コード）として書いて、その図面から自動で建てるべきだ」ということ。そして、そういう"設計図から建てる道具"はたくさんある中で、なぜTerraformという一本を選ぶのかを、仲間の道具と並べて見比べていきます。</p>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：工房に弟子入りした初日</h4>
+      <p>グラウンドワークス工房に、まっさらな新人「ハル」がやってきました。棟梁はまず道具箱を開ける前に、「そもそも、なぜ私たちは手作業ではなく"設計図に基づく街づくり"を目指すのか」を語りはじめます。一本ずつ手で柱を打っていた昔の大工と、設計図一枚で街ごと建て直せる近代建築。ハルはその違いを通して、Terraformという道具がどこに座っているのかを学んでいきます。</p>
+    </div>
+    <div class="why">
+      <h4>📌 なぜこれが必要か / これを知ると何ができるか</h4>
+      <ul>
+        <li>インフラを手作業で組むと「会社が成長すると壊れる」問題（速くならず、事故が増える）を理解できる。</li>
+        <li>自動化の道具が「設定管理／サーバテンプレーティング／オーケストレーション／プロビジョニング」に分かれることを知ると、道具選びで迷わなくなる。</li>
+        <li>Terraformを覚えるだけでなく「なぜそれを選ぶか・他とどう違うか」という"選ぶ目"が身につく。</li>
+        <li>自分の現場に合った道具を根拠を持って選び、「宣言型」「イミュータブル」「マスタレス」を人に説明できるようになる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 届けて完成 -->
+<section id="deliver">
+  <div class="sec-head"><div class="sec-num">📦</div><h2>ソフトウェアは「届けて」はじめて完成<span class="tag">建てて終わりではなく、住む人に引き渡すまでが仕事</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>ソフトウェアは作るだけでなく、お客さんが使える状態にして「届ける」までが仕事。Terraformはその「届ける」工程で土台を作る道具。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>棟梁、僕、家を建てる勉強をしに来たんですけど、ここってコンピュータの会社なんですよね。なんで建築のたとえばっかりなんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>ハハ、いい入りだね。コンピュータの土台づくりは街づくりや建築にそっくりなんだ。家は「設計して終わり」でも「組み上げて終わり」でもない。住む人が安心して暮らせるよう引き渡してはじめて完成だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>えっ、建ったら完成じゃないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>そこが落とし穴だ。ソフトでいうと、コードが自分のパソコンで動いても、テストが通っても、上司が「出していいよ」と言っても、まだ完成じゃない。お客さんが実際に使える状態にして「届ける」までが仕事。これを<span class="term" data-tip="software delivery。ソフトをお客さんが使える状態にして届けること。">ソフトウェアデリバリ</span>と言う。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>本番のサーバで動かしたり、人が殺到しても倒れないよう補強したり、攻撃者から守ったり。その"全部の作業"がデリバリ。Terraformはその中の「土台や街そのものを作る部分」を受け持つんだ。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：引き渡しまでが大工の仕事</h4>
+      <p>家は柱を組んだ瞬間が完成ではありません。雨漏りしないか、地震に耐えるか、泥棒に入られないかを整え、住む人が安心して暮らせる状態にして鍵を渡してはじめて仕事が終わります。Terraformは、その家を建てる土地の造成や基礎工事を引き受ける道具です。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>コードが手元で動いても、テストが通っても完成ではない。</li>
+        <li>お客さんが使える状態にして届けて、はじめて完成。</li>
+        <li>届ける作業＝本番で動かす・障害に強くする・攻撃から守る、など全部。</li>
+        <li>Terraformは届ける工程の中で土台（インフラ）を建てる道具。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 1.1 DevOps -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-num">1.1</div><h2>DevOpsとは何か<span class="tag">作る職人と土台を守る職人が、協力するようになった話</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>DevOpsは「DevとOpsが協力してソフトを届けるのを効率化する考え方の集まり」。その柱の一つ「自動化」が、コードで土台を管理するという発想につながる。</p>
+
+    <h3 class="blk">昔の現場：DevとOpsを分けたら、成長すると壊れた</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>「DevOps」って言葉、全然わかりません！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>昔はコンピュータの会社を作るのに、自分でハードウェア（物理の機械）も用意した。棚を組んで機械を置き、ケーブルを繋ぎ、空調や予備電源まで作る。土地を買って基礎を打つ土木作業さ。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>そこで人を二手に分けた。中身を作る<span class="term" data-tip="Developers。ソフトを書く人たち。">開発者（Dev）</span>と、機械や土台を見る<span class="term" data-tip="Operations。ハードを管理する人たち。">運用者（Ops）</span>だ。家具職人と、土地と基礎を守る土方さんを分けたようなものだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>役割を分けたら、うまくいきそうですけど？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>しばらくは回るが、会社が大きくなると壊れる。Devが作ったものを「壁の向こうに投げる」ようにOpsへ渡し、Opsが手作業で据え付ける。手作業だからサーバが増えるほど遅く、苦しく、結果が読めない。人だからミスもする。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>すると一台ごとに少しずつ違う機械が生まれる。雪の結晶になぞらえて<span class="term" data-tip="snowflake servers。一つ一つ形の違うサーバ。">スノーフレークサーバ</span>、そのズレを<span class="term" data-tip="configuration drift。設定が少しずつ流されてズレていくこと。">設定ドリフト</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>一軒ずつ微妙に違う家ができちゃう、みたいな？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>その通り。不具合が増え、開発者は「俺の作業場では動いたんだけどなあ」と肩をすくめる。障害や止まる時間が増え、疲れたOpsは引き渡しを週1、月1、半年に1回と減らす。半年ぶりの引き渡しでは図面がぶつかり合う大混乱（マージコンフリクト）になり、組織がタコツボ（サイロ化）になる。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：投げ渡しの現場</h4>
+      <p>設計職人が図面を「壁の向こうに放り投げ」、土方さんが手作業で基礎を打つ。サーバが増えるほど手が回らず、一軒ごとに微妙に違う家（スノーフレークサーバ）が建ち、改修を重ねるほどズレ（設定ドリフト）が広がる。やがて誰も全体を把握できなくなり、現場は崩壊します。</p>
+    </div>
+
+    <h3 class="blk">クラウドの登場で、DevもOpsもコードを書くようになった</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>大きな変化が起きた。自前の土地（データセンタ）の代わりに、土地を貸す大地主＝<span class="term" data-tip="cloud。サーバを貸してくれる業者。AWS/Azure/GCPなど。">クラウド</span>を使うようになった。AWS・Azure・GCPだ。Opsはケーブルを挿す代わりに、Chef・Puppet・Terraform・Docker・Kubernetesといった道具＝コードを書くようになった。土方さんが図面を書く側に回ったんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>じゃあDevとOpsの区別もあいまいに？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>両方ともソフトを書く仕事になり、垣根が低くなった。役割は分かれていても、もっと協力すべきなのは明らか。この協力の流れが<span class="term" data-tip="DevとOpsをくっつけた造語。協力してソフトを効率的に届ける考え方。">DevOps</span>の始まりだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>DevOpsって、結局どういう意味？役職？技術の名前？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>どれでもない。進め方・考え方・技の集まりだ。この本ではこう言う――「DevOpsの目的は、ソフトを届けるのを今までよりずっと効率的にすること」。図面を絶えず少しずつ合わせ続け、1日に何度でも引き渡せるようにし、自分で立ち直る丈夫な建物を作る。</div></div>
+    </div>
+
+    <h3 class="blk">本当に効くの？ ― 実例の数字</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🛍️</div><h4>Nordstrom</h4><p>月に出せる機能が<span class="up">+100%</span>、不具合<span class="up">-50%</span>、リードタイム<span class="up">-60%</span>、本番障害<span class="up">-60〜90%</span>。</p><span class="pill">小売</span></div>
+      <div class="mini"><div class="ic">🖨️</div><h4>HP LaserJet</h4><p>開発者が新機能に使える時間が<span class="up">5%→40%</span>、開発費<span class="up">-40%</span>。</p><span class="pill">プリンタ部門</span></div>
+      <div class="mini"><div class="ic">🛒</div><h4>Etsy</h4><p>障害だらけだったのを大幅に減らしつつ、1日のデプロイを<span class="up">25回→50回</span>に。</p><span class="pill">EC</span></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin-top:14px"><span class="term" data-tip="deploy。建物を本番に建てて稼働させること。">デプロイ</span>＝建物を本番に建てて稼働させること。</p>
+
+    <h3 class="blk">DevOpsの4つの柱「CAMS」</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🤝</div><h4>Culture（文化）</h4><p>チームが協力し合う文化。</p></div>
+      <div class="mini"><div class="ic">⚙️</div><h4>Automation（自動化）</h4><p>手作業でなくコードで管理。<b>本書はここに注目</b>。</p><span class="pill">→ Infrastructure as Code</span></div>
+      <div class="mini"><div class="ic">📏</div><h4>Measurement（計測）</h4><p>結果を数字で測る。</p></div>
+      <div class="mini"><div class="ic">📢</div><h4>Share（共有）</h4><p>知識や成果を分かち合う。</p></div>
+    </div>
+
+    <div class="why">
+      <h4>📌 なぜこれが必要か</h4>
+      <ul>
+        <li>手作業の運用がなぜ「会社が大きくなると壊れるか」を理解できる。</li>
+        <li>スノーフレークサーバや設定ドリフトという、現場で実際に起きる病気の名前と原因を説明できる。</li>
+        <li>なぜ自動化（コード化）が次の話につながるのか、流れがつかめる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>昔はDev（作る人）とOps（土台を守る人）が分かれ、引き渡しは手作業だった。</li>
+        <li>手作業は会社が大きくなるほど遅く・危険になり、スノーフレークサーバや設定ドリフトを生む。</li>
+        <li>クラウドの登場でOpsもコードを書くようになり、垣根が下がった＝DevOpsの始まり。</li>
+        <li>DevOpsは役職でも技術でもなく、ソフトを効率的に届けるための考え方の集まり。</li>
+        <li>4つの価値CAMS（文化・自動化・計測・共有）のうち、本書は「自動化」に注目する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 1.2 IaC -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-num">1.2</div><h2>Infrastructure as Codeとは何か<span class="tag">手の勘を、誰でも同じに建てられる設計図に</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>IaC（アイエーシー）は「インフラを手作業ではなくコード（設計図）として書いて建てる」考え方。その道具は5つの仲間に分かれる。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>インフラストラクチャ アズ コード、長いです。要するに何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span><span class="term" data-tip="infrastructure。サーバや土台などの基盤。">インフラ</span>を定義し・建て・更新し・取り壊すために、コードを書いて実行する考え方だ。相手が物理の機械でも、全作業を「ソフトとして扱う」と頭を切り替える。サーバ・DB・ネットワーク・設定・説明書・テスト・手順まで、ほぼ全部をコードにできる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>大工さんが、家を建てる手順を全部"設計図"に落とし込むみたいな？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>まさに。手の勘を、誰が見ても同じに建てられる図面にする。その図面を書く道具は、大きく5つの仲間に分かれる。一つずつ見ていこう。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：勘の棟梁から、図面の工房へ</h4>
+      <p>昔の名棟梁は頭の中の勘で家を建てました。でもその人が休めば工事は止まり、弟子は同じ家を建てられません。図面（コード）にしておけば、誰が見ても同じ家を、何度でも、間違いなく建てられます。IaCとは「工房のすべてを図面化する」ことです。</p>
+    </div>
+
+    <h3 class="blk">IaCツールの5つの仲間</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>アドホックなスクリプト</h4><p>その場限りの口頭メモを命令文にしたもの（Bash等）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>設定管理ツール</h4><p>建った家の中を整える内装職人（Chef/Puppet/Ansible）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>サーバテンプレーティングツール</h4><p>モデルハウスの型を作って量産（Docker/Packer/Vagrant）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>オーケストレーションツール</h4><p>大勢の職人を束ねる総監督（Kubernetes等）。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>プロビジョニングツール</h4><p>土地を造成して土台を作る不動産デベロッパー（<b>Terraform</b>/CloudFormation/Heat）。</p></div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>IaCはインフラを定義・構築・更新・削除するためのコードを書く考え方。</li>
+        <li>サーバからテスト・手順書までほぼ全部をコードにできる。</li>
+        <li>道具は5カテゴリ：アドホックなスクリプト／設定管理／サーバテンプレーティング／オーケストレーション／プロビジョニング。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.2.1 -->
+  <div class="card" id="s121">
+    <div class="sec-head"><div class="sec-num">1.2.1</div><h2>アドホックなスクリプト<span class="tag">その場限りの口頭メモを、命令文にしただけ</span></h2></div>
+    <p class="lead"><b>要するに：</b>アドホックなスクリプトは汎用言語で書く"その場限りの台本"。小さな一回きりには最適だが、インフラ全体の管理には不向きで荒れやすい。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>「アドホック」って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span><span class="term" data-tip="ad hoc。その場限りの、間に合わせの。">アドホック</span>＝その場限り、間に合わせ。今まで手でやった作業を細かい手順に分け、好きな言語（Bash・Ruby・Python等）で書いて実行するだけ。手書きの作業メモをそのまま命令文にしたものだ。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>いいところは、広く使われる自由な言語でどうとでも書けること。悪いところも同じで、どうとでも書けてしまうこと。8行なら良いが、土台全部をこの台本で管理し始めると、ほどけないスパゲッティになる。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0">↓ このコードは、Webサーバを手順そのままに自動化した「間に合わせの台本」（PHPとApacheを入れて起動するだけ）。読まなくてOK。</p>
+    <details class="code"><summary>setup-webserver.sh（Bash）を見る</summary><pre><span class="cmt"># Web サーバを手作業の手順そのままに自動化した間に合わせの台本</span>
+<span class="cmt">#!/bin/bash</span>
+<span class="kw">set</span> -e
+<span class="cmt"># ① 入れられるソフトの一覧を最新にする</span>
+<span class="fn">sudo</span> apt-get update
+<span class="cmt"># ② PHP と Apache（Webサーバのソフト）を入れる</span>
+<span class="fn">sudo</span> apt-get install -y php apache2
+<span class="cmt"># ③ Git の保管庫からアプリのコードを取ってくる</span>
+<span class="fn">sudo</span> git clone https://github.com/brikis98/php-app.git /var/www/html/app
+<span class="cmt"># ④ Apache を起動する</span>
+<span class="fn">sudo</span> service apache2 start</pre></details>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：付箋に書いた作業メモ</h4>
+      <p>「板を切る→釘を打つ→ニスを塗る」と付箋に書いた即席メモ。一回きりの小さな修理には最高です。でも家全体の建築をぜんぶ付箋でやろうとすると、付箋が山のように増え、誰も全体を追えなくなります。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>アドホックなスクリプトは汎用言語（Bash等）で手順を書くその場限りの台本。</li>
+        <li>長所も短所も「どうとでも書けてしまう」点にある。</li>
+        <li>専用ツールは分かりやすい入口と一定の型を提供する。</li>
+        <li>小規模な一回きりには最適、インフラ全体の管理には不向き。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.2.2 -->
+  <div class="card" id="s122">
+    <div class="sec-head"><div class="sec-num">1.2.2</div><h2>設定管理ツール<span class="tag">建った家の中を整える、規律ある内装職人</span></h2></div>
+    <p class="lead"><b>要するに：</b>設定管理ツール（Chef/Puppet/Ansible）は、既存サーバにソフトを入れて整える内装職人。書き方の規約・冪等性・多数サーバへの配布という利点を持つ。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>Chef、Puppet、Ansible。何をする道具ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>もう建っている家の中に、家具や設備を据え付けて整える内装職人だ。さっきのBashと同じApacheの設定を、もっと規律正しく書ける。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0">↓ このYAMLはAnsibleに「Webサーバをこう整えてね」と頼む内装の指示書。読まなくてOK。</p>
+    <details class="code"><summary>web-server.yml（Ansibleロール）を見る</summary><pre><span class="cmt"># Ansible に Web サーバの整え方を頼む内装の指示書（ロール）</span>
+- name: <span class="str">apt-getのキャッシュを最新にする</span>
+  apt:
+    update_cache: yes
+- name: <span class="str">PHP を入れる</span>
+  apt:
+    name: php
+- name: <span class="str">Apache を入れる</span>
+  apt:
+    name: apache2
+- name: <span class="str">保管庫からコードを取ってくる</span>
+  git: repo=https://github.com/brikis98/php-app.git dest=/var/www/html/app
+- name: <span class="str">Apache を起動する（起動済みなら何もしない）</span>
+  service: name=apache2 state=started enabled=yes</pre></details>
+
+    <h3 class="blk">わざわざ設定管理ツールを使う3つの利点</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">📐</div><h4>コーディング規約</h4><p>説明・並べ方・名前・秘密情報の扱いまで、一貫した予測できる型を強いてくれる。読みやすい。</p></div>
+      <div class="mini"><div class="ic">🔁</div><h4>冪等性</h4><p><span class="term" data-tip="idempotence。何度やっても結果が同じになる性質。">冪等</span>＝何度実行しても安全。未導入の時だけ入れ、止まっている時だけ起動する。何度押しても安全なボタン。</p></div>
+      <div class="mini"><div class="ic">📡</div><h4>配布</h4><p>たくさんの離れたサーバを一度に整えるために作られている。</p></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:14px 0 8px">↓ 5台のサーバを一度に整える流れ（住所名簿→段取り書→実行）。読まなくてOK。</p>
+    <details class="code"><summary>hosts ／ playbook.yml ／ 実行コマンドを見る</summary><pre><span class="cmt"># hosts：整えたい 5 台の住所（IPアドレス）の名簿</span>
+[webservers]
+11.11.11.11
+11.11.11.12
+11.11.11.13
+11.11.11.14
+11.11.11.15
+
+<span class="cmt"># playbook.yml：webservers 全員に webserver の内装を施す段取り書</span>
+- hosts: webservers
+  roles:
+  - webserver
+
+<span class="cmt"># この段取り書を実行すると 5 台を同時並行で整える</span>
+$ ansible-playbook playbook.yml</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>5台いっぺんに整えると、全部同時に止まったら不安では？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>鋭い。だから<span class="term" data-tip="順番に、の意味のパラメータ。">serial</span>を2にすれば、2台ずつ更新して全部終わるまで繰り返す<span class="term" data-tip="rolling deployment。順繰りに少しずつ入れ替える方式。">ローリングデプロイ</span>ができる。アドホックでやれば何百行もかかる。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：規律ある内装職人チーム</h4>
+      <p>すでに建った5軒の家に、同じ仕様で内装を施す職人チーム。道具の置き方も手順書の書式も統一（規約）、「もう取り付け済みなら触らない」と確認しながら作業（冪等性）、住所名簿を見て5軒を同時に回る（配布）。しかも「一度に2軒ずつ」と区切れば、全戸が同時に使えなくなる事故も防げます。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Chef/Puppet/Ansibleは既存サーバを整える設定管理ツール。</li>
+        <li>利点は①一貫した書き方の規約、②冪等性（何度実行しても安全）、③多数サーバへの配布。</li>
+        <li>hosts名簿とplaybook段取り書で、複数サーバを同時に整えられる。</li>
+        <li>serialパラメータで少しずつ更新するローリングデプロイができる。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.2.3 -->
+  <div class="card" id="s123">
+    <div class="sec-head"><div class="sec-num">1.2.3</div><h2>サーバテンプレーティングツール<span class="tag">完璧なモデルハウスの型を作って、丸ごと量産する</span></h2></div>
+    <p class="lead"><b>要するに：</b>サーバテンプレーティングツールは、全部入りの型（イメージ）を作って量産する道具。仮想マシン（重いが安全）とコンテナ（軽いが切り離しは弱い）があり、「建てたら変えない」イミュータブルインフラの鍵になる。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>Docker、Packer、Vagrant。テンプレーティング？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>考え方が逆なんだ。さっきは建った家を一軒ずつ内装した。こっちは「完璧なモデルハウスを一棟作り、その型を丸ごとコピーして量産する」。OS・ソフト・ファイル全部入りの写し取った一枚絵＝<span class="term" data-tip="image。OSもソフトも全部入った丸ごとの型。">イメージ</span>を作るんだ。</div></div>
+    </div>
+
+    <h3 class="blk">イメージの2種類：仮想マシン と コンテナ</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🏠</div><h4>仮想マシン（VM）</h4><p><span class="term" data-tip="hypervisor。仮想の機械を動かす土台ソフト。">ハイパーバイザ</span>でCPU・メモリ・ディスク・ネットワークまで丸ごと真似る。独立した一軒家。<b>完全に切り離せて安全</b>だが、丸ごと作るぶん<b>重い</b>（起動も遅い）。Packer/Vagrantで定義。</p><span class="pill">VMware / VirtualBox</span></div>
+      <div class="mini"><div class="ic">🚪</div><h4>コンテナ</h4><p>OSの<span class="term" data-tip="user space。一般のアプリが動く領域。">ユーザスペース</span>だけを真似た軽い小部屋。建物の中を壁で仕切った貸し部屋。<b>ミリ秒で起動・無駄が少ない</b>が、<span class="term" data-tip="kernel。OSの一番奥の中核。">カーネル</span>を共有するので<b>切り離しは弱い</b>。Dockerで定義。</p><span class="pill">Docker</span></div>
+    </div>
+    <div class="why">
+      <h4>📌 補足：カーネルスペースとユーザスペース</h4>
+      <ul>
+        <li><b>カーネルスペース</b>：制限なくハードを直接さわれる特権領域。動けるのは中核だけ。ここでクラッシュ（異常終了）するとシステム全体が落ちやすい。</li>
+        <li><b>ユーザスペース</b>：ハードに直接さわれず、入口（API）越しにしかさわれない。ここでクラッシュしても普通はそのアプリだけで済む。ほとんどのアプリはここで動く。</li>
+        <li>普通はコンテナの切り離しで十分だが、悪意あるかもしれない他人のコードを動かす場合は、VM並みの強い切り離しが要ることもある。（補足：CoreOS rktは2020年に終了）</li>
+      </ul>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:14px 0 8px">↓ このPacker図面は、AWS用の機械の型（<span class="term" data-tip="Amazon Machine Image。AWS用の機械の型。">AMI</span>）を作る。Bashとほぼ同じだが「Apacheを起動しない」のが違い。読まなくてOK。</p>
+    <details class="code"><summary>web-server.json（Packer）と実行コマンドを見る</summary><pre>{
+  <span class="str">"builders"</span>: [{
+    <span class="str">"ami_name"</span>: <span class="str">"packer-example-{{isotime | clean_resource_name}}"</span>,
+    <span class="str">"instance_type"</span>: <span class="str">"t2.micro"</span>,
+    <span class="str">"region"</span>: <span class="str">"us-east-2"</span>,
+    <span class="str">"type"</span>: <span class="str">"amazon-ebs"</span>,
+    <span class="str">"source_ami"</span>: <span class="str">"ami-0fb653ca2d3203ac1"</span>,
+    <span class="str">"ssh_username"</span>: <span class="str">"ubuntu"</span>
+  }],
+  <span class="str">"provisioners"</span>: [{
+    <span class="str">"type"</span>: <span class="str">"shell"</span>,
+    <span class="str">"inline"</span>: [
+      <span class="str">"sudo apt-get update"</span>,
+      <span class="str">"sudo apt-get install -y php apache2"</span>,
+      <span class="str">"sudo git clone https://github.com/brikis98/php-app.git /var/www/html/app"</span>
+    ]
+  }]
+}
+
+<span class="cmt"># この図面から AMI（機械の型）を作る</span>
+$ packer build webserver.json</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>道具ごとに狙いが少し違う。Packerは本番で動かすAMI向け、Vagrantは開発機向け、Dockerはアプリ単位向け。よくあるのは「Docker Engine入りAMIをPackerで作り→AWSのクラスタにデプロイ→その上でDockerコンテナを動かす」だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>最後に出た「イミュータブルインフラ」も建築でたとえてください！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span><span class="term" data-tip="immutable infrastructure。一度建てたら変えない土台。">イミュータブルインフラ</span>＝一度建てたら手を加えない。新バージョンは、型から新しいイメージを作って新サーバに建て、古いのは取り壊す。建て直しはするが改築はしない。だから「今そこに何が建っているか」を推測しやすいんだ。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：モデルハウスの型を量産する</h4>
+      <p>完璧なモデルハウスを一棟だけ丁寧に作り、その型（イメージ）を丸ごとコピーして街じゅうに同じ家を建てます。「一軒家まるごとコピー」が仮想マシン、「同じ建物内の仕切り部屋を量産」がコンテナ。住み始めた後は改築せず、模様替えしたければ新しい型で建て直す――これがイミュータブルです。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>サーバテンプレーティング（Docker/Packer/Vagrant）は全部入りの型＝イメージを作る。</li>
+        <li>イメージには仮想マシン（ハード丸ごと・重い・安全）とコンテナ（ユーザスペースのみ・軽い・切り離しは弱い）がある。</li>
+        <li>Packerは本番向け、Vagrantは開発機向け、Dockerはアプリ単位向け。</li>
+        <li>テンプレートはソフトを「入れる」まで、「動かす」のはデプロイ後。</li>
+        <li>イミュータブルインフラ＝建てたら変えず、更新は新イメージで建て直す。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.2.4 -->
+  <div class="card" id="s124">
+    <div class="sec-head"><div class="sec-num">1.2.4</div><h2>オーケストレーションツール<span class="tag">大勢の職人を束ねて指揮する、街全体の総監督</span></h2></div>
+    <p class="lead"><b>要するに：</b>オーケストレーションツール（Kubernetes等）は、たくさんのコンテナ/VMを束ねて指揮する総監督役。配置・更新・自動回復・自動増減・負荷分散・仲間探しを引き受ける。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>Kubernetesとか。何をする道具ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>型からたくさん建てられても「どう束ねて指揮するか」が次の問題になる。現実では色々必要だ――無駄なく配置、集団を順に更新、調子の悪いものを自動で取り替え、混み具合で数を増減、混雑を振り分け、お互いを見つけて通信。これを束ねるのが総監督役だ。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🩹</div><h4>オートヒーリング</h4><p>調子の悪いものを自動で取り替える（自動回復）。</p></div>
+      <div class="mini"><div class="ic">📈</div><h4>オートスケーリング</h4><p>混み具合に応じて数を増減（自動増減）。</p></div>
+      <div class="mini"><div class="ic">⚖️</div><h4>ロードバランシング</h4><p>混雑を振り分ける（負荷分散）。</p></div>
+      <div class="mini"><div class="ic">🔎</div><h4>サービスディスカバリ</h4><p>お互いを見つけて通信できるようにする（仲間探し）。</p></div>
+      <div class="mini"><div class="ic">🚦</div><h4>各種デプロイ</h4><p>ローリング/ブルーグリーン/カナリアで集団を更新。</p></div>
+      <div class="mini"><div class="ic">📦</div><h4>無駄なく配置</h4><p>機械を無駄なく使うように置く（スケジューリング）。</p></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:14px 0 8px">↓ このYAMLはKubernetesに「Apacheコンテナを3つ動かし続けて」と宣言する配置指示。読まなくてOK。</p>
+    <details class="code"><summary>example-app.yml（Kubernetes Deployment）と実行コマンドを見る</summary><pre>apiVersion: apps/v1
+<span class="cmt"># コンテナの複製を複数置き、宣言的に更新する Deployment</span>
+kind: Deployment
+metadata:
+  name: example-app
+spec:
+  selector:
+    matchLabels:
+      app: example-app
+  <span class="cmt"># コンテナの複製（レプリカ）を 3 つ動かせ</span>
+  replicas: 3
+  strategy:
+    rollingUpdate:
+      maxSurge: 3
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: example-app
+    spec:
+      containers:
+        <span class="cmt"># ポート80でApacheを起動</span>
+        - name: example-app
+          image: httpd:2.4.39
+          ports:
+            - containerPort: 80
+
+<span class="cmt"># このコマンドでアプリを Kubernetes に配置する</span>
+$ kubectl apply -f example-app.yml</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>一緒に動くコンテナの束を<span class="term" data-tip="Pod。一緒に動くコンテナの一群。">Pod</span>、その複製を<span class="term" data-tip="replica。複製。">レプリカ</span>と呼ぶ。ここでは「Apacheを3つ」。Kubernetesは別々のサーバに散らして<span class="term" data-tip="high availability。1台壊れても止まりにくくする工夫。">高可用性</span>を保ち、落ちたPodを自動で取り替え、常に3つを維持する。YAMLを書き換えて同じコマンドを打てば変更も反映される。なおTerraformでKubernetes自体も管理できる（7章）。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：街全体の工事を束ねる総監督</h4>
+      <p>同じ家を量産できても、何百人の職人を「どこに何人配置し、休んだら誰を呼び、混んだら増員し、互いに連絡を取らせるか」を仕切る総監督がいないと現場はバラバラ。「常に3班を稼働させろ」と指示しておけば、1班が倒れても総監督が自動で別班を補充し、常に3班を保ってくれます。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>オーケストレーションツールはVM/コンテナを束ねて指揮する。</li>
+        <li>役割は配置・各種更新・オートヒーリング・オートスケーリング・ロードバランシング・サービスディスカバリ。</li>
+        <li>KubernetesではPod（コンテナの束）とレプリカ数を宣言し、配置と維持を自動化する。</li>
+        <li><code>kubectl apply</code>で配置・更新でき、TerraformでKubernetes自体も管理できる。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.2.5 -->
+  <div class="card" id="s125">
+    <div class="sec-head"><div class="sec-num">1.2.5</div><h2>プロビジョニングツール<span class="tag">土地を造成し、土台そのものを作る不動産デベロッパー</span></h2></div>
+    <p class="lead"><b>要するに：</b>プロビジョニングツール（Terraform等）はサーバそのものや土台の設備全部を作る不動産デベロッパー役。サーバテンプレートと組んでイミュータブルインフラを作る。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>Terraform・CloudFormation・Heat。ここでやっとTerraformですね！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>そうだ。今までは「各サーバの中で動くコード」を決める道具だった。<span class="term" data-tip="provisioning。必要な土地や設備を用意して整えること。">プロビジョニング</span>ツールはサーバそのものを作る役。建物の中身ではなく、土地を造成して建物・DB・キャッシュ・ロードバランサ・キュー・監視・サブネット・ファイアウォール・経路ルール・SSL証明書まで、土台のほぼ全部を作れる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>街そのものを造成する不動産デベロッパー、みたいな感じですか。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>ぴったりの例えだ。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0">↓ このTerraform設定は、更地の上にWebサーバを1台建てる設計図。読まなくてOK。</p>
+    <details class="code"><summary>Terraform（HCL）でWebサーバを建てる例を見る</summary><pre><span class="cmt"># 更地の上に Web サーバを 1 台建てる設計図</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"app"</span> {
+  instance_type     = <span class="str">"t2.micro"</span>
+  availability_zone = <span class="str">"us-east-2a"</span>
+  <span class="cmt"># ami：サーバを建てるのに使う型（AMI）のID。Packerで作った型を入れられる</span>
+  ami               = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  <span class="cmt"># user_data：サーバ起動の瞬間に走る Bash 台本（ここでは Apache を起動）</span>
+  user_data = &lt;&lt;-EOF
+              #!/bin/bash
+              sudo service apache2 start
+              EOF
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>あ、サーバテンプレートで「型」を作って、プロビジョニングでその型から「建てる」――手を取り合ってるんですね！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>その通り。これがイミュータブルインフラのよくある形だ。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：街を造成する不動産デベロッパー</h4>
+      <p>内装職人や総監督は「建物の中」を扱いますが、プロビジョニングは「土地そのもの」を造成します。区画を割り、道路・水道・電気・防火壁を引き、その上に建物を建てる――街ごと作る不動産デベロッパーです。モデルハウスの型（テンプレート）を受け取り、その型で街じゅうに家を建てます。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>プロビジョニングツールはサーバ・DB・ロードバランサなど土台のほぼ全部を作る。</li>
+        <li>設定管理等が「サーバの中身」を決めるのに対し、こちらは「サーバ自体」を作る。</li>
+        <li><code>ami</code>は使う型のID、<code>user_data</code>は起動時に走る台本。</li>
+        <li>サーバテンプレートと協力するのがイミュータブルインフラの典型パターン。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 1.3 利点 -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-num">1.3</div><h2>Infrastructure as Codeの利点とは<span class="tag">最初の投資で手に入る、7つの恵み</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>IaCは最初の手間と引き換えに、セルフサービス・スピードと安全性・ドキュメント化・バージョン管理・バリデーション・再利用性・幸福という7つの恵みを与える。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>正直、なんでわざわざ新しい道具を覚えてコードまで抱えるんですか？手作業のほうが楽なときも…。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>当然の疑問だ。答えは「コードが強力だから」。ある調査では、IaCのようなDevOpsの取り組みをする組織は、デプロイ頻度が200倍、障害復旧が24倍速く、リードタイムが2555分の1になった。最初の投資で、ソフトを世に出す力が劇的に上がるんだ。</div></div>
+    </div>
+    <h3 class="blk">7つの恵み</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🙋</div><h4>① セルフサービス</h4><p>一人の棟梁に頼らず、開発者が必要なときに自分でデプロイを始められる。首根っこ（ボトルネック）が消える。</p></div>
+      <div class="mini"><div class="ic">⚡</div><h4>② スピードと安全性</h4><p>自動化された手順は確実で繰り返せ、取り違えがない。人より機械が速く安全。</p></div>
+      <div class="mini"><div class="ic">📖</div><h4>③ ドキュメント化</h4><p>図面そのものが説明書。一人の頭の中に閉じない（<span class="term" data-tip="bus factor。何人いなくなると仕事が止まるかの人数。1は危険。">バス係数</span>対策）。</p></div>
+      <div class="mini"><div class="ic">🕰️</div><h4>④ バージョン管理</h4><p>全履歴がコミットログに残る。問題が起きたら前の状態に戻せる。</p></div>
+      <div class="mini"><div class="ic">🔍</div><h4>⑤ バリデーション</h4><p>コードレビュー・自動テスト・<span class="term" data-tip="コードを動かさずに点検すること。">静的解析</span>にかけて問題の芽を減らせる。</p></div>
+      <div class="mini"><div class="ic">♻️</div><h4>⑥ 再利用性</h4><p>試し済みの部品（<span class="term" data-tip="module。まとまった再利用部品。">モジュール</span>）を使い回せ、毎回ゼロから建てなくて済む。</p></div>
+    </div>
+    <div class="mini" style="margin-top:16px"><div class="ic">😊</div><h4>⑦ 幸福（一番大事なのに見落とされがち）</h4><p>手作業の引き渡しは退屈な繰り返しで、うまく行って当たり前、壊れた日に初めて気づかれる。IaCは機械に自動化を、人にコーディングを任せる選択肢をくれる。気分の良さも恵みのひとつ。</p></div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：図面のある工房は強い</h4>
+      <p>図面があれば、弟子が自分で家を建て始められ（セルフサービス）、機械で正確に速く建ち（スピード）、図面が説明書になり（ドキュメント）、過去の図面に戻せ（履歴）、棟梁が点検でき（検査）、よく使う間取りを使い回せ（再利用）、職人は退屈な手作業から解放されて創造に集中できます（幸福）。</p>
+    </div>
+    <div class="why">
+      <h4>📌 なぜこれが必要か</h4>
+      <ul>
+        <li>「なぜわざわざコード化するのか」に、7つの具体的な答えを持てる。</li>
+        <li>バス係数や設定ドリフトといった現場のリスクを、コードでどう減らすか語れる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>IaCの恵みは7つ：セルフサービス／スピードと安全性／ドキュメント化／バージョン管理／バリデーション／再利用性／幸福。</li>
+        <li>自動化はボトルネック（一人頼み）を解消し、人為ミスを減らす。</li>
+        <li>コード自体が説明書になり、履歴で過去に戻せ、点検にかけられる。</li>
+        <li>部品を使い回せ、人は創造的な仕事に集中できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 1.4 どう動くか -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-num">1.4</div><h2>Terraformはどう動くのか<span class="tag">一冊の指示書で、各業者（クラウド）に発注する元請け</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>TerraformはGo製の一個の実行ファイル。設計図（Terraform設定）を読み、クラウドのAPIを代わりに呼んで土台を建てる。クラウド間の完全な引っ越し（透過的ポータビリティ）はできず、プロバイダごとに専用コードを書く。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>Terraformの中で何が起きてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>HashiCorp社が作った、Go言語のオープンソースの道具だ。<code>terraform</code>という一個の<span class="term" data-tip="binary。そのまま実行できる一個のファイル。">実行ファイル</span>に<span class="term" data-tip="compile。人が読むコードを機械が動かせる形に翻訳すること。">コンパイル</span>される。あなたのPCにそれがあれば、そこからインフラを建てられる。余計な設備はいらない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>一個のファイルだけで、なぜサーバが建つんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span><code>terraform</code>が裏で、あなたの代わりに<span class="term" data-tip="provider。AWSやAzure等のクラウド提供業者。">プロバイダ</span>の入口（API）を呼ぶからだ。貸し地主の設備を借りて使う。AWSのAPIキー（合鍵）など、既存の認証もそのまま使える。</div></div>
+    </div>
+
+    <h3 class="blk">動きの流れ</h3>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>設計図（Terraform設定）を書く</h4><p>「どんな土台を建てたいか」をテキストで書く。これがIaCのコード。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>バージョン管理にコミット</h4><p>サーバ・DB・ネットワークの形まで全部この設定に書き、履歴に残す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4><code>terraform apply</code></h4><p>terraformがコードを読み解き、各クラウドへのAPI呼び出しに翻訳して効率よく実行する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>変更も同じやり方</h4><p>サーバを手でいじらず、設定を書き換え→テスト＆レビュー→再びapplyで反映。</p></div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0">↓ この設定は「AWSにサーバを建て、その住所を指す名前札をGoogle Cloudに作る」。1つの文法で複数クラウドをまたいで繋げられる。読まなくてOK。</p>
+    <details class="code"><summary>複数クラウドをまたぐTerraform設定の例を見る</summary><pre><span class="cmt"># AWSにサーバを建て、その住所を指すDNS名前札をGoogle Cloudに作る</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami           = <span class="str">"ami-0c55b159cbfafe1f0"</span>
+  instance_type = <span class="str">"t2.micro"</span>
+}
+
+<span class="kw">resource</span> <span class="str">"google_dns_record_set"</span> <span class="str">"a"</span> {
+  name         = <span class="str">"demo.google-example.com"</span>
+  managed_zone = <span class="str">"example-zone"</span>
+  type         = <span class="str">"A"</span>
+  ttl          = <span class="num">300</span>
+  <span class="cmt"># 上で建てたAWSサーバの公開住所を、この名前札が指すよう紐づける</span>
+  rrdatas      = [aws_instance.example.public_ip]
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>いろんなクラウドに対応なら、AWSで作った街をそのままAzureにポンと引っ越しできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>いい質問だが、ちょっとした引っかけだ。<span class="term" data-tip="transparent portability。中身を意識せず別の場所へ丸ごと持ち運べること。現実には困難。">透過的なポータビリティ</span>は現実には無理に近い。クラウドごとに設備が全然違うからだ。Terraformの答えは「同じ言語・同じ道具・同じ作法を使いつつ、プロバイダごとに専用コードを書いて固有機能を活かす」ことなんだ。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：一冊の指示書を持つ元請け</h4>
+      <p>Terraformは、自分では資材も土地も持たない「元請け」。一冊の指示書（設計図）を読み、AWSという業者・Googleという業者にそれぞれ電話（API）で発注し、土台を建ててもらいます。ただし業者ごとに扱う資材が違うので、「同じ街をそっくり別業者に丸ごと移す」ことはできず、業者ごとに専用の発注書を書く必要があります。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>TerraformはHashiCorp製・Go言語・オープンソースの一個の実行ファイル。</li>
+        <li>Terraform設定（設計図）を読み、プロバイダのAPIを代理で呼んで建てる。</li>
+        <li>既存のAPIキーを使え、PC以外の設備は不要。</li>
+        <li><code>terraform apply</code>で反映、変更も設定の書き換え＋applyで行う。</li>
+        <li>透過的ポータビリティ（別クラウドへ丸ごと移植）は現実には不可、プロバイダ固有コードを書く方針。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 1.5 他ツールとの違い -->
+<section id="s15">
+  <div class="sec-head"><div class="sec-num">1.5</div><h2>Terraformと他のIaCツールとはどう違うのか<span class="tag">道具選びは、機能一覧ではなく「兼ね合い」で決める</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>道具選びは機能一覧では決められない。トレードオフ（あちらを立てればこちらが立たず）と優先順位で、複数の観点を比べて選ぶ。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>IaCが素晴らしいのは分かりました。でも道具がたくさんあって、どれを選べば…。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>そこが一番難しい。世間の比較はただの機能一覧で「どれでも成功できそう」に見える。「PHPでもCでもWebは作れる」と言うようなもので、技術的には正しくても判断材料が抜けている。これからTerraform・Chef・Puppet・Ansible・Pulumi・CloudFormation・Heatを<span class="term" data-tip="trade-off。あちらを立てればこちらが立たずの兼ね合い。">トレードオフ</span>で比べる（Docker/Packer/Kubernetesは組み合わせ用途なので除外）。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：道具箱から一本を選ぶ</h4>
+      <p>カタログの「機能一覧」だけ見れば、どの工具でも家は建ちます。でも実際の選択は「軽さか頑丈さか」「手に馴染むか最新か」「仲間が使い慣れているか」といった兼ね合いと優先順位で決まります。棟梁は10個のものさしで、自分の工房（Gruntwork）がなぜTerraformを選んだかを語っていきます。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>IaCツールは役割が重なり、機能一覧だけでは選べない。</li>
+        <li>選択はトレードオフと優先順位の問題。</li>
+        <li>比較対象はTerraform/Chef/Puppet/Ansible/Pulumi/CloudFormation/Heat（Docker等は除外）。</li>
+        <li>観点は全10項目（このあと一つずつ）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.1 -->
+  <div class="card" id="s151">
+    <div class="sec-head"><div class="sec-num">1.5.1</div><h2>設定管理ツールか、プロビジョニングツールか</h2></div>
+    <p class="lead"><b>要するに：</b>境界はあいまい。用途で選び、サーバテンプレートを使うならプロビジョニング、使わないなら両者の組み合わせも有効。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>設定管理とプロビジョニング、きっちり分かれるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>境界はあいまいだ。Ansibleでもサーバを建てられるし、Terraformからサーバ内の設定スクリプトも走らせられる。サーバテンプレートを使っているなら設定の仕事は済んでいるので、造成するプロビジョニングが最適。使っていないなら、造成はTerraform・中の設定はAnsible、という組み合わせもよく使う。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Chef/Puppet/Ansibleは設定管理、CloudFormation/Terraform/Heatはプロビジョニング。</li>
+        <li>境界はあいまいで、互いに相手の領分も少しはこなせる。</li>
+        <li>サーバテンプレートを使うならプロビジョニングが最適。</li>
+        <li>使わないなら設定管理＋プロビジョニング（例：Terraform＋Ansible）の併用も有効。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.2 -->
+  <div class="card" id="s152">
+    <div class="sec-head"><div class="sec-num">1.5.2</div><h2>ミュータブルなインフラか、イミュータブルなインフラか</h2></div>
+    <p class="lead"><b>要するに：</b>設定管理ツールはその場で改築するミュータブルが基本、Terraform＋テンプレートは建て直すイミュータブルが基本。イミュータブルは設定ドリフトに強いが、毎回イメージを作る時間などの欠点もある。</p>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔨</div><h4>ミュータブル（その場で改築）</h4><p>Chef/Puppet/Ansibleの基本。既存サーバを更新し続けると改築履歴がバラバラになり、設定ドリフト・原因不明バグ・「テストでは動くのに本番で違う」が起きる＝スノーフレークサーバ。</p></div>
+      <div class="mini"><div class="ic">🏚️➡️🏠</div><h4>イミュータブル（建て直し）</h4><p>Terraform＋テンプレートの基本。変更＝新イメージで新サーバを建て古いのを止める。ドリフトに強く、中身を把握しやすく、過去に戻しやすい。テストも効きやすい。</p></div>
+    </div>
+    <div class="why">
+      <h4>📌 公平に：イミュータブルの欠点</h4>
+      <ul>
+        <li>小さな変更ごとにイメージを作って全サーバに配るのは時間がかかりすぎることがある。</li>
+        <li>稼働後はディスク書き込みで多少のドリフトは出る（頻繁にデプロイしていれば問題にならない）。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>ミュータブル＝その場で改築（設定管理ツールの基本）、イミュータブル＝建て直し（Terraform＋テンプレートの基本）。</li>
+        <li>ミュータブルは改築履歴の差から設定ドリフト・再現性の低下を招く。</li>
+        <li>イミュータブルは把握・戻し・テストがしやすい。</li>
+        <li>イミュータブルの欠点はイメージ作成の時間と、稼働後のわずかなドリフト。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.3 -->
+  <div class="card" id="s153">
+    <div class="sec-head"><div class="sec-num">1.5.3</div><h2>手続き型言語か、宣言型言語か<span class="tag">この章の山場。「10台→15台」で違いが効く</span></h2></div>
+    <p class="lead"><b>要するに：</b>手続き型は手順を、宣言型は望む完成形を書く。宣言型は差分を道具が計算するので、状態の把握・再利用がしやすく、コードが小さく保てる。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span><span class="term" data-tip="procedural。手順を一つずつ書く。">手続き型</span>（Chef/Ansible）は「ある状態に至る一手一手の手順」を書く。<span class="term" data-tip="declarative。望む最終状態を宣言し、やり方は道具に任せる。">宣言型</span>（Terraform/CloudFormation/Puppet/Heat/Pulumi）は「最終的にこうあってほしい」状態だけを書く。料理でいえば、手続き型はレシピ、宣言型は完成写真だ。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📋</div><h4>手続き型（Ansible）で10台</h4><p>「ami の型でサーバを10台建てよ」と手順を書く。</p>
+        <details class="code"><summary>Ansible（10台）を見る</summary><pre>- ec2:
+    count: <span class="num">10</span>
+    image: ami-0fb653ca2d3203ac1
+    instance_type: t2.micro</pre></details></div>
+      <div class="mini"><div class="ic">🖼️</div><h4>宣言型（Terraform）で10台</h4><p>「amiの型のサーバが10台ある状態」を完成形として宣言。</p>
+        <details class="code"><summary>Terraform（10台）を見る</summary><pre><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  count         = <span class="num">10</span>
+  ami           = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  instance_type = <span class="str">"t2.micro"</span>
+}</pre></details></div>
+    </div>
+    <h3 class="blk">面白いのは「15台に増やしたいとき」</h3>
+    <div class="grid2">
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">😵</div><h4>手続き型は書き直し地獄</h4><p>数を15で再実行すると新たに15台建ち、合計25台に！ だから今いくつあるか自分で把握し「あと5台だけ」と書き直す必要がある。</p>
+        <details class="code"><summary>あと5台だけ建てる手順を見る</summary><pre><span class="cmt"># 現状を踏まえて書き直す羽目に</span>
+- ec2:
+    count: <span class="num">5</span>
+    image: ami-0fb653ca2d3203ac1
+    instance_type: t2.micro</pre></details></div>
+      <div class="mini" style="border-color:#5ee7a044"><div class="ic">😊</div><h4>宣言型は数字を変えるだけ</h4><p><code>count</code>を10→15にするだけ。Terraformが「あと5台必要」と自分で気づく。</p>
+        <details class="code"><summary>count を 15 にするだけ ＋ plan を見る</summary><pre><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  count         = <span class="num">15</span>
+  ami           = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  instance_type = <span class="str">"t2.micro"</span>
+}
+
+<span class="cmt"># terraform plan で、変更前に「何が変わるか」を見られる</span>
+$ terraform plan
++ aws_instance.example[11..14] will be created ...
+<span class="cmt"># 「5台を追加、変更0、削除0」</span>
+Plan: 5 to add, 0 to change, 0 to destroy.</pre></details></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin-top:14px">バージョン変更（amiの差し替え）も、宣言型なら<code>ami</code>を書き換えるだけ。差分はTerraformが計算する。（補足：Ansibleにもタグで既存EC2を探す機能はあるが、履歴を考えて手作業でロジックを組むのは複雑。）</p>
+    <div class="why">
+      <h4>📌 手続き型の2つの弱点</h4>
+      <ul>
+        <li><b>状態を完全に把握できない</b>：テンプレを読むだけでは何が建ったか分からず、適用順まで知る必要がある（順番が違えば結果も違う）。</li>
+        <li><b>再利用しにくい</b>：現在の状態を考えに入れねばならず、状態は刻々と変わる。1週間前のコードはもう使えない＝肥大化・複雑化する。</li>
+      </ul>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：レシピ vs 完成写真</h4>
+      <p>手続き型は「鍋に湯を沸かし、塩を入れ…」のレシピ。今すでに何皿できているかを自分で数えて手順を書き直さねばなりません。宣言型は「完成形はこの一皿」という写真を渡すだけ。今が何皿でも、料理人（Terraform）が差分を計算して完成形に揃えてくれます。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>手続き型（Chef/Ansible）は手順を、宣言型（Terraform等）は望む状態を書く。</li>
+        <li>手続き型は再実行で重複建設が起き、現状把握＋書き直しが必要。</li>
+        <li>宣言型は<code>count</code>や<code>ami</code>を書き換えるだけで差分を道具が計算する。</li>
+        <li>手続き型の弱点は①状態を完全に把握できない②再利用しにくい＝肥大化。</li>
+        <li>宣言型はコードが常に最新の完成形を表し、小さく再利用しやすい。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.4 -->
+  <div class="card" id="s154">
+    <div class="sec-head"><div class="sec-num">1.5.4</div><h2>汎用言語かドメイン特化言語か</h2></div>
+    <p class="lead"><b>要するに：</b>汎用言語はいろいろ使えて強力だが学ぶ量が多い。DSLは学びやすく簡潔で書き方が揃うが、できることは限られる。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span><span class="term" data-tip="general-purpose language。いろんな分野で使える言葉。">汎用言語（GPL）</span>派はChef=Ruby、Pulumi=JS/TS/Python/Go/C#/Java。<span class="term" data-tip="domain-specific language。ある分野専用の言葉。">ドメイン特化言語（DSL）</span>派はTerraform=HCL、Puppet=Puppet言語、Ansible/CloudFormation/Heat=YAML。万能工具と専用工具の違いだ。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🛠️</div><h4>DSLの利点</h4><p>①学習が容易（小さくシンプル）②明快で簡潔（同じことが短く書ける）③記述が揃いやすい（書き方が実質1通り）。</p></div>
+      <div class="mini"><div class="ic">🧰</div><h4>汎用言語の利点</h4><p>①既知の言語を使える（新言語不要）②エコシステムが大きく成熟（IDE・ライブラリ・テスト道具）③強力（制御・テスト・抽象化・連携が得意）。</p></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>汎用言語（GPL）はChef=Ruby、Pulumi=JS/Python等。DSLはTerraform=HCL、Ansible等=YAML。</li>
+        <li>境界は厳密でなく考えを助ける見取り図。</li>
+        <li>DSLの利点：学習が容易・明快で簡潔・記述が揃いやすい。</li>
+        <li>汎用言語の利点：既知の言語を使える・エコシステムが大きい・強力。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.5 -->
+  <div class="card" id="s155">
+    <div class="sec-head"><div class="sec-num">1.5.5</div><h2>マスタか、マスタレスか</h2></div>
+    <p class="lead"><b>要するに：</b>ChefやPuppetは中央の親方（マスタサーバ）が基本で、便利だが余計な設備・保守・セキュリティの負担が増える。Terraform等はマスタレスで、既存のAPIキーやSSHキーで済む。</p>
+    <div class="grid2">
+      <div class="mini"><div class="ic">👑</div><h4>マスタの利点</h4><p>①状態を確認・管理する唯一の中央拠点（Web画面で現状が見やすい）②裏で動き続け設定を強制（手で変えてもドリフトを巻き戻す）。</p></div>
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">💸</div><h4>マスタの欠点</h4><p>①余計なインフラ（マスタ用サーバ、時にクラスタ）②メンテナンス（保守・更新・バックアップ・監視・拡張）③セキュリティ（通信路・ポート・認証で攻撃面が増える）。</p></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin-top:14px">ChefやPuppetの<span class="term" data-tip="masterless。親方サーバなしで運用すること。">マスタレス</span>対応はまちまち（cronで定期的に最新を引き取る等）。Ansible/CloudFormation/Heat/Terraform/Pulumiは初期設定でマスタレス。TerraformはクラウドのAPIサーバがマスタとも言えるが追加管理は不要（既存APIキー）、AnsibleはSSHで直接つなぐ（既存SSHキー）。</p>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Chef/Puppetは初期設定でマスタサーバが必要。</li>
+        <li>マスタの利点：状態確認の中央拠点・設定の強制（ドリフトの巻き戻し）。</li>
+        <li>マスタの欠点：余計なインフラ・メンテナンス・セキュリティ面の拡大。</li>
+        <li>Ansible/CloudFormation/Heat/Terraform/Pulumiはマスタレスで追加設備不要。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.6 -->
+  <div class="card" id="s156">
+    <div class="sec-head"><div class="sec-num">1.5.6</div><h2>エージェントか、エージェントレスか</h2></div>
+    <p class="lead"><b>要するに：</b>ChefやPuppetは各サーバに代理人（エージェント）を常駐させるのが基本で、立ち上げ・保守・セキュリティの負担と故障モードが増える。Terraform等はクラウド既存の仕組みを使い、追加エージェント不要。</p>
+    <div class="why">
+      <h4>📌 エージェントの3つの負担</h4>
+      <ul>
+        <li><b>ブートストラップ</b>：そもそも最初にサーバを用意してエージェントを入れるには？という鶏と卵の問題。</li>
+        <li><b>メンテナンス</b>：定期更新・監視・再起動が要る。</li>
+        <li><b>セキュリティ</b>：送信/受信ポートを開け、認証も要り、攻撃面が広がる。</li>
+      </ul>
+    </div>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>部品が増えると何が困るんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>故障モード（故障の起き方）が増える。深夜3時の障害報告で、原因がアプリか、IaCコードか、クライアントか、マスタか、その間の通信か…と切り分けねばならない。Ansible/CloudFormation/Heat/Terraform/Pulumiは追加エージェント不要。クラウドが各サーバに入れている既存のエージェントやSSHデーモンを使うんだ。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>Chef/Puppetは各サーバにエージェントを常駐させる必要がある。</li>
+        <li>欠点：ブートストラップ・メンテナンス・セキュリティ（ポートと認証）。</li>
+        <li>部品が増えると故障モードが増え、障害の切り分けが難しくなる。</li>
+        <li>Terraform等はクラウド既存のエージェントやSSHを使い、追加エージェント不要。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.7 -->
+  <div class="card" id="s157">
+    <div class="sec-head"><div class="sec-num">1.5.7</div><h2>有償か、無償か</h2></div>
+    <p class="lead"><b>要するに：</b>CloudFormation/Heatは完全無償、他は無償版＋有償版。Terraform等の無償版は本番で十分使えるが、Pulumiは状態管理の都合で実質有償サービスが必要。有償サービスは自分の制御外という点に注意。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>CloudFormationとHeatは完全無償。Terraform/Chef/Puppet/Ansible/Pulumiは無償版と有償版がある。問いたいのは「無償版が絞られすぎて実質有償を使わざるを得ないか？」だ。有償は調べる価値があるが、自分でコントロールできない――倒産・買収（Chef/Puppet/Ansibleは経験済み）・値上げ（Pulumiは2021年に最大10倍も）・終了のリスクがある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>なんでPulumiだけ実質有償なんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>鍵は<span class="term" data-tip="state。今インフラがどうなっているかの記録。3章で学ぶ。">状態</span>の管理だ。Pulumiは初期設定だと状態保管にPulumi Serviceを使う。障害復旧の節目記録・チームで使う時の並列ロック・暗号化が、Pulumi Serviceでしか使えないとされる。これ無しで複数人の本番運用は現実的でない。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>CloudFormation/Heatは完全無償、Terraform/Chef/Puppet/Ansible/Pulumiは無償＋有償。</li>
+        <li>Terraform等の無償版は本番運用に十分。</li>
+        <li>有償サービスは制御外（倒産・買収・値上げ・終了のリスク）。</li>
+        <li>Pulumiは状態管理（チェックポイント・並列ロック・暗号化）の都合で実質Pulumi Serviceが必要。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.8 -->
+  <div class="card" id="s158">
+    <div class="sec-head"><div class="sec-num">1.5.8</div><h2>大きなコミュニティか、小さなコミュニティか</h2></div>
+    <p class="lead"><b>要するに：</b>コミュニティの規模は体験を大きく左右する。CloudFormation以外はオープンソースで多クラウド対応、中でもAnsibleとTerraformが群を抜いて人気・成長している。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>技術を採用するのは、その仲間の集まり（コミュニティ）を採用すること。道具の品質より、周りの<span class="term" data-tip="ecosystem。関連する道具や人の広がり。">エコシステム</span>のほうが体験を左右することが多い。貢献者数・追加部品・ネット情報・雇える人材で決まる。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0">↓ 2022年7月時点の概数（完全な同条件比較ではない。CloudFormationはクローズドで貢献者・スター不明）。</p>
+    <details class="code"><summary>表1-1 コミュニティ比較（概数）を見る</summary><pre><span class="cmt"># ソース / クラウド / 貢献者 / スター / ライブラリ / Stack Overflow質問数</span>
+Chef           : オープン   / すべて / 640   / 6,910  / 3,695  / 8,295
+Puppet         : オープン   / すべて / 571   / 6,581  / 6,871  / 3,996
+Ansible        : オープン   / すべて / 5,328 / 53,479 / 31,329 / 22,052
+Pulumi         : オープン   / すべて / 1,402 / 12,723 / 15     / 327
+CloudFormation : クローズド / AWS    / ?     / ?      / 369    / 7,252
+Heat           : オープン   / すべて / 395   / 379    / 0      / 103
+Terraform      : オープン   / すべて / 1,621 / 33,019 / 9,641  / 13,370</pre></details>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0">↓ 2016年9月→2022年6月の変化率。TerraformとAnsibleが爆発的に伸びている。</p>
+    <details class="code"><summary>表1-2 成長率を見る</summary><pre><span class="cmt"># 貢献者 / スター / ライブラリ / Stack Overflow</span>
+Chef           : +34%  / +56%  / +21%     / +98%
+Puppet         : +32%  / +58%  / +55%     / +51%
+Ansible        : +258% / +183% / +289%    / +507%
+Heat           : +40%  / +34%  / 0        / +98%
+Terraform      : +148% / +476% / +24,003% / +10,106%</pre></details>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>技術採用はコミュニティ採用でもあり、情報・部品・人材の得やすさを左右する。</li>
+        <li>比較は完全な同条件ではない（リポジトリ分割や質問場所の違い）。</li>
+        <li>CloudFormation以外はオープンソースで多クラウド対応。</li>
+        <li>AnsibleとTerraformが人気・成長ともに突出している。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.9 -->
+  <div class="card" id="s159">
+    <div class="sec-head"><div class="sec-num">1.5.9</div><h2>成熟か、最先端か</h2></div>
+    <p class="lead"><b>要するに：</b>成熟度は技術選びの大事な軸。ChefとPuppetが最も成熟、Pulumiが最も若く成熟度が低い。Terraformは中程度だが1.0超えで急速に安定してきた。</p>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0"><span class="term" data-tip="mature。こなれていて、型・定石・問題・故障の起き方がよく分かっている状態。">成熟</span>＝使い込まれてベストプラクティスや故障の起き方が分かっている状態。最先端＝新しく、自分で解きながら学ぶ。年数やバージョン番号だけでは測れない（同条件比較ではない）。</p>
+    <details class="code"><summary>表1-3 成熟度比較（2022年6月時点）を見る</summary><pre><span class="cmt"># 最初のリリース / 現在のバージョン / 主観による成熟度</span>
+Chef           : 2009 / 17.10.3 / 高い
+Puppet         : 2005 / 7.17.0  / 高い
+Ansible        : 2012 / 5.9.0   / 中程度
+Pulumi         : 2017 / 3.34.1  / 低い
+CloudFormation : 2011 / ???     / 中程度
+Heat           : 2012 / 18.0.0  / 低い
+Terraform      : 2014 / 1.2.3   / 中程度</pre></details>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>成熟＝型・定石・問題・故障がよく分かっている状態。</li>
+        <li>年数やバージョン番号だけでは測れない（同条件比較ではない）。</li>
+        <li>Chef/Puppetは最も成熟、Pulumiは最も若く成熟度が低い。</li>
+        <li>Terraformは中程度だが1.0.0超えで急速に安定・信頼性が向上。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1.5.10 -->
+  <div class="card" id="s1510">
+    <div class="sec-head"><div class="sec-num">1.5.10</div><h2>複数のツールの組み合わせ<span class="tag">一つに絞らず、適材適所で組む</span></h2></div>
+    <p class="lead"><b>要するに：</b>一つに絞る必要はなく、強み弱みを見て複数を組み合わせるのが現実的。代表的な組み合わせが三つある。</p>
+
+    <h4 class="blk">1.5.10.1 プロビジョニング＋設定管理（Terraform＋Ansible）</h4>
+    <p style="font-size:13.5px;color:var(--sub);margin:4px 0">土台すべて（VPC・サブネット・DB・ロードバランサ・サーバ）をTerraformで造成し、サーバ上のアプリをAnsibleで据え付ける。</p>
+    <details class="code"><summary>言葉スケッチを見る</summary><pre>[Terraform] --造成--> [VPC / サブネット / DB / ロードバランサ / サーバ]
+                                                          |
+[Ansible]   --設定--> [サーバ上にアプリをデプロイ] <-------+</pre></details>
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a044"><div class="ic">👍</div><h4>利点</h4><p>追加インフラ不要・組み合わせ方が豊富（タグで連携）・最初に取り組みやすい。</p></div>
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">👎</div><h4>欠点</h4><p>Ansibleはミュータブル＋手続き型コードを大量に書くので、規模が大きくなると保守が難しい。</p></div>
+    </div>
+
+    <h4 class="blk">1.5.10.2 プロビジョニング＋サーバテンプレーティング（Terraform＋Packer）</h4>
+    <p style="font-size:13.5px;color:var(--sub);margin:4px 0">PackerでアプリをVMイメージに固め、Terraformでそのサーバと土台を建てる。</p>
+    <details class="code"><summary>言葉スケッチを見る</summary><pre>[Packer]    --型を作る--> [アプリ入り VM イメージ]
+                                |
+[Terraform] --建てる--> [この VM のサーバ + VPC / サブネット / DB / ロードバランサ]</pre></details>
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a044"><div class="ic">👍</div><h4>利点</h4><p>追加インフラ不要・イミュータブルで保守しやすい・本書で多く扱う。</p></div>
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">👎</div><h4>欠点</h4><p>①VMのビルド/デプロイが遅く試行錯誤が遅い②Terraform単体はデプロイ戦略に限界（ネイティブなブルーグリーン不可）。</p></div>
+    </div>
+
+    <h4 class="blk">1.5.10.3 プロビジョニング＋サーバテンプレーティング＋オーケストレーション（Terraform＋Packer＋Docker＋Kubernetes）</h4>
+    <p style="font-size:13.5px;color:var(--sub);margin:4px 0">PackerでDocker＋Kubernetes入りVMイメージを作り、Terraformでクラスタと土台を造成し、Kubernetesでアプリを束ねて運用する。</p>
+    <details class="code"><summary>言葉スケッチを見る</summary><pre>[Packer]     --型を作る--> [Docker + Kubernetes 入り VM イメージ]
+                                |
+[Terraform]  --建てる--> [VM のクラスタ + VPC / サブネット / DB / ロードバランサ]
+                                |
+[Kubernetes] --指揮--> [VM 群を束ねて Docker 化アプリを運用]</pre></details>
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a044"><div class="ic">👍</div><h4>利点</h4><p>Dockerは速くテストしやすい・Kubernetesの内蔵機能（各種デプロイ・オートヒーリング・オートスケーリング）を全部使える。</p></div>
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">👎</div><h4>欠点</h4><p>複雑さが増す（Kubernetesクラスタの運用負担・抽象化の層の増加）。具体例は7章。</p></div>
+    </div>
+    <div class="analogy">
+      <h4>🏗️ たとえ話：適材適所で街を建てる</h4>
+      <p>型はPacker、土地の造成はTerraform、職人の指揮はKubernetes、建物の内装はAnsible。一本の万能工具で全部やろうとせず、それぞれの得意な道具を組み合わせて、一つの街を建てます。</p>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>現実は複数ツールの組み合わせが普通。各ツールの強み弱みを見て適材適所で選ぶ。</li>
+        <li>①Terraform＋Ansible：始めやすいが規模拡大で保守困難。</li>
+        <li>②Terraform＋Packer：イミュータブルで保守しやすいがビルドが遅くデプロイ戦略に限界。</li>
+        <li>③Terraform＋Packer＋Docker＋Kubernetes：機能豊富だが複雑（7章で具体例）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 1.6 まとめ -->
+<section id="s16">
+  <div class="sec-head"><div class="sec-num">1.6</div><h2>まとめ<span class="tag">全観点を一枚に。GruntworkがTerraformを選んだ理由</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>全観点を一枚にまとめると、Gruntworkの基準（大コミュニティ・成熟・イミュータブル・宣言型・マスタレス・エージェントレス・有償任意・オープンソース・多クラウド・プロビジョニング）に最も近いのがTerraform。</p>
+    <p style="font-size:13.5px;color:var(--sub);margin:8px 0">↓ 各ツールの初期設定・よくある形に基づく比較（別設定でも使える柔軟さに注意）。</p>
+    <details class="code"><summary>表1-4 人気IaCツールの総合比較を見る</summary><pre><span class="cmt"># ソース/クラウド/タイプ/インフラ/パラダイム/言語/マスタ/エージェント/有償/コミュニティ/成熟度</span>
+Chef           : オープン   /全/設定管理      /ミュータブル  /手続き型/汎用     /使用  /使用  /任意/大きい/高い
+Puppet         : オープン   /全/設定管理      /ミュータブル  /宣言型 /DSL      /使用  /使用  /任意/大きい/高い
+Ansible        : オープン   /全/設定管理      /ミュータブル  /手続き型/DSL      /不使用/不使用/任意/巨大  /中
+Pulumi         : オープン   /全/プロビジョニング/イミュータブル/宣言型 /汎用     /不使用/不使用/必須/小さい/低い
+CloudFormation : クローズド /AWS/プロビジョニング/イミュータブル/宣言型/DSL      /不使用/不使用/ -  /小さい/中
+Heat           : オープン   /全/プロビジョニング/イミュータブル/宣言型 /DSL      /不使用/不使用/ -  /小さい/低い
+Terraform      : オープン   /全/プロビジョニング/イミュータブル/宣言型 /DSL      /不使用/不使用/任意/巨大  /中</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>Gruntworkはどういう基準で選んだんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>求めたのは――大きなコミュニティ・成熟・イミュータブル・宣言型・マスタレス・エージェントレス・有償は任意・オープンソース・特定クラウドに縛られない・プロビジョニングツール。完璧ではないが、この基準に最も近いのがTerraformだ。合うなら、次の2章で実際の使い方を学ぼう。</div></div>
+    </div>
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>表1-4は各ツールの初期設定・よくある形に基づく比較（別設定でも使える柔軟さに注意）。</li>
+        <li>Gruntworkの基準は大コミュニティ・成熟・イミュータブル・宣言型・マスタレス・エージェントレス・有償任意・オープンソース・多クラウド・プロビジョニング。</li>
+        <li>その基準に最も近いのがTerraform。合うなら2章で使い方を学ぶ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 章のまとめ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）</h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>一つ、「DevOpsは、DevとOpsが協力してソフトを効率的に届ける考え方の集まり」！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>その中の「自動化」がコード化につながる、と覚えれば完璧だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>二つ、「IaCはインフラを設計図として書くこと。道具は設定管理・サーバテンプレーティング・オーケストレーション・プロビジョニングに分かれる」！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>アドホックを入れて五つ。Terraformはプロビジョニングの仲間だったね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>三つ、「Terraformは一個の実行ファイルで、設計図を読んでクラウドのAPIを代わりに呼んで建てる。クラウド間の丸ごと引っ越しはできない」！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>透過的ポータビリティは引っかけ。プロバイダごとに専用コードを書くのが答えだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>四つ、「道具選びはトレードオフ。宣言型・イミュータブル・マスタレス・エージェントレスで比べる」！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>宣言型なら<code>count</code>を書き換えるだけ、手続き型は現状を追って書き直し――この違いが効く。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">弟子・ハル</span>五つ、「Gruntworkの基準に最も近いのがTerraform。現実は複数の道具を組み合わせて使う」！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">師匠・棟梁</span>上出来だ。型はPacker、土台はTerraform、指揮はKubernetes、内装はAnsible――適材適所で街を建てる。これで土台の話は仕舞いだ。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 理解度チェック -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック</h2></div>
+  <div class="card">
+    <p style="font-size:14px;color:var(--sub);margin:0 0 8px">読み終わったら、自分の言葉で答えてみてください。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>DevOpsとIaC</div>
+      <p style="font-size:14px;margin:0">DevOpsとは何で、その中の「自動化」がなぜInfrastructure as Code（IaC）につながるのか、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">DevOpsは、開発する人（Dev）と土台を運用する人（Ops）が協力して、ソフトを今までよりずっと効率的に届けるための考え方の集まりです（役職や特定の技術ではない）。その柱の一つが「自動化」で、手作業でクリックやコマンドを打つ代わりにコードで土台を管理しようという発想になり、それがインフラをコードとして書くIaCにつながります。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ DevOpsは役職や技術ではなく考え方の集まりだと言えている ／ □ 目的が「ソフトを効率的に届けること」だと触れている ／ □ 自動化＝コードで管理、がIaCにつながると説明できている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>5つの道具カテゴリ</div>
+      <p style="font-size:14px;margin:0">IaCツールの5つのカテゴリを挙げ、Terraformがどれに当たるかを説明してください。設定管理とプロビジョニングの違いにも触れてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">5つは、アドホックなスクリプト・設定管理・サーバテンプレーティング・オーケストレーション・プロビジョニングです。Terraformはプロビジョニングに当たります。設定管理（Chef/Puppet/Ansible）は既にあるサーバの中身を整える道具、プロビジョニング（Terraform等）はサーバそのものや土台の設備を作り出す道具です。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 5カテゴリをすべて挙げられている ／ □ Terraformがプロビジョニングだと言えている ／ □ 設定管理＝中身を整える、プロビジョニング＝土台を作る、の違いを説明できている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>手続き型と宣言型</div>
+      <p style="font-size:14px;margin:0">「サーバを10台から15台に増やす」場面を例に、手続き型と宣言型の違いを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">手続き型（Ansible等）は手順を書くので、すでに10台あることを自分で把握し、「あと5台建てる」手順に書き直す必要があります（数を15で再実行すると合計25台になってしまう）。宣言型（Terraform）は望む完成形を書くので、<code>count</code>を10から15にするだけ。差分（あと5台）はTerraformが自分で計算します。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ 手続き型は現状把握＋書き直しが必要 ／ □ 手続き型で再実行すると重複して建つ点に触れている ／ □ 宣言型は望む状態を書くだけで差分は道具が計算する</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>ミュータブルとイミュータブル</div>
+      <p style="font-size:14px;margin:0">ミュータブルなインフラとイミュータブルなインフラの違いを、「設定ドリフト」という言葉を使って説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ミュータブルは既存サーバをその場で改築していく方式（設定管理ツールの基本）。改築履歴がサーバごとに違ってくるため設定ドリフトが起きやすい。イミュータブルは変更のたびに新しいイメージから新サーバを建て古いのを捨てる方式（Terraform＋テンプレートの基本）。後からいじらないので設定ドリフトが起きにくく、中身を把握しやすく、過去のバージョンにも戻しやすい。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ミュータブル＝その場で改築、イミュータブル＝建て直し ／ □ 設定ドリフトがミュータブルで起きやすい理由（改築履歴の差）に触れている ／ □ イミュータブルの利点を挙げている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>マスタレス・エージェントレス</div>
+      <p style="font-size:14px;margin:0">Terraformが「マスタレス・エージェントレス」と言われるのはなぜか、ChefやPuppetと対比して説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ChefやPuppetは、初期設定では全体を仕切る親方サーバ（マスタ）と、各サーバに常駐する代理人（エージェント）が必要で、余計な設備・保守・セキュリティの負担が増えます。TerraformはクラウドのAPIを使うので追加のマスタを建てる必要がなく（既存APIキーを使う）、各サーバに自前のエージェントを入れる必要もありません（クラウド側の既存の仕組みを使う）。だからマスタレス・エージェントレスと言われます。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ Chef/Puppetはマスタとエージェントが基本 ／ □ マスタ/エージェントの負担（設備・保守・セキュリティ）に触れている ／ □ Terraformは既存のAPIキーやクラウドの仕組みで済むと説明できている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- 次のステップ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>次のステップ</h2></div>
+  <div class="card">
+    <ul style="font-size:14px;line-height:1.9;color:#d6dcf7;margin:0;padding-left:20px">
+      <li>Terraform公式の「Introduction / Use Cases」ページを読み、本章のプロビジョニングの説明と照らし合わせる。</li>
+      <li>無料のAWSアカウントを作り、最小の設計図（<code>aws_instance</code>を1台）を書いて<code>terraform plan</code>を実行し、「これから何が作られるか」の表示を見てみる（applyはまだしなくてよい）。</li>
+      <li>AnsibleのPlaybookで「手順を書く（手続き型）」感覚を体験し、TerraformのHCLで「完成形を書く（宣言型）」感覚との違いを手で比べる。</li>
+      <li>身近な「サーバを1台立てて何か動かす」課題を一つ決め、本章の5カテゴリのどれが必要かを紙に書き出して整理する。</li>
+      <li>『The DevOpsハンドブック』を読み、CAMS（文化・自動化・計測・共有）の全体像を補う。</li>
+    </ul>
+  </div>
+</section>
+
+<p class="foot">詳解 Terraform 第1章「なぜTerraformを使うのか」／ やさしい図解版 ― たとえは「街づくり工房」で統一</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4. LangGraphを使ってチャットボットにメモリを追加する ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">初めてのLangChain ― 第4章</span>
+  <h1>4. LangGraphを使ってチャットボットにメモリを追加する</h1>
+  <p>「さっき名前を教えたのに、もう忘れてる！」――そんなチャットボットに<b>記憶</b>を持たせる章です。LLMは前の会話を覚えない（ステートレス）ので、メモリを外付けし、LangGraphで会話を保存・分離・整理します。</p>
+  <div class="badge-row">
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">💬 会話を追えば分かる</span>
+    <span class="badge">📚 用語集つき</span>
+    <span class="badge">🏨 たとえ話は「記憶のおもてなし宿」で統一</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>もくじ（全セクション）</h2>
+  <a href="#story">🎬 この章のあらすじ</a>
+  <a href="#point">🎯 要するに ／ なぜ必要か</a>
+  <a href="#intro">はじめに：覚えてくれないチャットボット</a>
+  <a href="#s41">4.1 チャットボットメモリシステムの構築</a>
+  <a href="#s42">4.2 LangGraphについて</a>
+  <a class="sub" href="#s42a">└ マルチアクター・マルチステップ・ステートフル</a>
+  <a class="sub" href="#s42b">└ グラフの3要素（ステート・ノード・エッジ）</a>
+  <a href="#s43">4.3 StateGraphを作成する</a>
+  <a href="#s44">4.4 StateGraphにメモリを追加する</a>
+  <a href="#s45">4.5 チャット履歴を修正する</a>
+  <a class="sub" href="#s451">└ 4.5.1 メッセージをトリミングする</a>
+  <a class="sub" href="#s452">└ 4.5.2 メッセージをフィルタリングする</a>
+  <a class="sub" href="#s453">└ 4.5.3 連続するメッセージをマージする</a>
+  <a href="#s46">4.6 まとめ</a>
+  <a href="#wrapup">🔁 章のまとめ（弟子の振り返り）</a>
+  <a href="#quiz">✏️ 章末の理解度チェック</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物コード。開かなくても本文で分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>弟子ソラと先生リクの対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🏨</div><div><b>たとえ話は「記憶のおもてなし宿」で統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「お客さまを覚えてくれる旅館（宿）」</b>に置きかえて説明します。フロント係・宿帳・お客さまごとの宿泊カードで、メモリの仕組みをイメージします。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、やさしい言葉と「宿」のたとえで先に押さえておきましょう。</p>
+  <div class="gl">
+    <div class="item"><div class="w">LLM <span>大規模言語モデル</span></div><p>文章を読んで答えを作るAIの本体。賢いけれど、前のやり取りは自分では覚えていません。宿でいう「会話上手な接客スタッフ」。</p></div>
+    <div class="item"><div class="w">ステートレス <span>stateless</span></div><p>「状態を持たない」。LLMは毎回まっさらで、前に何を話したか覚えていない性質のこと。毎朝記憶がリセットされる接客スタッフのイメージ。</p></div>
+    <div class="item"><div class="w">メモリ <span>memory</span></div><p>過去の会話を保存しておく外付けの仕組み。これを毎回スタッフに見せると、覚えているように振る舞えます。宿の「宿帳（ゲストブック）」。</p></div>
+    <div class="item"><div class="w">LangGraph</div><p>会話アプリを「ステート・ノード・エッジ」で組み立てるためのLangChain社のライブラリ。宿の「業務マニュアルと動線設計」。</p></div>
+    <div class="item"><div class="w">ステート <span>State / 状態</span></div><p>アプリ全体で共有する中央のデータ（ここでは会話メッセージの一覧）。宿でいう「いま開いている宿帳のページ」。</p></div>
+    <div class="item"><div class="w">ノード <span>Node</span></div><p>1つの作業を表す関数（処理のかたまり）。ステートを受け取り、更新を返します。宿の「ひとつの持ち場（受付など）」。</p></div>
+    <div class="item"><div class="w">エッジ <span>Edge</span></div><p>ノードとノードのつながり＝処理の進む道筋。宿の「お客さまを次の持ち場へ案内する動線」。</p></div>
+    <div class="item"><div class="w">リデューサー <span>Reducer</span></div><p>ステートをどう更新するかを決める関数。<code>add_messages</code>は「上書きせず追記する」やり方。宿帳に「線で消さず追記」するルール。</p></div>
+    <div class="item"><div class="w">チェックポインタ <span>checkpointer</span></div><p>各ステップごとにステートを保存する保存係。宿でいう「宿帳を金庫にしまう仕組み」。InMemory/SQLite/Postgresの種類があります。</p></div>
+    <div class="item"><div class="w">スレッド <span>thread / thread_id</span></div><p>どの会話の履歴かを区別する識別子。お客さまごとに別の宿帳ページを持たせる「宿泊カード番号」。</p></div>
+    <div class="item"><div class="w">コンテキストウィンドウ</div><p>LLMが一度に読める文章量（トークン数）の上限。机の上に広げられる書類の枚数の限界。超えると読めません。</p></div>
+    <div class="item"><div class="w">ハルシネーション <span>hallucination</span></div><p>AIがもっともらしい嘘を作ってしまうこと。情報が多すぎて注意が散ると起きやすくなります。</p></div>
+    <div class="item"><div class="w">トリミング / フィルタ / マージ</div><p>長くなった履歴を整える3手段。順に「件数を減らす」「種類で選ぶ」「連続を1つにまとめる」。宿帳の整理術。</p></div>
+  </div>
+</div>
+
+<!-- ===== あらすじ ===== -->
+<section id="story">
+  <div class="sec-head">
+    <div class="sec-num">🎬</div>
+    <div><h2>この章のあらすじ</h2><span class="tag">何の話をするのか、ざっくり</span></div>
+  </div>
+  <div class="card">
+    <p class="lead">「先生、うちのチャットボット、さっき名前を教えたのに忘れちゃうんです！」――この章は、<b>過去のチャットを記憶するメモリシステム</b>を、LangChain社のライブラリ<b>LangGraph</b>で作る話です。</p>
+    <p>リク先輩は「LLMは<span class="term" data-tip="状態を持たない。前の会話を覚えていない性質。">ステートレス</span>――前の会話を覚えていないんだ。だから“メモリ”を外付けする」と説明します。グラフ（ステート・ノード・エッジ）の考え方を学び、<span class="term" data-tip="各ステップでステートを保存する保存係。">チェックポインタ</span>で会話を永続化し、<span class="term" data-tip="お客さまごとに会話を分ける識別子。">スレッド</span>でユーザーごとに会話を分けます。さらに、長くなった履歴をトリミング・フィルタリング・マージで整える方法も学びます。</p>
+    <div class="analogy">
+      <h4>🏨 たとえ話：このページの舞台「記憶のおもてなし宿」</h4>
+      <p>これから登場する黄色い箱は、ぜんぶ1つの旅館を舞台にします。接客スタッフ（＝LLM）はとても話し上手ですが、<b>毎朝記憶がリセット</b>されてしまう体質。そこで宿は「宿帳（ゲストブック）」を用意し、お客さまの過去のやり取りを書き留めて、接客のたびにスタッフへ見せます。すると、まるで覚えているかのようにおもてなしできる――これがこの章のすべてです。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 要するに／なぜ ===== -->
+<section id="point">
+  <div class="sec-head">
+    <div class="sec-num">🎯</div>
+    <div><h2>要するに ／ なぜ必要か</h2><span class="tag">この章の核心と動機</span></div>
+  </div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b>LLMは「ステートレス」――毎回独立していて、前のやり取りを覚えていません。だから過去の会話を記憶するメモリを外付けし、毎回プロンプトに含めて渡します。LangGraphなら、ステート（共有データ）・ノード（処理）・エッジ（つながり）でアプリを組み立て、チェックポインタで会話を自動保存し、スレッドでユーザーごとに会話を分けられます。</p>
+
+    <div class="why">
+      <h4>🟣 なぜ学ぶ価値があるのか</h4>
+      <ul>
+        <li>LLMはステートレスで前の会話を覚えていないので、メモリがないと「さっきの話」が通じないから。</li>
+        <li>全履歴を素朴に保存するだけでは、<span class="term" data-tip="一括で確実に。失敗時に中途半端な記録が残らないこと。">アトミック</span>な更新・永続化・件数制御ができず本番で破綻するから。</li>
+        <li>履歴が長くなるとコンテキストウィンドウを超え、注意が散ってハルシネーションを起こすから。</li>
+      </ul>
+    </div>
+
+    <div class="summary">
+      <h4>✅ これを知ったらできるようになること</h4>
+      <ul>
+        <li>LangGraphのステート・ノード・エッジで <code>StateGraph</code> を組み立てられる。</li>
+        <li>チェックポインタ（InMemory/SQLite/Postgres）で会話を永続化し、スレッドでユーザーごとに会話を分けられる。</li>
+        <li><code>get_state</code>/<code>update_state</code> でステートを確認・編集できる。</li>
+        <li><code>trim_messages</code>・<code>filter_messages</code>・<code>merge_message_runs</code> で履歴を整えられる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 導入 ===== -->
+<section id="intro">
+  <div class="sec-head">
+    <div class="sec-num">▶</div>
+    <div><h2>はじめに：覚えてくれないチャットボット</h2><span class="tag">本文（物語・対話で進める網羅解説）</span></div>
+  </div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>先生、3章でRAGができました。でも、チャットボットに名前を教えても、次の質問では忘れてるんです……。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>それはね、LLMが<b>ステートレス</b>だからだ。各回のプロンプト入力は独立していて、モデルは以前のプロンプトやレスポンスを記憶していない。だから、過去の会話を追跡できるメモリシステムを外付けして、その履歴を最終プロンプトに含めて渡す。そうすると、LLMに「メモリ」を持たせられる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>自分で覚えてくれるわけじゃないんですね。</div></div>
+    </div>
+    <div class="analogy">
+      <h4>🏨 たとえ話：毎朝リセットされる接客スタッフ</h4>
+      <p>この宿の接客スタッフ（＝LLM）は、お客さまの応対はピカイチ。でも一晩眠ると昨日のことを全部忘れてしまいます。だから宿側は「お客さまの過去のやり取り」を別に記録しておき、応対のたびにそっとスタッフへ渡す。スタッフはそれを読んで「あぁ、このお客さまね」と覚えているように振る舞う――これが“メモリの外付け”です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.1 ===== -->
+<section id="s41">
+  <div class="sec-head">
+    <div class="sec-num">4.1</div>
+    <div><h2>チャットボットメモリシステムの構築</h2><span class="tag">いちばんシンプルなメモリ＝全履歴をリストで持つ</span></div>
+  </div>
+  <div class="card">
+    <p class="lead">堅牢なメモリシステムには2つの設計判断があります――<b>①ステートの保存方法</b>と<b>②ステートの参照（クエリ）方法</b>。最もシンプルなのは、全チャット履歴をメッセージのリストとして保存し、各ターン後に最新メッセージを追加して、それをプロンプトに挿入してモデルに渡す方法です。</p>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>全チャット履歴をメッセージのリストとして保存して、各ターン後に最新メッセージを追加して、それをプロンプトに挿入してモデルに渡す。これが一番シンプルだ。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、過去の会話（人間とAIのやり取り）をプロンプトに含めて、「さっき何て言った？」という追質問に文脈をふまえて答えさせるものです。<code>{messages}</code>の所に会話履歴が差し込まれます。</p>
+    <details class="code"><summary>Python：履歴をプロンプトに差し込んで答えさせる</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: 過去の会話（人間とAIのやり取り）をプロンプトに含めて、</span>
+<span class="cmt"># 「さっき何て言った？」という追質問に文脈をふまえて答えさせる。</span>
+<span class="cmt"># placeholder の {messages} に会話履歴が差し込まれる。</span>
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+prompt = ChatPromptTemplate.<span class="fn">from_messages</span>([
+    (<span class="str">"system"</span>, <span class="str">"あなたは優秀なアシスタントです。質問に対して全力で答えてください。"</span>),
+    (<span class="str">"placeholder"</span>, <span class="str">"{messages}"</span>),
+])
+
+model = <span class="fn">ChatOpenAI</span>()
+chain = prompt | model
+
+chain.<span class="fn">invoke</span>({
+    <span class="str">"messages"</span>: [
+        (<span class="str">"human"</span>, <span class="str">"この文を英語からフランス語に翻訳してください: I love programming."</span>),
+        (<span class="str">"ai"</span>, <span class="str">"J'adore programmer."</span>),
+        (<span class="str">"human"</span>, <span class="str">"さっき何て言いましたか？"</span>),
+    ],
+})</pre></details>
+
+    <details class="code"><summary>出力例：過去の会話をふまえて答えられた</summary><pre><span class="cmt"># 出力（過去の会話をふまえて答えられた）</span>
+さっき「J'adore programmer.」と言いました。フランス語で「私はプログラミングが大好きです」という意味です。</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>過去の会話を入れたら、ちゃんと文脈を理解しましたね！</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>シンプルでうまく機能する。でも<b>本番だと課題がある</b>んだ。これを解決するのが<b>LangGraph</b>だ。</div></div>
+    </div>
+
+    <h3 class="blk">素朴な「全履歴リスト」の4つの課題</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔒</div><h4>① アトミックに更新したい</h4><p>各チャット後にメモリを一括で確実に更新したい。失敗時に「質問だけ・回答だけ」が記録されると履歴が壊れる。</p><span class="pill">壊れない記録</span></div>
+      <div class="mini"><div class="ic">🗄️</div><h4>② 永続ストレージに保存したい</h4><p>メモリ上だけでなくRDB（データベース）などに保存して、再起動しても残るようにしたい。</p><span class="pill">消えない保存</span></div>
+      <div class="mini"><div class="ic">🎚️</div><h4>③ 件数を制御したい</h4><p>どのメッセージを何件保持して、新しいチャットにどれだけ渡すかをコントロールしたい。</p><span class="pill">渡す量の調整</span></div>
+      <div class="mini"><div class="ic">🔍</div><h4>④ 独立して確認・編集したい</h4><p>LLM呼び出しとは別に、ステートをのぞいたり書き換えたりしたい。</p><span class="pill">外から手入れ</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：メモ書きだけの宿は危ない</h4>
+      <p>過去のやり取りをただ「カウンターのメモ用紙」に書き足すだけだと、宿が大きくなると困ります。書き途中で電話が鳴れば<b>半分しか書けず</b>（①）、メモは机に置きっぱなしで<b>火事や紛失で消え</b>（②）、メモが分厚くなりすぎて<b>どこを見せればいいか分からず</b>（③）、店主が<b>後から確認・修正する仕組みもない</b>（④）。だからきちんとした「宿帳システム」＝LangGraphが要るのです。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.2 ===== -->
+<section id="s42">
+  <div class="sec-head">
+    <div class="sec-num">4.2</div>
+    <div><h2>LangGraphについて</h2><span class="tag">マルチアクター・マルチステップ・ステートフルなグラフ</span></div>
+  </div>
+  <div class="card" id="s42a">
+    <p class="lead"><b>LangGraph</b>は、マルチアクター・マルチステップ・ステートフルな<b>認知アーキテクチャ（グラフと呼ぶ）</b>を実装するライブラリです。3つの難しい言葉を1つずつほどいていきます。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>用語が難しいです……。</div></div>
+    </div>
+
+    <h3 class="blk">3つのキーワードをほどく</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">👥</div><h4>マルチアクター</h4><p>専門家チームが協働するように、複数の<b>アクター</b>を組み合わせると強くなる。回答が得意なLLMと、最新情報集めが得意な検索エンジンを組むなど（Perplexity・Arc Searchが例）。「誰がいつ・どの順で・どう作業を受け渡すか」を調整するレイヤーが要る。</p><span class="pill">複数の働き手</span></div>
+      <div class="mini"><div class="ic">⏱️</div><h4>マルチステップ</h4><p>あるアクターが別のアクターへ処理を渡すたび、やり取りを把握する必要がある。これを「時間軸上の複数の離散ステップ」としてモデル化。渡す相手がいなくなるまで続き、最終結果に到達する。</p><span class="pill">段階を踏む</span></div>
+      <div class="mini"><div class="ic">🧾</div><h4>ステートフル</h4><p>ステップをまたいで連携するには<b>ステート（状態）</b>の追跡が要る。記録しないままLLMを2回呼ぶと同じ結果に。各アクターから取り出し、全員が共有する単一の中央ステートとして更新する。</p><span class="pill">状態を持つ</span></div>
+    </div>
+
+    <div class="why">
+      <h4>🟣 ステートフルだと何がうれしいか</h4>
+      <ul>
+        <li>各計算の前後で<b>スナップショット保存</b>ができる。</li>
+        <li><b>一時停止・再開・エラー復旧</b>ができる。</li>
+        <li><span class="term" data-tip="人間が途中で確認・介入できる仕組み。human-in-the-loop。">ヒューマンインザループ</span>制御（人が途中で確認・介入）ができる。</li>
+      </ul>
+    </div>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：宿は1人では回らない</h4>
+      <p>大きな宿は、フロント係・仲居さん・板前さんなど<b>複数の働き手（マルチアクター）</b>が、受付→案内→食事提供と<b>順に仕事を受け渡し（マルチステップ）</b>ます。そして全員が同じ<b>宿帳（ステート）</b>を見て「このお客さまは何号室で、苦手な食材は何か」を共有する。宿帳がなければ、板前さんは毎回イチから聞き直すことになります。これが<b>ステートフル</b>な宿＝LangGraphです。</p>
+    </div>
+  </div>
+
+  <div class="card" id="s42b">
+    <h3 class="blk">グラフは何でできている？ ― 3要素</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>グラフって、何でできてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>3要素だ。ステート・ノード・エッジ。可視化やデバッグ支援もあって、そのまま本番にデプロイできる。</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧾</div><h4>① ステート</h4><p>アプリが受け取って、実行中に変更・生成するデータ。みんなで共有する中央の記録。</p><span class="pill">共有データ</span></div>
+      <div class="mini"><div class="ic">⚙️</div><h4>② ノード</h4><p>各ステップを表す単なる関数。現在のステートを入力に受け取って、ステートを更新して返す。</p><span class="pill">処理関数</span></div>
+      <div class="mini"><div class="ic">➡️</div><h4>③ エッジ</h4><p>ノード間の接続。最初から最後までの経路を決める。固定経路や、関数で次を判定する条件付き経路。</p><span class="pill">つながり</span></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：宿の設計図そのもの</h4>
+      <p><b>ステート</b>＝いま開いている宿帳のページ。<b>ノード</b>＝受付・案内などひとつひとつの持ち場（係）。<b>エッジ</b>＝「受付が終わったら客室へ」というお客さまの案内動線。この3つを決めれば、お客さまが入口から出口まで迷わず流れる――それがグラフです。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.3 ===== -->
+<section id="s43">
+  <div class="sec-head">
+    <div class="sec-num">4.3</div>
+    <div><h2>StateGraphを作成する</h2><span class="tag">ステート定義 → ノード追加 → エッジ接続 → コンパイル</span></div>
+  </div>
+  <div class="card">
+    <p class="lead">シンプルなチャットボットを作ります。流れは <b>①StateGraphを作りステートを定義 → ②chatbotノードを追加 → ③エッジを接続 → ④コンパイル</b> の4ステップ。順に見ていきます。</p>
+
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>ステートを定義する</h4><p><code>messages</code>というキーを用意し、<code>add_messages</code>リデューサーで「上書きせず追記」と決める。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>chatbotノードを追加する</h4><p>現在のメッセージをLLMに渡して答えを得る関数を、ノードとしてグラフに登録する。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>エッジを追加する</h4><p>START→chatbot→END とつないで、開始と終了の道筋を決める。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>コンパイルする</h4><p><code>builder.compile()</code>で、<code>invoke()</code>や<code>stream()</code>で呼べる実行可能オブジェクトにする。</p></div></div>
+    </div>
+
+    <h3 class="blk">① ステートを定義する</h3>
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、グラフのステートを定義します。<code>messages</code>はリストで、<code>add_messages</code>リデューサーにより「上書きせず追記」されます。</p>
+    <details class="code"><summary>Python：ステート（State）の定義</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: グラフのステートを定義する。</span>
+<span class="cmt"># messages はリストで、add_messages リデューサーにより「上書きせず追記」される。</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+
+<span class="kw">class</span> <span class="fn">State</span>(TypedDict):
+    <span class="cmt"># messagesの型は list。add_messages はこのステートの更新方法を定義する。</span>
+    <span class="cmt"># 既存のメッセージを置き換えるのではなくリストへ追記する。</span>
+    messages: Annotated[<span class="kw">list</span>, add_messages]
+
+builder = <span class="fn">StateGraph</span>(State)</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>ステートには「形（スキーマ）」と「更新方法を示す<b>リデューサー</b>関数」が含まれる。ここでは<code>messages</code>に<code>add_messages</code>が付いていて「新しいメッセージを既存のリストへ追記する」という意味だ。リデューサーがないキーは、更新のたびに上書きされる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>リデューサーって？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>単純な関数だ。第1引数に現在のステート、第2引数に書き込まれる値を受け取って、マージした次のステートを返す。一番単純なのは「次の値をリストに追加して返す」関数。次に<code>chatbot</code>ノード（作業の単位＝関数）を追加する。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：宿帳は線で消さず追記する</h4>
+      <p>リデューサー<code>add_messages</code>は「宿帳の書き方ルール」です。お客さまが新しく何か言うたび、前の記録を<b>消しゴムで消して書き直す</b>のではなく、<b>次の行に書き足す</b>。だから過去のやり取りがちゃんと積み重なっていきます。ルールが無い項目は、新しい内容で上書きされてしまいます。</p>
+    </div>
+
+    <h3 class="blk">② chatbotノードを追加する</h3>
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、現在のメッセージをLLMに渡して回答を得るノードを定義し、グラフに追加します。</p>
+    <details class="code"><summary>Python：chatbotノードの定義と追加</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: 現在のメッセージをLLMに渡して回答を得るノードを定義し、グラフに追加する。</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+model = <span class="fn">ChatOpenAI</span>()
+
+<span class="kw">def</span> <span class="fn">chatbot</span>(state: State):
+    answer = model.<span class="fn">invoke</span>(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [answer]}  <span class="cmt"># add_messages により履歴に追記される</span>
+
+<span class="cmt"># 第1引数はノードの一意の名前、第2引数は実行する関数</span>
+builder.<span class="fn">add_node</span>(<span class="str">"chatbot"</span>, chatbot)</pre></details>
+
+    <h3 class="blk">③④ エッジを追加してコンパイルする</h3>
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、START→chatbot→END とつなぎ、グラフを実行可能オブジェクトにコンパイルします。</p>
+    <details class="code"><summary>Python：エッジ接続とコンパイル</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: START→chatbot→END とつなぎ、グラフを実行可能オブジェクトにコンパイルする。</span>
+builder.<span class="fn">add_edge</span>(START, <span class="str">'chatbot'</span>)   <span class="cmt"># どこから始めるか</span>
+builder.<span class="fn">add_edge</span>(<span class="str">'chatbot'</span>, END)     <span class="cmt"># どこで終わるか（省略可）</span>
+
+graph = builder.<span class="fn">compile</span>()  <span class="cmt"># invoke() や stream() で呼べるようになる</span></pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><code>graph.get_graph().draw_mermaid_png()</code>でグラフを可視化できる。実行は<code>stream()</code>でできるよ。</div></div>
+    </div>
+
+    <h3 class="blk">実行してみる</h3>
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは「hi!」を入力してグラフを実行し、各ステップの結果をストリーム表示します。</p>
+    <details class="code"><summary>Python：グラフを実行（stream）</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: 「hi!」を入力して、グラフを実行し、各ステップの結果をストリーム表示する。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+
+user_input = {<span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">'hi!'</span>)]}
+<span class="kw">for</span> chunk <span class="kw">in</span> graph.<span class="fn">stream</span>(user_input):
+    <span class="fn">print</span>(chunk)</pre></details>
+
+    <details class="code"><summary>出力例：chatbotノードがAIの返答を生成した</summary><pre><span class="cmt"># 出力（chatbotノードがAIの返答を生成した）</span>
+{ <span class="str">"chatbot"</span>: { <span class="str">"messages"</span>: [<span class="fn">AIMessage</span>(<span class="str">"How can I help you?"</span>)] } }</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>入力が、さっき定義した<code>State</code>と同じ形（<code>messages</code>キーにメッセージのリスト）になっている点に注目。<code>stream()</code>は各ステップ後にステート全体をストリーミングする。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ この項のまとめ</h4>
+      <ul>
+        <li>グラフ作りは「ステート定義 → ノード追加 → エッジ接続 → コンパイル」の順。</li>
+        <li>ステートは「形（スキーマ）」＋「更新方法＝リデューサー」。<code>add_messages</code>は追記。</li>
+        <li>ノードは「現在のステートを受け取り、更新を返す関数」。</li>
+        <li>入力もステートと同じ形。<code>stream()</code>は各ステップ後にステート全体を返す。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.4 ===== -->
+<section id="s44">
+  <div class="sec-head">
+    <div class="sec-num">4.4</div>
+    <div><h2>StateGraphにメモリを追加する</h2><span class="tag">チェックポインタとスレッドで記憶させる</span></div>
+  </div>
+  <div class="card">
+    <p class="lead">いよいよメモリです。LangGraphには永続化機構が組み込まれていて、グラフを再コンパイルして<b>チェックポインタ</b>（ステートを保存するストレージアダプター）を接続するだけ。これで各ステップ終了時にステートが自動保存されます。</p>
+
+    <h3 class="blk">チェックポインタの3つの公式アダプター</h3>
+    <div class="grid3">
+      <div class="mini"><div class="ic">💨</div><h4>InMemorySaver</h4><p>メモリ上に保存。再起動で消える。テスト向き。</p><span class="pill">テスト向き</span></div>
+      <div class="mini"><div class="ic">📁</div><h4>SqliteSaver</h4><p>軽量なファイルに保存。ローカル開発向き。</p><span class="pill">ローカル開発</span></div>
+      <div class="mini"><div class="ic">🏢</div><h4>PostgresSaver</h4><p>本格的なデータベースに保存。大規模運用向き。</p><span class="pill">大規模運用</span></div>
+    </div>
+
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、チェックポインタ（InMemorySaver）を付けて、各ステップでステートを保存させます。</p>
+    <details class="code"><summary>Python：チェックポインタを接続する</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: チェックポインタ（InMemorySaver）を付けて、各ステップでステートを保存する。</span>
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> InMemorySaver
+
+graph = builder.<span class="fn">compile</span>(checkpointer=<span class="fn">InMemorySaver</span>())</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>これで各ステップ終了時にステートが永続化される。グラフが呼ばれるたびに、チェックポインタが<b>最新のステートを取得して、新しい入力とマージして</b>実行する。違いを見よう。</div></div>
+    </div>
+
+    <h3 class="blk">同じスレッドで2回会話してみる</h3>
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、同じスレッド（thread_id=1）で2回会話します。1回目で名前(Jack)を伝え、2回目で「私の名前は？」と聞くと、メモリから答えられます。</p>
+    <details class="code"><summary>Python：同じスレッドで記憶を確認する</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: 同じスレッド(thread_id=1)で2回会話する。</span>
+<span class="cmt"># 1回目で名前(Jack)を伝え、2回目で「私の名前は？」と聞くと、メモリから答えられる。</span>
+thread1 = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"1"</span>}}
+
+result_1 = graph.<span class="fn">invoke</span>(
+    { <span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">"hi, my name is Jack!"</span>)] },
+    thread1
+)
+<span class="cmt"># { "chatbot": { "messages": [AIMessage("How can I help you, Jack?")] } }</span>
+
+result_2 = graph.<span class="fn">invoke</span>(
+    { <span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">"what is my name?"</span>)] },
+    thread1
+)
+<span class="cmt"># { "chatbot": { "messages": [AIMessage("Your name is Jack")] } }</span></pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>ちゃんと「Jack」って覚えてました！<code>thread1</code>が鍵ですか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>そう。<code>thread1</code>は、このチャットが特定の履歴（LangGraphでは「<b>スレッド</b>」と呼ぶ）に属することを示す識別子だ。スレッドは初参照時に自動生成されて、任意の文字列（普通はUUID）が使える。スレッドのおかげで、複数ユーザーが互いに干渉しない独立した会話を持てる。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>仕組みはこうだ。1回目は<code>chatbot</code>ノードが1件のメッセージを受け取ってレスポンスを生成。両方ステートに保存される。2回目は同じスレッドだから、ノードに<b>3件（保存された2件＋新しい質問）</b>が渡る。これがメモリの本質だ。</div></div>
+    </div>
+
+    <h3 class="blk">スレッドが分けるしくみ</h3>
+    <div class="cycle">
+      <div class="node"><h4>🧑 スレッド「1」</h4><p>「私の名前はJack」→保存→「私の名前は？」には<b>Jackと答えられる</b>。</p><span class="when">Jackさん専用の宿帳ページ</span></div>
+      <div class="cycle-arrow">≠</div>
+      <div class="node"><h4>🧑 スレッド「2」</h4><p>別の会話。スレッド1で伝えた名前は<b>こちらでは通じない</b>。</p><span class="when">別のお客さま専用の宿帳ページ</span></div>
+    </div>
+    <div class="loopback">🔑 thread_id を変えれば、会話はきちんと分離される（混ざらない）</div>
+
+    <h3 class="blk">ステートを直接確認・更新する</h3>
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、スレッドの現在のステートを取得（確認）したり、メッセージを1件追加（更新）したりします。LLM呼び出しとは独立して操作できます。</p>
+    <details class="code"><summary>Python：get_state / update_state</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: スレッドの現在のステートを取得・更新する。</span>
+graph.<span class="fn">get_state</span>(thread1)  <span class="cmt"># 現在のステートを取得</span>
+
+<span class="cmt"># メッセージリストに1件追加（次回このスレッドで使われる）</span>
+graph.<span class="fn">update_state</span>(thread1, {<span class="str">"messages"</span>: [<span class="fn">HumanMessage</span>(<span class="str">'I like LLMs!'</span>)]})</pre></details>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：金庫の宿帳と、お客さまごとの宿泊カード</h4>
+      <p><b>チェックポインタ</b>は、応対のたびに宿帳を<b>金庫にしまう仕組み</b>。次の応対では金庫から最新の宿帳を取り出し、お客さまの新しい一言を書き足してからスタッフに渡します。<b>スレッド（thread_id）</b>は、お客さまごとの<b>宿泊カード番号</b>。Jackさんのカードと別のお客さまのカードは別ページなので、会話が混ざりません。店主（あなた）は<code>get_state</code>で宿帳を覗き、<code>update_state</code>でメモを書き足すこともできます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.5 ===== -->
+<section id="s45">
+  <div class="sec-head">
+    <div class="sec-num">4.5</div>
+    <div><h2>チャット履歴を修正する</h2><span class="tag">トリミング・フィルタリング・マージ</span></div>
+  </div>
+  <div class="card">
+    <p class="lead">履歴のメッセージは、モデルが正確に答えるのに最適な形とは限りません。<b>3つの方法</b>で修正します――トリミング（件数を減らす）・フィルタリング（種類で選ぶ）・マージ（連続を1つにまとめる）。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">✂️</div><h4>トリミング</h4><p>件数/トークン数を制限して、上限に収める。</p><span class="pill">減らす</span></div>
+      <div class="mini"><div class="ic">🔎</div><h4>フィルタリング</h4><p>タイプ・ID・名前で、必要なものだけ選ぶ。</p><span class="pill">選ぶ</span></div>
+      <div class="mini"><div class="ic">🔗</div><h4>マージ</h4><p>連続する同種メッセージを1つに結合する。</p><span class="pill">まとめる</span></div>
+    </div>
+  </div>
+
+  <!-- 4.5.1 -->
+  <div class="card" id="s451">
+    <h3 class="blk">4.5.1 メッセージをトリミングする</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>LLMには<b>コンテキストウィンドウ</b>の上限がある。最終プロンプトがそれを超えると、拒否されるか切り捨てられる。情報が多すぎると注意が散ってハルシネーションも起きる。だから履歴から渡すメッセージ数を制限する。<code>trim_messages</code>関数を使う。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、メッセージリストを末尾(last)から最大65トークン分だけ残すようにトリミングします。</p>
+    <details class="code"><summary>Python：trim_messages で履歴を切り詰める</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: メッセージリストを、末尾(last)から最大65トークン分だけ残すようトリミングする。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> AIMessage, SystemMessage, HumanMessage, trim_messages
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+trimmer = <span class="fn">trim_messages</span>(
+    max_tokens=<span class="num">65</span>,
+    strategy=<span class="str">"last"</span>,                              <span class="cmt"># 末尾（最新）を優先して残す</span>
+    token_counter=<span class="fn">ChatOpenAI</span>(model=<span class="str">"gpt-4o-mini"</span>),<span class="cmt"># このモデルのトークナイザで数える</span>
+    include_system=<span class="kw">True</span>,                          <span class="cmt"># システムメッセージは必ず残す</span>
+    allow_partial=<span class="kw">False</span>,                          <span class="cmt"># メッセージの途中で切らない</span>
+    start_on=<span class="str">"human"</span>,                             <span class="cmt"># 人間のメッセージから始まるようにする</span>
+)
+
+messages = [
+    <span class="fn">SystemMessage</span>(content=<span class="str">"あなたは優秀なアシスタントです"</span>),
+    <span class="fn">HumanMessage</span>(content=<span class="str">"こんにちは！ 私はボブです"</span>),
+    <span class="fn">AIMessage</span>(content=<span class="str">"こんにちは！"</span>),
+    <span class="fn">HumanMessage</span>(content=<span class="str">"バニラアイスが好きです"</span>),
+    <span class="fn">AIMessage</span>(content=<span class="str">"いいですね"</span>),
+    <span class="fn">HumanMessage</span>(content=<span class="str">"2 + 2 は？"</span>),
+    <span class="fn">AIMessage</span>(content=<span class="str">"4"</span>),
+    <span class="fn">HumanMessage</span>(content=<span class="str">"ありがとう"</span>),
+    <span class="fn">AIMessage</span>(content=<span class="str">"どういたしまして！"</span>),
+    <span class="fn">HumanMessage</span>(content=<span class="str">"楽しんでる？"</span>),
+    <span class="fn">AIMessage</span>(content=<span class="str">"はい！"</span>),
+]
+
+trimmer.<span class="fn">invoke</span>(messages)</pre></details>
+
+    <h4 class="blk">パラメータのポイント</h4>
+    <table class="t">
+      <tr><th>パラメータ</th><th>意味</th></tr>
+      <tr><td><code>strategy="last"</code></td><td>リスト末尾（最新）を優先して残す（<code>first</code>なら古い方を優先）。</td></tr>
+      <tr><td><code>token_counter=…</code></td><td>モデルを渡して、そのトークナイザで文章量を計測する。</td></tr>
+      <tr><td><code>include_system=True</code></td><td>システムメッセージ（役割の指示）は必ず残す。</td></tr>
+      <tr><td><code>allow_partial=False</code></td><td>最後のメッセージの途中切りを禁止（超えるなら丸ごと削除）。</td></tr>
+      <tr><td><code>start_on="human"</code></td><td>対応する人間のメッセージなしにAIメッセージだけ残る状況を防ぐ。</td></tr>
+    </table>
+
+    <div class="why">
+      <h4>🟣 なぜトリミングが必要か</h4>
+      <ul>
+        <li>最終プロンプトがコンテキストウィンドウを超えると、モデルが拒否するか途中で切り捨ててしまうから。</li>
+        <li>情報量が多すぎると注意が散り、ハルシネーション（もっともらしい嘘）を起こしやすくなるから。</li>
+        <li>だから最新のメッセージを優先して残す（<code>strategy="last"</code>）のが実用的。</li>
+      </ul>
+    </div>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：分厚い宿帳から「直近のページ」だけ渡す</h4>
+      <p>宿帳が分厚くなりすぎると、スタッフの机（コンテキストウィンドウ）に乗りきりません。乗りきらない書類は読めず、量が多すぎると要点を見失って勘違い（ハルシネーション）も起きる。だから店主は<b>直近のページ（最新の会話）を優先</b>して渡し、<b>宿のルール書き（システムメッセージ）は必ず添える</b>。途中で切れた半端なページは渡さない――これがトリミングです。</p>
+    </div>
+  </div>
+
+  <!-- 4.5.2 -->
+  <div class="card" id="s452">
+    <h3 class="blk">4.5.2 メッセージをフィルタリングする</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>履歴が増えると、いろんなメッセージタイプ・サブチェーン・モデルが混ざる。<code>filter_messages</code>で、タイプ・ID・名前を基準に絞り込める。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、メッセージのうち人間(human)のメッセージだけを抽出します。名前で除外したり、タイプ指定＋ID除外もできます。</p>
+    <details class="code"><summary>Python：filter_messages で絞り込む</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: メッセージのうち、人間(human)のメッセージだけを抽出する。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> AIMessage, HumanMessage, SystemMessage, filter_messages
+
+messages = [
+    <span class="fn">SystemMessage</span>(<span class="str">"you are a good assistant"</span>, id=<span class="str">"1"</span>),
+    <span class="fn">HumanMessage</span>(<span class="str">"example input"</span>, id=<span class="str">"2"</span>, name=<span class="str">"example_user"</span>),
+    <span class="fn">AIMessage</span>(<span class="str">"example output"</span>, id=<span class="str">"3"</span>, name=<span class="str">"example_assistant"</span>),
+    <span class="fn">HumanMessage</span>(<span class="str">"real input"</span>, id=<span class="str">"4"</span>, name=<span class="str">"bob"</span>),
+    <span class="fn">AIMessage</span>(<span class="str">"real output"</span>, id=<span class="str">"5"</span>, name=<span class="str">"alice"</span>),
+]
+
+<span class="fn">filter_messages</span>(messages, include_types=<span class="str">"human"</span>)
+<span class="cmt"># → 人間のメッセージ（id=2, id=4）だけが返る</span>
+
+<span class="cmt"># 特定の名前を除外する</span>
+<span class="fn">filter_messages</span>(messages, exclude_names=[<span class="str">"example_user"</span>, <span class="str">"example_assistant"</span>])
+
+<span class="cmt"># タイプを指定し、特定のIDを除外する</span>
+<span class="fn">filter_messages</span>(messages, include_types=[HumanMessage, AIMessage], exclude_ids=[<span class="str">"3"</span>])</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><code>filter_messages</code>は命令的にも宣言的にも使えるから、チェーン内で組み合わせられる（<code>chain = filter_ | model</code>）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：宿帳から「お客さまの発言だけ」を抜き出す</h4>
+      <p>宿帳には、お客さまの言葉・スタッフの返事・お試しの記入見本などが混ざっています。フィルタリングは「<b>お客さまの発言だけ抜き出す</b>」「<b>記入見本の行は除く</b>」のように、種類・記入者の名前・行番号(ID)で必要な記録だけを選び出すこと。狙った情報だけを机に並べられます。</p>
+    </div>
+  </div>
+
+  <!-- 4.5.3 -->
+  <div class="card" id="s453">
+    <h3 class="blk">4.5.3 連続するメッセージをマージする</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>一部のモデル（Anthropicなど）は、同じ種類のメッセージが連続する入力を受け付けない。<code>merge_message_runs</code>で、連続する同種メッセージをマージできる。</div></div>
+    </div>
+
+    <p style="font-size:14px;color:var(--sub)">↓ このコードは、連続する同じ種類のメッセージ（System2連続・Human2連続・AI2連続）を、それぞれ1つにマージします。</p>
+    <details class="code"><summary>Python：merge_message_runs で連続を結合</summary><pre><span class="cmt"># Python</span>
+<span class="cmt"># このコードがやること: 連続する同じ種類のメッセージ（System2連続、Human2連続、AI2連続）を1つにマージする。</span>
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> AIMessage, HumanMessage, SystemMessage, merge_message_runs
+
+messages = [
+    <span class="fn">SystemMessage</span>(<span class="str">"あなたは優秀なアシスタントです。"</span>),
+    <span class="fn">SystemMessage</span>(<span class="str">"あなたは常にジョークで返答します。"</span>),
+    <span class="fn">HumanMessage</span>([{<span class="str">"type"</span>: <span class="str">"text"</span>, <span class="str">"text"</span>: <span class="str">"なぜlangchainと呼ばれているのか不思議です"</span>}]),
+    <span class="fn">HumanMessage</span>(<span class="str">"それと、ハリソンはいったい誰を追いかけているの？"</span>),
+    <span class="fn">AIMessage</span>(<span class="str">"「WordRope」や「SentenceString」では響きがイマイチだったのでしょうね！"</span>),
+    <span class="fn">AIMessage</span>(<span class="str">"きっとオフィスで最後の一杯のコーヒーを追いかけているのでしょう！"</span>),
+]
+
+<span class="fn">merge_message_runs</span>(messages)</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>マージで、両方が文字列なら改行で連結される。片方がコンテンツブロックのリストなら、マージ後もリストになる。これも<code>chain = merger | model</code>のように組み合わせられる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏨 たとえ話：同じ人の連続メモを1枚にまとめる</h4>
+      <p>宿帳に「スタッフへの指示」が2行続けて書いてあると、一部の几帳面なスタッフ（一部のモデル）は「同じ種類が連続している」と混乱します。そこでマージは、<b>連続する同じ種類のメモを1枚にまとめる</b>整理術。文字どうしなら改行でつなぎ、片方が箱入りメモ（リスト）ならまとめても箱入りのまま――きれいに渡せます。</p>
+    </div>
+  </div>
+
+  <!-- 4.5 まとめ -->
+  <div class="card">
+    <div class="summary">
+      <h4>✅ 4.5 要するに ／ この項のまとめ</h4>
+      <ul>
+        <li><b>要するに：</b>LLMはステートレスなのでメモリを外付けする。LangGraphのステート・ノード・エッジでグラフを組み、チェックポインタで永続化、スレッドでユーザーごとに分離。履歴はトリミング（件数制限）・フィルタリング（種類で絞る）・マージ（連続を結合）で整える。</li>
+        <li>LLMはステートレス。履歴をメッセージのリストとして保存しプロンプトに含めるとメモリになる。素朴な保存は本番で課題（アトミック更新・永続化・件数制御）。</li>
+        <li>LangGraph：マルチアクター・マルチステップ・ステートフルなグラフ。3要素はステート（共有データ）・ノード（処理関数）・エッジ（接続）。</li>
+        <li>ステートは更新方法をリデューサー（<code>add_messages</code>は追記）で定義する。</li>
+        <li>チェックポインタ（InMemory/SQLite/Postgres）で永続化。スレッド（thread_id）でユーザーごとに分離。<code>get_state</code>/<code>update_state</code>で確認・編集。</li>
+        <li>履歴の修正：<code>trim_messages</code>（件数/トークン制限）・<code>filter_messages</code>（タイプ・ID・名前で絞る）・<code>merge_message_runs</code>（連続する同種を結合）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4.6 ===== -->
+<section id="s46">
+  <div class="sec-head">
+    <div class="sec-num">4.6</div>
+    <div><h2>まとめ</h2><span class="tag">対話で学ぶ ／ 次章への橋渡し</span></div>
+  </div>
+  <div class="card">
+    <h3 class="blk">対話で学ぶ</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>この章では、チャットボットが対話を記憶するメモリシステムを、LangGraphで作った。チェックポインタで保存・更新を自動化して、スレッドでユーザーごとに会話を分けた。履歴の加工（トリミング・フィルタリング・マージ）も学んだね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>これで「さっきの話」が通じるチャットボットになりました！次は？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>次の5章は「LangGraphによる認知アーキテクチャ」だ。チャットボットが、単にレスポンスするだけじゃなく、意思決定して、アクションを選んで、過去の出力を振り返れるようにするよ。</div></div>
+    </div>
+
+    <div class="summary">
+      <h4>✅ 要するに ／ この項のまとめ</h4>
+      <ul>
+        <li><b>要するに：</b>LangGraphでチャットボットにメモリを追加し、複数ターンの対話を可能にした。チェックポインタで永続化、スレッドでユーザーごとに分離、履歴の加工で整えた。次章は意思決定・アクション選択・振り返りができる認知アーキテクチャ。</li>
+        <li>LangGraphでメモリシステムを構築し、保存・更新を自動化、スレッドで会話を分離。</li>
+        <li>履歴の加工（トリミング・フィルタリング・マージ）でモデルに渡すメッセージを最適化。</li>
+        <li>次章は、意思決定・アクション選択・振り返りができる認知アーキテクチャへ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ ===== -->
+<section id="wrapup">
+  <div class="sec-head">
+    <div class="sec-num">🔁</div>
+    <div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ソラが今日のポイントを4つ復習</span></div>
+  </div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>今日のポイントです。1つ目は「LLMはステートレス。だからメモリを外付けして、履歴を毎回プロンプトに含めて渡す」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>自分では覚えない、だったね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>2つ目は「LangGraphのグラフは、ステート・ノード・エッジの3要素でできている」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>マルチアクター・マルチステップ・ステートフル、も。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>3つ目は「チェックポインタで会話を永続化、スレッド（thread_id）でユーザーごとに会話を分ける」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span><code>get_state</code>/<code>update_state</code>で確認・編集できる。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>4つ目は「履歴はトリミング（件数制限）・フィルタリング（種類で絞る）・マージ（連続を結合）で整える」。</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>コンテキストウィンドウを超えないように、だね。</div></div>
+      <div class="bubble sora"><div class="av">ソラ</div><div class="txt"><span class="who">弟子・ソラ</span>完璧でしょうか？</div></div>
+      <div class="bubble riku"><div class="av">リク</div><div class="txt"><span class="who">先生・リク</span>完璧だ。次は認知アーキテクチャへ進もう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== クイズ ===== -->
+<section id="quiz">
+  <div class="sec-head">
+    <div class="sec-num">✏️</div>
+    <div><h2>章末の理解度チェック（簡単な問題）</h2><span class="tag">自分の言葉で答えてみよう</span></div>
+  </div>
+  <div class="card">
+    <p class="lead">この章を読み終わったあと、自分の言葉で答えてみてください。スラスラ書ける問題は理解できています。詰まる問題こそが「実は分かっていなかった部分」です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>ステートレスとメモリ</div>
+      <p style="font-size:14px;margin:0">LLMが「ステートレス」とはどういう意味ですか。それでもチャットボットが過去の会話を覚えているように見えるのはなぜですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ステートレスとは、LLMの各回のプロンプト入力が独立していて、モデルが以前のプロンプトやレスポンスを記憶していないという意味。つまりLLM自身は前の会話を覚えていない。それでも覚えているように見えるのは、アプリ側でメモリシステムを外付けして、過去の会話をメッセージのリストとして保存し、毎回その履歴を最終プロンプトに含めてLLMに渡しているから。LLMは渡された履歴を「文脈」として読んで、覚えているかのように答える。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ステートレス＝各入力が独立、前を記憶しない、に触れている ／ □ アプリ側で履歴を保存しプロンプトに含めて渡す、に触れている ／ □ LLM自身が覚えているわけではない、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>グラフの3要素</div>
+      <p style="font-size:14px;margin:0">LangGraphのグラフを構成する3要素（ステート・ノード・エッジ）を、それぞれ説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">ステートは、アプリが外から受け取り、実行中に変更・生成する共有データ（例：messagesのリスト）。更新方法はリデューサー関数で定義する。ノードは、各ステップを表す関数で、現在のステートを入力に受け取り、ステートを更新する値を返す（例：LLMを呼ぶchatbotノード）。エッジは、ノード間の接続で、最初から最後までの経路を決める。固定経路（Bの後は必ずD）や、関数で次を判定する条件付き経路を設定できる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ ステート＝実行中に変更・生成される共有データ、に触れている ／ □ ノード＝現在のステートを受け取り更新する関数、に触れている ／ □ エッジ＝ノード間の接続・経路、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>チェックポインタとスレッド</div>
+      <p style="font-size:14px;margin:0">チェックポインタと「スレッド（thread_id）」は、それぞれ何のためにありますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">チェックポインタは、各ステップ終了時にグラフのステートを保存（永続化）するストレージアダプター。これにより、次の呼び出しが完全な初期状態から始まらず、最新のステートを取得して新しい入力とマージして実行できる（InMemory/SQLite/Postgresなどがある）。スレッド（thread_id）は、そのチャットがどの会話履歴に属するかを示す識別子。スレッドを分けることで、複数のユーザーが互いに干渉しない独立した会話を持てる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ チェックポインタ＝ステートを永続化するアダプター、に触れている ／ □ 次の呼び出しで最新ステートを取得しマージする、に触れている ／ □ スレッド＝会話を識別し、ユーザーごとに分離する、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>なぜ履歴を整えるのか</div>
+      <p style="font-size:14px;margin:0">チャット履歴が長くなったとき、なぜトリミング（メッセージの制限）が必要なのですか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">LLMにはコンテキストウィンドウ（受け取れるトークン数の上限）があり、最終プロンプトがそれを超えるとモデルが拒否するか途中で切り捨ててしまうから。また、情報量が多すぎるプロンプトはモデルの注意を散らし、ハルシネーションを引き起こす可能性もある。だから履歴からプロンプトに渡すメッセージ数を制限する。実用上は、最新のメッセージを優先して残せばよい（<code>trim_messages</code> の <code>strategy="last"</code>）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ コンテキストウィンドウを超えると拒否/切り捨てられる、に触れている ／ □ 情報過多で注意が散りハルシネーションを起こす、に触れている ／ □ 最新のメッセージを優先して残す、に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>履歴の3つの修正法</div>
+      <p style="font-size:14px;margin:0">チャット履歴を修正する3つの方法（トリミング・フィルタリング・マージ）を、それぞれ何をするかを説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">トリミング（<code>trim_messages</code>）は、コンテキストウィンドウに収まるよう、保持するメッセージ数やトークン数を制限する（末尾＝最新を優先するなど）。フィルタリング（<code>filter_messages</code>）は、メッセージのタイプ（human/aiなど）・ID・名前を基準に、必要なメッセージだけを抽出したり不要なものを除外したりする。マージ（<code>merge_message_runs</code>）は、同じ種類のメッセージが連続する場合に1つにまとめる（一部のモデルが連続する同種メッセージを受け付けないため）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">□ トリミング＝件数/トークン数を制限、に触れている ／ □ フィルタリング＝タイプ・ID・名前で絞る、に触れている ／ □ マージ＝連続する同種メッセージを結合、に触れている</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head">
+    <div class="sec-num">🌱</div>
+    <div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして定着させる</span></div>
+  </div>
+  <div class="card">
+    <div class="grid2">
+      <div class="mini"><div class="ic">🧩</div><h4>メモリ付きチャットボットを動かす</h4><p>本章の<code>StateGraph</code>を写経し、チェックポインタを付けて、同じスレッドで「名前を伝える→名前を聞く」を試す。覚えていることを確認。</p></div>
+      <div class="mini"><div class="ic">🔀</div><h4>スレッドを分ける</h4><p><code>thread_id</code>を "1" と "2" で分けて、片方で伝えた名前がもう片方では通じないことを確かめる。会話の分離を体感。</p></div>
+      <div class="mini"><div class="ic">🖼️</div><h4>グラフを可視化する</h4><p>Jupyterで<code>graph.get_graph().draw_mermaid_png()</code>を実行し、START→chatbot→END の図を見てみる。</p></div>
+      <div class="mini"><div class="ic">✂️</div><h4>トリミングで遊ぶ</h4><p><code>max_tokens</code>を小さくして、どのメッセージが残るかを観察し、<code>strategy</code>を<code>first</code>/<code>last</code>で切り替えてみる。</p></div>
+      <div class="mini"><div class="ic">📘</div><h4>LangGraph公式チュートリアル</h4><p>「LangGraph の Quickstart」（公式ドキュメント）で、メモリ付きチャットボットの作り方を確認する。</p></div>
+      <div class="mini"><div class="ic">🗄️</div><h4>永続化アダプターを切り替える</h4><p><code>InMemorySaver</code>を<code>SqliteSaver</code>に変えて、アプリを再起動しても会話が残ることを確認する。</p></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">初めてのLangChain ― 第4章「LangGraphを使ってチャットボットにメモリを追加する」 図解版／たとえ話の統一メタファー：🏨 記憶のおもてなし宿（宿帳＝メモリ・宿泊カード＝スレッド・金庫＝チェックポインタ）</p>
+
+</div>
+</body>
+</html>

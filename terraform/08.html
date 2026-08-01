@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8章 本番レベルのTerraformコード — 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">第 8 章</span>
+  <h1>本番レベルのTerraformコード<br>― 竣工検査に通る本物の建物を建てる ―</h1>
+  <p>「設計図はもう書ける」と意気込むハル。だが棟梁いわく、それはまだ「模型の家」。会社の運命を任せられる本物の建物を建てるには、竣工検査の項目表と、何度でも安全に建て直せる再利用部品（モジュール）の作法が要る。</p>
+  <p style="margin-top:14px;color:#cfe0ff"><b>📣 未経験でも大丈夫。</b> 専門用語には点線（カーソルを乗せると意味が出ます）、コードは折りたたみ（読み飛ばしてOK）、むずかしい話はぜんぶ「建物づくり」のたとえに置き換えてあります。最後まで気楽にどうぞ。</p>
+  <div class="badge-row">
+    <span class="badge">🏗️ 本番＝会社の運命を任せる建物</span>
+    <span class="badge">📋 竣工検査の項目表</span>
+    <span class="badge">🧱 小さく組み合わせる部品</span>
+    <span class="badge">✅ 自己点検する設計図</span>
+    <span class="badge">📌 バージョン固定</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>目次（クリックで移動）</h2>
+  <a href="#s80">8.0 本番レベルのインフラとは何か</a>
+  <a href="#s81">8.1 なぜ時間がかかるのか</a>
+  <a class="sub" href="#s811">8.1.1 理由1: DevOpsはまだ石器時代</a>
+  <a class="sub" href="#s812">8.1.2 理由2: ヤクの毛刈り</a>
+  <a class="sub" href="#s813">8.1.3 理由3: 本質的複雑性</a>
+  <a href="#s82">8.2 本番レベルのチェックリスト</a>
+  <a href="#s83">8.3 本番レベルのインフラモジュール</a>
+  <a class="sub" href="#s831">8.3.1 小さなモジュール</a>
+  <a class="sub" href="#s832">8.3.2 組み合わせ可能なモジュール</a>
+  <a class="sub" href="#s833">8.3.3 テスト可能なモジュール</a>
+  <a class="sub" href="#s8331">8.3.3 自己正常性確認が可能なモジュール</a>
+  <a class="sub" href="#s8331a">8.3.3.1 バリデーション</a>
+  <a class="sub" href="#s8332">8.3.3.2 事前条件と事後条件</a>
+  <a class="sub" href="#s8333">8.3.3.3 3つの使い時</a>
+  <a class="sub" href="#s834">8.3.4 バージョン管理されたモジュール</a>
+  <a class="sub" href="#s835">8.3.5 Terraformモジュールの先へ</a>
+  <a class="sub" href="#s8351">8.3.5.1 プロビジョナ</a>
+  <a class="sub" href="#s8352">8.3.5.2 null_resourceとプロビジョナ</a>
+  <a class="sub" href="#s8353">8.3.5.3 外部データソース</a>
+  <a href="#wrapup">🔁 章のまとめ</a>
+  <a href="#quiz">✏️ 理解度チェック</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">💬</div><div><b>吹き出しで会話が進みます</b><p>青色＝弟子のハル、オレンジ色＝師匠の棟梁。二人のやり取りで話が進みます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話はぜんぶ「本格的な建物づくり」で統一</b><p>むずかしい概念は、すべて「建築基準法に適合し竣工検査に通る本格的な建物を建てる」たとえで説明します。別世界のたとえは混ぜません。</p></div></div>
+    <div class="row"><div class="gi">📦</div><div><b>コードは折りたたみ＝読み飛ばしOK</b><p>「エンジニア向け／読まなくてOK」バッジの付いた箱はコードです。開かなくても話は分かります。</p></div></div>
+    <div class="row"><div class="gi">🔤</div><div><b>点線の用語はカーソルで意味が出ます</b><p>むずかしい言葉には点線が引いてあります。カーソルを乗せる（スマホは長押し）と、やさしい説明が出ます。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、やさしい言葉でまとめました。本文中では初めて出てきたところに点線が引いてあります。</p>
+  <div class="gl">
+    <div class="item"><div class="w">本番レベルのインフラ <span>production-grade infrastructure</span></div><p>会社の運命を任せられる品質の設備。お客の殺到・障害・攻撃に耐える本物の建物。</p></div>
+    <div class="item"><div class="w">マネージドサービス <span>managed service</span></div><p>業者がほとんど面倒を見てくれる完成品の設備。例: AWS RDS。</p></div>
+    <div class="item"><div class="w">DevOps <span>デブオプス</span></div><p>開発と運用を一体で回す考え方。ビルド・デプロイ・セキュリティまで広く指す。</p></div>
+    <div class="item"><div class="w">Infrastructure as Code <span>IaC</span></div><p>インフラ（設備）をコード（設計図）として管理すること。</p></div>
+    <div class="item"><div class="w">ヤクの毛刈り <span>Yak shaving</span></div><p>本来やりたい作業にたどり着くまでに、一見無関係な小作業が次々連鎖すること。</p></div>
+    <div class="item"><div class="w">偶有的複雑性 <span>accidental complexity</span></div><p>選んだ道具や手順のせいで生じる面倒。別の道具を選べば消える。</p></div>
+    <div class="item"><div class="w">本質的複雑性 <span>essential complexity</span></div><p>何を使っても消えない、課題そのものの難しさ。</p></div>
+    <div class="item"><div class="w">高可用性 <span>high availability</span></div><p>一部が壊れても全体は動き続ける性質。別棟が生きていれば全体は止まらない。</p></div>
+    <div class="item"><div class="w">モジュール <span>module</span></div><p>再利用できる設計図の部品。組み合わせて建物を建てる。</p></div>
+    <div class="item"><div class="w">最小権限の原則 <span>least privilege</span></div><p>その人が仕事に必要な分だけ鍵を渡す考え方。</p></div>
+    <div class="item"><div class="w">関数の合成 <span>function composition</span></div><p>ある部品の出力を別の部品の入力に渡してつなぐこと。</p></div>
+    <div class="item"><div class="w">副作用 <span>side effect</span></div><p>外の世界をこっそり読み書きしてしまうこと。減らすと使い回しやすい。</p></div>
+    <div class="item"><div class="w">ルートモジュール <span>root module</span></div><p>最上位の、実際に実行する設計図。部品（子モジュール）は単体では建たない。</p></div>
+    <div class="item"><div class="w">API <span>窓口の形</span></div><p>外から呼ぶときの入口の形。使い心地を決める部分。</p></div>
+    <div class="item"><div class="w">TDD <span>テスト駆動開発</span></div><p>テスト（見本）を先に書いてから実装する開発手法。</p></div>
+    <div class="item"><div class="w">バリデーション <span>validation</span></div><p>入力された値が正しいかを入口で検査する仕組み。</p></div>
+    <div class="item"><div class="w">事前条件 / 事後条件 <span>pre/postcondition</span></div><p>変更を当てる前／後に満たすべき約束を点検する仕組み。</p></div>
+    <div class="item"><div class="w">アベイラビリティゾーン <span>AZ</span></div><p>同じ地域内の、電源も建物も独立した別々のデータセンタ群（別棟）。</p></div>
+    <div class="item"><div class="w">self式 <span>self expression</span></div><p>そのリソース自身の属性を指す特別な書き方。堂々巡りを避ける。</p></div>
+    <div class="item"><div class="w">バージョン固定 <span>version pinning</span></div><p>使うバージョンを特定の番号に釘で留めること。再現性が出る。</p></div>
+    <div class="item"><div class="w">セマンティックバージョニング <span>semver</span></div><p>メジャー.マイナー.パッチで互換性を表す番号付け。</p></div>
+    <div class="item"><div class="w">ロックファイル <span>lock file</span></div><p>使った正確なバージョンを記録して固定する施錠ファイル（.terraform.lock.hcl）。</p></div>
+    <div class="item"><div class="w">ロールバック <span>rollback</span></div><p>問題が起きたとき、前の状態に戻すこと。</p></div>
+    <div class="item"><div class="w">プロビジョナ <span>provisioner</span></div><p>Terraform実行時にローカルやリモートの機械でスクリプトを走らせる仕組み。</p></div>
+    <div class="item"><div class="w">移植性 <span>portability</span></div><p>別の環境でもそのまま動かせる度合い。抜け道を使うと下がる。</p></div>
+  </div>
+</div>
+
+<!-- 8.0 -->
+<section id="s80">
+  <div class="sec-head"><div class="sec-num">8.0</div><h2>本番レベルのインフラとは何か<span class="tag">会社の運命を任せられる「本物の建物」</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> 本番レベルとは「会社の運命を任せられる」品質の設備。負荷・障害・攻撃に耐えるものを指す。模型（試作）と本物（本番）では必要な手間がまるで違う。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>棟梁、「<span class="term" data-tip="会社の運命を任せられる品質の設備。お客の殺到・障害・攻撃に耐える本物の建物。">本番レベルのインフラ</span>」って、ふつうのインフラと何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>良い出発点だね。本番レベルというのは「会社の運命を預けられる建物」のことだよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>運命を、ですか。おおげさじゃないですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>本気だよ。お客がどっと押し寄せても倒れない。地震（障害）が来ても家財（データ）が壊れない。泥棒（ハッカー）が入ろうとしても押し入られない。そういう建物に会社は商売を賭ける。外れたら会社は潰れる。模型の家とはまるで重みが違う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>建てるのにどれくらいかかるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>著者が多くの現場を見て出した目安があるんだ。表にするとこうなる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏗️ たとえ話：模型の家 vs 本物の建物</h4>
+      <p>段ボールで作る模型の家なら一晩で完成する。でも、人が安心して住み続け、地震や台風や火事に耐え、防犯もできる本物の建物は、基礎工事・耐震・配線・防火・検査…と工程が山ほどある。だから何ヶ月もかかる。「数分で建つ」と思っていると、見積もりを大きく外して施主の信用を失う。</p>
+    </div>
+
+    <h3 class="blk">建てるのにかかる期間の目安（表8-1）</h3>
+    <table class="t">
+      <tr><th>種類</th><th>例</th><th>期間</th></tr>
+      <tr><td><span class="term" data-tip="業者がほとんど面倒を見てくれる完成品の設備。">マネージドサービス</span></td><td>Amazon RDS</td><td>1〜2週間</td></tr>
+      <tr><td><span class="term" data-tip="複数の機械に分けて動かす仕組み。状態なし=機械の中にデータを残さない。">分散システム（状態なし）</span></td><td>ASG上のNode.jsアプリ群</td><td>2〜4週間</td></tr>
+      <tr><td>分散システム（状態あり）</td><td>Elasticsearchクラスタ</td><td>2〜4か月</td></tr>
+      <tr><td>アーキテクチャ全体</td><td>アプリ+DB+ロードバランサ+監視等</td><td>6〜36か月</td></tr>
+    </table>
+
+    <details class="code"><summary>表8-1（テキスト版）</summary><pre><span class="cmt"># 本番レベルの建物をゼロから建てるのに必要な期間の目安（表8-1）</span>
+種類                                   例                              期間
+マネージドサービス                     Amazon RDS                      1〜2週間
+セルフマネージドな分散システム(状態なし) ASG上のNode.jsアプリ群          2〜4週間
+セルフマネージドな分散システム(状態あり) Elasticsearchクラスタ           2〜4か月
+アーキテクチャ全体                     アプリ+DB+ロードバランサ+監視等  6〜36か月</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="複数の機械に分けて動かす仕組み。">分散システム</span>を自前で組み、機械の中にデータを残さない「状態なし（ステートレス）」なら2〜4週間。<span class="term" data-tip="Auto Scaling Group。混み具合に応じて機械を自動で増減する仕組み。">ASG</span>の上でNode.jsアプリ群を動かすのがその例だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>機械の中にデータを残す「状態あり」だと？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「状態あり（ステートフル）」、ローカルディスクにデータを置くElasticsearchクラスタなら桁が一つ上がって2〜4か月。街全体を造るなら、また桁が上がって6〜36か月だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、数分でできると思ってました…！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>みんなそう言うんだよ。でも大規模建設を経験した人ほど「この数字はむしろ甘い」と知っている。</div></div>
+    </div>
+
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>「本番」の重みを共有しないと、片手間の工事と本格工事を同じ感覚で見積もってしまう。</li>
+      <li>規模ごとの所要期間の目安を持つと、上司やお客への見積もりが現実的になる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>本番レベル＝負荷・障害・攻撃のいずれにも耐え、会社の運命を任せられる設備。</li>
+      <li>模型（試作）と本物（本番）は、必要な手間がまるで違う。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 8.1 -->
+<section id="s81">
+  <div class="sec-head"><div class="sec-num">8.1</div><h2>本番レベルのインフラ構築に時間がかかる理由<span class="tag">遅れには3つの理由がある</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> インフラ工事が遅れるのには3つの理由がある。①分野が未熟、②ヤクの毛刈り、③そもそも本質的にやることが多い。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そもそも、なんでそんなに時間がかかるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「5分」の直しが丸1日、「1日」の新機能が2週間、「2週間」のアプリが半年。これを言い表した格言がある。<span class="term" data-tip="「いつでも予測以上の時間がかかる――ホフスタッターの法則を計算に入れても」という自己言及的な格言。">ホフスタッターの法則</span>だ。「いつでも予測以上の時間がかかる――この法則を計算に入れても」。理由は3つある。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🪨</div><h4>理由1 未熟</h4><p>DevOpsはまだ石器時代。道具も手法も生まれたて。</p><span class="pill">偶有的</span></div>
+      <div class="mini"><div class="ic">🐂</div><h4>理由2 ヤク刈り</h4><p>目的の作業に着くまで無関係な小作業が連鎖する。</p><span class="pill">偶有的</span></div>
+      <div class="mini"><div class="ic">📚</div><h4>理由3 本質的</h4><p>本番に必要なタスクが本来とても多い。</p><span class="pill">本質的</span></div>
+    </div>
+  </div>
+
+  <!-- 8.1.1 -->
+  <div class="card" id="s811">
+    <h3 class="blk">8.1.1 理由その1: DevOpsはまだ石器時代</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つめの理由は何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="開発と運用を一体で回す考え方。">DevOps</span>という分野が、まだ石器時代だからだよ。悪口じゃない、生まれたてだという意味だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>そんなに新しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>クラウド、<span class="term" data-tip="インフラをコードとして管理すること。">Infrastructure as Code</span>、DevOpsという言葉は2000年代半ば〜終わり。Terraform、Docker、Packer、Kubernetesは2010年代半ば〜終わりに出たばかり。どれも新しくて急速に変わり続けている。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり、まだ枯れた工法じゃないってことですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そのとおり。成熟しておらず、深い経験を持つ職人も少ない。予定より長引くのが当たり前なんだ。</div></div>
+    </div>
+    <div class="analogy"><h4>🏗️ たとえ話：まだ確立していない工法</h4><p>新しい建材や工法が出たばかりの建築現場を想像してほしい。施工マニュアルも標準もまだ整っていない。熟練した大工も少ない。そんな現場で予定どおり建つわけがない。これがDevOpsの今だ。</p></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>道具も手法も生まれたてで、急速に変化している。</li>
+      <li>熟練者が少ないため、工期が延びるのは構造的に当たり前。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.1.2 -->
+  <div class="card" id="s812">
+    <h3 class="blk">8.1.2 理由その2: ヤクの毛刈り（Yak shaving）</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つめの「<span class="term" data-tip="本来やりたい作業にたどり着くまでに、一見無関係な小作業が次々連鎖すること。">ヤクの毛刈り</span>」って、何ですか？動物の毛？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>有名なたとえがある。「車にワックスをかけたい」→「ホースが壊れてる、買いに行こう」→「橋の料金が高い、隣のETCカードを借りよう」→「枕を返さないと貸してくれない」→「枕の詰め物が出た、ヤクの毛を刈って詰め直さないと」。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>…車を磨きたいだけなのに、最後は動物園でヤクの毛刈りですか！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>現場では毎日起きる。タイポ（書き間違い）を直そうとしたら設定のバグが見つかる。直そうとしたらTLS証明書の問題、デプロイの仕組みが壊れている、原因はLinuxが古い、結局サーバ全部のOS更新――全部「ちょっとした書き間違い」を直すためにね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでインフラだと特にこうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>インフラが<span class="term" data-tip="あらゆるものが強く絡み合っている状態。">密結合</span>で重複が多いからだ。絡まった箱から1本抜こうとして全部のケーブルを引き抜くようなものさ。</div></div>
+    </div>
+    <div class="analogy"><h4>🏗️ たとえ話：壁紙の張り替えのはずが大改修</h4><p>「壁紙を1枚張り替えたい」と思ったら、下地にカビ。直そうと開けたら配管が腐っている。配管を替えるなら床も剥がす。床を剥がすなら家具を全部運び出す――壁紙1枚のはずが、家まるごと大改修になる。建物の各部が絡み合っているほど、こうなりやすい。</p></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>ヤクの毛刈り＝目的の作業に着くまでに無関係な小作業が連鎖すること。</li>
+      <li>インフラは密結合・重複が多いので特に起こりやすい。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.1.3 -->
+  <div class="card" id="s813">
+    <h3 class="blk">8.1.3 理由その3: 本質的複雑性（やることが本来多い）</h3>
+    <p class="lead"><b>要するに：</b> 遅れの3つめは本質的複雑性。本番に必要なタスクが本来長く、多くの人がそれを知らずに見積もりから落とす。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つめと2つめは「道具のせいで起きる面倒」って感じですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>鋭いね。その2つは<span class="term" data-tip="選んだ道具や手順のせいで生じる面倒。別の道具を選べば消える。">偶有的複雑性</span>だ。たとえばC++でメモリ管理のバグに悩むのは、別の言語を選べば消える面倒だからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>反対語があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="何を使っても消えない、課題そのものの難しさ。">本質的複雑性</span>だ。「市場に勝てるアルゴリズムを見つける」のはどの言語でも必要な難しさ――これが本質的。インフラの3つめはこっちだ。本番に必要なタスクのリストがもともとすごく長い。問題は、多くの人がその大半を知らず、重い項目をまるごと見積もりから落とすことだ。</div></div>
+    </div>
+    <div class="analogy"><h4>🏗️ たとえ話：建築基準法の項目は本来多い</h4><p>耐震・防火・避難経路・配線・換気・バリアフリー…本物の建物に必要な項目は、法律で本来たくさん決まっている。これは「どの工法を選んでも」減らせない。素人は「壁と屋根があればいい」と思って、この長い項目表を見積もりから丸ごと落としてしまう。だから半年の工事が予定に入らないんだ。</p></div>
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>遅延を「偶有的（道具のせい）」と「本質的（課題そのもの）」に分けて見られると、対処法が変わる。</li>
+      <li>本質的に長いタスクリストの存在を知れば、見積もりを現実に近づけられる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>理由1（未熟）と理由2（ヤク刈り）は偶有的複雑性。</li>
+      <li>理由3（タスクが本来多い）は本質的複雑性。</li>
+      <li>多くの人がこのリストを知らず、見積もりから落としてしまう。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 8.2 -->
+<section id="s82">
+  <div class="sec-head"><div class="sec-num">8.2</div><h2>本番レベルのインフラのチェックリスト<span class="tag">竣工検査の項目表（表8-2）</span></h2></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> 本番に出してよいかの合格基準（竣工検査の項目表）を全員で共有し、各設備でどれを実装したか・しないか・その理由を意識的に記録する。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「本番に出していいか」って、どう判断するんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>会社を5人に聞いてごらん。5通り返ってくるよ。ある人は監視と警報、ある人は容量計画と高可用性…ほとんどの会社に、はっきりした合格基準がないんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>建物でいうと、竣工検査の項目表がないってことですよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>まさに。だから設備ごとに作り方がバラバラになり、重大な機能が抜け落ちる。そこで著者が「本番レベルのインフラのチェックリスト」を共有してくれている。これが竣工検査の項目表だ。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話：竣工検査の項目表</h4><p>本物の建物は、引き渡し前に検査官が項目表を片手に一つずつチェックする――基礎、構造、防火、配線、避難経路、設備…。この項目表が会社になければ、現場ごとに作りがバラバラになり、肝心の安全装置（火災報知器や非常口）が抜けたまま引き渡されてしまう。表8-2は、その竣工検査の項目表そのものだ。</p></div>
+
+    <h3 class="blk">本番レベルのチェックリスト（表8-2）</h3>
+    <table class="t">
+      <tr><th>タスク</th><th>説明</th><th>道具の例</th></tr>
+      <tr><td>インストール</td><td>ソフト本体と依存物の設置</td><td>Bash, Ansible, Docker, Packer</td></tr>
+      <tr><td>設定</td><td>実行時の設定（ポート, TLS証明書, 主従/複製 など）</td><td>Chef, Ansible, Kubernetes</td></tr>
+      <tr><td>プロビジョニング</td><td>サーバ, ロードバランサ, 網設定, IAM権限 など</td><td>Terraform, CloudFormation</td></tr>
+      <tr><td>デプロイ</td><td>無停止更新（ブルーグリーン/ローリング/カナリア）</td><td>ASG, Kubernetes, ECS</td></tr>
+      <tr><td><span class="term" data-tip="一部が壊れても全体は動き続ける性質。">高可用性</span></td><td>プロセス/サーバ/データセンタ/リージョンの障害に耐える</td><td>マルチデータセンタ, マルチリージョン</td></tr>
+      <tr><td>スケーラビリティ</td><td>負荷に応じた増減（水平=台数, 垂直=機械の大きさ）</td><td>オートスケール, 複製</td></tr>
+      <tr><td>パフォーマンス</td><td>CPU/メモリ/網/GPUの最適化。クエリ調整, 負荷テスト</td><td>Dynatrace, Valgrind, VisualVM</td></tr>
+      <tr><td>ネットワーク</td><td>IP, ポート, サービスディスカバリ, DNS, SSH, VPN</td><td>VPC, ファイアウォール, Route 53</td></tr>
+      <tr><td>セキュリティ</td><td>TLS暗号化, 認証, 認可, シークレット管理, 堅牢化</td><td>ACM, Let's Encrypt, KMS, Vault</td></tr>
+      <tr><td>メトリクス</td><td>各種指標, イベント, トレーシング, 警報</td><td>CloudWatch, Datadog</td></tr>
+      <tr><td>ログ</td><td>ログ回転と一箇所への集約</td><td>Elastic Stack, Sumo Logic</td></tr>
+      <tr><td>データバックアップ</td><td>DB/キャッシュの定期保存。別リージョン/アカウントへ複製</td><td>AWS Backup, RDSスナップショット</td></tr>
+      <tr><td>コスト最適化</td><td>正しいインスタンス選び, スポット/リザーブド, 不要削除</td><td>オートスケール, infracost</td></tr>
+      <tr><td>ドキュメント化</td><td>コード/構成/手順の文書化。障害対応の手順書</td><td>README, Wiki, Slack, IaC</td></tr>
+      <tr><td>テスト</td><td>インフラコードの自動テスト。コミット毎/毎日実行</td><td>Terratest, tflint, OPA, InSpec</td></tr>
+    </table>
+
+    <details class="code"><summary>表8-2（テキスト版）</summary><pre><span class="cmt"># 本番レベルのインフラのチェックリスト（表8-2）=竣工検査の項目表</span>
+タスク           説明                                                     道具の例
+インストール     ソフト本体と依存物の設置                                  Bash, Ansible, Docker, Packer
+設定             実行時の設定。ポート, TLS証明書, サービスディスカバリ, 主従/複製 Chef, Ansible, Kubernetes
+プロビジョニング インフラの用意。サーバ, ロードバランサ, 網設定, ファイアウォール, IAM権限 Terraform, CloudFormation
+デプロイ         サービスの配置。無停止更新。ブルーグリーン/ローリング/カナリア ASG, Kubernetes, ECS
+高可用性         プロセス/サーバ/サービス/データセンタ/リージョンの障害に耐える マルチデータセンタ, マルチリージョン
+スケーラビリティ 負荷に応じた増減。水平(台数を増やす)と垂直(機械を大きくする) オートスケール, 複製
+パフォーマンス   CPU/メモリ/ディスク/網/GPUの最適化。クエリ調整, 負荷テスト等 Dynatrace, Valgrind, VisualVM
+ネットワーク     IP, ポート, サービスディスカバリ, ファイアウォール, DNS, SSH, VPN VPC, ファイアウォール, Route 53
+セキュリティ     通信時(TLS)とディスク上の暗号化, 認証, 認可, シークレット管理, 堅牢化 ACM, Let's Encrypt, KMS, Vault
+メトリクス       各種指標, イベント, オブザーバビリティ, トレーシング, 警報    CloudWatch, Datadog
+ログ             ディスク上のログ回転と一箇所への集約                       Elastic Stack, Sumo Logic
+データバックアップ DB/キャッシュの定期保存。別リージョン/アカウントへ複製       AWS Backup, RDSスナップショット
+コスト最適化     正しいインスタンス選び, スポット/リザーブド, オートスケール, 不要削除 オートスケール, infracost
+ドキュメント化   コード/構成/手順の文書化。障害対応の手順書                  README, Wiki, Slack, IaC
+テスト           インフラコードの自動テスト。コミット毎/毎日実行            Terratest, tflint, OPA, InSpec</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>多くの人は最初の4つ――インストール、設定、プロビジョニング、デプロイ――には気づく。問題はその後だ。サーバが落ちたら？ データセンタ全体が停電したら？ こういう<span class="term" data-tip="一部が壊れても全体は動き続ける性質。">高可用性</span>を深く考えたことがあるかい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>…考えたことなかったです。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ネットワークも悪名高い。<span class="term" data-tip="クラウド上の自分専用の私有地のような区画。">VPC</span>、VPN、<span class="term" data-tip="設備同士が互いの居場所を見つける仕組み。">サービスディスカバリ</span>、SSHの整備は数ヶ月かかるのに丸ごと忘れられる。セキュリティも同じで、TLS、認証、<span class="term" data-tip="パスワードや鍵などの秘密情報。">シークレット</span>の保管は最後まで忘れられがちだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>新しい設備を作るたびに、この表を全部見ればいいんですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そう。ただし全項目が全設備に必要なわけじゃない。大事なのは、どれを入れて、どれを入れないか、その理由を意識して明確に記録すること。「うっかり抜けた」と「考えた末に外した」は天と地ほど違うからね。</div></div>
+    </div>
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>合格基準が曖昧だと、設備ごとに品質がバラつき、安全装置が抜ける。</li>
+      <li>チェックリストがあれば、見落としを防ぎ、見積もりの根拠にもできる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>本番に出してよいかの基準は、ほとんどの会社で曖昧。</li>
+      <li>表8-2は本番に必要なほぼ全項目を網羅した竣工検査の項目表。</li>
+      <li>人が忘れがちなのは、回復力・ネットワーク・セキュリティなど後半の項目。</li>
+      <li>全項目を機械的に入れるのではなく、入れる/入れない/理由を意識して記録する。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 8.3 -->
+<section id="s83">
+  <div class="sec-head"><div class="sec-num">8.3</div><h2>本番レベルのインフラモジュール<span class="tag">再利用できる建材の作り方（5つの作法）</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>やることリストは分かりました。でも、毎回ゼロから組むのは大変そうです。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そこで<span class="term" data-tip="再利用できる設計図の部品。組み合わせて建物を建てる。">モジュール</span>の出番だ。本番レベルの部品を作る作法を5つ学ぶ。①小さなモジュール、②組み合わせ可能なモジュール、③テスト可能なモジュール、④バージョン管理されたモジュール、⑤Terraformモジュールの先へ、だ。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧱</div><h4>① 小さい</h4><p>1つのことだけする小さな部品に割る。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>② 組み合わせ可能</h4><p>入力で受け、出力で返し、合成する。</p></div>
+      <div class="mini"><div class="ic">✅</div><h4>③ テスト可能</h4><p>見本(examples)を置き、自己点検させる。</p></div>
+      <div class="mini"><div class="ic">📌</div><h4>④ バージョン管理</h4><p>依存とコードを固定し、ロールバック可能に。</p></div>
+      <div class="mini"><div class="ic">🚪</div><h4>⑤ 先へ（抜け道）</h4><p>Terraform外の処理を補う3つの抜け道。</p></div>
+    </div>
+  </div>
+
+  <!-- 8.3.1 -->
+  <div class="card" id="s831">
+    <h3 class="blk">8.3.1 小さなモジュール</h3>
+    <p class="lead"><b>要するに：</b> 1つのことだけをする小さなモジュールを組み合わせて作るべき。大きなモジュールは遅い・危険・直せない。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>初心者って、開発・ステージング・本番を全部1枚の設計図に書いちゃいがちですよね。僕もやってました。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>良くない。数百行を超える、あるいは関係する設備をいくつもまとめた「大きなモジュール」は有害と見なすべきだ。6つの弊害がある。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🐢</div><h4>1 遅い</h4><p>全インフラが1枚だと plan が20分かかることも。</p></div>
+      <div class="mini"><div class="ic">🔓</div><h4>2 セキュアでない</h4><p>直すのに全部の鍵が要り、皆が管理者になる＝<span class="term" data-tip="その人が仕事に必要な分だけ鍵を渡す考え方。">最小権限の原則</span>に反する。</p></div>
+      <div class="mini"><div class="ic">💥</div><h4>3 リスク大</h4><p>卵を一つの籠に。stageの小変更で本番DBを壊しうる。</p></div>
+      <div class="mini"><div class="ic">🤯</div><h4>4 理解しにくい</h4><p>一箇所に集まるほど読めず、高くつくミスに。</p></div>
+      <div class="mini"><div class="ic">👀</div><h4>5 レビューしにくい</h4><p>数千行のplanは誰も読まず、危険な赤い1行を見逃す。</p></div>
+      <div class="mini"><div class="ic">🧪</div><h4>6 テストしにくい</h4><p>大量のインフラコードのテストはほぼ不可能（9章）。</p></div>
+    </div>
+
+    <details class="code"><summary>大きなモジュールの6つの弊害（テキスト版）</summary><pre><span class="cmt"># 大きなモジュールの6つの弊害</span>
+1. 遅い:        全インフラが1枚だと terraform plan が20分かかることも
+2. セキュアでない: 何か直すのに全部へのアクセス権が要る→皆が管理者になり最小権限の原則に反する
+3. リスクが大きい: 卵を一つの籠に。ステージングの小変更のつもりが本番DBを壊す事故が起こりうる
+4. 理解しにくい:  コードが一箇所に集まるほど読めなくなる→高くつくミスにつながる
+5. レビューしにくい: 数千行のplan出力は誰も読まず「DBが消える赤い1行」を見逃す
+6. テストしにくい:  大量のインフラコードのテストはほぼ不可能(9章で再論)</pre></details>
+
+    <div class="analogy"><h4>🏗️ たとえ話：1枚の巨大な設計図 vs 部品ごとの図面</h4><p>家じゅうの配管・配線・構造・内装を1枚の巨大な図面に描き込むと、検査官は読みきれず、危険な箇所を見逃す。しかも壁紙1枚を直すのにも建物全部の鍵が必要になり、誰もが全部の鍵を持つ羽目になる。だから本物の現場では「構造図」「電気図」「給排水図」と図面を分け、1図面=1つの役目にする。Terraformも同じだ。</p></div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つめの「理解しにくい」が地味に怖いです。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="これから何が起きるかの事前確認コマンド。">terraform plan</span>の出力が数千行になると誰も読まない。データベースが消されようとしている赤い1行にも気づかないんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、どう直すんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>『Clean Code』の言葉だ。「関数の最初のルールは小さくあること。2つめはもっと小さくあること」。2万行の1枚設計図は、1つのことだけする小さなモジュールに割る。</div></div>
+    </div>
+
+    <h4 class="blk">例：webserver-cluster を3つに割る</h4>
+    <p style="font-size:13.5px;color:var(--sub)">5章の <code>webserver-cluster</code> は関係の薄い3つの仕事を抱えて大きくなりすぎていた。これを「1つの仕事だけする」3つの部品に分ける。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🖥️</div><h4>asg-rolling-deploy</h4><p>無停止ローリングデプロイ可能なASGを建てる汎用部品。</p><span class="pill">modules/cluster</span></div>
+      <div class="mini"><div class="ic">🔀</div><h4>alb</h4><p>ロードバランサ(ALB)を建てる汎用部品。</p><span class="pill">modules/networking</span></div>
+      <div class="mini"><div class="ic">📦</div><h4>hello-world-app</h4><p>上の2つを内部で使い、アプリを配置する部品。</p><span class="pill">modules/services</span></div>
+    </div>
+
+    <details class="code"><summary>分割の内訳（テキスト版）</summary><pre><span class="cmt"># webserver-cluster が抱えていた3つの仕事（だから大きい）</span>
+1. ASG: 無停止のローリングデプロイができるサーバ群を建てる
+2. ALB: ロードバランサ(Application Load Balancer)を建てる
+3. Hello, Worldアプリ: 簡単なアプリを配置する
+
+<span class="cmt"># 1つのことだけをする3つの小さなモジュールに分割</span>
+modules/cluster/asg-rolling-deploy   無停止ローリングデプロイ可能なASGを建てる汎用部品
+modules/networking/alb               ALBを建てる汎用部品
+modules/services/hello-world-app     上の2つを内部で使い、Hello,Worldアプリを配置する部品</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">手順：まず前章の <code>webserver-cluster</code> を <code>terraform destroy</code> で更地に戻す。次に各フォルダを作り、リソースと変数を仕分けて移す。</p>
+
+    <details class="code"><summary>移すリソース・変数の一覧（テキスト版）</summary><pre><span class="cmt"># modules/cluster/asg-rolling-deploy/main.tf へ移すリソース</span>
+- aws_launch_configuration
+- aws_autoscaling_group
+- aws_autoscaling_schedule（両方とも）
+- aws_security_group（インスタンス用のみ。ALB用は移さない）
+- aws_security_group_rule（インスタンス用のみ。ALB用は移さない）
+
+<span class="cmt"># modules/cluster/asg-rolling-deploy/variables.tf へ移す変数</span>
+- cluster_name, ami, instance_type, min_size, max_size
+- enable_autoscaling, custom_tags, server_port
+
+<span class="cmt"># modules/networking/alb/main.tf へ移すリソース</span>
+- aws_lb
+- aws_lb_listener
+- aws_security_group（ALB用のみ。インスタンス用は移さない）
+- aws_security_group_rule（ALB用のみ。インスタンス用は移さない）</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは「ALBに付ける名前」を外から受け取る入口と、その名前を使ってロードバランサ本体と通行ルールを建てる設計図です。</p>
+    <details class="code"><summary>ALBモジュールの変数とリソース（HCL）</summary><pre><span class="cmt"># このブロックは「このロードバランサに付ける名札（名前）」を外から受け取る入口</span>
+<span class="kw">variable</span> <span class="str">"alb_name"</span> {
+  description = <span class="str">"このALBに使う名前"</span>  <span class="cmt"># ①どんな名前にするかを利用者に決めさせる</span>
+  type        = string               <span class="cmt"># ②文字列だけ受け付ける</span>
+}
+
+<span class="cmt"># このブロックは「ロードバランサ本体」を建てる設計図。名札に上の変数を使う</span>
+<span class="kw">resource</span> <span class="str">"aws_lb"</span> <span class="str">"example"</span> {
+  name               = var.alb_name              <span class="cmt"># ①外から受け取った名前を付ける</span>
+  load_balancer_type = <span class="str">"application"</span>             <span class="cmt"># ②アプリ用(HTTP)のロードバランサ</span>
+  subnets            = data.aws_subnets.default.ids  <span class="cmt"># ③配置先の区画</span>
+  security_groups    = [aws_security_group.alb.id]   <span class="cmt"># ④通行許可ルール</span>
+}
+
+<span class="cmt"># このブロックは「ロードバランサ用の通行許可ルール(セキュリティグループ)」</span>
+<span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="str">"alb"</span> {
+  name = var.alb_name  <span class="cmt"># ①同じ名前を使って分かりやすくする</span>
+}</pre></details>
+
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>小さく割れば、planが速くなり、権限を絞れ、事故の波及範囲も小さくなる。</li>
+      <li>割れば、読みやすく・レビューしやすく・テストしやすくなる。</li>
+      <li>巨大な1枚設計図を、安全に組み合わせられる部品群に作り変えられる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>大きなモジュールは「遅い・セキュアでない・リスク大・理解しにくい・レビューしにくい・テストしにくい」。</li>
+      <li>数百行超、または複数の関係薄い設備をまとめたモジュールは有害と見なす。</li>
+      <li>1つのことだけする小さなモジュールに割って組み合わせる。</li>
+      <li><code>webserver-cluster</code> を asg-rolling-deploy / alb / hello-world-app の3つに分割する。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.2 -->
+  <div class="card" id="s832">
+    <h3 class="blk">8.3.2 組み合わせ可能なモジュール</h3>
+    <p class="lead"><b>要するに：</b> あらゆるものを入力変数で受け取り、出力変数で返し、小さなモジュールを合成して複雑なモジュールを作る。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>小さく割れたのはいいですけど、バラバラの部品をどうやって組み合わせるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>Unix哲学にこんな言葉がある。「1つのことをうまくやるプログラムを書こう。組み合わせて動くプログラムを書こう」。これは<span class="term" data-tip="ある部品の出力を別の部品の入力に渡してつなぐこと。">関数の合成</span>だ。Rubyの小さな例を見よう。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、足し算・引き算・掛け算という小さな関数を作り、それらを組み合わせて1つの計算を作る例です。</p>
+    <details class="code"><summary>関数の合成の例（Ruby）</summary><pre><span class="cmt"># 加算を行うシンプルな関数</span>
+<span class="kw">def</span> <span class="fn">add</span>(x, y)
+  <span class="kw">return</span> x + y
+<span class="kw">end</span>
+
+<span class="cmt"># 減算を行うシンプルな関数</span>
+<span class="kw">def</span> <span class="fn">sub</span>(x, y)
+  <span class="kw">return</span> x - y
+<span class="kw">end</span>
+
+<span class="cmt"># 乗算を行うシンプルな関数</span>
+<span class="kw">def</span> <span class="fn">multiply</span>(x, y)
+  <span class="kw">return</span> x * y
+<span class="kw">end</span>
+
+<span class="cmt"># 小さな関数を組み合わせた複雑な関数（add と sub の出力を multiply に渡す）</span>
+<span class="kw">def</span> <span class="fn">do_calculation</span>(x, y)
+  <span class="kw">return</span> multiply(add(x, y), sub(x, y))
+<span class="kw">end</span></pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>組み合わせやすくする一番のコツは<span class="term" data-tip="外の世界をこっそり読み書きしてしまうこと。">副作用</span>を減らすことだ。外から勝手に状態を読まず入力で受け取る。外へ勝手に書かず結果は出力で返す。そうすると推測・テスト・再利用がしやすくなる。「すべてを入力変数で渡し、すべてを出力変数で返し、小さなモジュールを合成する」だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体的にはどうやるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>asg-rolling-deploy</code> の <code>variables.tf</code> に入力変数を4つ足すんだ。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話：規格化された建材を組み上げる</h4><p>本物の建物は、規格に合った柱・梁・サッシを「差し込み口」でつないで組み上げる。各建材は「どこに置くか（区画）」「どの配管とつなぐか」を外から指定できるよう、接続口が標準化されている。だから同じ柱を別の家でも使い回せる。Terraformの部品も、設定を“外から差し込める入口（入力変数）”にすれば、いろいろな建物に使い回せる。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、サーバ群を「どの区画に建てるか」「どのロードバランサにつなぐか」「健康チェックの方式」「起動時の仕込みスクリプト」を、すべて外から差し込めるようにする入口（入力変数）です。</p>
+    <details class="code"><summary>asg-rolling-deploy に足す4つの入力変数（HCL）</summary><pre><span class="cmt"># このブロックは「サーバ群をどの区画に建てるか」を外から受け取る入口</span>
+<span class="kw">variable</span> <span class="str">"subnet_ids"</span> {
+  description = <span class="str">"デプロイ先のサブネットID"</span>  <span class="cmt"># ①どの区画に建てるか</span>
+  type        = list(string)               <span class="cmt"># ②文字列の一覧で受け取る</span>
+}
+
+<span class="cmt"># このブロックは「どのロードバランサにサーバを登録するか」を外から受け取る入口</span>
+<span class="kw">variable</span> <span class="str">"target_group_arns"</span> {
+  description = <span class="str">"サーバを登録するELBターゲットグループのARN"</span>  <span class="cmt"># ①つなぐ先</span>
+  type        = list(string)
+  default     = []  <span class="cmt"># ②未指定なら「ロードバランサなし」で建てられる</span>
+}
+
+<span class="cmt"># このブロックは「健康チェックのやり方」を外から受け取る入口</span>
+<span class="kw">variable</span> <span class="str">"health_check_type"</span> {
+  description = <span class="str">"実行する健康チェックの種類。EC2かELBのどちらか"</span>  <span class="cmt"># ①EC2かELB</span>
+  type        = string
+  default     = <span class="str">"EC2"</span>  <span class="cmt"># ②未指定ならEC2方式</span>
+}
+
+<span class="cmt"># このブロックは「起動時に各サーバで走らせる仕込みスクリプト」を外から受け取る入口</span>
+<span class="kw">variable</span> <span class="str">"user_data"</span> {
+  description = <span class="str">"各インスタンスが起動時に実行するユーザーデータスクリプト"</span>  <span class="cmt"># ①どんなアプリでも仕込める</span>
+  type        = string
+  default     = null  <span class="cmt"># ②未指定なら何も仕込まない</span>
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>subnet_ids</code>は「どの区画に建てるか」。<code>target_group_arns</code>と<code>health_check_type</code>は「ロードバランサとどう組み合わせるか」。これで「ロードバランサなし」「ALB1つ」「<span class="term" data-tip="Network Load Balancer。通信の低い層で振り分ける、ALBより低レベルで速いロードバランサ。">NLB</span>複数」など色々な用途に使える。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、サーバ群（ASG）本体と、サーバ1台の作り方（起動設定）に、外から受け取った設定を差し込む部分です。</p>
+    <details class="code"><summary>ASGと起動設定に外からの値を渡す（HCL）</summary><pre><span class="cmt"># このブロックは「サーバ群(ASG)本体」を建てる設計図。組み合わせの設定を外から受ける</span>
+<span class="kw">resource</span> <span class="str">"aws_autoscaling_group"</span> <span class="str">"example"</span> {
+  name                 = var.cluster_name
+  launch_configuration = aws_launch_configuration.example.name
+  vpc_zone_identifier  = var.subnet_ids  <span class="cmt"># ①どの区画に建てるか(外から)</span>
+
+  target_group_arns    = var.target_group_arns  <span class="cmt"># ②つなぐロードバランサ(外から)</span>
+  health_check_type    = var.health_check_type  <span class="cmt"># ③健康チェックの方式(外から)</span>
+
+  min_size = var.min_size
+  max_size = var.max_size
+  <span class="cmt"># (...)</span>
+}
+
+<span class="cmt"># このブロックは「サーバ1台の作り方(起動設定)」。仕込みスクリプトを外から受ける</span>
+<span class="kw">resource</span> <span class="str">"aws_launch_configuration"</span> <span class="str">"example"</span> {
+  image_id        = var.ami
+  instance_type   = var.instance_type
+  security_groups = [aws_security_group.instance.id]
+  user_data       = var.user_data  <span class="cmt"># ①外から受け取った仕込みスクリプトを使う</span>
+
+  lifecycle {
+    create_before_destroy = true  <span class="cmt"># ②壊す前に新しいものを作る(無停止のため)</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで出力を増やすと再利用性が上がるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>利用者がその出力を使って、セキュリティグループに自分で新しい通行ルールを足す、といった追加の振る舞いができるからだよ。出口が多いほど外から拡張しやすい。だから<code>outputs.tf</code>に出力を足す。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、建てたサーバ群やロードバランサの「名前」「住所」「ルールのID」などを外に返す出口（出力変数）です。利用者がこれを使って後から拡張できます。</p>
+    <details class="code"><summary>asg-rolling-deploy と alb の出力（HCL）</summary><pre><span class="cmt"># asg-rolling-deploy の outputs.tf</span>
+<span class="kw">output</span> <span class="str">"asg_name"</span> {
+  value       = aws_autoscaling_group.example.name  <span class="cmt"># ①サーバ群の名前を返す</span>
+  description = <span class="str">"Auto Scaling Groupの名前"</span>
+}
+<span class="kw">output</span> <span class="str">"instance_security_group_id"</span> {
+  value       = aws_security_group.instance.id  <span class="cmt"># ②利用者が後からルールを足せる</span>
+  description = <span class="str">"EC2インスタンスのセキュリティグループID"</span>
+}
+
+<span class="cmt"># alb の outputs.tf</span>
+<span class="kw">output</span> <span class="str">"alb_dns_name"</span> {
+  value       = aws_lb.example.dns_name  <span class="cmt"># ①ブラウザでアクセスする住所</span>
+  description = <span class="str">"ロードバランサのドメイン名"</span>
+}
+<span class="kw">output</span> <span class="str">"alb_http_listener_arn"</span> {
+  value       = aws_lb_listener.http.arn  <span class="cmt"># ②利用者が転送ルールを足すのに使う</span>
+  description = <span class="str">"HTTPリスナーのARN"</span>
+}
+<span class="kw">output</span> <span class="str">"alb_security_group_id"</span> {
+  value       = aws_security_group.alb.id  <span class="cmt"># ③利用者がルールを足すのに使う</span>
+  description = <span class="str">"ALBのセキュリティグループID"</span>
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>最後に、この2つの部品を使って「Hello, World」アプリを建てる<code>hello-world-app</code>モジュールに書き換える。<code>environment</code>変数を足し、作った<code>asg-rolling-deploy</code>と<code>alb</code>を呼び出すんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>${var.environment}</code>を名前にくっつけてるのはなぜですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>命名規則を強制するためだ。これで<code>hello-world-stage</code>、<code>hello-world-prod</code>のように環境ごとに名前が分かれる（名前空間が分かれる）。混ざらないんだ。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、環境名を受け取る入口と、作った2つの部品（ASG・ALB）を呼び出して、このアプリ用に設定する部分です。</p>
+    <details class="code"><summary>hello-world-app が部品を呼び出す（HCL）</summary><pre><span class="cmt"># このブロックは「今どの環境に建てているか(stage/prod等)」を外から受け取る入口</span>
+<span class="kw">variable</span> <span class="str">"environment"</span> {
+  description = <span class="str">"デプロイ先の環境名"</span>  <span class="cmt"># ①命名規則を強制するのに使う</span>
+  type        = string
+}
+
+<span class="cmt"># このブロックは「サーバ群の部品を呼び出して、このアプリ用に設定する」</span>
+<span class="kw">module</span> <span class="str">"asg"</span> {
+  source = <span class="str">"../../cluster/asg-rolling-deploy"</span>  <span class="cmt"># ①さっき作った部品を指す</span>
+
+  cluster_name  = <span class="str">"hello-world-${var.environment}"</span>  <span class="cmt"># ②環境名で名前空間を分ける</span>
+  ami           = var.ami
+  instance_type = var.instance_type
+
+  user_data     = <span class="fn">templatefile</span>(<span class="str">"${path.module}/user-data.sh"</span>, {
+    server_port = var.server_port
+    db_address  = data.terraform_remote_state.db.outputs.address
+    db_port     = data.terraform_remote_state.db.outputs.port
+    server_text = var.server_text
+  })
+
+  min_size           = var.min_size
+  max_size           = var.max_size
+  enable_autoscaling = var.enable_autoscaling
+
+  subnet_ids        = data.aws_subnets.default.ids        <span class="cmt"># ③区画を渡す</span>
+  target_group_arns = [aws_lb_target_group.asg.arn]       <span class="cmt"># ④このアプリの宛先グループ</span>
+  health_check_type = <span class="str">"ELB"</span>                               <span class="cmt"># ⑤ロードバランサ方式で健康チェック</span>
+
+  custom_tags = var.custom_tags
+}
+
+<span class="cmt"># このブロックは「ロードバランサの部品を呼び出して建てる」</span>
+<span class="kw">module</span> <span class="str">"alb"</span> {
+  source = <span class="str">"../../networking/alb"</span>  <span class="cmt"># ①さっき作ったALB部品を指す</span>
+
+  alb_name   = <span class="str">"hello-world-${var.environment}"</span>  <span class="cmt"># ②環境名込みの名前</span>
+  subnet_ids = data.aws_subnets.default.ids       <span class="cmt"># ③区画を渡す</span>
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、このアプリ専用の届け先グループと転送ルールを設定し、2つの部品からの大事な出力をこのモジュールからも外に出す部分です。</p>
+    <details class="code"><summary>ターゲットグループ・転送ルール・出力（HCL）</summary><pre><span class="cmt"># このブロックは「このアプリ専用の宛先グループ(届け先の集まり)」を建てる</span>
+<span class="kw">resource</span> <span class="str">"aws_lb_target_group"</span> <span class="str">"asg"</span> {
+  name     = <span class="str">"hello-world-${var.environment}"</span>  <span class="cmt"># ①環境名込みの名前</span>
+  port     = var.server_port
+  protocol = <span class="str">"HTTP"</span>
+  vpc_id   = data.aws_vpc.default.id
+
+  health_check {
+    path                = <span class="str">"/"</span>
+    protocol            = <span class="str">"HTTP"</span>
+    matcher             = <span class="str">"200"</span>   <span class="cmt"># ②200(正常)が返れば生きている</span>
+    interval            = <span class="num">15</span>
+    timeout             = <span class="num">3</span>
+    healthy_threshold   = <span class="num">2</span>
+    unhealthy_threshold = <span class="num">2</span>
+  }
+}
+
+<span class="cmt"># このブロックは「ロードバランサに来た通信をこのアプリへ転送するルール」</span>
+<span class="kw">resource</span> <span class="str">"aws_lb_listener_rule"</span> <span class="str">"asg"</span> {
+  listener_arn = module.alb.alb_http_listener_arn  <span class="cmt"># ①ALB部品の出力を指す</span>
+  priority     = <span class="num">100</span>
+
+  condition {
+    path_pattern { values = [<span class="str">"*"</span>] }  <span class="cmt"># ②すべてのパスを対象</span>
+  }
+  action {
+    type             = <span class="str">"forward"</span>
+    target_group_arn = aws_lb_target_group.asg.arn  <span class="cmt"># ③このアプリの宛先へ転送</span>
+  }
+}
+
+<span class="cmt"># 2つの部品の重要な出力を、このアプリモジュールからも外に出す（素通し）</span>
+<span class="kw">output</span> <span class="str">"alb_dns_name"</span> { value = module.alb.alb_dns_name }
+<span class="kw">output</span> <span class="str">"asg_name"</span>     { value = module.asg.asg_name }
+<span class="kw">output</span> <span class="str">"instance_security_group_id"</span> { value = module.asg.instance_security_group_id }</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど！ ASGとALBっていうシンプルな部品から、Hello,Worldアプリっていう複雑な振る舞いを組み立てたんですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そのとおり。これが関数の合成の実例だ。</div></div>
+    </div>
+
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>入力で受け取り出力で返す形にすると、部品をいろいろな用途に使い回せる。</li>
+      <li>副作用を減らすと、推測・テスト・再利用がしやすくなる。</li>
+      <li>シンプルな部品を積み上げて複雑なインフラを安全に組み立てられる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>Unix哲学「1つをうまくやり、組み合わせて動く」をモジュールにも適用する。</li>
+      <li>関数の合成＝ある部品の出力を別の部品の入力へ渡してつなぐこと。</li>
+      <li>組み合わせやすくするコツは副作用を減らすこと（入力で受け、出力で返す）。</li>
+      <li>ロードバランサ設定や仕込みスクリプトを入力変数化すると汎用部品になる。</li>
+      <li>出力を増やすと、外から拡張できて再利用性が上がる。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.3 -->
+  <div class="card" id="s833">
+    <h3 class="blk">8.3.3 テスト可能なモジュール</h3>
+    <p class="lead"><b>要するに：</b> 各モジュールに対し examples フォルダへサンプルコードを置く。これは手動テスト・自動テストの土台であり、動く説明書にもなる。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つのモジュールができました。でも、ちゃんと動くか分からないと不安です。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>作ったモジュールは、そのままでは建てられない。これらは部品（子モジュール）であって、直接デプロイする前提の<span class="term" data-tip="最上位の、実際に実行する設計図。">ルートモジュール</span>じゃないんだ。引数を渡し、provider・backendを設定する小さな「呼び出し用コード」を<code>examples</code>フォルダに書く。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話：建材のモデルルーム</h4><p>サッシや柱は単品では「家」にならない。だから建材メーカーはモデルルーム（見本の部屋）を作る。買い手は実際に開け閉めして使い心地を確かめ、施工説明書を読み、安心して採用する。<code>examples</code>はこのモデルルームだ。実際に建ててみせ（手動テスト）、検査機をつなげば品質保証になり（自動テスト）、見学すれば使い方が分かる（動く説明書）。</p></div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、asg-rolling-deploy 部品を実際に呼び出して「サイズ1のサーバ群」を試しに建てる、見本（モデルルーム）の設計図です。</p>
+    <details class="code"><summary>examples/asg/main.tf（HCL）</summary><pre><span class="cmt"># このコードは「asg-rolling-deploy部品を実際に呼び出して試す」見本の設計図</span>
+<span class="kw">provider</span> <span class="str">"aws"</span> {
+  region = <span class="str">"us-east-2"</span>  <span class="cmt"># ①どの地域に建てるか</span>
+}
+
+<span class="kw">module</span> <span class="str">"asg"</span> {
+  source = <span class="str">"../../modules/cluster/asg-rolling-deploy"</span>  <span class="cmt"># ②試したい部品を指す</span>
+
+  cluster_name  = var.cluster_name
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = <span class="str">"t2.micro"</span>
+
+  min_size           = <span class="num">1</span>      <span class="cmt"># ③1台だけ建てて確認</span>
+  max_size           = <span class="num">1</span>
+  enable_autoscaling = false
+
+  subnet_ids        = data.aws_subnets.default.ids  <span class="cmt"># ④既定の区画に建てる</span>
+}
+
+<span class="cmt"># 既定のVPC(自分専用区画)を調べるデータソース</span>
+<span class="kw">data</span> <span class="str">"aws_vpc"</span> <span class="str">"default"</span> { default = true }
+
+<span class="cmt"># 既定VPCの中のサブネット一覧を調べるデータソース</span>
+<span class="kw">data</span> <span class="str">"aws_subnets"</span> <span class="str">"default"</span> {
+  filter {
+    name   = <span class="str">"vpc-id"</span>
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+<span class="cmt"># Ubuntuの最新AMI(サーバの元になるディスクイメージ)を調べるデータソース</span>
+<span class="kw">data</span> <span class="str">"aws_ami"</span> <span class="str">"ubuntu"</span> {
+  most_recent = true
+  owners      = [<span class="str">"099720109477"</span>] <span class="cmt"># Canonical（Ubuntuの提供元）</span>
+  filter {
+    name   = <span class="str">"name"</span>
+    values = [<span class="str">"ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"</span>]
+  }
+}</pre></details>
+
+    <h4 class="blk">examples + README で手に入る3つの力</h4>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🖐️</div><h4>1 手動テストの足場</h4><p>applyとdestroyを繰り返し、部品が期待通り動くか手で確かめられる。</p></div>
+      <div class="mini"><div class="ic">🤖</div><h4>2 自動テストの足場</h4><p>9章で、この見本を土台に自動テストが書ける（testフォルダ）。</p></div>
+      <div class="mini"><div class="ic">📖</div><h4>3 動く説明書</h4><p>誰もが検索でき、コードを書かずに動かして学べる。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><span class="term" data-tip="テストを動かすのに必要な足場（ドライバや受け皿）をひとそろえにした環境。">ハーネス</span>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>テストを動かすのに必要なドライバや受け皿（スタブ）をひとそろえにした、テスト実行用の環境のことだ。要は「試すための足場」だね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>フォルダはどう分けるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>modules</code>の各部品に<code>examples</code>の見本を、見本に<code>test</code>のテストを対応させる。1つの部品に設定違いの見本を複数作るのが普通だ。</div></div>
+    </div>
+
+    <details class="code"><summary>標準的なフォルダ構造（テキスト版）</summary><pre><span class="cmt"># 標準的なフォルダ構造（見本→テストを対応させる）</span>
+modules
+ └ examples              <span class="cmt">← 各モジュールの「使い方の見本」</span>
+   └ alb
+   └ asg-rolling-deploy
+     └ one-instance      <span class="cmt">← 1台だけ建てる例</span>
+     └ auto-scaling      <span class="cmt">← オートスケールを使う例</span>
+     └ with-load-balancer <span class="cmt">← ロードバランサにつなぐ例</span>
+     └ custom-tags       <span class="cmt">← カスタムタグを付ける例</span>
+   └ hello-world-app
+   └ mysql
+ └ modules               <span class="cmt">← 部品本体</span>
+   └ alb / asg-rolling-deploy / hello-world-app / mysql
+ └ test                  <span class="cmt">← 各見本に対応する自動テスト</span>
+   └ alb / asg-rolling-deploy / hello-world-app / mysql</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ところで、コードを書いてから見本を書くんですよね？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>逆だよ。良いやり方は、実装より先に見本（サンプルコード）を書くことだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、中身がないのに使い方を書くんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>実装から始めると内部の都合ばかり考えて、使いにくい部品になりがちだ。見本から書けば「理想の使い心地」を先に決めて、きれいな<span class="term" data-tip="外から呼ぶときの窓口の形。使い心地を決める部分。">API</span>を考えてから実装に戻れる。これが<span class="term" data-tip="テスト（見本）を先に書いてから実装する開発手法。">テスト駆動開発（TDD）</span>だ。詳しくは9章。</div></div>
+    </div>
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>見本があれば、手動でも自動でも部品の動作を確かめられる。</li>
+      <li>READMEと組み合わせれば、コードを書かずに学べる「動く説明書」になる。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.3 自己正常性確認 -->
+  <div class="card" id="s8331">
+    <h3 class="blk">8.3.3 自己正常性確認が可能なモジュール</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>この節の本題は、<span class="term" data-tip="自分の振る舞いを自分で確認できるモジュール。">自己正常性確認が可能なモジュール</span>だ。バグを防ぐために、モジュール自身が「おかしくないか」を点検する。方法は2つ。①バリデーション、②事前条件・事後条件だ。</div></div>
+    </div>
+    <div class="analogy"><h4>🏗️ たとえ話：自分で点検する建物</h4><p>賢い建物は、建てる前に「この建材は基準を満たすか」を自分でチェックし、建てた後に「非常口は2つ以上あるか」を自分で確かめる。基準を満たさなければ、検査官を待たずに自分で「これは不合格だ」と声を上げる。これがモジュールの自己点検だ。</p></div>
+  </div>
+
+  <!-- 8.3.3.1 -->
+  <div class="card" id="s8331a">
+    <h3 class="blk">8.3.3.1 バリデーション</h3>
+    <p class="lead"><b>要するに：</b> validationブロックは入力変数の値が条件を満たすか検査し、満たさなければ自分で書いたエラーメッセージを出す。ただし「同じ変数しか参照できない」制限がある。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><span class="term" data-tip="入力された値が正しいかを入口で検査する仕組み。">バリデーション</span>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>Terraform 0.13から、型より細かいチェックを入力変数に足せる。例えば<code>instance_type</code>に「無料枠の2つのどちらかであること」を保証できる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、機械の大きさ（instance_type）が無料枠のどちらかかを入口で検査し、違えば自分で書いたエラーを出します。</p>
+    <details class="code"><summary>validation の基本（HCL）</summary><pre><span class="cmt"># このブロックは「機械の大きさ(instance_type)が無料枠か」を入口で検査する</span>
+<span class="kw">variable</span> <span class="str">"instance_type"</span> {
+  description = <span class="str">"動かすEC2インスタンスの種類（例: t2.micro）"</span>
+  type        = string
+
+  validation {
+    <span class="cmt"># ①無料枠の2つのどちらかに含まれていればtrue(合格)</span>
+    condition     = <span class="fn">contains</span>([<span class="str">"t2.micro"</span>, <span class="str">"t3.micro"</span>], var.instance_type)
+    error_message = <span class="str">"Only free tier is allowed: t2.micro | t3.micro."</span>  <span class="cmt"># ②不合格時に出す説明</span>
+  }
+}</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">無料枠でない機械を指定して実行すると、こんなエラーが出ます（原因＝検査に不合格）。</p>
+    <details class="code"><summary>不合格時のエラー出力（ターミナル）</summary><pre><span class="cmt"># 無料枠でないインスタンスを指定して apply するとこのエラーが出る</span>
+$ terraform apply -var instance_type=<span class="str">"m4.large"</span>
+│ Error: Invalid value for variable
+│   on main.tf line 17:
+│    1: variable "instance_type" {
+│     │ var.instance_type is "m4.large"
+│ Only free tier is allowed: t2.micro | t3.micro.
+│ This was checked by the validation rule at main.tf:21,3-13.</pre></details>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、サーバの最小台数を「0より多い」「10以下」の2つの観点から検査する例です。1つの変数に検査を複数足せます。</p>
+    <details class="code"><summary>1変数に複数の validation（HCL）</summary><pre><span class="cmt"># このブロックは「サーバの最小台数」を2つの観点から検査する</span>
+<span class="kw">variable</span> <span class="str">"min_size"</span> {
+  description = <span class="str">"ASG内のEC2インスタンスの最小数"</span>
+  type        = number
+
+  validation {
+    condition     = var.min_size &gt; <span class="num">0</span>  <span class="cmt"># ①0以下だと全停止＝障害になるので禁止</span>
+    error_message = <span class="str">"ASGs can't be empty or we'll have an outage!"</span>
+  }
+  validation {
+    condition     = var.min_size &lt;= <span class="num">10</span>  <span class="cmt"># ②10より多いとコストがかさむので禁止</span>
+    error_message = <span class="str">"ASGs must have 10 or fewer instances to keep costs down."</span>
+  }
+}</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>何でもこれでチェックできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いや、大きな制限がある。<code>validation</code>の<code>condition</code>は、そのブロックがある入力変数しか参照できないんだ。他の変数・ローカル変数・リソース・データソースを参照しようとするとエラーになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ何ができないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「2つの変数のうち片方だけ設定されていること」のような複数変数にまたがる検査や、「指定AMIがx86_64という種類であること」のような動的な検査はできない。基本的な入力の掃除には便利だが、それ以上は次のprecondition/postconditionが必要だ。</div></div>
+    </div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>validationは入力変数の値を条件で検査し、不合格なら自作のエラーを出す。</li>
+      <li>1変数に複数のvalidationを書ける。</li>
+      <li>制限: そのブロックがある入力変数しか参照できない。</li>
+      <li>複数変数にまたがる検査や動的な検査はprecondition/postconditionが必要。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.3.2 -->
+  <div class="card" id="s8332">
+    <h3 class="blk">8.3.3.2 事前条件と事後条件</h3>
+    <p class="lead"><b>要するに：</b> preconditionは変更を当てる前の前提を点検し、postconditionは当てた後の約束事を点検する。selfキーワードで自分自身の属性を参照できる。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><span class="term" data-tip="変更を当てる前後に満たすべき約束を点検する仕組み。">事前条件と事後条件</span>って、いつ点検するんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>名前のとおり。precondition（事前条件）は<code>apply</code>の前にエラーを捕まえ、postcondition（事後条件）は<code>apply</code>の後に捕まえる。Terraform 1.2から、リソース・データソース・出力変数で使える。さっきの無料枠チェックも、ハードコードした古くなるリストでなく、データソースで常に最新情報を取って点検できる。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、指定された機械の情報をAWSから取り、「建てる前に無料枠か」を事前条件で点検する例です。常に最新情報で判定します。</p>
+    <details class="code"><summary>precondition の例（HCL）</summary><pre><span class="cmt"># このデータソースは「指定された機械の種類の情報」をAWSから取ってくる</span>
+<span class="kw">data</span> <span class="str">"aws_ec2_instance_type"</span> <span class="str">"instance"</span> {
+  instance_type = var.instance_type
+}
+
+<span class="cmt"># このブロックは「起動設定」。建てる前に無料枠かを precondition で点検する</span>
+<span class="kw">resource</span> <span class="str">"aws_launch_configuration"</span> <span class="str">"example"</span> {
+  image_id        = var.ami
+  instance_type   = var.instance_type
+  security_groups = [aws_security_group.instance.id]
+  user_data       = var.user_data
+
+  lifecycle {
+    create_before_destroy = true
+    precondition {
+      <span class="cmt"># ①AWSが「無料枠対象」と言っていればtrue(合格)。常に最新情報で判定</span>
+      condition     = data.aws_ec2_instance_type.instance.free_tier_eligible
+      error_message = <span class="str">"${var.instance_type} is not part of the AWS Free Tier!"</span>
+    }
+  }
+}</pre></details>
+
+    <details class="code"><summary>precondition 不合格時のエラー（ターミナル）</summary><pre><span class="cmt"># 無料枠でないインスタンスで apply するとこのエラーが出る</span>
+$ terraform apply -var instance_type=<span class="str">"m4.large"</span>
+│ Error: Resource precondition failed
+│   on main.tf line 25, in resource "aws_launch_configuration" "example":
+│   18:    condition = data.aws_ec2_instance_type.instance.free_tier_eligible
+│     │ data.aws_ec2_instance_type.instance.free_tier_eligible is false
+│ m4.large is not part of the AWS Free Tier!</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><span class="term" data-tip="同じ地域内の、電源も建物も独立した別々のデータセンタ群（別棟）。">アベイラビリティゾーン</span>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>同じ地域内の、電源も建物も独立した別々のデータセンタ群（AZ）だ。別々の場所に建てた棟のようなもの。1棟が停電しても別の棟が生きていれば全体は動き続ける。だから2つ以上のAZに建てておけば障害に耐えられる。それを<code>postcondition</code>で点検しよう。</div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、サーバ群を建てた後に「2つ以上の別棟（AZ）に散ったか」を事後条件で点検する例です。1棟だけだと高可用性にならないので警告します。</p>
+    <details class="code"><summary>postcondition と self（HCL）</summary><pre><span class="cmt"># このブロックは「サーバ群」。建てた後に「2つ以上のAZに散ったか」を点検</span>
+<span class="kw">resource</span> <span class="str">"aws_autoscaling_group"</span> <span class="str">"example"</span> {
+  name                 = var.cluster_name
+  launch_configuration = aws_launch_configuration.example.name
+  vpc_zone_identifier  = var.subnet_ids
+
+  lifecycle {
+    postcondition {
+      <span class="cmt"># ①自分が建ったAZの数が1より多ければ合格(高可用性が確保された)</span>
+      condition     = <span class="fn">length</span>(self.availability_zones) &gt; <span class="num">1</span>
+      error_message = <span class="str">"You must use more than one AZ for high availability!"</span>
+    }
+  }
+  <span class="cmt"># (...)</span>
+}
+
+<span class="cmt"># self式の文法: 囲んでいるリソース自身の属性を指す</span>
+self.&lt;ATTRIBUTE&gt;</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>self</code>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="そのリソース自身の属性を指す特別な書き方。堂々巡りを避ける。">self式</span>だ。<code>postcondition</code>・<code>connection</code>・<code>provisioner</code>の中だけで使える。普通の参照だとリソースが自分自身を参照して<span class="term" data-tip="自分が自分を待ち続ける堂々巡りのエラー。">循環依存</span>のエラーになる。<code>self</code>はそれを避ける特別な代替策なんだ。</div></div>
+    </div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>preconditionは「当てる前」、postconditionは「当てた後」の点検（Terraform 1.2から）。</li>
+      <li>どちらもconditionとerror_messageを持つ。</li>
+      <li>preconditionはデータソースで最新情報を使った安定したチェックができる。</li>
+      <li>postconditionのselfで自分自身の属性を参照できる（循環依存を避ける特別な書き方）。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.3.3 -->
+  <div class="card" id="s8333">
+    <h3 class="blk">8.3.3.3 バリデーション、事前条件、事後条件の使い時</h3>
+    <p class="lead"><b>要するに：</b> 入力の掃除はvalidation、当てる前の前提はprecondition、当てた後の約束事はpostcondition、それ以上の高度な点検は自動テストツールを使う。</p>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🧹</div><h4>1 入力の掃除 → validation</h4><p>不正な変数を渡させない。変更が当たる「前」に基本的な問題を捕まえる。変数のそばに書けて読みやすい。</p></div>
+      <div class="mini"><div class="ic">⏱️</div><h4>2 前提のチェック → precondition</h4><p>当たる「前」の前提を点検（複数変数やデータソースを使える）。なるべく早くエラーを捕まえる。</p></div>
+      <div class="mini"><div class="ic">📐</div><h4>3 約束事の強制 → postcondition</h4><p>当たった「後」の振る舞いを点検。利用者は「指定通りに建つ、さもなくば止まる」と信用できる。</p></div>
+      <div class="mini"><div class="ic">🤖</div><h4>4 高度な点検 → 自動テスト</h4><p>OPA・Terratestなど（9章）。HTTP応答確認・リトライ・内部網接続など。</p></div>
+    </div>
+
+    <details class="code"><summary>使い分けの指針（テキスト版）</summary><pre><span class="cmt"># 使い分けの指針（すべて本番レベルのモジュールで使うべき）</span>
+1. 基本的な入力のサニタイズ → validation
+   ・不正な変数を渡させない。変更が当たる「前」に基本的な問題を捕まえる
+   ・preconditionより弱いが、変数のそばに書けて読みやすく保守しやすい
+2. 基本的な前提のチェック → precondition
+   ・変更が当たる「前」に満たすべき前提を点検（複数変数やデータソースを使う検査など）
+3. 基本的な約束事の強制 → postcondition
+   ・変更が当たった「後」のモジュールの振る舞いを点検
+   ・メンテナにとっては守るべき振る舞いの明示になり、リファクタ時に誤って消すのを防ぐ
+4. さらに高度な前提/約束事の強制 → 自動テストツール(OPA, Terratestなど。9章)</pre></details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つめの「自動テストツール」は、なんで必要なんですか？ 3つで足りないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>3つはどれも基本的なチェックしかできない。例えば「建てた後、HTTPリクエストに応えられるか」を点検したいとする。デプロイは<span class="term" data-tip="完了を待たずに進む。建て終わってもサービスが応答できるまで間がある。">非同期</span>だから何度もリトライが要るが、Terraformの<code>http</code>プロバイダにリトライの仕組みはない。内部用サービスはパブリックインターネットから届かないし、内部網やVPN接続もTerraformだけでは難しい。だから高度な点検は9章のOPAやTerratestに任せるんだ。</div></div>
+    </div>
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>不正な入力やおかしな結果を、デプロイの前後で自動的に捕まえられる。</li>
+      <li>利用者・メンテナの双方に「守るべき約束」を明示できる。</li>
+      <li>どの検査をどの道具で行うか正しく選べる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>validation＝入力の掃除、precondition＝当てる前の前提、postcondition＝当てた後の約束。</li>
+      <li>3つとも本番レベルのモジュールで使うべき。</li>
+      <li>3つは基本的なチェックのみ。HTTP応答確認やリトライ、内部網接続などはできない。</li>
+      <li>高度な点検は自動テストツール（OPA, Terratest）に任せる（9章）。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.4 -->
+  <div class="card" id="s834">
+    <h3 class="blk">8.3.4 バージョン管理されたモジュール</h3>
+    <p class="lead"><b>要するに：</b> すべての依存関係をバージョン固定する。Terraformコア・プロバイダ・モジュールの3つを特定バージョンに固定し、デプロイを予測可能で繰り返し可能にする。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バージョン管理って、コードの履歴を残すあれですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ここでは2種類ある。①モジュールの<span class="term" data-tip="そのコードが動くために頼っている外部のもの。">依存関係</span>のバージョン管理と、②モジュール自体のバージョン管理だ。Terraformコードが頼るものは3種類ある。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔧</div><h4>1 Terraformコア</h4><p>依存する terraform 本体のバージョン。</p><span class="pill">required_version</span></div>
+      <div class="mini"><div class="ic">🔌</div><h4>2 プロバイダ</h4><p>aws プロバイダなど、各プロバイダのバージョン。</p><span class="pill">required_providers</span></div>
+      <div class="mini"><div class="ic">📦</div><h4>3 モジュール</h4><p>moduleブロックでダウンロードする依存モジュール。</p><span class="pill">ref付きURL</span></div>
+    </div>
+
+    <div class="analogy"><h4>🏗️ たとえ話：使う建材と工具を型番で固定する</h4><p>同じ家をもう1棟建てるとき、「だいたい同じ材木」では仕上がりが変わってしまう。だから本物の現場は、使った建材・金具・工具を“型番”まで記録して固定する。<span class="term" data-tip="使うバージョンを特定の番号に釘で留めること。">バージョン固定</span>はこれだ。型番を固定すれば、今日建てても3年後に建てても同じ建物になり、不具合が出たら前の型番に戻せる。</p></div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんで固定するんですか？ 新しいほうがいいんじゃ？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>固定すると、デプロイが予測可能で繰り返し可能になる。コードを変えなければ今<code>apply</code>しても3年後でも同じ結果だ。バージョン更新は、常に意図的・慎重に、コードに明示して行うべきなんだ。</div></div>
+    </div>
+
+    <h4 class="blk">① Terraformコアのバージョン固定</h4>
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、Terraform本体のバージョンを「1.xでなければダメ」または「ちょうど1.2.3」と決める指定です。</p>
+    <details class="code"><summary>required_version（HCL）</summary><pre><span class="cmt"># メジャーだけ固定（1.x なら何でも）</span>
+<span class="kw">terraform</span> {
+  required_version = <span class="str">"&gt;= 1.0.0, &lt; 2.0.0"</span>  <span class="cmt"># 1.0.0以上、2.0.0未満</span>
+}
+
+<span class="cmt"># 本番レベルではマイナー・パッチも固定（ちょうど1.2.3）</span>
+<span class="kw">terraform</span> {
+  required_version = <span class="str">"1.2.3"</span>
+}</pre></details>
+    <details class="code"><summary>範囲外バージョンで apply するとエラー（ターミナル）</summary><pre>$ terraform apply
+Error: Unsupported Terraform Core version
+This configuration does not support Terraform version 0.14.3. To proceed,
+either choose another supported Terraform version or update the root module's
+version constraint.</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><span class="term" data-tip="一番左の大きな番号（1.x.xの「1」）。間では後方互換性がない。">メジャーバージョン</span>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>番号は「メジャー.マイナー.パッチ」だ。1.2.3なら1がメジャー、2がマイナー（機能追加）、3がパッチ（小修正）。メジャー間は後方互換性がないから1→2は壊れる変更を含みうる。1.0.0以降は公式の互換性の約束があるが、うっかり上がると新機能のズレやバグの恐れがあるから、メジャーは最低限、マイナー・パッチも固定して慎重に上げる。</div></div>
+    </div>
+
+    <h4 class="blk">tfenv（Terraformのバージョン切り替え道具）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ステージングは1.2.3、本番はまだ1.0.0、と使い分けたいときは？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="Terraformのバージョンを管理・切り替えするオープンソース道具。">tfenv</span>だ。複数バージョンの導入と切り替えが簡単になる。しかも<code>.terraform-version</code>ファイルを置けば、フォルダごとに自動で切り替わるんだ。</div></div>
+    </div>
+    <details class="code"><summary>tfenv の使い方（ターミナル）</summary><pre><span class="cmt"># 指定したバージョンをインストール</span>
+$ tfenv install 1.2.3
+
+<span class="cmt"># Apple Silicon(M1/M2)での回避策: arm64 を指定してから</span>
+$ export TFENV_ARCH=arm64
+$ tfenv install 1.2.3
+
+<span class="cmt"># インストール済み一覧（*が現在使用中）</span>
+$ tfenv list
+  1.2.3
+* 1.0.0 (set by /opt/homebrew/Cellar/tfenv/2.2.2/version)
+
+<span class="cmt"># 使用バージョンを選択</span>
+$ tfenv use 1.2.3</pre></details>
+    <details class="code"><summary>.terraform-version で自動切り替え（テキスト/ターミナル）</summary><pre><span class="cmt"># 環境ごとに .terraform-version を置くと、フォルダで自動切り替え</span>
+live
+ └ stage
+   └ vpc / mysql / frontend-app
+   └ .terraform-version   <span class="cmt">← 中身: 1.2.3</span>
+ └ prod
+   └ vpc / mysql / frontend-app
+   └ .terraform-version   <span class="cmt">← 中身: 1.0.0</span>
+
+$ cd stage/vpc &amp;&amp; terraform version
+Terraform v1.2.3
+
+$ cd prod/vpc &amp;&amp; terraform version
+Terraform v1.0.0</pre></details>
+    <p style="font-size:13.5px;color:var(--sub)">補足: Terragruntを使うなら、<code>.terragrunt-version</code>を見て自動選択する <code>tgswitch</code> という似た道具もあります。</p>
+
+    <h4 class="blk">② プロバイダのバージョン固定</h4>
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、使うプロバイダ（AWS）の出どころとバージョンを釘で留める指定です。<code>~> 4.0</code>は「4.xのどれか」という意味です。</p>
+    <details class="code"><summary>required_providers（HCL）</summary><pre><span class="kw">terraform</span> {
+  required_version = <span class="str">"&gt;= 1.0.0, &lt; 2.0.0"</span>
+
+  required_providers {
+    aws = {
+      source  = <span class="str">"hashicorp/aws"</span>  <span class="cmt"># ①AWSプロバイダの出どころ</span>
+      version = <span class="str">"~&gt; 4.0"</span>          <span class="cmt"># ②4.xのどれか（&gt;= 4.0, &lt; 5.0 と同じ）</span>
+    }
+  }
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>マイナーやパッチは固定しなくていいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>Terraform 0.14.0以降は<span class="term" data-tip="使った正確なバージョンを記録して固定する施錠ファイル（.terraform.lock.hcl）。">ロックファイル</span>で自動的に固定される。初めて<code>terraform init</code>すると<code>.terraform.lock.hcl</code>が作られ、2つの情報が記録される。</div></div>
+    </div>
+    <details class="code"><summary>ロックファイルに記録される2つの情報（テキスト版）</summary><pre><span class="cmt"># .terraform.lock.hcl に記録される2つの情報</span>
+1. 使用する各プロバイダの正確なバージョン
+   ・バージョン管理にチェックインすれば、以降どこで init しても全く同じ版を拾う
+   ・明示的に上げたい時: 制約を更新→ terraform init -upgrade → 確認してコミット
+2. 各プロバイダのチェックサム（中身の指紋のようなもの）
+   ・以降の init でチェックサムが変わるとエラー。悪意あるコードへの差し替えを防ぐ
+   ・署名付きプロバイダなら署名の正当性も確認される</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="中身全体から計算した短い指紋のような値。1文字でも変わると値が変わる。">チェックサム</span>は中身の指紋だ。こっそり差し替えられても指紋が合わずエラーになる安全装置だ。ただし既定では<code>init</code>したOSの指紋しか記録しない。チームで複数OSを使うなら全プラットフォームの指紋を記録する。</div></div>
+    </div>
+    <details class="code"><summary>複数OSのチェックサムを記録（ターミナル）</summary><pre><span class="cmt"># チームで複数OSを使う場合、全プラットフォームのチェックサムを記録</span>
+terraform providers lock \
+  -platform=windows_amd64 \  <span class="cmt"># 64ビット Windows</span>
+  -platform=darwin_amd64 \   <span class="cmt"># 64ビット macOS</span>
+  -platform=darwin_arm64 \   <span class="cmt"># 64ビット macOS (ARM)</span>
+  -platform=linux_amd64      <span class="cmt"># 64ビット Linux</span></pre></details>
+
+    <h4 class="blk">③ モジュールのバージョン固定 / ④ モジュール自体のバージョン管理</h4>
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、依存モジュールの出どころを「特定のGitタグ（v0.0.5）」に釘で留めるsource指定と、自分のモジュールにバージョンタグを付けて公開するコマンドです。</p>
+    <details class="code"><summary>ref付きURL と Gitタグ（HCL / bash）</summary><pre><span class="cmt"># source は Gitタグを ref で指定する（毎回まったく同じコードを拾う）</span>
+source = <span class="str">"git@github.com:foo/modules.git//services/hello-world-app?ref=v0.0.5"</span>
+
+<span class="cmt"># モジュールに v0.0.5 タグを付けて公開（セマンティックバージョニング）</span>
+$ git tag -a <span class="str">"v0.0.5"</span> -m <span class="str">"Create new hello-world-app module"</span>
+$ git push --follow-tags</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コード自体のバージョンはどうやって付けるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="メジャー.マイナー.パッチで互換性を表す番号付け。">セマンティックバージョニング</span>に従ったGitタグだ。例えばステージングに<code>v0.0.5</code>を建てるならこう書く。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、固定したバージョン（v0.0.5）の hello-world-app モジュールをステージング環境に建てる設計図です。</p>
+    <details class="code"><summary>固定バージョンをステージングに建てる（HCL）</summary><pre><span class="kw">provider</span> <span class="str">"aws"</span> { region = <span class="str">"us-east-2"</span> }
+
+<span class="kw">module</span> <span class="str">"hello_world_app"</span> {
+  <span class="cmt"># TODO: 自分のモジュールのURLとバージョンに書き換えること</span>
+  source = <span class="str">"git@github.com:foo/modules.git//services/hello-world-app?ref=v0.0.5"</span>  <span class="cmt"># ①固定版</span>
+
+  server_text            = <span class="str">"New server text"</span>
+  environment            = <span class="str">"stage"</span>  <span class="cmt"># ②ステージング環境として建てる</span>
+  db_remote_state_bucket = <span class="str">"(YOUR_BUCKET_NAME)"</span>
+  db_remote_state_key    = <span class="str">"stage/data-stores/mysql/terraform.tfstate"</span>
+
+  instance_type      = <span class="str">"t2.micro"</span>
+  min_size           = <span class="num">2</span>
+  max_size           = <span class="num">2</span>
+  enable_autoscaling = false
+  ami                = data.aws_ami.ubuntu.id
+}
+
+<span class="cmt"># ロードバランサの住所を素通しする出口</span>
+<span class="kw">output</span> <span class="str">"alb_dns_name"</span> {
+  value       = module.hello_world_app.alb_dns_name
+  description = <span class="str">"ロードバランサのドメイン名"</span>
+}</pre></details>
+    <details class="code"><summary>apply の結果（ターミナル）</summary><pre>$ terraform apply
+(...)
+Apply complete! Resources: 13 added, 0 changed, 0 destroyed.
+Outputs:
+alb_dns_name = "hello-world-stage-477699288.us-east-2.elb.amazonaws.com"</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>バージョンを固定しておくと、何が嬉しいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>問題なく動けば、本番にも全く同じバージョン＝全く同じコードを建てられる。しかも問題が起きたら、古いバージョンを建て直して<span class="term" data-tip="問題が起きたとき、前の状態に戻すこと。">ロールバック</span>できる。バージョン管理しているからこそできる安全策だ。</div></div>
+    </div>
+
+    <h4 class="blk">Terraformレジストリ（再利用部品の公開棚）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>作ったモジュールを世界に公開することもできるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="再利用できるモジュールが集まる公開棚。">Terraformレジストリ</span>に登録するんだ。AWS・Google Cloud・Azureなど、コミュニティ手入れのモジュールがたくさんある。登録には決まった要件がある。</div></div>
+    </div>
+    <details class="code"><summary>レジストリ登録要件と書式（テキスト / HCL）</summary><pre><span class="cmt"># パブリックTerraformレジストリへの登録要件</span>
+1. モジュールはパブリックなGitHubリポジトリに置く
+2. リポジトリ名は terraform-&lt;PROVIDER&gt;-&lt;NAME&gt;（例: aws, rds）
+3. 決められたファイル構造（ルートにコード、README.md、main.tf/variables.tf/outputs.tf）
+4. 各リリースにセマンティックバージョニングのGitタグを付ける
+
+<span class="cmt"># レジストリのモジュールは短いURL + version 引数で使える</span>
+<span class="kw">module</span> <span class="str">"rds"</span> {
+  source  = <span class="str">"terraform-aws-modules/rds/aws"</span>  <span class="cmt"># ①短いURL</span>
+  version = <span class="str">"4.4.0"</span>                            <span class="cmt"># ②バージョンは別の引数</span>
+  <span class="cmt"># (...)</span>
+}</pre></details>
+    <p style="font-size:13.5px;color:var(--sub)">社内だけで共有したいときは、Terraform Cloud / Enterpriseの<span class="term" data-tip="自分のチームだけがアクセスできる、社内限定の公開棚。">プライベートTerraformレジストリ</span>が同じ使い方で使えます。</p>
+
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>すべての依存とコードを固定すると、いつ・どこで実行しても同じ結果になる（再現性）。</li>
+      <li>問題が起きたら古いバージョンに戻して安全にロールバックできる。</li>
+      <li>レジストリを使えば、自作モジュールを世界や社内に再利用可能な形で配れる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>3種類の依存（Terraformコア・プロバイダ・モジュール）をすべてバージョン固定する。</li>
+      <li>コアは<code>required_version</code>、プロバイダは<code>required_providers</code>＋ロックファイル、モジュールは<code>ref</code>付きGit URLで固定。</li>
+      <li>tfenvと<code>.terraform-version</code>で環境ごとのTerraformバージョンを自動切り替えできる。</li>
+      <li>モジュール自体はセマンティックバージョニングのGitタグで管理し、ロールバックできる。</li>
+      <li>Terraformレジストリ（公開/プライベート）に登録すれば、短いURL＋version引数で配布・利用できる。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.5 -->
+  <div class="card" id="s835">
+    <h3 class="blk">8.3.5 Terraformモジュールの先へ（Terraformの抜け道）</h3>
+    <p class="lead"><b>要するに：</b> Terraformで書けない処理のために、プロビジョナ・null_resource・externalデータソースという抜け道がある。ただし移植性が下がり不安定になるので控えめに使う。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>インフラって、全部Terraformで済むんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いや。現場ではDocker、Packer、Chef、Puppet、それに「DevOps界のダクトテープであり接着剤であり主役でもある」信頼のBashスクリプトも使う。これらのコードもTerraformと一緒に<code>modules</code>フォルダに置ける。さらにTerraformから別のコードを動かす「抜け道」が3つあるんだ。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">📜</div><h4>1 プロビジョナ</h4><p>apply/destroy時にローカルやリモートでスクリプトを実行。</p></div>
+      <div class="mini"><div class="ic">🫙</div><h4>2 null_resource</h4><p>特定のリソースに紐付けずにスクリプトを実行。</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>3 external</h4><p>外部コマンドを実行し、その結果をTerraform内で使う。</p></div>
+    </div>
+    <div class="analogy"><h4>🏗️ たとえ話：規格外の特注工事</h4><p>建材を規格品で組み上げるのが基本だが、どうしても規格品では作れない箇所には、職人が手作業で特注の細工を入れる。仕上がりは良くても、その職人がいないと再現できず、別の現場へは持っていきにくい。抜け道も同じで、便利だが「この環境でしか動かない」不安定さを抱える。最後の手段だ。</p></div>
+  </div>
+
+  <!-- 8.3.5.1 -->
+  <div class="card" id="s8351">
+    <h3 class="blk">8.3.5.1 プロビジョナ</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><span class="term" data-tip="Terraform実行時にローカルやリモートの機械でスクリプトを走らせる仕組み。">プロビジョナ</span>って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>Terraform実行時にスクリプトを走らせる仕組みだ。ブート処理、設定管理、後始末などに使う。種類がいくつかある。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">💻</div><h4>local-exec</h4><p>自分のローカルマシンでスクリプトを実行。</p></div>
+      <div class="mini"><div class="ic">🌐</div><h4>remote-exec</h4><p>リモートのリソース(EC2など)上でスクリプトを実行。</p></div>
+      <div class="mini"><div class="ic">📁</div><h4>file</h4><p>ファイルをリモートのリソースへコピーする。</p></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、サーバを建てた後にローカルマシンでスクリプト（ローカルOSの情報表示）を走らせる例です。</p>
+    <details class="code"><summary>local-exec の例（HCL / ターミナル）</summary><pre><span class="cmt"># このブロックは「サーバを建てた後、ローカルでスクリプトを走らせる」</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = <span class="str">"t2.micro"</span>
+
+  provisioner <span class="str">"local-exec"</span> {
+    command = <span class="str">"echo \"Hello, World from $(uname -smp)\""</span>  <span class="cmt"># ①ローカルOS情報を表示</span>
+  }
+}
+
+<span class="cmt"># apply するとローカルマシンでスクリプトが走る</span>
+aws_instance.example (local-exec): Hello, World from Darwin x86_64 i386
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>remote-exec</code>はリモートのEC2で動かす。そのためにはTerraformクライアントが①ネットワーク経由で通信でき（セキュリティグループで許可）、②認証できる（SSHやWinRM）必要がある。サンプルはUbuntuだからSSH鍵を使う。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、SSH（ポート22）を許可する通行ルールと、試しやすいようTerraformで秘密鍵を自動生成し公開鍵をAWSへ上げる部分です（本番では鍵はTerraformとは別に管理すべき）。</p>
+    <details class="code"><summary>SSH準備（セキュリティグループ・鍵生成）（HCL）</summary><pre><span class="cmt"># ポート22(SSH)への接続を許可する通行ルール</span>
+<span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="str">"instance"</span> {
+  ingress {
+    from_port = <span class="num">22</span>
+    to_port   = <span class="num">22</span>
+    protocol  = <span class="str">"tcp"</span>
+    <span class="cmt"># この例を簡単に試せるように、すべてのSSH接続を許可。実世界では信頼できるIPのみに。</span>
+    cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]  <span class="cmt"># ①どこからでも許可(本番では危険)</span>
+  }
+}
+
+<span class="cmt"># この例を簡単に試せるように、Terraformでプライベートキーを生成（本番は別管理）</span>
+<span class="kw">resource</span> <span class="str">"tls_private_key"</span> <span class="str">"example"</span> {
+  algorithm = <span class="str">"RSA"</span>
+  rsa_bits  = <span class="num">4096</span>
+}
+
+<span class="cmt"># 生成した公開鍵をAWSへアップロード</span>
+<span class="kw">resource</span> <span class="str">"aws_key_pair"</span> <span class="str">"generated_key"</span> {
+  public_key = tls_private_key.example.public_key_openssh  <span class="cmt"># ①作った鍵の公開側</span>
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでこの鍵生成は本番に向かないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>秘密鍵がTerraformステートに保存されてしまうからだ。秘密の鍵がステートに丸見えになる。学習にはいいが本番には向かない。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、Ubuntuサーバを1台建ててSSH用の鍵を紐付け、そのサーバ上でスクリプトを走らせ（remote-exec）、つなぎ方をconnectionで教える部分です。</p>
+    <details class="code"><summary>remote-exec と connection（HCL）</summary><pre><span class="cmt"># Ubuntuサーバを1台建て、SSH用の鍵を紐付け、リモートでスクリプトを走らせる</span>
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = <span class="str">"t2.micro"</span>
+  vpc_security_group_ids = [aws_security_group.instance.id]
+  key_name               = aws_key_pair.generated_key.key_name  <span class="cmt"># ①鍵を紐付け</span>
+
+  provisioner <span class="str">"remote-exec"</span> {
+    <span class="cmt"># ①command ではなく inline で「実行するコマンドの一覧」を渡す</span>
+    inline = [<span class="str">"echo \"Hello, World from $(uname -smp)\""</span>]
+  }
+
+  connection {
+    type        = <span class="str">"ssh"</span>                              <span class="cmt"># ①SSHでつなぐ</span>
+    host        = self.public_ip                     <span class="cmt"># ②このサーバ自身のパブリックIP(self)</span>
+    user        = <span class="str">"ubuntu"</span>                           <span class="cmt"># ③Ubuntuの既定ユーザー名</span>
+    private_key = tls_private_key.example.private_key_pem  <span class="cmt"># ④自動生成した秘密鍵</span>
+  }
+}</pre></details>
+    <details class="code"><summary>apply の動き（ターミナル）</summary><pre>$ terraform apply
+aws_instance.example: Creating...
+aws_instance.example (remote-exec): Connecting to remote host via SSH...
+(... 数回繰り返す ...)
+aws_instance.example (remote-exec): Connected!
+aws_instance.example (remote-exec): Hello, World from Linux x86_64 x86_64
+Apply complete! Resources: 4 added, 0 changed, 0 destroyed.</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「Connecting...」が何回も出てますね。プロビジョナって毎回走るんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>remote-exec</code>はEC2がいつ接続を受けられるか正確には知らないから、成功かタイムアウト（既定5分）まで何度も繰り返す。それと、既定は<span class="term" data-tip="apply時かつリソースの初回作成時だけ走るプロビジョナ。">作成時プロビジョナ</span>で初回だけ走る。<code>when = destroy</code>を付けると削除時に走る。複数付けると上から順に実行し、<code>on_failure</code>で<code>continue</code>（無視）か<code>abort</code>（中止）を選べる。</div></div>
+    </div>
+
+    <h4 class="blk">プロビジョナとユーザーデータ — どちらを使う？</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>remote-exec</code>と<span class="term" data-tip="サーバ起動時に自動実行する初期設定スクリプト。">ユーザーデータ</span>、どっちを使えばいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>普通はユーザーデータの方が有益だと著者は言う。理由を挙げよう。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔐</div><h4>1 安全・楽</h4><p>SSH/WinRM不要、AWS APIアクセスだけで済む（どのみち必須）。</p></div>
+      <div class="mini"><div class="ic">📈</div><h4>2 ASGと併用</h4><p>オートスケール等で起動した全サーバに起動時スクリプトを実行できる。</p></div>
+      <div class="mini"><div class="ic">🔎</div><h4>3 確認しやすい</h4><p>EC2コンソールで内容も実行ログも見られる。デバッグに便利。</p></div>
+    </div>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあプロビジョナを使う利点はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>現実的な利点が1つある。ユーザーデータは16KBまでの長さ制限があるが、プロビジョナのスクリプトは任意の長さにできる。長い仕込みが必要ならそこだけプロビジョナの出番だ。</div></div>
+    </div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>プロビジョナはlocal-exec（ローカル）、remote-exec（リモート）、file（コピー）などがある。</li>
+      <li>remote-execはネットワーク疎通とSSH/WinRM認証が必要。</li>
+      <li>既定は作成時プロビジョナ（初回のみ）。<code>when = destroy</code>で削除時プロビジョナになる。</li>
+      <li>複数指定は上から順に実行。<code>on_failure</code>で<code>continue</code>/<code>abort</code>を選べる。</li>
+      <li>通常はユーザーデータの方が有益。プロビジョナの利点は長さ無制限。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.5.2 -->
+  <div class="card" id="s8352">
+    <h3 class="blk">8.3.5.2 null_resourceとプロビジョナ</h3>
+    <p class="lead"><b>要するに：</b> null_resourceは何も作らない器。プロビジョナを紐付けて任意のスクリプトを走らせられ、triggersの値が変わると再実行される。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>プロビジョナはリソースの中にしか書けないんですよね。特定のリソースに紐付けずに走らせたいときは？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="普通のリソースのように振る舞うが、実際には何も作らないリソース。">null_resource</span>を使う。これにプロビジョナを書けば、実際のリソースに紐付けずにスクリプトを走らせられる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>毎回<code>apply</code>のたびに走らせたいときは？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>triggers</code>に、呼ぶたびに新しい値を返す<code>uuid()</code>を入れればいい。毎回値が変わるから毎回作り直され、再実行される。</div></div>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、何も作らない器（null_resource）でスクリプトを走らせる例と、apply のたびに必ず走らせる（uuid()で毎回作り直す）例です。</p>
+    <details class="code"><summary>null_resource と triggers（HCL / ターミナル）</summary><pre><span class="cmt"># 何も作らない器でローカルスクリプトを走らせる</span>
+<span class="kw">resource</span> <span class="str">"null_resource"</span> <span class="str">"example"</span> {
+  provisioner <span class="str">"local-exec"</span> {
+    command = <span class="str">"echo \"Hello, World from $(uname -smp)\""</span>  <span class="cmt"># ①ローカルOS情報を表示</span>
+  }
+}
+
+<span class="cmt"># apply のたびに必ずスクリプトを走らせる器</span>
+<span class="kw">resource</span> <span class="str">"null_resource"</span> <span class="str">"example"</span> {
+  triggers = {
+    uuid = <span class="fn">uuid</span>()  <span class="cmt"># ①毎回違う値→毎回作り直し→毎回再実行</span>
+  }
+  provisioner <span class="str">"local-exec"</span> {
+    command = <span class="str">"echo \"Hello, World from $(uname -smp)\""</span>
+  }
+}
+
+<span class="cmt"># apply するたびに local-exec が実行される</span>
+$ terraform apply
+null_resource.example (local-exec): Hello, World from Darwin x86_64 i386
+$ terraform apply
+null_resource.example (local-exec): Hello, World from Darwin x86_64 i386</pre></details>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>null_resourceは何も作らないが、プロビジョナを紐付けてスクリプトを実行できる。</li>
+      <li>triggers（キーと値のマップ）の値が変わると再作成され、プロビジョナが再実行される。</li>
+      <li>triggersにuuid()を入れると、apply のたびに毎回再実行できる。</li>
+    </ul></div>
+  </div>
+
+  <!-- 8.3.5.3 -->
+  <div class="card" id="s8353">
+    <h3 class="blk">8.3.5.3 外部データソース</h3>
+    <p class="lead"><b>要するに：</b> externalデータソースは外部プログラムをJSONでやりとりして呼び出し、その結果をTerraform内で使う抜け道。移植性が下がるので控えめに。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>スクリプトでデータを取ってきて、それをTerraformコードの中で使いたいときは、プロビジョナでいいんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「データを取得してTerraformコード内で使う」のが目的なら、<span class="term" data-tip="決まった約束事に従う外部コマンドを呼んで、結果をTerraformに取り込む仕組み。">externalデータソース</span>を使う。約束事（プロトコル）はこうだ。</div></div>
+    </div>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>Terraform → 外部プログラム</h4><p>query 引数の中身をJSONとして標準入力で渡す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div></div><div class="body"><h4>外部プログラム → Terraform</h4><p>結果をJSONで標準出力に書く。Terraform側は result 出力属性でそのJSONを取り出せる。</p></div></div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--sub)">このコードは、標準入力をそのまま返すBashを外部コマンドとして呼び、渡したデータがそのまま結果として戻ってくる例です。</p>
+    <details class="code"><summary>external データソースの例（HCL / ターミナル）</summary><pre><span class="cmt"># 外部コマンドを呼び、渡したデータをそのまま受け取る</span>
+<span class="kw">data</span> <span class="str">"external"</span> <span class="str">"echo"</span> {
+  program = [<span class="str">"bash"</span>, <span class="str">"-c"</span>, <span class="str">"cat /dev/stdin"</span>]  <span class="cmt"># ①標準入力をそのまま返すBash</span>
+  query = {
+    foo = <span class="str">"bar"</span>  <span class="cmt"># ②外部プログラムに渡すデータ</span>
+  }
+}
+
+<span class="kw">output</span> <span class="str">"echo"</span>     { value = data.external.echo.result }      <span class="cmt"># 結果全体</span>
+<span class="kw">output</span> <span class="str">"echo_foo"</span> { value = data.external.echo.result.foo }  <span class="cmt"># foo の値だけ</span>
+
+<span class="cmt"># apply すると、渡したデータがそのまま返ってくる</span>
+$ terraform apply
+Outputs:
+echo = {
+  "foo" = "bar"
+}
+echo_foo = "bar"</pre></details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>data.external.&lt;NAME&gt;.result</code>が返ってきたJSON全体を持ち、<code>.result.&lt;PATH&gt;</code>で中身を読み出せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>便利ですね！ どんどん使っていいですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いや、控えめに。抜け道はコードの<span class="term" data-tip="別の環境でもそのまま動かせる度合い。">移植性</span>を下げて不安定にする。今のコードはBash依存だから、このモジュールはWindowsからデプロイできない。既存のデータソースで取れないデータが本当に必要なときの、最後の抜け道だと思っておけ。</div></div>
+    </div>
+    <div class="why"><h4>🟣 なぜ必要か / これを知ると</h4><ul>
+      <li>Terraformの宣言だけでは書けない処理（スクリプト実行、外部データ取得）を補える。</li>
+      <li>別ツール（Bash, Packer等）とTerraformを統合できる。</li>
+      <li>抜け道の代償（移植性低下・不安定さ）を知れば、使うべき場面を見極められる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>Terraformで書けない処理の抜け道は、プロビジョナ・null_resource・externalデータソースの3つ。</li>
+      <li>externalは外部コマンドとJSON（標準入出力）でやりとりし、resultで結果を取り込む。</li>
+      <li>抜け道は移植性を下げ不安定にするので、控えめに使う（例: Bash依存だとWindowsで動かない）。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- まとめ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><h2>章のまとめ（弟子の振り返り）<span class="tag">ハルが今日学んだことを言葉にする</span></h2></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つめ、「本番レベルは会社の運命を任せる本物の建物で、模型とは手間がまるで違う」。だから何ヶ月もかかるのが当たり前。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そのとおり。遅れる理由は3つ――未熟さ、ヤクの毛刈り、本来タスクが多いこと。見積もりに織り込みなさい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つめ、「本番に出す前に竣工検査の項目表を全部確認し、入れる/入れない/理由を記録する」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>よし。回復力・ネットワーク・セキュリティを忘れないように。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つめ、「巨大な1枚設計図はやめて、1つのことだけする小さなモジュールに割り、入力と出力で組み合わせる」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>関数の合成だね。副作用を減らせば使い回せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つめ、「examplesで見本を先に書いて、validation・precondition・postconditionで自己点検させる」。それ以上は自動テストツール。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>見本はテスト・教材・動く説明書を兼ねる。一石三鳥だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つめ、「コア・プロバイダ・モジュールの3つの依存とコード自体を全部バージョン固定し、抜け道（プロビジョナ・null_resource・external）は控えめに」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>完璧だ。固定すれば再現できてロールバックもできる。抜け道は最後の手段。これで本番レベルの建物の作り方が分かったね。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 理解度チェック -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><h2>章末の理解度チェック<span class="tag">自分の言葉で答えてみよう（全5問）</span></h2></div>
+  <div class="card">
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>本番レベルのインフラが時間のかかる3つの理由</div>
+      <p style="font-size:13.5px;color:#d2d8f6">本番レベルのインフラ構築がなぜ時間がかかるのか、3つの理由を自分の言葉で説明してください。また「偶有的複雑性」と「本質的複雑性」のどちらに当たるかも添えてください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">1つめは分野がまだ生まれたてで道具も手法も未熟だから（偶有的）。2つめはヤクの毛刈り、つまり目的の作業にたどり着く前に無関係な小作業が次々連鎖するから（偶有的）。3つめは本番に必要なタスクがもともと多く、多くの人がそれを見積もりから落とすから（本質的）。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="ans"><ul class="point"><li>3つの理由（未熟さ・ヤクの毛刈り・タスクが本来多い）を挙げている</li><li>ヤクの毛刈りを「無関係な小作業の連鎖」と説明できている</li><li>偶有的（道具のせい）と本質的（課題そのもの）の区別を正しく対応づけている</li></ul></div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>大きなモジュールの弊害</div>
+      <p style="font-size:13.5px;color:#d2d8f6">全インフラを1つの大きなモジュールにまとめると、どんな問題が起きますか。3つ以上挙げて説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">planの実行が遅くなる。何か直すのに全体への権限が要り、皆が管理者になって最小権限の原則に反する。ミスの波及範囲が大きく、ステージングの小変更のつもりで本番DBを壊しかねない。コードもplan出力も膨大で読めず、危険な変更を見逃す。テストもほぼ不可能になる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="ans"><ul class="point"><li>「遅い・セキュアでない・リスク大・理解しにくい・レビューしにくい・テストしにくい」のうち3つ以上を挙げている</li><li>「セキュアでない」を最小権限の原則と結びつけて説明できている</li><li>解決策として「小さなモジュールに割る」ことに触れている</li></ul></div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>validation / precondition / postcondition の使い分け</div>
+      <p style="font-size:13.5px;color:#d2d8f6">validationブロック、preconditionブロック、postconditionブロックは、それぞれどんなときに使いますか。また、これらでは対応できない高度な点検はどうしますか。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">validationは入力変数の基本的な掃除（同じ変数しか参照できない）。preconditionは変更を当てる前の前提チェック（複数変数やデータソースを使える）。postconditionは当てた後の約束事チェック（selfで自分の属性を参照できる）。HTTP応答確認やリトライ、内部網接続のような高度な点検は、OPAやTerratestなどの自動テストツールを使う。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="ans"><ul class="point"><li>validation＝入力の掃除、precondition＝当てる前、postcondition＝当てた後、と対応づけている</li><li>validationは同じ変数しか参照できないという制限に触れている</li><li>高度な点検は自動テストツール（OPA/Terratest）が必要と述べている</li></ul></div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>3つの依存関係のバージョン固定</div>
+      <p style="font-size:13.5px;color:#d2d8f6">Terraformコードの3種類の依存関係とは何ですか。それぞれをバージョン固定する方法と、固定する理由を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">Terraformコア・プロバイダ・モジュールの3つ。コアは<code>required_version</code>、プロバイダは<code>required_providers</code>（マイナー/パッチは<code>.terraform.lock.hcl</code>で自動固定）、モジュールは<code>ref</code>でGitタグを指定したURLで固定する。固定する理由は、コードを変えなければいつ・どこで実行しても同じ結果になり、デプロイが予測可能で繰り返し可能になるから。問題時に古い版へロールバックもできる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="ans"><ul class="point"><li>3種類（コア・プロバイダ・モジュール）を正しく挙げている</li><li>それぞれの固定方法（required_version / required_providers＋ロックファイル / ref付きURL）を述べている</li><li>固定の理由（再現性・ロールバック）を説明できている</li></ul></div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>Terraformの抜け道とその注意</div>
+      <p style="font-size:13.5px;color:#d2d8f6">Terraformで書けない処理のための「抜け道」を3つ挙げ、使うときの注意点を説明してください。</p>
+      <details><summary>✅ 解答例</summary><div class="ans">プロビジョナ（apply/destroy時にローカルやリモートでスクリプト実行）、null_resource（何も作らない器にプロビジョナを紐付けて実行）、externalデータソース（外部コマンドとJSONでやりとりして結果を取り込む）の3つ。注意点は、移植性が下がり不安定になること。例えばBash依存のexternalはWindowsで動かないので、控えめに最後の手段として使う。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="ans"><ul class="point"><li>抜け道3つ（プロビジョナ・null_resource・external）を挙げている</li><li>externalがJSON（標準入出力）でやりとりすることに触れている</li><li>移植性低下・不安定さの注意点（例: Bash依存はWindows不可）を述べている</li></ul></div></details>
+    </div>
+  </div>
+</section>
+
+<!-- 次のステップ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><h2>次のステップ<span class="tag">この内容を理解するために手を動かそう</span></h2></div>
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>竣工検査の項目表を埋めてみる</h4><p>表8-2を手元のメモに書き写し、関わっている（または学習用の）インフラについて「どの項目を実装し、どれを外し、なぜか」を1つずつ埋める。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>大きなモジュールを3つに割る</h4><p>GitHubのサンプルコード（github.com/brikis98/terraform-up-and-running-code）を取得し、<code>webserver-cluster</code>を asg-rolling-deploy・alb・hello-world-app の3つに分割する手順を実際に動かす。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>自己点検を試す</h4><p>変数に<code>validation</code>を1つ足し、わざと不正な値で<code>apply</code>してエラーを確認。次に<code>precondition</code>と<code>postcondition</code>も1つずつ試す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>tfenvで自動切り替えを体験</h4><p><code>tfenv</code>をインストールし、<code>.terraform-version</code>で2つのフォルダが違うバージョンを自動選択することを<code>terraform version</code>で確かめる。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>公式ドキュメントで抜け道の制限を確認</h4><p>「Terraform v1.0 Compatibility Promises」と、プロビジョナ／externalデータソースの公式ドキュメントを読み、抜け道の制限（移植性・非同期・リトライなし）を確認する。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">『詳解 Terraform 第3版』第8章「本番レベルのTerraformコード」 ／ 図解版（建築基準法に適合し竣工検査に通る本格的な建物づくりのたとえで統一）<br>本ページは学習用に対話形式の原文を図解化したものです。コードは折りたたみ内・読み飛ばし可。</p>
+
+</div>
+</body>
+</html>

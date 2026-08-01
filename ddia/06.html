@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第6章 パーティショニング ― 図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">データ指向アプリケーションデザイン ・ 第6章</span>
+  <h1>パーティショニング ― 巨大データを区画に分けて散らす</h1>
+  <p>データが1台のサーバーに収まりきらなくなったとき、どうする？ 1つの巨大なデータベースをわざと<b>小さな区画（パーティション）</b>に切り分け、たくさんのマシンに散らばらせる技を、新人ハルとベテラン カイ先輩の対話で根っこから学びます。どう切る？ どう切ると詰まる？ 検索は？ ノードを増やしたら？ クライアントはどこに聞く？</p>
+  <div class="badge-row">
+    <span class="badge">🏬 たとえ話は「大型物流センターの区画分け」で統一</span>
+    <span class="badge">💬 会話で読める</span>
+    <span class="badge">🟧 コードは飛ばしてOK</span>
+    <span class="badge">📚 用語集つき</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章のぜんぶ）</h2>
+  <a href="#intro">🎬 あらすじ・要するに・なぜ必要か</a>
+  <a class="sub" href="#smap">この章の地図 ― パーティショニングとは何か</a>
+  <a href="#s61">6.1 パーティショニングとレプリケーション</a>
+  <a href="#s62">6.2 キー‐バリューデータのパーティショニング</a>
+  <a class="sub" href="#s621">6.2.1 キーの範囲に基づくパーティショニング</a>
+  <a class="sub" href="#s622">6.2.2 キーのハッシュに基づくパーティショニング</a>
+  <a class="sub" href="#s622b">　└ コンシステントハッシュ法</a>
+  <a class="sub" href="#s623">6.2.3 スキューとホットスポットの軽減</a>
+  <a href="#s63">6.3 パーティショニングとセカンダリインデックス</a>
+  <a class="sub" href="#s631">6.3.1 ドキュメントによる分割（ローカル）</a>
+  <a class="sub" href="#s632">6.3.2 語による分割（グローバル）</a>
+  <a href="#s64">6.4 パーティションのリバランシング</a>
+  <a class="sub" href="#s641a">6.4.1.1 取るべきでない：ハッシュの剰余</a>
+  <a class="sub" href="#s641b">6.4.1.2 パーティション数の固定</a>
+  <a class="sub" href="#s641c">6.4.1.3 動的なパーティショニング</a>
+  <a class="sub" href="#s641d">6.4.1.4 ノード数に比例</a>
+  <a class="sub" href="#s642">6.4.2 自動と手動のリバランス</a>
+  <a href="#s65">6.5 リクエストのルーティング</a>
+  <a class="sub" href="#s651">6.5.1 パラレルクエリの実行</a>
+  <a href="#sumchap">章のまとめ</a>
+  <a href="#wrapup">🔁 弟子の振り返り</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方 ― プログラミング未経験の方へ</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟧</div><div><b>コードは読み飛ばしてOK</b><p>オレンジの「読まなくてOK」がついた折りたたみはエンジニア向けの実物です。開かなくても本文と図でちゃんと分かります。</p></div></div>
+    <div class="row"><div class="gi">💬</div><div><b>会話を追えば分かる</b><p>新人ハルとベテランのカイ先輩の対話が本筋。むずかしい話もここを読めばイメージできます。</p></div></div>
+    <div class="row"><div class="gi">📚</div><div><b>むずかしい言葉は下に一覧</b><p>すぐ下の「かんたん用語集」にやさしい言葉でまとめました。本文の<span class="term" data-tip="点線の言葉はカーソルを乗せると意味が出ます。">点線つきの言葉</span>もカーソルで意味が出ます。</p></div></div>
+    <div class="row"><div class="gi">🏬</div><div><b>たとえ話はぜんぶ物流センターで統一</b><p>黄色い「たとえ話」ボックスは、このページを通してぜんぶ<b>「大型物流センターの区画分け」</b>に置きかえて説明します。データ＝荷物、パーティション＝区画／フロア、ノード＝倉庫の建物です。別の世界のたとえは混ぜません。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章に出てくる専門用語を、物流センターのたとえ＋やさしい言葉でまとめました。困ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">パーティショニング <span>partitioning / sharding</span></div><p>巨大なデータベースを小さな区画に分けて複数のマシンに散らす技。物流センターでいうと、荷物を<b>複数のフロア・区画に仕分けて保管</b>すること。</p></div>
+    <div class="item"><div class="w">パーティション <span>partition / shard</span></div><p>分割された1つの区画。1つの荷物はちょうど1つの区画に入る。製品ごとにshard・region・tablet等と呼ぶ。</p></div>
+    <div class="item"><div class="w">レプリケーション <span>replication</span></div><p>同じデータのコピーを複数のノードに持つこと。同じ荷物を<b>別の倉庫にも控えで置く</b>こと（5章）。</p></div>
+    <div class="item"><div class="w">ノード <span>node</span></div><p>クラスタを構成する1台のマシン。物流センターの<b>1棟の倉庫（建物）</b>。</p></div>
+    <div class="item"><div class="w">キー <span>key</span></div><p>荷物に貼られた<b>あて先ラベル（伝票番号）</b>。これを見てどの区画に入れるかを決める。</p></div>
+    <div class="item"><div class="w">プライマリキー <span>primary key</span></div><p>1つの荷物を一意に特定する鍵（主キー）。伝票番号のようなもの。</p></div>
+    <div class="item"><div class="w">スキュー <span>skew</span></div><p>区画ごとの荷物・作業量の<b>偏り</b>。一部だけパンパンで他はガラガラの状態。</p></div>
+    <div class="item"><div class="w">ホットスポット <span>hot spot</span></div><p>荷物や作業が一点に集中して<b>過負荷になった区画</b>。1つの区画だけ過労死寸前。</p></div>
+    <div class="item"><div class="w">キーの範囲で分割 <span>key range</span></div><p>あ〜お、か〜こ…と、ラベルの<b>範囲ごとに区画</b>を割り当てる方式。百科事典の巻分け。</p></div>
+    <div class="item"><div class="w">ハッシュで分割 <span>hash partitioning</span></div><p>ラベルを<b>かき混ぜて数値に変換</b>し、その数値で区画を割り当てる方式。偏りを均等にならす。</p></div>
+    <div class="item"><div class="w">ハッシュ関数 <span>hash function</span></div><p>入力を「ランダムに見える数値」に変える関数。似た入力でも結果はバラバラに散る。</p></div>
+    <div class="item"><div class="w">範囲スキャン <span>range scan</span></div><p>ある範囲のラベルをまとめて取り出すこと。「5月の荷物を全部」のような検索。</p></div>
+    <div class="item"><div class="w">セカンダリインデックス <span>secondary index</span></div><p>中身（色・種類など）で荷物を探すための<b>別の索引</b>。「赤い荷物を全部」を引ける。</p></div>
+    <div class="item"><div class="w">ローカルインデックス <span>document-based</span></div><p>各区画が<b>自分の中の荷物だけ</b>を索引する方式。書き込みは楽、検索は全区画に聞く。</p></div>
+    <div class="item"><div class="w">グローバルインデックス <span>term-based</span></div><p>全区画をカバーする<b>共通の索引</b>を作り、それを語で分割する方式。検索は楽、書き込みは重い。</p></div>
+    <div class="item"><div class="w">スキャッタ/ギャザー <span>scatter/gather</span></div><p>全区画に問い合わせをばらまき（scatter）、結果を集めて結合する（gather）こと。</p></div>
+    <div class="item"><div class="w">リバランシング <span>rebalancing</span></div><p>ノードの増減や障害のとき、荷物をノード間で<b>移して均す</b>こと。倉庫間の引っ越し。</p></div>
+    <div class="item"><div class="w">ルーティング <span>routing</span></div><p>「この荷物はどの倉庫の何階？」をクライアントに案内すること。受付の役目。</p></div>
+    <div class="item"><div class="w">サービスディスカバリ <span>service discovery</span></div><p>「目的のサービスがどこにあるか」を見つける一般的な仕組み。受付の総合案内。</p></div>
+    <div class="item"><div class="w">ZooKeeper</div><p>「どの区画がどの倉庫にあるか」の最新台帳を一元管理する協調サービス。中央の管理事務所。</p></div>
+    <div class="item"><div class="w">MPP <span>massively parallel processing</span></div><p>大規模並列処理。複雑な集計を多数のノードで分担して並列に処理する仕組み（10章）。</p></div>
+  </div>
+</div>
+
+<!-- ===== イントロ ===== -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">🎬</div><div><h2>あらすじ・要するに・なぜ必要か</h2><span class="tag">この章で何を学ぶのか、最初に地図を持つ</span></div></div>
+
+  <div class="card">
+    <h3 class="blk">あらすじ</h3>
+    <p>ツバサ社のサービスが順調に伸びて、データベースのデータ量がついに1台のサーバーに収まりきらなくなりました。「もうレプリケーション（複製）だけじゃ無理なんですか……？」とうろたえるハルに、カイ先輩は「次の武器を教えよう」と切り出します。それが<b>パーティショニング</b>――1つの巨大なデータベースを、わざと小さなかたまりに切り分けて、たくさんのサーバーに散らばらせる技です。どうやって切る？ どう切ると速くなって、どう切ると逆に詰まる？ 切ったあとに検索（セカンダリインデックス）はどうする？ サーバーを増やしたらどう並べ直す？ クライアントは「どのサーバーに聞けばいいか」をどう知る？ ――この章は、巨大データを多数のマシンに分散させて動かすための、地に足のついた設計の話。</p>
+
+    <div class="lead">🎯 <b>要するに</b>：データやアクセスが多すぎて1台に収まらないとき、データを<b>パーティション（区画）＝シャード</b>に分割して複数のノードに分散する。目標は負荷を均等にして<b>ホットスポット</b>（一部に集中する過負荷）を避けること。分け方は大きく<b>キーの範囲で分ける</b>か<b>キーのハッシュで分ける</b>かの2つ。検索のためのセカンダリインデックスも分割が必要で、<b>ローカル（ドキュメント単位）</b>と<b>グローバル（語単位）</b>の2方式がある。ノードの増減ではデータを並べ直す<b>リバランシング</b>を行い、クライアントの問い合わせは<b>ルーティング</b>で正しいノードへ届ける。</div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：これから「大型物流センター」の話をします</h4>
+      <p>この章を通して、データベース＝<b>大型物流センター</b>、データ（レコード）＝<b>荷物</b>、パーティション（区画）＝<b>センター内のフロアや区画</b>、ノード＝<b>1棟の倉庫（建物）</b>、クライアント＝<b>荷物を出し入れしに来る人</b>に置きかえて読みます。荷物が1棟に入りきらなくなったら、複数のフロアや区画に仕分けて分散保管する――これがパーティショニング。どう仕分けるか、どこに何があるか案内するか、荷物が増えたらどう並べ直すか、が今日のテーマです。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li><b>スケーラビリティの中心技術</b>：レプリケーション（5章）はデータの「コピーを増やす」技だが、データ量そのものが1台に乗らなくなると無力。パーティショニングは「データを分けて散らす」ことでこの壁を越える。</li>
+        <li><b>製品選びの目が利く</b>：MongoDB・Cassandra・HBase・Elasticsearch・DynamoDBなど、現代の分散DBはほぼ全部この仕組みの上に立っている。中身を知れば選定眼がつく。</li>
+        <li><b>実運用の事故を防げる</b>：「分け方を間違えると一部のノードだけが死ぬほど忙しくなる（ホットスポット）」という、本当に起きる事故の原理を理解できる。</li>
+        <li><b>判断・説明ができる</b>：「範囲かハッシュか」をアクセスパターンから判断でき、キー設計でホットスポットを回避でき、分散DBの悩みを正しい言葉で説明できる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== この章の地図 ===== -->
+<section id="smap">
+  <div class="sec-head"><div class="sec-num">🗺️</div><div><h2>この章の地図 ― パーティショニングとは何か</h2><span class="tag">区切る、住み分けさせる。製品ごとに呼び名は違う</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：パーティショニング（＝シャーディング）は巨大なデータベースを小さな区画に分け、1レコードはちょうど1区画に属するようにする技。各区画を別ノードに置くことでデータと負荷を分散し、スケーラビリティを得る。製品ごとに呼び名は違う（シャード・リージョン・タブレット等）が中身は同じ。ネットワークの分断とは無関係。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">新人 ハル</span>先輩、大変です。DBの容量がもうすぐ満杯で……。レプリケーションでフォロワーを増やしても、コピーが増えるだけで、肝心のデータが1台に入りきらないんです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">先輩 カイ</span>お、いよいよその時が来たか。5章のレプリケーションは「同じデータのコピーを複数のノードに持つ」技だった。でもデータセットが巨大すぎたり、クエリのスループット（毎秒さばける量）が高すぎたりすると、それだけじゃ足りない。今日は<b>データそのものを切り分けて散らす</b>技を教えるよ。これを<span class="term" data-tip="巨大なDBを小さな区画に分けて複数マシンに散らす技。シャーディングとも呼ぶ。">パーティショニング</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>パーティショニング……「区切る」みたいな意味ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。<b>パーティション（区画）</b>は、巨大なデータベースをわざと小さなかたまりに分割したもの。<b>シャーディング</b>とも呼ばれる。基本ルールはシンプルで、「<b>1つのレコード（行・ドキュメント）は、ちょうど1つのパーティションに属する</b>」ようにする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コピーじゃなくて、住み分け、なんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいたとえだ。レプリケーションは「同じ本を何冊もコピーする」、パーティショニングは「百科事典を全12巻に分けて、それぞれ別の本棚に置く」イメージ。実質、各パーティションは独立した小さなデータベースなんだ。ただし全体としては、複数のパーティションをまたいだ操作もできることがある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ところで先輩、製品によって呼び方が違うって聞いたんですけど。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこ、混乱しやすいから整理しておこう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：荷物を1棟に詰め込まず、複数のフロアに住み分けさせる</h4>
+      <p>レプリケーションは「同じ荷物を別の倉庫にも控えで置く」こと。パーティショニングは「<b>荷物を種類や番号で分けて、1階・2階・3階…と別々のフロア（区画）に住み分けさせる</b>」こと。1つの荷物が置かれるフロアはちょうど1つ。各フロアはそれぞれ独立した小さな倉庫として動けます。</p>
+    </div>
+
+    <p>カイ先輩はホワイトボードに用語の対応表を書いた。下は<b>同じ「パーティション」を指す、製品ごとの呼び名</b>です。</p>
+    <table class="t">
+      <tr><th>製品 / 文脈</th><th>呼び名</th></tr>
+      <tr><td>本書 / 一般</td><td>パーティション（partition）</td></tr>
+      <tr><td>MongoDB / Elasticsearch / SolrCloud</td><td>シャード（shard）</td></tr>
+      <tr><td>HBase</td><td>リージョン（region）</td></tr>
+      <tr><td>Bigtable</td><td>タブレット（tablet）</td></tr>
+      <tr><td>Cassandra / Riak</td><td>vnode</td></tr>
+      <tr><td>Couchbase</td><td>vBucket</td></tr>
+    </table>
+    <p>※ 一番定着しているのは「パーティショニング」なので、本書ではこれを使います。</p>
+
+    <details class="code"><summary>ホワイトボードの用語メモ</summary>
+<pre><span class="cmt"># 同じ「パーティション」を指す、製品ごとの呼び名</span>
+本書 / 一般                          : パーティション (partition)
+MongoDB / Elasticsearch / SolrCloud : シャード (shard)
+HBase                               : リージョン (region)
+Bigtable                            : タブレット (tablet)
+Cassandra / Riak                    : vnode
+Couchbase                           : vBucket
+<span class="cmt">※ 一番定着しているのは「パーティショニング」なので、本書ではこれを使う</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>同じものをこんなに違う名前で呼んでるんですね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。他社のエンジニアと話すときは「シャード」と「パーティション」が同じ意味だと知っておくと話が通じる。あと、紛らわしい言葉がもう1つ。<b>ネットワークの分断（network partitioning, ネットスプリット）</b>は、ノード間の通信が切れる「障害」のことで、こっちのパーティショニングとは無関係。これは8章で別に扱う。同じ単語でも全然違う話だから注意ね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なぜわざわざ分けるんでしたっけ？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一番の理由は<b>スケーラビリティ</b>。各パーティションを<span class="term" data-tip="何も共有しないで独立したマシンを並べる構成。">シェアードナッシング</span>クラスタの別々のノードに置けば、巨大なデータセットを大量のディスクに分散でき、クエリの負荷を大量のCPUに分散できる。1つのキーだけを読み書きするクエリなら、各ノードが自分の担当パーティションだけを独立して処理できるから、ノードを足すほどスループットが伸びる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ何でもノードを足せば速くなる？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう単純じゃない。複数のノードをまたぐ大規模で複雑なクエリ（たくさんのパーティションを横断する集計とか）は並列化できる可能性はあるけど、実装はぐっと難しくなる。ちなみにこの技術、歴史は古くて1980年代のTeradataやTandem NonStop SQLが最初。最近NoSQLやHadoopベースのデータウェアハウスで再発見された。トランザクション向けも分析向けもあるけど、基本はどっちにも当てはまる。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>データが1台に乗らない・スループットが足りないという壁を、コピーではなく「分割」で越えられると理解できる。</li>
+        <li>他製品のドキュメントを読むとき、「シャード」「リージョン」などが同じ概念だと見抜ける。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>パーティショニング＝巨大DBを小さな区画に分割し、1レコードは1区画に属させる。</li>
+        <li>目的はスケーラビリティ（データと負荷を多数のノードに分散）。</li>
+        <li>製品ごとに呼び名が違う（shard / region / tablet / vnode / vBucket）が、定着語は partition。</li>
+        <li>単一キーのクエリは並列でスループットが伸びるが、複数ノード横断の複雑クエリは難しい。</li>
+        <li>ネットワークの分断（netsplit）とは無関係（8章）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.1 ===== -->
+<section id="s61">
+  <div class="sec-head"><div class="sec-num">6.1</div><div><h2>パーティショニングとレプリケーション</h2><span class="tag">分けたうえで、各かたまりをさらに複製する</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：パーティショニングは普通レプリケーションと組み合わせる。各パーティションを複数ノードにコピーして耐障害性を持たせ、1ノードは「あるパーティションのリーダー」と「別パーティションのフォロワー」を兼ねうる。分け方と複製方式は独立に選べるので、本章では複製を脇に置いて分け方だけを論じる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あれ、結局レプリケーションは捨てるんですか？ さっき「データが収まらない」って言ってたから……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、捨てない。むしろ<b>組み合わせる</b>。パーティショニングで「住み分け」をしても、各パーティションが1台にしかないと、そのノードが壊れたらそのパーティションのデータが消えちゃうだろ？ だから耐障害性のために、<b>各パーティションを複数のノードにコピー（レプリケーション）する</b>んだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分けたうえで、各かたまりをさらに複製する、と。1台のノードに乗るのは1つのパーティションだけですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、1つのノードに複数のパーティションが乗ることもある。5章のリーダー‐フォロワー方式と組み合わせると、こんな絵になる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：区画に分けたうえで、各区画の控えを別の倉庫にも置く</h4>
+      <p>荷物をフロアごとに住み分けさせても、そのフロアが1棟の倉庫にしかなければ、その倉庫が火事になったら荷物が消えてしまいます。だから各区画の<b>控え（コピー）を別の倉庫にも置く</b>のです。すると1棟の倉庫を失っても、別の倉庫の控えで営業を続けられる。1棟の倉庫は「ある区画の本拠地」かつ「別の区画の控え置き場」を<b>兼任</b>します。</p>
+    </div>
+
+    <p>下は、パーティション1〜3を、それぞれ<b>リーダー1つ＋フォロワー1つ</b>で複製した例です。1つのノードが、ある区画のリーダーであると同時に、別の区画のフォロワーを兼ねている点に注目。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🏢</div><h4>ノードA</h4><p>パーティション1の<b>リーダー</b>／パーティション2の<b>フォロワー</b></p></div>
+      <div class="mini"><div class="ic">🏢</div><h4>ノードB</h4><p>パーティション2の<b>リーダー</b>／パーティション3の<b>フォロワー</b></p></div>
+      <div class="mini"><div class="ic">🏢</div><h4>ノードC</h4><p>パーティション3の<b>リーダー</b>／パーティション1の<b>フォロワー</b></p></div>
+    </div>
+
+    <details class="code"><summary>構成図（パーティショニング × レプリケーション）</summary>
+<pre><span class="cmt"># パーティショニング × レプリケーション（リーダー‐フォロワー方式）の例</span>
+<span class="cmt"># パーティションは1〜3の3つ、各パーティションをリーダー1+フォロワー1で複製</span>
+
+[ノードA]  パーティション1のリーダー   / パーティション2のフォロワー
+[ノードB]  パーティション2のリーダー   / パーティション3のフォロワー
+[ノードC]  パーティション3のリーダー   / パーティション1のフォロワー
+
+<span class="cmt"># ポイント:</span>
+<span class="cmt"># - 各パーティションのリーダーは1つのノードに割り当てられる</span>
+<span class="cmt"># - 残りのノードはそのパーティションのフォロワーになる</span>
+<span class="cmt"># - 1ノードは「あるパーティションのリーダー」かつ「別パーティションのフォロワー」を兼ねる</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ノードAはパーティション1の本拠地（リーダー）だけど、同時にパーティション2の控え（フォロワー）でもあるんですね。役割を兼任してる。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その理解で完璧。だから1台のノードを失っても、別のノードがそのパーティションのフォロワーを持っているから生き残れる。で、ここが大事――<b>パーティショニングの分け方と、レプリケーションの方式は、ほぼ独立に選べる</b>。だから5章のレプリケーションの話（リーダー‐フォロワー、マルチリーダー、整合性の問題……）は、そのままパーティションのレプリケーションにも当てはまる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ということは、この章では？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>話をシンプルに保つために、<b>この章ではレプリケーションのことはいったん忘れて、パーティショニングの分け方だけに集中する</b>。頭の中では「実際には各パーティションは複製されてるんだな」と思っておけばOK。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「分割」と「複製」は別々の技で、両方を同時に使うのが普通だと理解できる。</li>
+        <li>5章の知識がそのまま使えると分かり、パーティションの複製を別物として学び直す必要がないと判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>パーティショニングは耐障害性のためレプリケーションと組み合わせる。</li>
+        <li>各パーティションは複数ノードに複製され、1ノードはリーダーとフォロワーを兼ねうる。</li>
+        <li>分け方と複製方式は独立。本章は複製を脇に置いて分け方に集中する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.2 ===== -->
+<section id="s62">
+  <div class="sec-head"><div class="sec-num">6.2</div><div><h2>キー‐バリューデータのパーティショニング</h2><span class="tag">目標は負荷の均等分散、最大の敵はスキューとホットスポット</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：パーティショニングの目標は負荷をノード間で均等に分散すること。偏り（スキュー）があるとホットスポット（過負荷の集中点）が生まれ効果が台無しになる。ランダム割り当ては均等だがアイテムの置き場所が分からなくなるのでダメ。キー（プライマリキー）を使って賢く分けるのが本筋。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いよいよ「どう分けるか」ですね。たくさんのレコードがあって、それぞれをどのノードに置くか……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。<b>目標は、データとクエリの負荷をノード間で均等に分散させること</b>。理想を言えば、10ノードあれば1ノードのときの10倍のデータと10倍の読み書きスループットが出せるはずだろ（複製は無視して考えてね）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>均等にならないと、どうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>一部のパーティションに他より多くのデータやクエリが偏った状態を<span class="term" data-tip="一部のパーティションに負荷が偏った状態。">スキュー（偏り）</span>と呼ぶ。スキューがあると分散の効果はガタ落ち。極端な場合、全部の負荷が1つのパーティションに集中して、10ノードのうち9ノードが暇、1ノードだけ過労死寸前――こうなった忙しいパーティションを<span class="term" data-tip="負荷が一点に集中して過負荷になったパーティション。">ホットスポット（過負荷の集中点）</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それは避けたい……。じゃあ、いっそ完全ランダムにノードに割り当てれば、均等になりませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い。確かに均等にはなる。でも致命的な欠点があってね。<b>あとで特定のアイテムを読みたくなったとき、それがどのノードにあるか分からない</b>んだ。だから全ノードに「これ持ってる？」と並列に聞いて回るハメになる。これは無駄が多すぎる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>置き場所が分からないと取り出せない、と。じゃあどうすれば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>もっと賢い方法がある。ここではシンプルな<b>キー‐バリュー型</b>（キーと値の組）のデータモデルを仮定しよう。レコードには必ず<span class="term" data-tip="レコードを一意に決める主キー。">プライマリキー</span>でアクセスする、と。紙の百科事典なら、全項目が見出し（＝キー）の五十音順／アルファベット順に並んでるから、探したい項目は見出しで引けばすぐ見つかるだろ？ このキーをうまく使って分けるんだ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：偏った区画と、適当に放り込んだ倉庫</h4>
+      <p>荷物が一部のフロアにだけパンパンに偏っているのが<b>スキュー</b>。その過労状態のフロアが<b>ホットスポット</b>です。「じゃあ空いてる棚に適当に放り込めば均等じゃん」と思いますが、それをやると<b>後で「あの荷物どこ？」と全フロアを探し回るハメ</b>になります。だから、伝票番号（キー）を見て「この番号はこのフロア」と機械的に決められるルールで分けるのが賢い。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「均等に分散」が目標で、「偏り（スキュー）→ホットスポット」が最大の敵だと理解できる。</li>
+        <li>ランダム割り当てがなぜダメか（取り出せない）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>目標は負荷の均等分散。理想は10ノードで10倍のスループット。</li>
+        <li>スキュー（偏り）があるとホットスポット（過負荷の1点）が生まれ効果が損なわれる。</li>
+        <li>ランダム割り当ては均等だが取り出し時に全ノード検索が必要でダメ。</li>
+        <li>プライマリキーを使って分けるのが基本路線。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.2.1 ===== -->
+<section id="s621">
+  <div class="sec-head"><div class="sec-num">6.2.1</div><div><h2>キーの範囲に基づくパーティショニング</h2><span class="tag">百科事典の巻分け ― 範囲スキャンが速い／タイムスタンプ先頭は危険</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：キーの範囲で分ける方法は、連続したキー範囲を各パーティションに割り当てる（百科事典の巻のように）。範囲スキャンが速く、キーをソート順に保てるのが長所。ただしデータ分布は不均等なので境界はデータに合わせて調整する。タイムスタンプを先頭キーにすると「今」に書き込みが集中するホットスポットが起きるので、センサー名など別の要素を先頭に置いて回避する。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>キーを使って分ける、その1つ目の方法は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>キーの範囲（key range）で分ける</b>方法だ。さっきの百科事典そのもの。連続したキーの範囲（ある下限〜ある上限）を各パーティションに割り当てる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：あ〜お は1階、か〜こ は2階 ― 番号の範囲でフロアを決める</h4>
+      <p>荷物の伝票ラベルの<b>範囲ごとにフロアを割り当てる</b>方式です。「あ〜お」で始まる荷物は1階、「か〜こ」は2階…。受付は範囲の境目さえ知っていれば、「さくら」さんの荷物は「さ」の範囲＝3階、と一瞬で分かって直行できます。同じフロア内では荷物が番号順にきれいに並ぶので、「さ行の荷物を全部」みたいなまとめ取り（範囲スキャン）も得意です。</p>
+    </div>
+
+    <p>カイ先輩は百科事典の本棚を描いた。範囲の境界が分かっていれば、あるキーがどのパーティションにあるかは一瞬で分かり、リクエストを正しいノードへ直接送れます。</p>
+    <details class="code"><summary>キーの範囲によるパーティショニング（百科事典のイメージ）</summary>
+<pre><span class="cmt"># キーの範囲によるパーティショニング（百科事典のイメージ）</span>
+[第1巻]  「あ」〜「お」で始まる項目
+[第2巻]  「か」〜「こ」で始まる項目
+[第3巻]  「さ」〜「そ」で始まる項目
+   …
+[第12巻] 「ま」〜「ん」で始まる項目
+
+<span class="cmt"># 「さくら」を引きたい → 「さ」の範囲 → 第3巻を本棚から取る</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>範囲は均等に区切るんですよね？ 1巻に2文字ずつ、とか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが落とし穴。<b>範囲は均等にしちゃダメなことが多い</b>。データの分布が均等とは限らないからね。英語の百科事典で機械的に「1巻=2文字」と割ると、Aで始まる語は山ほどあるのにX・Y・Zで始まる語は少ない。だから第1巻はパンパン、最終巻はスカスカになる。</div></div>
+    </div>
+
+    <details class="code"><summary>不均等なデータ分布の例（英語の百科事典）</summary>
+<pre><span class="cmt"># 不均等なデータ分布の例（英語の百科事典）</span>
+[第1巻]  A, B          <span class="cmt"># Aで始まる語が大量。すごく分厚い</span>
+   …
+[第12巻] T,U,V,X,Y,Z   <span class="cmt"># Xなどで始まる語は少ない。薄い</span>
+
+<span class="cmt"># 機械的に文字数で割ると巻の厚さがバラバラになる</span>
+<span class="cmt"># 均等にするには「境界をデータに合わせて調整」する必要がある</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>境界は誰が決めるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>管理者が選ぶこともできるし、データベースに自動で選ばせることもできる（自動選択は6.4のリバランシングで詳しく話す）。この戦略を使ってるのは、BigtableやそのオープンソースのHBase、RethinkDB、それとバージョン2.4以前のMongoDBだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>この方法の良いところは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各パーティションの中で<b>キーをソート順（並んだ順）に保てる</b>こと。これで<span class="term" data-tip="ある範囲のキーをまとめて取得すること。">範囲スキャン</span>がすごく速くなる。キーを連結インデックス（複数の項目をつないだ鍵）として扱えば、関連レコードを1回のクエリでまとめて取れる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>具体例がほしいです。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>センサーネットワークのデータを考えよう。キーを「<b>年−月−日−時−分−秒</b>」のタイムスタンプにする。すると「ある月の測定値を全部取る」みたいなクエリが、範囲スキャン一発で済む。時刻順に並んでるからね。</div></div>
+    </div>
+
+    <details class="code"><summary>キー=タイムスタンプにした場合（範囲スキャンが得意）</summary>
+<pre><span class="cmt"># キー=タイムスタンプにした場合（範囲スキャンが得意）</span>
+キー: 2024-05-01-00-00-00 → 値
+     2024-05-01-00-01-00 → 値
+     2024-05-01-00-02-00 → 値
+       <span class="cmt">…（時刻順にきれいに並ぶ）</span>
+<span class="cmt"># 「2024年5月の全データ」= 連続した範囲なので一気に取れる</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>便利そう！ ……でも先輩、さっき「落とし穴がある」って顔してましたよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>よく見てる(笑)。<b>アクセスパターンによってはホットスポットが生まれる</b>んだ。キーがタイムスタンプだと、パーティションは「時刻の範囲」に対応する――たとえば日ごとのパーティション。ところが、センサーの書き込みは「計測したその瞬間」に行われるよね？ つまり<b>今日の書き込みは全部、今日のパーティション1つに集中する</b>。そのパーティションだけ書き込みで過負荷、他は遊んでる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あー! 「今」に書き込みが殺到する。これがホットスポットですか。どう直すんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>キーの<b>先頭にタイムスタンプを使うのをやめる</b>んだ。たとえば、タイムスタンプの前に<b>センサー名</b>を置く。そうすると、まずセンサー名で分かれて、次にタイムスタンプで並ぶ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：「今日の荷物は全部この区画へ」で起きる行列</h4>
+      <p>区画を「日付」で分けると、その日入ってくる荷物はぜんぶ「今日の区画」1か所に殺到し、そこの受付だけ長蛇の列、他の区画はガラガラ――これがホットスポットです。直し方は、伝票ラベルの<b>先頭を「日付」ではなく「出荷元（センサー名）」にする</b>こと。すると荷物が出荷元ごとに別々の区画に散るので、行列が分散します。代わりに「ある期間の複数の出荷元の荷物」をまとめて欲しいときは、出荷元ごとに別々に取りにいく手間が少し増えます。</p>
+    </div>
+
+    <details class="code"><summary>ホットスポット回避: キー = センサー名 + タイムスタンプ</summary>
+<pre><span class="cmt"># ホットスポット回避: キー = センサー名 + タイムスタンプ</span>
+キー: 温度計A-2024-05-01-00-00-00 → 値
+     湿度計B-2024-05-01-00-00-00 → 値
+     気圧計C-2024-05-01-00-00-00 → 値
+       …
+
+<span class="cmt"># 同時に多数のセンサーが書いても、センサー名で分散するので</span>
+<span class="cmt"># 書き込み負荷がパーティション間にばらける（1点に集中しない）</span>
+<span class="cmt"># ただし「一定期間の複数センサーの値」が欲しいときは、</span>
+<span class="cmt"># センサー名ごとに範囲クエリを別々に投げる必要がある（少し手間が増える）</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、先頭を「時刻」じゃなく「センサー名」にするだけで殺到が散るんですね。代わりに読むときちょっと手間が増える、と。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>範囲スキャンが必要なデータ（時系列など）には範囲パーティショニングが向くと判断できる。</li>
+        <li>「単調増加するキー（タイムスタンプ等）を先頭にするとホットスポットになる」という典型事故を回避できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>連続したキー範囲を各パーティションに割り当てる（境界はデータに合わせ不均等でよい）。</li>
+        <li>長所: キーがソート順なので範囲スキャンが効率的。連結インデックスとして使える。</li>
+        <li>採用例: Bigtable、HBase、RethinkDB、MongoDB(2.4以前)。</li>
+        <li>短所: タイムスタンプ先頭などのアクセスでホットスポットが発生。</li>
+        <li>回避策: 先頭にセンサー名などを置いて書き込みを分散する。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.2.2 ===== -->
+<section id="s622">
+  <div class="sec-head"><div class="sec-num">6.2.2</div><div><h2>キーのハッシュに基づくパーティショニング</h2><span class="tag">かき混ぜて均等に散らす ― 代わりに範囲スキャンは失う</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：キーのハッシュで分けると、偏ったデータも一様に散らせるのでホットスポットを減らせる。各パーティションにハッシュ値の範囲を割り当てる。暗号強度は不要だが、言語組み込みハッシュ（Javaの<code>hashCode()</code>等）はマシン間でブレるので注意。境界をランダムに選ぶ亜種をコンシステントハッシュ法と呼ぶが、DBでは稀でハッシュパーティショニングと呼ぶのがよい。欠点は範囲スキャンが効かなくなること。Cassandraは複合キーで「先頭をハッシュ、残りをソート」と両者を妥協させる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>範囲で分けると偏りやすいなら、もっと均等に散らす方法はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある。それが2つ目の方法、<b>キーのハッシュ（かき混ぜて数値に変換すること）で分ける</b>やり方。スキューやホットスポットのリスクがあるから、多くの分散データストアはこっちを使う。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ハッシュって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><span class="term" data-tip="入力をランダムに見える数値に変える関数。似た入力でも結果は散る。">ハッシュ関数</span>は、入力（たとえば文字列）を受け取って、見かけ上ランダムな数値を返す関数。優れたハッシュ関数は、<b>偏ったデータを取り込んで、一様（均等）に散らしてくれる</b>。32ビットのハッシュ関数なら、文字列を渡すと0〜2³²−1の間の「ランダムに見える数値」を返す。面白いのは、入力がそっくりでも――"こんにちは1" と "こんにちは2" みたいに――ハッシュ値はこの範囲全体にバラバラに散る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>似た入力でも結果はバラける、と。じゃあそのハッシュ値を使って分けるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。各パーティションに「キーの範囲」じゃなくて「<b>ハッシュ値の範囲</b>」を割り当てる。各キーは、自分のハッシュ値が入る範囲のパーティションに保存される。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：伝票番号をシャッフル機にかけて、出た数字でフロアを決める</h4>
+      <p>範囲分割だと「あ行」だけパンパンに偏ります。そこで、伝票ラベルを<b>シャッフル機（ハッシュ関数）</b>に通して「ランダムに見える数字」を出させ、その数字でフロアを決めます。すると、五十音では隣同士の荷物でも、シャッフル後はバラバラのフロアに散るので、どのフロアもほぼ均等に埋まります。代わりに「あ〜お をまとめて取りたい」はできなくなります（並びがシャッフルで崩れるから）。</p>
+    </div>
+
+    <p>カイ先輩は図を描いた。各パーティションに「ハッシュ値の範囲」を割り当て、キーは自分のハッシュ値が入る範囲のパーティションに入ります。</p>
+    <details class="code"><summary>キーのハッシュによるパーティショニング</summary>
+<pre><span class="cmt"># キーのハッシュによるパーティショニング</span>
+キー → ハッシュ関数 → ハッシュ値（例: 0〜2³²−1）
+
+[パーティション0] ハッシュ値      0 〜 16383
+[パーティション1] ハッシュ値  16384 〜 32767
+[パーティション2] ハッシュ値  32768 〜 49151
+   …
+
+<span class="cmt"># 例: キー「さくら」 → hash → 20000 → パーティション1へ</span>
+<span class="cmt">#     キー「うめ」   → hash → 40000 → パーティション2へ</span>
+<span class="cmt"># 五十音では隣でも、ハッシュ後はバラバラのパーティションに散る</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>暗号みたいに強力なハッシュじゃないとダメですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いや、パーティショニング用なら暗号として強い必要はない。CassandraとMongoDBはMD5、VoldemortはFowler-Noll-Vo関数を使ってる。ただし注意が1つ。多くの言語に組み込みのハッシュ関数（ハッシュテーブル用）があるけど、それはパーティショニングには向かないことがある。たとえばJavaの <code>Object.hashCode()</code> やRubyの <code>Object#hash</code> は、<b>マシンが違うと同じキーでも違うハッシュ値を返す</b>ことがある。分散システムでこれを使うと、ノードごとに置き場所がズレてめちゃくちゃになる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それは怖い……。組み込みハッシュをそのまま使っちゃダメなんですね。境界は均等じゃないとダメですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>境界は均等にしてもいいし、疑似乱数的に選んでもいい。後者のやり方は<b>コンシステントハッシュ法</b>って呼ばれる。これはちょっと脱線して説明しておこう。</div></div>
+    </div>
+  </div>
+
+  <!-- 6.2.2 サブ：コンシステントハッシュ法 -->
+  <div class="card" id="s622b">
+    <h3 class="blk">コンシステントハッシュ法</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>コンシステントハッシュ法？ 一貫性ハッシュ……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Kargerらが定義した手法で、もともとはCDN（コンテンツ配信網）みたいなインターネット規模のキャッシュで、負荷を均等に分散するために考えられた。パーティションの境界をランダムに選ぶことで、中央の制御や分散合意（ノードどうしの取り決め）を要らなくしてるのが特徴。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「コンシステント（一貫した）」って、5章でやった整合性のことですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこ、引っかかるよね。<b>全然関係ない</b>。5章のレプリケーションの一貫性とも、7章のACIDの一貫性とも無関係。ここでの「コンシステント」は単に「リバランシングへのあるアプローチ」を指すだけの名前なんだ。紛らわしいよね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあデータベースでよく使われてるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それがね、6.4のリバランシングで見るけど、<b>データベースではあまりうまくいかなくて、実際に使われるのはまれ</b>なんだ。ドキュメントで「コンシステントハッシュ法を使ってる」と書いてあっても不正確なことが多い。混乱のもとだから、この用語は避けて、単に<b>ハッシュパーティショニング</b>と呼ぶのがいい。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：「コンシステント」は中身の整合性ではなく、区画の割り方の名前</h4>
+      <p>名前に「コンシステント（一貫した）」とありますが、荷物の中身が正しいか（整合性）とは<b>無関係</b>です。これは単に「区画の境目をランダムに引く割り方」の呼び名にすぎません。物流センターでこの割り方が役立つ場面は実は少なく、ふつうは単に「ハッシュで区画分け」と呼べば十分です。</p>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分かりました。ハッシュで分ける方法、いいことばかりに聞こえますけど、欠点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きな欠点がある。<b>範囲スキャンの効率が失われる</b>んだ。範囲で分けたときの長所「ソート順に並ぶから範囲クエリが速い」が消える。キーをハッシュすると、もともと近かったキーもバラバラのパーティションに散って、ソート順がなくなるからね。MongoDBではハッシュベースのシャーディングを有効にすると、範囲クエリは必ず全パーティションに送られる。Riak、Couchbase、Voldemortではプライマリキーの範囲クエリ自体がサポートされてない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>均等に散らせる代わりに、範囲で取れなくなる。トレードオフなんですね。両方いいとこ取りはできない？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>Cassandraが妥協点を見つけてる。Cassandraのテーブルでは、複数の列からなる<b>複合プライマリキー</b>を宣言できる。パーティションを決めるのは<b>先頭の列のハッシュだけ</b>。残りの列は、SSTable内のデータをソートする連結インデックスとして使う。だから――</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：先頭でフロアを散らし、フロア内は順番に並べる</h4>
+      <p>伝票ラベルを「(出荷元, 日付)」の2段にして、<b>先頭の出荷元だけをシャッフル機にかけてフロアを決め</b>、同じ出荷元の荷物は1つのフロア内で<b>日付順に並べて</b>置きます。すると、出荷元ごとにフロアが均等に散る（偏らない）うえに、「この出荷元の、この期間の荷物を順番に」というまとめ取りもそのフロア内で効率よくできます。いいとこ取りです。</p>
+    </div>
+
+    <details class="code"><summary>Cassandraの複合キー戦略（ハッシュ＋ソートのいいとこ取り）</summary>
+<pre><span class="cmt"># Cassandraの複合キー戦略（ハッシュ＋ソートのいいとこ取り）</span>
+複合プライマリキー = (先頭列, 2列目, …)
+              ↑          ↑
+      ハッシュで分ける  ソート用（範囲スキャン可）
+
+<span class="cmt"># 例: ソーシャルメディアの更新を (user_id, update_timestamp) で持つ</span>
+<span class="cmt"># - user_id でハッシュ → ユーザーごとに別パーティションに分散（均等）</span>
+<span class="cmt"># - 同じユーザーの更新は1パーティション内で timestamp 順にソート</span>
+<span class="cmt"># → 「ユーザー123の、ある期間の更新を時刻順に取得」が効率的にできる</span>
+<span class="cmt"># → ただし先頭列(user_id)自体の範囲検索はできない</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>先頭でハッシュして散らしつつ、2列目以降は範囲で取れる。これは賢い……！ 一対多の関係（1人のユーザーに多数の更新）にぴったりですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。ユーザーが違えば保存先パーティションも違うけど、同じユーザーの更新は1つのパーティション内に時刻順でまとまる。エレガントだろ。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>偏りやすいキーでも均等に分散したいときはハッシュ分割を選べる。</li>
+        <li>「組み込みハッシュをそのまま分散に使う」事故を避けられる。</li>
+        <li>範囲スキャンと均等分散を両立したいとき、Cassandraの複合キーのような設計を選べる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ハッシュ関数で偏ったデータを一様に散らし、ハッシュ値の範囲でパーティションを決める。</li>
+        <li>暗号強度は不要だが、言語組み込みハッシュはマシン間でブレうるので使わない。</li>
+        <li>境界をランダムに選ぶ亜種がコンシステントハッシュ法。整合性とは無関係で、DBでは稀。</li>
+        <li>欠点: 範囲スキャンが非効率になる（ソート順が消える）。</li>
+        <li>Cassandraの複合キーは「先頭列でハッシュ、残りでソート」で両立を図る。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.2.3 ===== -->
+<section id="s623">
+  <div class="sec-head"><div class="sec-num">6.2.3</div><div><h2>ワークロードのスキューとホットスポットの軽減</h2><span class="tag">著名人問題 ― ハッシュでも単一キー集中は防げない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ハッシュ分割でもホットスポットは完全には消えない。全アクセスが同じキー（著名人のIDなど）に集中すると1パーティションに殺到する。対策はアプリ側の仕事で、ホットなキーの先頭/末尾にランダムな数字を足して複数パーティションに分散する。ただし読み取りが増えるので集中する少数のキーだけに限定し、分割したキーの追跡も必要。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ハッシュで分ければホットスポットは完全になくなるんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>残念、<b>完全にはなくならない</b>。極端なケースを考えてみて。もし<b>全部の読み書きが同じ1つのキー</b>に対して行われたら? ハッシュしようが何しようが、同じキーは同じハッシュ値→同じパーティションに行く。だから全リクエストが1パーティションに殺到する。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、同じキーばかり叩くなんて、そんなこと現実にありますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>あるんだよ。ソーシャルメディアで、数十万人のフォロワーを持つ著名人が何か投稿すると、一気に大量のアクティビティが発生する。書き込みのキーは「その著名人のユーザーID」だったり「みんながコメントしてる投稿のID」だったり。同じIDならハッシュも同じだから、ハッシュ化は対策にならない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>有名人問題、ここでも出てくるんですね……。どうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>今のところ、多くのデータシステムはこういう極端なスキューを自動では処理できない。だから<b>スキューを抑えるのはアプリケーションの仕事</b>になる。シンプルな方法は、集中するキーの先頭か末尾に<b>ランダムな数字を足す</b>こと。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：人気商品「投稿12345」の窓口が大行列 → 100の窓口に割る</h4>
+      <p>ハッシュで散らしても、<b>みんなが同じ1つの荷物（人気の投稿12345）</b>を出し入れしに来たら、その荷物がある区画の窓口だけ大行列になります。これは区画分けでは防げません。そこで、その荷物だけを「投稿12345-00」「投稿12345-01」…「投稿12345-99」と<b>末尾に2桁の乱数を付けて100個に分け</b>、別々の区画に置きます。すると1か所への殺到が100か所に分散します。ただし<b>受け取るときは100か所すべてを回って集める</b>必要があり、手間が増えます。だから乱数付けは本当に混む少数の荷物だけにし、「どれを分けたか」の控えも残します。</p>
+    </div>
+
+    <details class="code"><summary>ホットなキーを分散させる: ランダムな数字を付与</summary>
+<pre><span class="cmt"># ホットなキーを分散させる: ランダムな数字を付与</span>
+元のキー:    投稿12345  <span class="cmt"># ここに書き込みが殺到する</span>
+
+2桁のランダム数字を付ける:
+   投稿12345-00
+   投稿12345-01
+   投稿12345-02
+       …
+   投稿12345-99   <span class="cmt"># 100個のキーに分かれる</span>
+
+<span class="cmt"># 1つのキーへの書き込みが、100個の別々のパーティションに分散する</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど! 100個に割れば負荷も100分の1。これで解決ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>解決……だけど代償がある。<b>書き込みを100個に割ったら、読むときは100個のキー全部から読んで結合しないといけない</b>。読み取りの処理が一気に増えるんだ。だから乱数を足すのは、本当に負荷が集中する<b>少数のキーだけ</b>にすべき。スループットの低い大多数のキーにこれをやると、無駄なオーバーヘッドにしかならない。それと、<b>どのキーを分割したかを追跡しておく仕組み</b>も別途必要になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全キーにやっちゃダメ、ホットなキーだけ、追跡も要る。けっこう面倒ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>面倒だね。将来的にはデータシステムが自動でスキューを検出・対処してくれるようになるかもしれないけど、今のところはユーザーが自分のアプリのトレードオフをよく考えて手当てするしかない。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ハッシュ分割でも防げない「単一キーへの集中」を理解し、過信を避けられる。</li>
+        <li>ホットキーへの実践的対処（ランダム数字付与）と、その代償（読み取り増・追跡）を踏まえて使える。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ハッシュ分割でも、全アクセスが同一キーに集中するとホットスポットになる（著名人問題）。</li>
+        <li>多くのシステムは自動対処できず、軽減はアプリの役割。</li>
+        <li>対策: ホットキーにランダムな数字を付与し複数パーティションへ分散。</li>
+        <li>代償: 読み取りが増える。少数のホットキーに限定し、分割キーの追跡も要る。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.3 ===== -->
+<section id="s63">
+  <div class="sec-head"><div class="sec-num">6.3</div><div><h2>パーティショニングとセカンダリインデックス</h2><span class="tag">中身（色・語）で探す索引は、パーティションにきれいに対応しない</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：プライマリキーだけならパーティショニングは簡単だが、条件検索のためのセカンダリインデックス（色や語などで探す索引）があると、それがパーティションにきれいに対応せず複雑になる。分割方法はドキュメントベース（ローカル）と語ベース（グローバル）の2つ。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでは「プライマリキーで引く」前提でしたよね。でも実際のアプリって、「色が赤の車を全部出して」みたいな検索もしますよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこ、まさに次のテーマ。今までの分割方式はキー‐バリュー型に依存してた。プライマリキーだけでアクセスするなら、キーからパーティションを決めて、担当ノードに読み書きを送ればいい。でも<span class="term" data-tip="特定の値を持つレコードを探すための索引。一意とは限らない。">セカンダリインデックス（副次的な索引）</span>があると、話が一気に複雑になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>セカンダリインデックスって何でしたっけ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>プライマリキーが「レコードを一意に特定する鍵」なのに対して、セカンダリインデックスは「特定の値を持つレコードを探す方法」。一意とは限らない。たとえば「ユーザー123の全アクションを検索」「<code>hogwash</code>という語を含む全記事を検索」「色が<code>赤</code>の車を全部検索」みたいなやつ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、条件で絞り込む検索のための索引ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。リレーショナルDBの基本だし、ドキュメントDBでも一般的。HBaseやVoldemortみたいなキー‐バリューストアは実装が複雑だからセカンダリインデックスを持たないものもあるけど、便利だから追加し始めたもの(Riakなど)もある。そしてSolrやElasticsearchみたいな検索サーバーにとっては、セカンダリインデックスこそが<b>レーゾンデートル（存在意義）</b>――それがあるからこそ存在する、ってくらい中心的なものなんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、何が問題なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>セカンダリインデックスはパーティションにきれいに対応づけられない</b>。プライマリキーなら「このキーはこのパーティション」と一発で決まるけど、「色が赤の車」は、いろんなパーティションに散らばってるからね。これを分割する方法が、大きく2つある。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：伝票番号での仕分けは簡単、でも「赤い荷物を全部」は難しい</h4>
+      <p>荷物を伝票番号でフロアに仕分けるのは簡単です（番号を見ればフロアが決まる）。でも「<b>赤い荷物を全部出して</b>」と言われると困ります。赤い荷物は番号に関係なく<b>あちこちのフロアに散らばっている</b>からです。中身（色や種類）で探すための<b>別の索引</b>（セカンダリインデックス）をどう作るか――その作り方が2通りある、という話です。</p>
+    </div>
+
+    <div class="grid2">
+      <div class="mini"><div class="ic">📄</div><h4>ドキュメントベース</h4><p>各パーティションが自分の中のドキュメントだけを索引する。＝<b>ローカルインデックス</b></p><span class="pill">6.3.1</span></div>
+      <div class="mini"><div class="ic">🌐</div><h4>語（term）ベース</h4><p>全データをカバーする共通の索引を語で分割する。＝<b>グローバルインデックス</b></p><span class="pill">6.3.2</span></div>
+    </div>
+
+    <details class="code"><summary>セカンダリインデックスをパーティショニングする2つの方法</summary>
+<pre><span class="cmt"># セカンダリインデックスをパーティショニングする2つの方法</span>
+1. ドキュメントベースのパーティショニング（ローカルインデックス）
+2. 語(term)ベースのパーティショニング（グローバルインデックス）</pre>
+    </details>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>プライマリキー検索とセカンダリインデックス検索で分散の難しさが違うと理解できる。</li>
+        <li>後続のローカル/グローバルインデックスの議論の前提（なぜ難しいか）をつかめる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>セカンダリインデックス＝特定の値を持つレコードを探す索引（一意でない）。</li>
+        <li>リレーショナル/ドキュメントDBの基本、検索サーバー（Solr/Elasticsearch）の存在意義。</li>
+        <li>値で探すためパーティションにきれいに対応せず、分割が難しい。</li>
+        <li>分割方法はドキュメントベース（ローカル）と語ベース（グローバル）の2つ。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.3.1 ===== -->
+<section id="s631">
+  <div class="sec-head"><div class="sec-num">6.3.1</div><div><h2>ドキュメントによるセカンダリインデックス（ローカル）</h2><span class="tag">書き込みは楽、でも検索は全パーティションに聞いて回る</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ドキュメントベース（ローカルインデックス）は、各パーティションが自分の中のドキュメントだけを索引する方式。書き込みは1パーティションで済んで楽だが、条件検索では対象が全パーティションに散るため、全部に問い合わせて結合するスキャッタ/ギャザーが必要になり、テイルレイテンシの増幅を受けやすい。MongoDBなど多くが採用。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まず1つ目、ドキュメントベース。具体例で教えてください。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>中古車販売サイトを運用してるとしよう。各出品（リスト）にはユニークなIDがあって、これを<b>ドキュメントID</b>と呼ぶ。データベースはこのドキュメントIDでパーティショニングされてる。たとえばID 0〜499はパーティション0、500〜999はパーティション1、みたいに。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、色やメーカーで検索したい、と。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。だから <code>color</code>（色）と <code>make</code>（メーカー）にセカンダリインデックスを張る。インデックスを宣言すると、DBが自動でインデックス付けしてくれる。赤い車が追加されたら、DBのパーティションは自動でそれを <code>color:赤</code> のエントリのドキュメントリストに加える。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：各フロアが「自分の階の荷物だけ」の色別台帳を持つ</h4>
+      <p>各フロアが、<b>自分の階に置いてある荷物についてだけ</b>「赤＝[306号]」「青＝[768号]」という色別の台帳（ローカルインデックス）を持ちます。荷物を1個入れたり出したりするときは、そのフロアの台帳だけ直せばいいので<b>書き込みは楽</b>。でも「赤い荷物を全部出して」と言われると、赤い荷物は全フロアに散っているので、<b>全フロアに聞いて回って集める</b>必要があります。</p>
+    </div>
+
+    <p>下は、各パーティションが「自分の中のドキュメントだけ」を索引する様子です。赤い車がパーティション0にも1にもいることに注目（だから検索は全パーティションに聞く必要がある）。</p>
+    <details class="code"><summary>ドキュメントによるセカンダリインデックス（ローカルインデックス）</summary>
+<pre><span class="cmt"># ドキュメントによるセカンダリインデックス（ローカルインデックス）</span>
+<span class="cmt"># 各パーティションは「自分の中のドキュメントだけ」を索引する</span>
+
+[パーティション0]  ドキュメントID 0〜499
+  本体: 車191(色:黄, メーカー:日産), 車306(色:赤, メーカー:ホンダ) …
+  ローカル索引:
+    color:赤    → [車306, …]
+    color:黄    → [車191, …]
+    make:ホンダ → [車306, …]
+
+[パーティション1]  ドキュメントID 500〜999
+  本体: 車515(色:赤, メーカー:トヨタ), 車768(色:青, メーカー:トヨタ) …
+  ローカル索引:
+    color:赤      → [車515, …]
+    color:青      → [車768, …]
+    make:トヨタ   → [車515, 車768, …]
+
+<span class="cmt"># 各パーティションは自分のデータだけを索引（他は関知しない）</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>各パーティションが自分の分だけ索引を持つ。だから「ローカル」インデックスなんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。だから<b>書き込みが楽</b>。車を1台追加・削除・更新するなら、そのドキュメントIDが属するパーティション1つだけを触ればいい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いいことずくめに聞こえますけど……読み取りはどうなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが弱点。「赤い車を全部出して」と言われたら? 赤い車が<b>全パーティションに散らばってる</b>んだ。図でも赤い車はパーティション0にも1にもいるだろ。ドキュメントIDに特別な仕掛けをしてない限り、特定の色やメーカーの車が1つのパーティションに固まる理由はない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ということは……全パーティションに聞いて回る？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。クエリを<b>全パーティションに送って、結果を集めて結合する</b>。このやり方を<span class="term" data-tip="全パーティションに問い合わせをばらまき(scatter)、結果を集めて結合する(gather)こと。">スキャッタ／ギャザー（ばらまいて集める）</span>と呼ぶ。</div></div>
+    </div>
+
+    <p>「赤い車を全部探す」ときの流れ。全パーティションにクエリをばらまき（scatter）、各パーティションの結果を集めて結合します（gather）。</p>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>scatter（ばらまく）</h4><p>「color:赤」のクエリを全パーティション（0・1・2…）に同時に送る。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>各パーティションが自分の結果を返す</h4><p>パーティション0は[306]、1は[515]、2は[ ]（なし）を返す。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>gather（集めて結合）</h4><p>全部を合わせて「赤い車 = 306, 515」を作る。</p>
+        <div class="branch ng">⚠️ 一番遅いパーティションを待つので、テイルレイテンシの増幅を受けやすい。</div></div></div>
+    </div>
+
+    <details class="code"><summary>スキャッタ/ギャザー（赤い車を全部探す）</summary>
+<pre><span class="cmt"># スキャッタ/ギャザー（赤い車を全部探す）</span>
+            [クエリ: color:赤]
+   ┌──────────┼──────────┐  <span class="cmt"># scatter（全パーティションにばらまく）</span>
+   ▼          ▼          ▼
+[ﾊﾟｰﾃｨｼｮﾝ0] [ﾊﾟｰﾃｨｼｮﾝ1] [ﾊﾟｰﾃｨｼｮﾝ2]
+ 赤=[306]    赤=[515]    赤=[ ]
+   └──────────┼──────────┘  <span class="cmt"># gather（結果を集めて結合）</span>
+            [赤い車 = 306, 515]</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部に聞くのは重そうですね……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。スキャッタ/ギャザーは<b>テイルレイテンシの増幅</b>を受けやすい（1章の「パーセンタイル値の実際」で話した、複数呼び出しのうち1つでも遅いと全体が遅くなる現象ね）。並列に投げても、一番遅いパーティションを待つことになる。それでも広く使われてて、MongoDB、Riak、Cassandra、Elasticsearch、SolrCloud、VoltDBはみんなこの方式。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>重いのに使われてるんですね。何かコツは？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くのベンダーは「クエリ結果が単一パーティションから返るようにパーティショニングを設計しろ」と勧めてる。でも常にそうできるわけじゃない。特に<b>複数のセカンダリインデックスを1クエリで併用</b>するとき――たとえば「色が赤、かつメーカーがトヨタ」で絞り込むとき――は特に難しくなる。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>ローカルインデックスは「書き込み楽・読み取り重い」というトレードオフだと理解できる。</li>
+        <li>スキャッタ/ギャザーがなぜ遅くなりやすいか（テイル増幅）を説明できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ドキュメントベース＝各パーティションが自分のドキュメントだけ索引する（ローカルインデックス）。</li>
+        <li>長所: 書き込みは1パーティションだけで済む。</li>
+        <li>短所: 条件検索は全パーティションへのスキャッタ/ギャザーが必要、テイル増幅を受けやすい。</li>
+        <li>採用例: MongoDB, Riak, Cassandra, Elasticsearch, SolrCloud, VoltDB。</li>
+        <li>複数インデックス併用（色×メーカー）だと特に難しい。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.3.2 ===== -->
+<section id="s632">
+  <div class="sec-head"><div class="sec-num">6.3.2</div><div><h2>語によるセカンダリインデックス（グローバル）</h2><span class="tag">検索は楽、でも書き込みが複数索引にまたがって重い</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：語ベース（グローバルインデックス）は全パーティションのデータをカバーする1つの索引を作り、それを検索する語で分割する。読み取りは目的の語があるパーティションにだけ聞けばよく効率的。一方、1つの書き込みが複数の索引パーティションに影響するため書き込みが遅く複雑で、厳密な同期には分散トランザクションが要る。実際は非同期更新で、書いた直後は反映されないことがある（DynamoDB等）。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>読み取りが重いのが難点なら、読み取りを軽くする方法はないんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある。2つ目の方法、<b>語（term）ベースのパーティショニング</b>。パーティションごとに個別の索引（ローカル）を持つんじゃなくて、<b>全パーティションのデータをカバーする1つの大きな索引＝グローバルインデックス</b>を作る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1つの大きな索引……それ、1ノードに置いたらそこがボトルネックになりませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>鋭い! まさにそう。だから<b>グローバルインデックス自体もパーティショニングする</b>。ただし、元データのプライマリキーとは<b>違う分け方</b>でね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：センター全体の「色別・総合台帳」を作り、台帳自体を色で分ける</h4>
+      <p>各フロアに台帳を持たせるのをやめ、<b>センター全体をカバーする1冊の総合台帳</b>（グローバルインデックス）を作ります。ただし1冊だと参照が殺到するので、台帳自体を<b>「探したい語（＝色・メーカーなど）」で分けて</b>別々の場所に置きます。「赤」の台帳ページは台帳保管室1、「青」は保管室0、というように。すると「赤い荷物を全部」は<b>赤の台帳ページがある場所1つに聞くだけ</b>で済みます（全フロアを回らなくていい）。</p>
+    </div>
+
+    <p>下は、索引を「検索する語」で分割した様子。「赤い車（color:red）」を探すなら、索引パーティション1だけに聞けば済みます（全パーティションへのscatterが不要）。</p>
+    <details class="code"><summary>語によるセカンダリインデックス（グローバルインデックス）</summary>
+<pre><span class="cmt"># 語によるセカンダリインデックス（グローバルインデックス）</span>
+<span class="cmt"># 索引を「検索する語」で分割する</span>
+
+[索引パーティション0]  色: a〜r で始まる / メーカー: a〜f で始まる
+  color:青(blue)   → [車768(P1), …]
+  make:ホンダ      → [車306(P0), …]
+
+[索引パーティション1]  色: s〜z で始まる / メーカー: h〜z で始まる
+  color:赤(red)    → [車306(P0), 車515(P1), …]
+  make:トヨタ      → [車515(P1), 車768(P1), …]
+
+<span class="cmt"># 「赤い車」を探す = color:red は索引パーティション1にある</span>
+<span class="cmt">#   → そこだけに聞けばよい（全パーティションへのscatter不要）</span>
+<span class="cmt"># 索引のエントリには、あらゆる元パーティションのレコードが入りうる</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>「語でパーティショニング」って、どういう意味ですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>検索する<b>語（term）</b>によって、索引のどのパーティションを見るかが決まるんだ。ここでは <code>color:赤</code> が1つの「語」になる。この「語」という名前は全文検索インデックス（セカンダリインデックスの一種）から来てて、ドキュメント中に現れる単語のことを語と呼ぶんだよ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>語そのもので分けるんですね。これもハッシュで分けられますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>できる。語そのもので分けると範囲スキャンが有利になる（たとえば車の価格みたいな数値属性で「100万〜200万円」と探すとき）。語のハッシュで分けると負荷の分散がより均等になる。プライマリキーのときと同じトレードオフだね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、肝心の読み取りは速くなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>速くなる。これがグローバルインデックスの最大のメリット。クライアントは全パーティションにスキャッタ/ギャザーする必要がなくて、<b>調べたい語を含むパーティションにだけリクエストを送ればいい</b>。さっきの図なら、「赤い車」は索引パーティション1だけに聞けば済む。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>読み取りが軽い! じゃあ全部これにすればいいのでは……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう甘くない。<b>書き込みが遅くて複雑になる</b>んだ。1つのドキュメントを書き込むと、索引の<b>複数のパーティションに影響</b>しうる。1台の車に複数の属性（色・メーカー・価格…）があって、それぞれ別の索引パーティション・別ノードにあるかもしれないからね。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あー、1台追加するだけで、あちこちの索引を直さないといけない。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>理想を言えば、書き込んだ瞬間に索引も全部最新になってほしい。でもそれをやるには、書き込みで影響する全パーティションにまたがる<b>分散トランザクション</b>（複数ノードをまとめて成功/失敗させる仕組み）が必要で、これは全DBが対応してるわけじゃない（7章・9章で扱う）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>対応してないと、どうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>実際には、<b>グローバルインデックスの更新は非同期</b>で行われる。つまり、書き込んだ直後にインデックスを読むと、さっきの変更がまだ反映されてないかもしれない。たとえばAmazon DynamoDBのグローバルセカンダリインデックスは、普通は1秒よりずっと短い時間で更新されるけど、インフラに障害が起きると反映に時間がかかることがある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>書いたのに検索に出てこない一瞬がある、と。これも遅延の世界ですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そういうこと。語でパーティショニングされたグローバルインデックスは、Riakの検索機能や、ローカル/グローバルを選べるOracleのデータウェアハウスでも使われてる。実装の詳細は12章でまた見るよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：1個入れるたびに、色の台帳・メーカーの台帳…と複数の保管室を直す</h4>
+      <p>総合台帳方式は検索が速い代わりに、荷物を1個入れると<b>「色の台帳ページ（保管室A）」「メーカーの台帳ページ（保管室B）」…と複数の場所を直す</b>必要があり、書き込みが重く複雑です。全部の保管室を一斉に直し終えるには「まとめて成功/失敗させる仕組み（分散トランザクション）」が要りますが、実際は<b>あとから順に直す（非同期）</b>ことが多く、入れた直後はまだ台帳に載っていないことがあります。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>グローバルインデックスは「読み取り速い・書き込み重い」とローカルの逆のトレードオフだと理解できる。</li>
+        <li>「書いた直後に検索に出ない」非同期更新の挙動を予期できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>語ベース＝全データをカバーするグローバルインデックスを語で分割する。</li>
+        <li>長所: 読み取りは目的の語のパーティションだけで済む（スキャッタ/ギャザー不要）。</li>
+        <li>短所: 1書き込みが複数索引パーティションに影響し、書き込みが遅く複雑。</li>
+        <li>厳密な同期には分散トランザクションが必要（7章・9章）。実際は非同期更新。</li>
+        <li>採用例: DynamoDB(GSI), Riak検索, Oracleデータウェアハウス。詳細は12章。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.4 ===== -->
+<section id="s64">
+  <div class="sec-head"><div class="sec-num">6.4</div><div><h2>パーティションのリバランシング</h2><span class="tag">ノードの増減・障害でデータをノード間で移して均す</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ノードの増減や障害でデータ・リクエストをノード間で移す処理がリバランシング。どの方式でも「①終了後に負荷が公平」「②進行中も読み書きを止めない」「③移動するデータは最小限」の3要求を満たす必要がある。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分け方は分かりました。でも、サービスが育ってノードを足したくなったら? せっかく分けたデータ、どうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いい問いだ。時間が経つとデータベースには必ず変化が起きる。クエリのスループットが増えたらCPUを足したいし、データが増えたらディスクやRAMを足したい、マシンが壊れたら他のマシンが肩代わりする必要がある。</div></div>
+    </div>
+
+    <details class="code"><summary>時間とともに起きる変化の例</summary>
+<pre><span class="cmt"># 時間とともに起きる変化の例</span>
+クエリのスループットが増大 → CPUを追加して対処したい
+データベースのサイズが増大 → ディスクやRAMを追加したい
+マシンに障害が発生         → 他のマシンが肩代わりする必要がある</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>こういう変化が起きると、あるノードから別のノードへデータやリクエストを移す必要が出る。この「クラスタ内で負荷をノード間で移す処理」を<span class="term" data-tip="ノード間で負荷（データ・リクエスト）を移して均す処理。">リバランシング（再均衡化）</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>引っ越しみたいなものですね。何かルールはあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>どの分け方を使ってても、リバランシングには最低限満たすべき3つの要求がある。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：新しい倉庫を建てたら、荷物を引っ越しして均す</h4>
+      <p>荷物が増えて新しい倉庫（ノード）を建てたら、既存の倉庫から新しい倉庫へ荷物を<b>引っ越し</b>して、どの倉庫も同じくらいの量になるように均します。これがリバランシング。ただし引っ越しには鉄則が3つ。<b>①終わったら各倉庫の荷物量が公平</b>、<b>②引っ越し中もセンターは出し入れの営業を続ける</b>（閉めない）、<b>③運ぶ荷物は必要最小限</b>（トラックとガソリンの無駄を省く）。</p>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">⚖️</div><h4>① 終了後に公平</h4><p>負荷（データ量・読み書きリクエスト）がノード間で公平に分配される。</p></div>
+      <div class="mini"><div class="ic">🟢</div><h4>② 進行中も無停止</h4><p>リバランシング中も、DBは読み書きを受け付け続ける（止めない）。</p></div>
+      <div class="mini"><div class="ic">🚚</div><h4>③ 移動は最小限</h4><p>ノード間で移すデータは必要最小限に（高速＆ネットワーク/ディスクI/Oを節約）。</p></div>
+    </div>
+
+    <details class="code"><summary>リバランシングが満たすべき3つの要求</summary>
+<pre><span class="cmt"># リバランシングが満たすべき3つの要求</span>
+1. 終了後、負荷（データ量・読み書きリクエスト）がノード間で公平に分配される
+2. 進行中も、データベースは読み書きを受け付け続ける（止めない）
+3. ノード間で移動するデータは必要最小限に（高速＆ネットワーク/ディスクI/Oを節約）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>動かしながら、最小限のデータ移動で、均等にする。なかなか難しそう……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。だから戦略がいくつもある。1つずつ見ていこう。まずは「やっちゃいけない方法」から。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>クラスタの成長・縮小・障害がデータ移動を伴うと理解できる。</li>
+        <li>リバランシング戦略を評価する基準（公平・無停止・最小移動）を持てる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リバランシング＝負荷をノード間で移すプロセス（スループット増・容量増・障害で必要）。</li>
+        <li>3要求: 終了後に公平、進行中も無停止、移動データは最小限。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.4.1.1 ===== -->
+<section id="s641a">
+  <div class="sec-head"><div class="sec-num">6.4.1.1</div><div><h2>取るべきではない方法：ハッシュの剰余（mod N）</h2><span class="tag">ノードを1台足すだけで、ほぼ全部のキーが引っ越す</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：<code>hash(キー) mod N</code>（ノード数で割った余り）でノードを決めるのは簡単そうだが、Nが変わるとほとんどのキーが移動しなければならず、リバランシングの負担が激増する。やってはいけない。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ハッシュで分けるなら、<code>hash(キー) mod 10</code>（10で割った余り）でノード0〜9に割り振れば簡単じゃないですか? 余りなら計算も一瞬だし。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>直感的にはそう思うよね。<code>hash(キー) mod 10</code> は0〜9を返すから、10ノードにきれいに割り振れる。でも、これは<b>やっちゃいけない方法</b>なんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、何がダメなんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>ノード数Nが変わると、ほとんどのキーが移動しないといけなくなる</b>。具体例で見せよう。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：倉庫が1棟増えるたびに、全荷物を計算し直して大移動</h4>
+      <p>「伝票番号を倉庫の棟数で割った余り」で置き場を決めると、棟が10→11→12と1棟増えるたびに<b>余りの計算結果がガラッと変わり、関係ない荷物までほぼ全部が別の棟へ引っ越す</b>ことになります。1棟足すだけで全館大移動――これは鉄則③「移動は最小限」に真っ向から反します。</p>
+    </div>
+
+    <p>同じキー（ハッシュ値123456）が、ノード数を変えただけで毎回別のノードに飛ぶ様子です。</p>
+    <table class="t">
+      <tr><th>ノード台数</th><th>計算</th><th>置き場所</th></tr>
+      <tr><td>10台</td><td>123456 mod 10 = 6</td><td>ノード6に置く</td></tr>
+      <tr><td>11台</td><td>123456 mod 11 = 3</td><td>ノード3へ移動！</td></tr>
+      <tr><td>12台</td><td>123456 mod 12 = 0</td><td>ノード0へ移動！</td></tr>
+    </table>
+
+    <details class="code"><summary>mod N の罠（hash(キー) = 123456 のキーを追う）</summary>
+<pre><span class="cmt"># mod N の罠（hash(キー) = 123456 のキーを追う）</span>
+ノード10台: 123456 mod 10 =  6  → ノード6に置く
+ノード11台: 123456 mod 11 =  3  → ノード3へ移動!
+ノード12台: 123456 mod 12 =  0  → ノード0へ移動!
+
+<span class="cmt"># ノードを1台足しただけで、ほぼ全部のキーが引っ越すハメに</span>
+<span class="cmt"># リバランシングの負担が激烈に大きくなる</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>1台増やすたびに、関係ないキーまで大移動……。これは要求③「移動は最小限」に真っ向から反しますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。求められるのは「<b>必要以上のデータ移動を伴わない</b>」アプローチ。じゃあどうするか、次の方法を見よう。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「簡単そうな割り算」がなぜ分散システムで地雷になるか説明できる。</li>
+        <li>リバランシングの良し悪しを「ノード変化時の移動量」で評価できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li><code>mod N</code> はノード数Nが変わるとほぼ全キーが移動する。</li>
+        <li>リバランシングの「移動は最小限」要求に反するので使わない。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.4.1.2 ===== -->
+<section id="s641b">
+  <div class="sec-head"><div class="sec-num">6.4.1.2</div><div><h2>パーティション数の固定</h2><span class="tag">ノード数より多くの区画を作り、新ノードが「盗む」</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ノード数より十分多いパーティションを最初に固定で作り、1ノードに複数を割り当てる。ノード追加時は新ノードが各ノードからパーティションを丸ごと盗むだけで、キー→パーティション対応は不変なので移動が最小。ただしパーティション数は後から変えにくく、データ量が大きく変動すると適切な数の選択が難しい。Riak/Elasticsearch/Couchbase/Voldemortが採用。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>余りがダメなら、どうすれば移動を減らせるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>驚くほどシンプルな解がある。<b>ノード数よりずっと多くのパーティションを最初に作っておいて、1ノードに複数のパーティションを割り当てる</b>んだ。たとえば10ノードのクラスタでも、最初から1,000パーティションに分割して、各ノードに約100個ずつ持たせる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ノード10台なのにパーティション1,000個? 多すぎませんか?</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それが味噌でね。ノードを1台足したら、その新ノードは既存の全ノードから<b>パーティションをいくつか「盗む」</b>。均等になるまで奪うんだ。逆にノードを外すときはその逆をやる。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：最初から区画を1000個に切っておき、新倉庫は各倉庫から区画を分けてもらう</h4>
+      <p>倉庫は10棟でも、最初から荷物置き場を<b>1000区画に細かく切って</b>おき、各倉庫に100区画ずつ担当させます。新しい倉庫を建てたら、その新倉庫は<b>既存の各倉庫から区画をいくつかずつ譲り受ける</b>だけ。区画の中身（どの荷物がどの区画か）は一切いじらず、<b>「どの倉庫がどの区画を担当するか」だけ</b>を変えるので、引っ越しは区画単位の最小限で済みます。</p>
+    </div>
+
+    <p>下は、3ノード・12パーティションのクラスタにノードDを追加する例。各ノードからパーティションを1つずつ「盗んで」ノードDに集めます。変わるのは「区画→倉庫」の割り当てだけです。</p>
+    <details class="code"><summary>パーティション数固定でのノード追加（イメージ）</summary>
+<pre><span class="cmt"># パーティション数固定でのノード追加（イメージ）</span>
+追加前（3ノード・12パーティション）:
+  ノードA: P1 P2 P3 P4
+  ノードB: P5 P6 P7 P8
+  ノードC: P9 P10 P11 P12
+
+ノードDを追加 → 各ノードからパーティションを1つずつ盗む:
+  ノードA: P1 P2 P3
+  ノードB: P5 P6 P7
+  ノードC: P9 P10 P11
+  ノードD: P4 P8 P12   <span class="cmt"># 既存ノードから移ってきた</span>
+
+<span class="cmt"># 移動するのは「パーティション丸ごと」だけ</span>
+<span class="cmt"># パーティション数もキー→パーティションの対応も変わらない</span>
+<span class="cmt"># 変わるのは「パーティション→ノード」の割り当てだけ</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、パーティションの中身（どのキーがどのパーティションか）は一切変わらなくて、「どのノードがどのパーティションを持つか」だけが変わる。だから移動が最小限なんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>その通り。しかも割り当ての変化は即時じゃない。大量データの移動には時間がかかるから、移動中の読み書きには古い割り当てが使われる。原理的にはハードウェアの不均衡も考慮できて、強力なノードには多めのパーティションを割り当てて負荷を多く持たせることもできる。この方式はRiak、Elasticsearch、Couchbase、Voldemortで使われてる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>いいことづくめに見えますけど、注意点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>パーティション数は最初に決めたら、ふつう後から変えない</b>。だから最初の数が「将来到達しうるノードの最大数」を決めてしまう。将来の成長に備えて大きめにしたいけど、パーティションごとに管理のオーバーヘッドがあるから、大きすぎても逆効果。ちょうどいい数を選ぶのが難しい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データ量がすごく変動する場合は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが弱点。各パーティションのサイズはデータ総量に比例するから、最初は小さくても、データが増えると各パーティションが巨大化する。パーティションが大きすぎるとリバランシングや障害復旧が重くなるし、小さすぎるとオーバーヘッドが増える。「大きすぎず小さすぎず」がベストだけど、パーティション数固定でデータ量が大きく変動すると、これが難しくなる。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>「パーティション数を多めに固定」する設計が、なぜリバランシングを楽にするか理解できる。</li>
+        <li>初期パーティション数の選定が将来のノード上限と性能を左右すると判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ノード数より多いパーティションを固定で作り、1ノードに複数割り当てる。</li>
+        <li>ノード増減はパーティションを丸ごと移すだけ（キー対応は不変）で移動最小。</li>
+        <li>パーティション数は後から変えにくく、初期値が将来のノード上限を決める。</li>
+        <li>データ量が大きく変動すると適切な数の選択が難しい。</li>
+        <li>採用例: Riak, Elasticsearch, Couchbase, Voldemort。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.4.1.3 ===== -->
+<section id="s641c">
+  <div class="sec-head"><div class="sec-num">6.4.1.3</div><div><h2>動的なパーティショニング</h2><span class="tag">大きくなりすぎたら分割、小さすぎたら統合</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：動的パーティショニングは、パーティションが大きくなりすぎたら自動で2分割、小さくなりすぎたら隣と統合する方式（HBase, RethinkDB等）。パーティション数がデータ量に自動適合するのが利点。欠点は空DBが1パーティションから始まり最初スケールしないこと。事前分割で緩和できる。範囲分割にもハッシュ分割にも使える。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>キーの範囲で分けるとき（6.2.1）、パーティション数と境界を最初に固定するのは無理がありませんか? 境界がズレたら全データが1パーティションに集まっちゃう……。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>まさにそこ。範囲分割で境界を固定するのはすごく不便で、手動での再設定はとても手間がかかる。だから<b>HBaseやRethinkDBは、パーティションを動的に作る</b>んだ。これを<span class="term" data-tip="パーティションを大きさに応じて自動で分割・統合する方式。">動的パーティショニング</span>と呼ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>動的って、自動で増えたり減ったりするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。パーティションが設定サイズを超えて大きくなったら（HBaseのデフォルトは10GB）、<b>2つに分割</b>して、それぞれにほぼ半分ずつデータを入れる。逆に大量に削除されてパーティションが小さくなりすぎたら、隣のパーティションと<b>マージ</b>する。これはBツリーのトップレベルで起きるのと似てる（3章参照）。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：荷物がパンパンの区画は2つに割り、ガラガラの区画は隣と合併</h4>
+      <p>区画を最初から固定で切るのではなく、<b>荷物がいっぱいになった区画は自動で2つに割り</b>、逆に<b>荷物が減ってスカスカになった区画は隣の区画と合併</b>させます。こうすると、区画の数が荷物の総量に合わせて自然に増減します。分割された区画の片方は、混雑を均すために別の倉庫へ移されることもあります。</p>
+    </div>
+
+    <details class="code"><summary>動的パーティショニング（分割と統合）</summary>
+<pre><span class="cmt"># 動的パーティショニング（分割と統合）</span>
+分割（splitting）: パーティションが大きくなりすぎたら2つに割る
+   [P1: 大きすぎる(>10GB)]  →  [P1a: 半分]  [P1b: 半分]
+
+統合（merging）: パーティションが小さくなりすぎたら隣と合体
+   [P2: 小さすぎる] [P3: 小さすぎる]  →  [P2+P3: 合体]
+
+<span class="cmt"># パーティション数がデータ総量に自動で適合する</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分割したパーティションはどうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>パーティション数固定のときと同じで、各パーティションは1ノードに割り当てられ、1ノードは複数パーティションを扱える。大きいパーティションが分割されたら、負荷を均すために片割れが別ノードへ転送されることもある。HBaseの場合、パーティションファイルの転送は下層の分散ファイルシステムHDFS経由で行われる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>利点は「データ量に合わせて自動調整」ですね。欠点は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>空のデータベースは単一パーティションから始まる</b>という落とし穴。最初は境界をどこに引けばいいか分からないからね。最初のパーティションが分割サイズに達するまでは、全書き込みが1ノードに集中して、他のノードは遊ぶ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それは最初だけスケールしないってことですね。対策は？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>HBaseやMongoDBでは、空のDBに<b>初期パーティション群を事前に設定できる</b>。これを<b>事前分割（pre-splitting）</b>と呼ぶ。ただし範囲分割の事前分割は、キーがどう分布するかをユーザーが把握してないとできない。あと、動的パーティショニングは範囲分割専用じゃなくて、ハッシュパーティショニングにも使える。MongoDBの2.4以降は範囲分割もハッシュ分割も両方サポートしてて、どちらも動的に分割する。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>データ量が大きく変動する場合に動的パーティショニングが向くと判断できる。</li>
+        <li>「最初は1ノードに集中する」問題と、その緩和策（事前分割）を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>パーティションが大きすぎたら分割、小さすぎたら統合（HBaseは10GBがデフォルト）。</li>
+        <li>利点: パーティション数がデータ総量に自動適合（オーバーヘッド最小）。</li>
+        <li>欠点: 空DBは単一パーティション開始で最初スケールしない → 事前分割で緩和。</li>
+        <li>範囲分割にもハッシュ分割にも適用可（MongoDB 2.4以降は両対応）。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.4.1.4 ===== -->
+<section id="s641d">
+  <div class="sec-head"><div class="sec-num">6.4.1.4</div><div><h2>ノード数に比例するパーティショニング</h2><span class="tag">ノードあたりの区画数を固定（Cassandraのvnode方式）</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：第3の戦略は、パーティション数をノード数に比例させる（＝ノードあたりのパーティション数を固定。Cassandra既定256個）。ノード追加時は既存パーティションを分割し片方を新ノードが取る。多数のパーティションで平均すれば均等になる。境界をランダムに選ぶためハッシュ分割が必須で、これがコンシステントハッシュ法の本来の姿に最も近い。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでで、パーティション数はどう決まってましたっけ?</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>整理しよう。<b>動的パーティショニング</b>ではパーティション数はデータセットのサイズに比例する（分割・統合でサイズを一定範囲に保つから）。<b>パーティション数固定</b>では各パーティションのサイズがデータ量に比例する。どちらも<b>パーティション数はノード数とは無関係</b>だった。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>第3の選択肢があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ある。CassandraやKetamaが使う方法で、<b>パーティション数をノード数に比例させる</b>。言い換えると「<b>ノードあたりのパーティション数を固定</b>」する。Cassandraのデフォルトはノードあたり256パーティション。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ノードを増やすとパーティションも増える、と。サイズはどうなるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ノード数が変わらなければ各パーティションのサイズはデータ量に比例するけど、ノードを増やすとパーティションは再び小さくなる。データが増えれば保存のためにノードも増やすのが普通だから、結果として各パーティションのサイズは十分安定する。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：倉庫1棟あたりの区画数を固定。新倉庫は既存区画を分けてもらう</h4>
+      <p>この方式では「<b>倉庫1棟あたりの区画数</b>」（Cassandraでは256）を固定します。新しい倉庫が加わると、既存の区画をいくつか分割して、その<b>片方を新倉庫が受け取り、もう片方は元の倉庫に残します</b>。1つ1つの分割はランダムで偏りもしますが、1棟に256区画もあれば平均すればほぼ均等にならされます。</p>
+    </div>
+
+    <details class="code"><summary>ノード数に比例するパーティショニング（新ノード追加時）</summary>
+<pre><span class="cmt"># ノード数に比例するパーティショニング（新ノード追加時）</span>
+新ノードがクラスタに加わると:
+- 既存パーティションを一定数「分割」する
+- 分割後の片方を自分のものにし、もう片方は元のノードに残す
+
+   [既存ノードのP] → 分割 → [片方=新ノードへ] [片方=元のノードに残留]
+
+<span class="cmt"># ランダムだと分割は不均等になりうるが、多数のパーティション</span>
+<span class="cmt"># （Cassandra既定256個/ノード）で平均すれば均等に近づく</span>
+<span class="cmt"># Cassandra 3.0では不均等を避ける新アルゴリズムも導入</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ランダムに分割するんですね。それだと偏りませんか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>1個1個はランダムで偏りうるけど、256個もあれば平均すれば均等に近づく。Cassandra 3.0では不均等な分割を避ける別アルゴリズムも入った。あと、境界をランダムに選ぶには<b>ハッシュベースのパーティショニングが必須</b>（ハッシュ関数が生む数値範囲から境界を選ぶため）。実はこのアプローチ、さっきの<b>コンシステントハッシュ法の元々の定義に最も近い</b>んだ。新しいハッシュ関数を使えば、メタデータのオーバーヘッドを低く抑えたまま同じ効果が出せる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あの「DBでは稀」って言われてたコンシステントハッシュ法、ここで本来の姿が出てくるんですね。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>パーティション数の決め方に3通り（データ量比例・固定・ノード数比例）あると整理できる。</li>
+        <li>Cassandraのvnode方式の仕組みと、コンシステントハッシュ法との関係を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>パーティション数をノード数に比例させる（ノードあたり固定、Cassandra既定256）。</li>
+        <li>ノード追加時は既存パーティションを分割し片方を新ノードが受け取る。</li>
+        <li>多数のパーティションで平均すれば均等に近づく（Cassandra 3.0に改良版あり）。</li>
+        <li>ハッシュ分割が必須で、コンシステントハッシュ法の元々の定義に最も近い。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.4.2 ===== -->
+<section id="s642">
+  <div class="sec-head"><div class="sec-num">6.4.2</div><div><h2>運用：自動のリバランスと手動のリバランス</h2><span class="tag">完全自動は楽だが危険 ― 人を介在させると安全</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：リバランシングは自動から手動までグラデーションがある。完全自動は楽だが、重い処理ゆえ進行中の他リクエストの性能を損ない、予測しづらい。特に自動障害検出と組み合わさると、過負荷ノードを誤って「落ちた」と判断してリバランスし、カスケード障害を招く危険がある。どこかに人を介在させると安全。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>リバランシング、全部自動でやってくれたら楽ですね。寝てる間に勝手に均してくれる、みたいな。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>それ、実は重要な論点なんだ。<b>自動か手動か</b>。完全自動（システムが管理者の関与なしに移動タイミングを決める）から、完全手動（管理者が明示的に割り当てを指定し、変更も管理者の再設定時のみ）まで、グラデーションがある。たとえばCouchbase、Riak、Voldemortは推奨割り当てを自動生成するけど、有効になるのは管理者の確認後だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>完全自動の何が問題なんですか? 楽そうなのに。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>楽は楽だけど、<b>予想が付かなくなる</b>。リバランシングはリクエストを再ルーティングして大量データを移す重い処理だろ? 注意せずやると、ネットワークやノードに過大な負荷をかけて、進行中の他のリクエストの性能を損なう。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、引っ越し作業で道が渋滞するみたいな。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいたとえ。さらに<b>自動リバランシングと自動障害検出の組み合わせは危険</b>なんだ。シナリオを話そう。あるノードが過負荷で一時的に応答が遅くなる。すると他のノードが「あいつ落ちた」と勘違いして、自動でリバランスを始め、そのノードから負荷を退避させようとする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>あ……でも、そのノードは実は生きてて、ただ忙しかっただけ。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。リバランスでデータ移動が始まると、すでに過負荷だったノードや他のノード、ネットワークにさらに負荷がかかって、状況が悪化する。これが連鎖して<b>カスケード障害</b>（次々に広がる障害）を引き起こしかねない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>良かれと思った自動化が、火に油を注ぐんですね。じゃあどうすれば？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>リバランシングのどこかに人を介在させる</b>といい。完全自動より遅くはなるけど、予想外の運用事故を防ぐ役に立つ。「やっていいですか?」と人間に一度確認させる、みたいなね。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：忙しいだけの倉庫を「閉鎖した」と早合点して全館引っ越し開始</h4>
+      <p>ある倉庫が荷さばきで一時的に手いっぱいになっただけなのに、自動システムが「あの倉庫は潰れた」と早合点して<b>勝手に全荷物の引っ越しを始める</b>と、ただでさえ忙しい倉庫や道路（ネットワーク）にさらに荷物が殺到し、本当に全館がパンクします（カスケード障害）。だから引っ越しのゴーサインは、<b>最後に人が「本当にやっていいか」を確認</b>してから出すのが安全です。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>自動化が常に善ではなく、運用の予測可能性とのトレードオフだと理解できる。</li>
+        <li>自動リバランシング×自動障害検出の危険（カスケード障害）を避ける設計判断ができる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>リバランシングは完全自動〜完全手動のグラデーション（多くは推奨を出し人が承認）。</li>
+        <li>完全自動は楽だが重い処理ゆえ他リクエストの性能を損ない予測困難。</li>
+        <li>自動障害検出との組み合わせは誤判定→カスケード障害の危険。</li>
+        <li>人を介在させると遅いが予想外の事故を防げる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.5 ===== -->
+<section id="s65">
+  <div class="sec-head"><div class="sec-num">6.5</div><div><h2>リクエストのルーティング</h2><span class="tag">クライアントは「どのノードに聞けばいいか」をどう知る？</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：クライアントが正しいノードを見つける問題はサービスディスカバリの一例。方法は3つ（①任意ノード接続→転送、②ルーティング層経由、③クライアントが割り当てを認識）。鍵は割り当て変化を全員が一致して知ること。多くはZooKeeperなど協調サービスで追跡し（HBase/Kafka等）、MongoDBは独自config server+mongos、Cassandra/Riakはgossipで外部依存なし。最初の接続先IPはDNSで十分なことが多い。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>データを複数ノードに分けて、増減で並べ直すこともできました。でも根本的な疑問が……クライアントは「どのノードに聞けばいいか」をどうやって知るんですか? しかもリバランシングで割り当ては変わるんですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ど真ん中の問いだ。「<code>foo</code>というキーを読み書きしたい。どのIPアドレスとポートに接続すればいい?」――しかも割り当ては変化する。これは<span class="term" data-tip="目的のサービスがどこにあるかを見つける一般的な仕組み。">サービスディスカバリ（サービスの所在発見）</span>と呼ばれる一般的な問題の一例で、データベースだけの話じゃない。ネットワーク経由でアクセスでき、特に高可用性（複数マシンで冗長構成）を狙うソフトには必ずついて回る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>アプローチはいくつかあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>大きく3つある。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：「その荷物はどの倉庫の何階？」を案内する受付の3パターン</h4>
+      <p>荷物を取りに来た人に「その荷物は◯棟の3階ですよ」と案内する仕組みが<b>ルーティング</b>（＝受付）です。やり方は3通り。<b>①とりあえずどこかの倉庫に行かせ、違えばその倉庫が正しい倉庫へ取り次ぐ</b>、<b>②総合受付（ルーティング層）が場所を調べて案内する</b>、<b>③来る人が最初から地図を持っていて直行する</b>。どの方式でも、引っ越し（リバランシング）で場所が変わるので、<b>最新の「どの区画がどの倉庫か」の地図</b>をみんなで共有することが肝心です。</p>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔀</div><h4>方法1：任意ノード接続</h4><p>どこかのノードに接続。対象を持てば直接処理、持たなければ適切なノードへ転送し結果を返す。</p></div>
+      <div class="mini"><div class="ic">🛎️</div><h4>方法2：ルーティング層経由</h4><p>処理はせず、割り当てを把握したLBとして転送先を決める専用の層を通す。</p></div>
+      <div class="mini"><div class="ic">🗺️</div><h4>方法3：クライアントが認識</h4><p>クライアント自身が割り当てを知っていて、仲介なしで適切なノードへ直接接続。</p></div>
+    </div>
+
+    <details class="code"><summary>リクエストを正しいノードへ届ける3つの方法</summary>
+<pre><span class="cmt"># リクエストを正しいノードへ届ける3つの方法</span>
+
+方法1: クライアントは任意のノードに接続（例: ラウンドロビンのLB経由）
+  [クライアント] → [ノードX(たまたま接続)]
+     - Xが対象パーティションを持つ → Xが直接処理
+     - 持たない → Xが適切なノードへ転送し、結果を受け取りクライアントへ返す
+
+方法2: ルーティング層を経由
+  [クライアント] → [ルーティング層] → [適切なノード]
+     - ルーティング層は処理はせず、割り当てを把握したLBとして転送先を決める
+
+方法3: クライアントが割り当てを認識
+  [クライアント(割り当てを知っている)] → [適切なノードへ直接]
+     - 仲介なしで直接接続</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どの方法でも、結局「パーティションがどのノードに割り当てられてるか」の最新情報が要りますよね。それは誰がどう知るんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが核心。ルーティングの判断をする部品（ノード自身・ルーティング層・クライアントのどれか）が、<b>割り当ての変化をどう知るか</b>が鍵。全員の認識が一致してないと、リクエストが間違ったノードに飛んで処理されない。分散システムで合意を形成するプロトコルはあるけど、正しく実装するのは難しい（9章）。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>みんなの認識を揃えるって、どうやって……？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>多くの分散データシステムは、<span class="term" data-tip="どの区画がどの倉庫にあるかの最新台帳を一元管理する協調サービス。">ZooKeeper</span>みたいな独立した協調サービスにこのメタデータの追跡を任せる。</div></div>
+    </div>
+
+    <p>下は、各ノードがZooKeeperに自分を登録し、ZooKeeperが「パーティション→ノード」の信頼できる台帳を管理する仕組み。割り当てが変わるとZooKeeperがルーティング層に通知して最新に保ちます。</p>
+    <details class="code"><summary>ZooKeeperによる割り当て追跡</summary>
+<pre><span class="cmt"># ZooKeeperによる割り当て追跡</span>
+[各ノード] --自分を登録--> [ZooKeeper: パーティション→ノードの信頼できるマッピング]
+                                  │ 変化を通知
+                                  ▼
+                  [ルーティング層 / 割り当てを知るクライアント] が参照
+
+<span class="cmt"># パーティションの所有者が変わったり、ノードが増減したりすると</span>
+<span class="cmt"># ZooKeeperがルーティング層に通知し、情報を最新に保つ</span></pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>各ノードは自分をZooKeeperに登録し、ZooKeeperが「パーティション→ノード」の信頼できるマッピングを管理する。ルーティング層やクライアントはそこを参照する。割り当てが変わればZooKeeperがルーティング層に通知して最新に保つ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>製品ごとに違うやり方なんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、整理しよう。</div></div>
+    </div>
+
+    <table class="t">
+      <tr><th>製品</th><th>ルーティングの実装</th></tr>
+      <tr><td>LinkedIn Espresso</td><td>Helix（ZooKeeperに依存）でクラスタ管理、方法2のルーティング層を実装</td></tr>
+      <tr><td>HBase / SolrCloud / Kafka</td><td>ZooKeeperでパーティション割り当てを追跡</td></tr>
+      <tr><td>MongoDB</td><td>独自のconfig serverと、ルーティング層のmongosを使う（類似アーキテクチャ）</td></tr>
+      <tr><td>Cassandra / Riak</td><td>gossipプロトコルで状態変化をノード間に広める（方法1）。外部の協調サービスは不要だがノードは複雑になる</td></tr>
+      <tr><td>Couchbase</td><td>自動リバランスしないので設計がシンプル。moxiというルーティング層を使い、変更をクラスタのノードから知る</td></tr>
+    </table>
+
+    <details class="code"><summary>ルーティングの実装例</summary>
+<pre><span class="cmt"># ルーティングの実装例</span>
+LinkedIn Espresso : Helix（ZooKeeperに依存）でクラスタ管理、方法2のルーティング層を実装
+HBase / SolrCloud / Kafka : ZooKeeperでパーティション割り当てを追跡
+MongoDB : 独自のconfig serverと、ルーティング層のmongosを使う（類似アーキテクチャ）
+Cassandra / Riak : gossipプロトコルで状態変化をノード間に広める（方法1）
+                   → ノードは複雑になるが外部の協調サービスは不要
+Couchbase : 自動リバランスしないので設計がシンプル。moxiというルーティング層を使い、
+            ルーティング変更をクラスタのノードから知る</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Cassandraは外部サービスなしなんですね。gossip（うわさ話）って面白い名前。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ノードどうしが「最近こう変わったよ」と噂を伝え合って状態を広めるんだ。リクエストはどのノードに送ってもよくて、受けたノードが適切なノードへ転送する（方法1）。外部依存がない代わりにノードのロジックが複雑になる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>クライアントは結局、最初の接続先のIPアドレスは知らなきゃですよね？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。ルーティング層を使う場合もランダムノードに送る場合も、最初に接続するIPアドレスは知る必要がある。でもこれはパーティションの割り当てほど頻繁には変わらないから、<b>DNSを使えば十分なことが多い</b>。</div></div>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>分散DBがどうやってクライアントを正しいノードへ導くか、3方式で説明できる。</li>
+        <li>ZooKeeperやgossipといった実装の違いと、それぞれの長短を理解できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>これはサービスディスカバリの一例（DB以外にも共通の問題）。</li>
+        <li>3方式: ①任意ノード接続→転送、②ルーティング層経由、③クライアントが割り当て認識。</li>
+        <li>鍵は割り当て変化を全員一致で把握すること。多くはZooKeeper等で追跡。</li>
+        <li>MongoDBは独自config server+mongos、Cassandra/Riakはgossipで外部依存なし。</li>
+        <li>最初の接続先IPはDNSで十分なことが多い。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6.5.1 ===== -->
+<section id="s651">
+  <div class="sec-head"><div class="sec-num">6.5.1</div><div><h2>パラレルクエリの実行</h2><span class="tag">複雑な集計はMPPで多ノード並列に</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：ここまでは単一キー中心の単純なクエリ（多くのNoSQLが対応するレベル）を扱ってきた。分析用のMPP（大規模並列処理）リレーショナルDBは、結合・集計などの複雑なクエリを複数の実行ステージとパーティションに分割し、複数ノードで並列実行する。詳細は10章。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ここまでのクエリって、けっこう単純なものばかりでしたよね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、ここまでは「単一キーの読み書き」（ドキュメントベースのセカンダリインデックスならスキャッタ/ギャザーが加わる）くらいの、ごく単純なクエリに絞ってきた。これはほとんどのNoSQL分散データストアがサポートするアクセスレベルだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>もっと複雑なクエリは扱えないんですか? 集計とか結合とか。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこで登場するのが、分析処理によく使われる<span class="term" data-tip="大規模並列処理。複雑なクエリを多数のノードで分担して並列処理する。">MPP（大規模並列処理）</span>リレーショナルデータベース。これは複雑なクエリのサポートがはるかに洗練されてる。典型的なデータウェアハウスのクエリには、複数の結合・フィルタリング・グループ化・集計が含まれる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>それをどう速くするんですか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span><b>MPPのクエリオプティマイザ</b>が、複雑なクエリを「いくつもの実行ステージとパーティション」に分割して、その多くをクラスタ内の複数ノードで並列に処理する。特にデータセットの大部分をスキャンするようなクエリでは、この並列実行で大きなメリットが出る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>単純なキー読み書きを散らすのと、複雑なクエリを並列化するのは別物なんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。データウェアハウスのクエリの高速並列実行は専門的な話題で、ビジネス分析の重要性から商業的にも大きな関心が寄せられてる。並列クエリ実行の手法は10章で詳しく論じるよ。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：年間棚卸しは、全フロアの担当者で手分けして一斉に数える</h4>
+      <p>「荷物を1個取り出す」なら担当フロアの人1人で済みます。でも「<b>全フロアの在庫を集計して年間レポートを作る</b>」のような大仕事は、全フロアの担当者に<b>手分けして一斉に数えさせ、結果を段階的に集約</b>するのが速い。これがMPPの並列実行で、単一の荷物取り出しとはレベルの違う仕事です（詳しくは10章）。</p>
+    </div>
+
+    <div class="why">
+      <h4>💡 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>単一キーアクセスの分散と、複雑クエリの並列実行は別レベルの技術だと理解できる。</li>
+        <li>分析ワークロードにはMPPのような並列クエリ実行が要ると判断できる。</li>
+      </ul>
+    </div>
+    <div class="summary">
+      <h4>📝 この項のまとめ</h4>
+      <ul>
+        <li>ここまでは単純なクエリ（単一キー読み書き、+スキャッタ/ギャザー）が中心。</li>
+        <li>MPP（大規模並列処理）DBは複雑なクエリ（結合・集計等）を多ステージ・多ノードで並列実行。</li>
+        <li>大部分をスキャンするクエリで特に有効。詳細は10章。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 章のまとめ ===== -->
+<section id="sumchap">
+  <div class="sec-head"><div class="sec-num">📚</div><div><h2>まとめ</h2><span class="tag">2つの分け方、2つの索引、ルーティング ― 全部つなぐ</span></div></div>
+
+  <div class="card">
+    <div class="lead">📌 <b>要するに</b>：パーティショニングは巨大データを小区画に分けて複数マシンに分散し、負荷を均等にしてホットスポットを避ける技。分け方は範囲とハッシュ（＋ハイブリッド）、セカンダリインデックスはローカルとグローバル、ルーティングで正しいパーティションへ届ける。各パーティションは独立に動くのでスケールできるが、複数パーティションをまたぐ書き込みの整合性は難しく、後の章のテーマになる。</div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日は一気に分散の世界に踏み込みました……。最後に整理してもらえますか？</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>いいよ。この章は「大規模なデータセットを小さな部分集合にパーティショニングする方法」を調べた。パーティショニングが要るのは、単一マシンで保存・処理するのが現実的でないほどデータがあるとき。目標は、データとクエリの負荷を複数マシンに均等分配し、ホットスポットを作らないこと。そのために、データに合った分け方を選び、ノードの増減時にリバランシングする。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>分け方は主に2つでしたね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、整理するとこうだ。</div></div>
+    </div>
+
+    <h3 class="blk">2つのパーティショニングのアプローチ</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">📖</div><h4>キーの範囲による</h4><p>キーをソートし、各パーティションに最小〜最大の範囲を持たせる。<br><b>長所</b>: 範囲クエリが効率的。<br><b>短所</b>: よくアクセスするキーが近接するとホットスポット。<br>→ 「大きくなりすぎたら範囲を2分割」で動的に行うのが普通。</p></div>
+      <div class="mini"><div class="ic">🎲</div><h4>ハッシュによる</h4><p>各キーにハッシュ関数を適用し、各パーティションにハッシュの範囲を持たせる。<br><b>長所</b>: 負荷分散がより均等になりうる。<br><b>短所</b>: キーの順序が失われ範囲クエリが非効率。<br>→ 固定数を事前作成し各ノードに複数割り当て、増減時は丸ごと移すのが一般的（動的も可）。</p></div>
+    </div>
+    <p>さらに、<b>複合キーで「一部でパーティション決定、他の部分でソート」というハイブリッド</b>も可能です（Cassandraの複合キー）。</p>
+
+    <details class="code"><summary>2つのパーティショニングのアプローチ</summary>
+<pre><span class="cmt"># 2つのパーティショニングのアプローチ</span>
+キーの範囲によるパーティショニング:
+   キーをソートし、各パーティションに最小〜最大の範囲を持たせる
+   長所: 範囲クエリが効率的
+   短所: よくアクセスするキーが近接するとホットスポット
+   → リバランシングは「大きくなりすぎたら範囲を2分割」で動的に行うのが普通
+
+ハッシュパーティショニング:
+   各キーにハッシュ関数を適用し、各パーティションにハッシュの範囲を持たせる
+   長所: 負荷分散がより均等になりうる
+   短所: キーの順序が失われ範囲クエリが非効率
+   → 固定数のパーティションを事前作成し各ノードに複数割り当て、
+     ノード増減時はパーティションを丸ごと移すのが一般的（動的も可）
+
+ハイブリッド: 複合キーで「一部でパーティション決定、他の部分でソート」も可</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>セカンダリインデックスの分割も2つでした。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。</div></div>
+    </div>
+
+    <h3 class="blk">セカンダリインデックスのパーティショニング2方式</h3>
+    <table class="t">
+      <tr><th>方式</th><th>書き込み</th><th>読み取り</th></tr>
+      <tr><td><b>ドキュメントによる分割（ローカル）</b><br>索引をプライマリキー・値と同じパーティションに置く</td><td>1パーティションだけ更新（楽）</td><td>全パーティションへのスキャッタ/ギャザーが必要（重い）</td></tr>
+      <tr><td><b>語による分割（グローバル）</b><br>索引を「索引付けされた値」で独立にパーティショニング</td><td>複数の索引パーティションを更新（重い・複雑）</td><td>単一パーティションで処理できる（軽い）</td></tr>
+    </table>
+
+    <details class="code"><summary>セカンダリインデックスのパーティショニング2方式</summary>
+<pre><span class="cmt"># セカンダリインデックスのパーティショニング2方式</span>
+ドキュメントによる分割（ローカルインデックス）:
+   索引をプライマリキー・値と同じパーティションに置く
+   書き込み: 1パーティションだけ更新（楽）
+   読み取り: 全パーティションへのスキャッタ/ギャザーが必要（重い）
+
+語による分割（グローバルインデックス）:
+   索引を「索引付けされた値」で独立にパーティショニング
+   書き込み: 複数の索引パーティションを更新（重い・複雑）
+   読み取り: 単一パーティションで処理できる（軽い）</pre>
+    </details>
+
+    <div class="talk">
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>最後に、クエリを適切なパーティションへ届ける<b>ルーティング</b>を見た。単純なパーティション認識ロードバランシングから、洗練された並列クエリ実行エンジンまで幅がある。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>全部つながりました。各パーティションがほぼ独立に動けるから、複数マシンにスケールできるんですね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そこが本質。すべてのパーティションは、ほぼ独立に動作できるよう設計されてる。だから複数マシンにスケールできる。ただし――<b>複数パーティションへの書き込みが必要な操作を、ちゃんと正しくするのは難しい</b>。あるパーティションへの書き込みは成功したけど、別のパーティションへの書き込みは失敗したら? どうなると思う?</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>……片方だけ書けて、もう片方が書けてない。データが中途半端になっちゃいますね。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう、その「中途半端」をどう防ぐか。それがこの後の章――トランザクション（7章）や分散システムの難しさ（8章・9章）のテーマなんだ。今日はここまで。</div></div>
+    </div>
+
+    <div class="analogy">
+      <h4>🏬 たとえ話：各フロアが自立して回るから増設できる。でも「またぎ作業」は要注意</h4>
+      <p>各フロア（区画）がほぼ独立して荷さばきできるからこそ、倉庫を何棟でも増設してスケールできます。ただし「<b>2つのフロアにまたがる作業</b>」――片方のフロアの荷物は動かせたのに、もう片方が失敗した――が起きると、在庫が<b>中途半端</b>になります。この「またぎ作業を確実にやり切る仕組み」が、次章以降（7〜9章）の宿題です。</p>
+    </div>
+
+    <div class="summary">
+      <h4>📝 この項（章）のまとめ</h4>
+      <ul>
+        <li>パーティショニングは単一マシンに収まらないデータを分散し、負荷均等・ホットスポット回避を狙う。</li>
+        <li>分け方: 範囲（範囲クエリ得意/ホットスポット注意）とハッシュ（均等/範囲クエリ苦手）、複合キーでハイブリッド。</li>
+        <li>セカンダリインデックス: ローカル（書き込み楽/読み取り重い）とグローバル（書き込み重い/読み取り楽）。</li>
+        <li>ルーティングで適切なパーティションへ届ける。各パーティションは独立に動きスケール可能。</li>
+        <li>複数パーティションをまたぐ書き込みの整合性は難しく、後続章（7〜9章）の課題。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 弟子の振り返り ===== -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で5つのポイントを言ってみる</span></div></div>
+
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>今日のポイントを言ってみます。1つ目は「<b>パーティショニング（シャーディング）</b>は、巨大なデータベースを小さな区画に分けて複数ノードに散らす技。1レコードは1区画に属する。目的はスケーラビリティ」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>そう。レプリケーション（複製）とは別物で、普通は両方を組み合わせる。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目は「分け方は<b>範囲</b>か<b>ハッシュ</b>。範囲はソート順を保てて範囲スキャンが速いけど、タイムスタンプ先頭だと<b>ホットスポット</b>になる。ハッシュは均等に散らせるけど範囲スキャンが苦手」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>ホットスポット回避がキー設計の腕の見せどころだね。センサー名を先頭に置く、ホットキーにランダム数字を足す。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目は「<b>セカンダリインデックス</b>の分割は、<b>ローカル（ドキュメント単位）</b>＝書き込み楽・読み取り重い（スキャッタ/ギャザー）と、<b>グローバル（語単位）</b>＝書き込み重い・読み取り軽い、の2つ」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>読みと書き、どっちを楽にするかのトレードオフだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目は「ノード増減では<b>リバランシング</b>。<code>mod N</code>はダメ、パーティション数を多めに固定する／動的に分割・統合する／ノード数に比例させる、の戦略がある。自動と障害検出の組み合わせは危ないから人を介在させる」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>カスケード障害を避ける、が合言葉。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>5つ目は「<b>ルーティング</b>で正しいノードへ届ける。任意ノード接続・ルーティング層・クライアント認識の3方式。ZooKeeperやgossipで割り当てを共有する」。</div></div>
+      <div class="bubble riku"><div class="av">カイ</div><div class="txt"><span class="who">カイ</span>完璧だ。各パーティションが独立に動くからスケールする。でも複数パーティションをまたぐ書き込みの整合性が次の宿題。そこは7章以降で潜っていこう。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 理解度チェック ===== -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみる。詰まる問題こそ伸びしろ</span></div></div>
+
+  <div class="card">
+    <p class="lead">この章を読み終えたあと、自分の言葉で答えてみてください。スラスラ書ける問題は理解できています。詰まる問題こそが「実は分かっていなかった部分」です。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>パーティショニングとレプリケーションの違い</div>
+      <p>「パーティショニング」と「レプリケーション」の違いを、初めて聞く人に説明してください。また、なぜこの2つは普通いっしょに使われるのかも述べてください。</p>
+      <details>
+        <summary>✅ 解答例を見る</summary>
+        <p class="ans">レプリケーションは「同じデータのコピーを複数のノードに持つこと」で、パーティショニングは「データそのものを小さな区画に分けて、各区画を別々のノードに置くこと（1レコードは1区画に属する）」です。前者はデータを複製し、後者はデータを住み分けさせます。普通いっしょに使うのは、パーティショニングで分けただけだと各区画が1台にしかなく、そのノードが壊れると区画のデータが失われてしまうため、耐障害性のために各区画をさらにレプリケーション（複製）するからです。</p>
+      </details>
+      <details>
+        <summary>📝 採点ポイント</summary>
+        <p class="point">・レプリケーション＝同じデータのコピーを複数ノードに、と説明できている<br>・パーティショニング＝データを区画に分け1レコードは1区画、と説明できている<br>・耐障害性のため各パーティションを複製するので両方を組み合わせる、と述べている</p>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>ホットスポットと回避策</div>
+      <p>「ホットスポット」とは何かを説明してください。また、キーをタイムスタンプにして範囲パーティショニングするとなぜホットスポットが起きるのか、どう回避できるかも述べてください。</p>
+      <details>
+        <summary>✅ 解答例を見る</summary>
+        <p class="ans">ホットスポットとは、一部のパーティション（ノード）に不均衡に高い負荷が集中している状態です。キーをタイムスタンプにして範囲で分けると、パーティションが時刻の範囲（例: 日ごと）に対応します。すると書き込みは常に「今この瞬間」に行われるため、すべての書き込みが「今日のパーティション」1つに集中し、他は遊んでしまいます。回避策は、キーの先頭にタイムスタンプを使わないこと。たとえば先頭にセンサー名を置き、その後にタイムスタンプを続ければ、書き込みがセンサーごとに分散してパーティション間で均等になります。</p>
+      </details>
+      <details>
+        <summary>📝 採点ポイント</summary>
+        <p class="point">・ホットスポット＝一部に負荷が集中した状態、と説明できている<br>・タイムスタンプ先頭だと「今」に書き込みが集中する、と説明できている<br>・先頭に別の要素（センサー名など）を置いて分散する、と回避策を述べている</p>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>ローカルインデックスとグローバルインデックス</div>
+      <p>セカンダリインデックスのパーティショニングには「ドキュメントによる（ローカル）」と「語による（グローバル）」の2方式があります。それぞれ、書き込みと読み取りのどちらが楽でどちらが重いかを、理由とともに説明してください。</p>
+      <details>
+        <summary>✅ 解答例を見る</summary>
+        <p class="ans">ローカルインデックスは、各パーティションが自分の中のドキュメントだけを索引します。書き込みは対象ドキュメントのパーティション1つを更新すればよいので楽ですが、条件検索（例: 赤い車）の対象は全パーティションに散らばっているため、全パーティションに問い合わせて結果を集めるスキャッタ/ギャザーが必要で読み取りが重くなります。グローバルインデックスは、索引を検索する語で独立に分割します。読み取りは目的の語があるパーティションにだけ聞けばよいので軽いですが、1つのドキュメントの書き込みが複数の索引パーティションに影響するため、書き込みが重く複雑になります。</p>
+      </details>
+      <details>
+        <summary>📝 採点ポイント</summary>
+        <p class="point">・ローカル＝書き込み楽（1パーティション）、読み取り重い（スキャッタ/ギャザー）と説明<br>・グローバル＝読み取り楽（単一パーティション）、書き込み重い（複数索引パーティション）と説明<br>・それぞれ理由（索引の置き方）に触れている</p>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>ハッシュの剰余（mod N）がダメな理由</div>
+      <p>リバランシングで <code>hash(キー) mod N</code>（ノード数Nで割った余り）でノードを決めるのは「取るべきではない方法」とされています。なぜダメなのか、具体的に説明してください。</p>
+      <details>
+        <summary>✅ 解答例を見る</summary>
+        <p class="ans"><code>mod N</code> は、ノード数Nが変わると割り算の余りが大きく変わるため、ほとんどのキーが別のノードへ移動しなければならなくなるからです。たとえばあるキーのハッシュ値が123456のとき、ノード10台なら123456 mod 10 = 6でノード6、11台になると123456 mod 11 = 3でノード3へ、12台になると mod 12 = 0でノード0へと移ります。ノードを1台足しただけで関係ないキーまで大量に引っ越すことになり、リバランシングの「移動するデータは最小限にする」という要求に真っ向から反するため、使うべきではありません。</p>
+      </details>
+      <details>
+        <summary>📝 採点ポイント</summary>
+        <p class="point">・Nが変わると余りが変わり、ほとんどのキーが移動する、と説明できている<br>・具体例（同じキーがノード数変化で別ノードへ移る）を挙げている<br>・「移動は最小限」というリバランシングの要求に反する、と述べている</p>
+      </details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>自動リバランシングの危険</div>
+      <p>リバランシングを完全に自動化すると、なぜ危険なことがあるのでしょうか。特に「自動の障害検出」と組み合わさったときに起こりうる問題を説明してください。</p>
+      <details>
+        <summary>✅ 解答例を見る</summary>
+        <p class="ans">リバランシングはリクエストの再ルーティングと大量データの移動を伴う重い処理なので、不用意に自動で行うとネットワークやノードに過大な負荷をかけ、進行中の他のリクエストの性能を損ないます。さらに自動の障害検出と組み合わさると危険です。あるノードが過負荷で一時的に応答が遅くなっただけなのに、他のノードがそれを「落ちた」と誤判断して自動でリバランスを始めると、すでに忙しいノードや他のノード、ネットワークにさらに負荷がかかり、状況が悪化して連鎖的な障害（カスケード障害）を引き起こす可能性があります。だからリバランシングのどこかに人を介在させると安全です。</p>
+      </details>
+      <details>
+        <summary>📝 採点ポイント</summary>
+        <p class="point">・リバランシングは重い処理で他リクエストの性能を損なう、と述べている<br>・過負荷ノードを「落ちた」と誤判断する例を挙げている<br>・カスケード障害につながりうる、人を介在させると安全、と述べている</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 次のステップ ===== -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>初心者がこの内容を理解するための次のステップ</h2><span class="tag">手を動かして「分け方」の感覚をつかむ</span></div></div>
+
+  <div class="card">
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>自分のデータで「範囲かハッシュか」を考える</h4><p>手元のアプリのデータについて、「範囲スキャン（ある期間・ある範囲をまとめて取る）をするか」を基準に、範囲パーティショニングとハッシュパーティショニングのどちらが向くか考えてみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>ホットスポットを設計で探す</h4><p>自分のキー設計に「単調増加するキー（タイムスタンプ・連番ID）を先頭に使っている箇所」がないか探し、もし分散したいならどう先頭の要素を変えればよいかを考えてみてください。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>実際の分散DBのドキュメントを読む</h4><p>MongoDB（シャーディング）かCassandra（vnode・トークン）の公式ドキュメントで、この章のどの戦略（範囲/ハッシュ、パーティション数固定/動的/ノード数比例）を使っているか確認しましょう。用語の対応（shard=partition等）も意識すると読みやすくなります。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>スキャッタ/ギャザーを体感する</h4><p>Elasticsearchなどを手元で動かし、複数シャードに分けたインデックスへ検索を投げて、全シャードに問い合わせる様子（とテイルレイテンシ）を観察してみましょう。</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div><div class="line"></div></div><div class="body"><h4>次章へ</h4><p>この章の最後でカイ先輩が投げかけた「複数パーティションへの書き込みの一方が失敗したらどうなるか」という問いは、7章「トランザクション」の中心テーマです。本章で得た「各パーティションは独立に動く」という視点を持って、複数の操作をまとめて正しく扱う仕組みを読み進めてください。</p>
+        <div class="branch ok">✅ 「分けて散らす」を学んだら、次は「またぐ操作を正しくやり切る」へ。</div></div></div>
+    </div>
+  </div>
+</section>
+
+<p class="foot">📘 データ指向アプリケーションデザイン 第6章「パーティショニング」図解 ／ たとえ話は <b>🏬 大型物流センターの区画分け（複数フロアへの仕分け）</b> で全編統一しています。<br>データ＝荷物、パーティション＝区画/フロア、ノード＝倉庫、リバランシング＝倉庫間の引っ越し、ルーティング＝受付の案内。</p>
+
+</div>
+</body>
+</html>

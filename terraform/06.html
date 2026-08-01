@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6章 シークレットを管理する — 鍵と金庫の図解</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171b2e; --panel2:#1e2440; --ink:#e9ecff; --sub:#aab2dd;
+    --line:#2c3358; --accent:#6c8cff; --accent2:#42d6c3; --warn:#ffb454; --bad:#ff6b8b;
+    --good:#5ee7a0; --purple:#b78cff; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  :root{ --c1:#6c8cff; --c2:#42d6c3; --c3:#ffb454; }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:radial-gradient(1200px 600px at 80% -10%, #20264a 0%, var(--bg) 55%);
+    color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.7; letter-spacing:.01em;}
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 120px}
+  header.hero{border:1px solid var(--line); border-radius:22px; padding:34px 32px;
+    background:linear-gradient(135deg,#1a2042 0%, #141831 100%); box-shadow:var(--shadow);
+    position:relative; overflow:hidden;}
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:240px; height:240px;
+    background:radial-gradient(circle,#6c8cff44,transparent 70%);}
+  .chip{display:inline-block; font-size:12px; padding:4px 12px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff55; color:#c5d0ff; margin-bottom:14px}
+  header.hero h1{margin:.1em 0 .3em; font-size:30px; line-height:1.35}
+  header.hero p{margin:.4em 0 0; color:var(--sub); max-width:760px}
+  .badge-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .badge{font-size:11.5px; padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub)}
+  nav.toc{margin-top:22px; border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    background:var(--panel); columns:2; column-gap:28px;}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--accent2); column-span:all; letter-spacing:.08em}
+  nav.toc a{display:block; color:var(--sub); text-decoration:none; font-size:14px; padding:4px 0;
+    border-left:3px solid transparent; padding-left:10px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); border-left-color:var(--accent)}
+  nav.toc a.sub{font-size:13px; padding-left:24px; color:#8b93bf}
+  @media(max-width:680px){nav.toc{columns:1}}
+  section{margin-top:42px}
+  .sec-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .sec-num{flex:0 0 auto; min-width:48px; height:48px; padding:0 12px; border-radius:14px;
+    display:grid; place-items:center; font-weight:800; font-size:18px; color:#0c0f1e;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:var(--shadow)}
+  .sec-head h2{margin:0; font-size:23px}
+  .sec-head .tag{font-size:12px; color:var(--sub); display:block; margin-top:2px; font-weight:400}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:22px 24px; box-shadow:var(--shadow)}
+  .card + .card{margin-top:18px}
+  .lead{font-size:15px; color:#cdd4f6; background:#6c8cff14; border-left:4px solid var(--accent);
+    padding:12px 16px; border-radius:0 12px 12px 0; margin:0 0 18px}
+  .lead b{color:#fff}
+  h3.blk{font-size:17px; margin:26px 0 12px; display:flex; align-items:center; gap:10px}
+  h3.blk::before{content:""; width:10px; height:10px; border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  h4.blk{font-size:15px; margin:20px 0 10px; color:#dfe4ff}
+  .cycle{display:flex; flex-wrap:wrap; gap:16px; align-items:stretch; justify-content:center; margin:10px 0}
+  .cycle .node{flex:1 1 220px; min-width:200px; border-radius:16px; padding:18px; position:relative;
+    border:1px solid var(--line); background:var(--panel2)}
+  .cycle .node h4{margin:0 0 6px; font-size:16px}
+  .cycle .node p{margin:0; font-size:13.5px; color:var(--sub)}
+  .cycle .node .when{font-size:12px; color:#8b93bf; display:block; margin-top:8px; font-style:italic}
+  .cycle-arrow{display:flex; align-items:center; justify-content:center; color:var(--accent2); font-size:24px; font-weight:700}
+  .loopback{text-align:center; margin-top:14px; padding:12px; border-radius:12px;
+    border:1px dashed var(--accent2); color:var(--accent2); font-size:14px; background:#42d6c30f}
+  .flow{display:flex; flex-direction:column; gap:0; margin:8px 0}
+  .flow .step{display:flex; gap:14px; align-items:flex-start}
+  .flow .bullet{flex:0 0 auto; display:flex; flex-direction:column; align-items:center}
+  .flow .dot{width:34px; height:34px; border-radius:50%; display:grid; place-items:center;
+    font-weight:800; font-size:14px; color:#0c0f1e; background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .flow .line{flex:1 0 24px; width:3px; background:linear-gradient(var(--accent),var(--accent2)); margin:4px 0}
+  .flow .body{flex:1 1 auto; padding-bottom:18px}
+  .flow .body h4{margin:4px 0 4px; font-size:15px}
+  .flow .body p{margin:0; font-size:13.5px; color:var(--sub)}
+  .flow .step:last-child .line{display:none}
+  .branch{margin-top:6px; font-size:13px; padding:8px 12px; border-radius:10px}
+  .branch.ok{background:#5ee7a014; border:1px solid #5ee7a044; color:var(--good)}
+  .branch.ng{background:#ff6b8b14; border:1px solid #ff6b8b44; color:var(--bad)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:16px}
+  @media(max-width:760px){.grid3,.grid2{grid-template-columns:1fr}}
+  .mini{border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--panel2)}
+  .mini .ic{font-size:24px} .mini h4{margin:8px 0 6px; font-size:15px}
+  .mini p{margin:0; font-size:13px; color:var(--sub)}
+  .mini .pill{display:inline-block; margin-top:10px; font-size:11.5px; padding:3px 9px; border-radius:999px;
+    background:#6c8cff22; border:1px solid #6c8cff44; color:#c5d0ff}
+  .why{border:1px solid #b78cff44; background:#b78cff10; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .why h4{margin:0 0 8px; color:var(--purple); font-size:14px; display:flex; gap:8px; align-items:center}
+  .why ul{margin:0; padding-left:20px} .why li{font-size:13.5px; color:#d3d9fb; margin:4px 0}
+  .summary{border:1px solid var(--accent2); background:#42d6c30d; border-radius:14px; padding:14px 18px; margin-top:16px}
+  .summary h4{margin:0 0 8px; color:var(--accent2); font-size:14px}
+  .summary ul{margin:0; padding-left:20px} .summary li{font-size:13.5px; margin:4px 0; color:#d6dcf7}
+  .talk{margin:14px 0}
+  .bubble{display:flex; gap:12px; margin:10px 0; align-items:flex-start}
+  .bubble .av{flex:0 0 auto; width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+    font-size:13px; font-weight:800; color:#0c0f1e}
+  .bubble.sora .av{background:linear-gradient(135deg,#7fd4ff,#5ee7a0)}
+  .bubble.riku .av{background:linear-gradient(135deg,#ffb454,#ff6b8b)}
+  .bubble .txt{border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:14px; max-width:88%}
+  .bubble.sora .txt{background:#1a2740; border-top-left-radius:4px}
+  .bubble.riku .txt{background:#2a2233; border-top-left-radius:4px}
+  .bubble .who{font-size:11px; color:var(--sub); display:block; margin-bottom:2px}
+  details.code{margin:12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#0c0f1e; position:relative}
+  details.code summary{cursor:pointer; padding:10px 16px; font-size:13px; color:var(--accent2); background:#12152a; user-select:none}
+  details.code summary::marker{color:var(--accent)}
+  details.code summary::after{content:"エンジニア向け／読まなくてOK"; float:right; font-size:11px;
+    color:#0c0f1e; background:#ffb454; padding:2px 9px; border-radius:999px; font-weight:700; margin-left:8px}
+  details.code pre{margin:0; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6;
+    font-family:"SF Mono",Menlo,Consolas,monospace; color:#cdd6f4}
+  .cmt{color:#6b7394} .kw{color:#b78cff} .str{color:#9ece6a} .fn{color:#7fd4ff} .num{color:#ff9e64}
+  table.t{width:100%; border-collapse:collapse; margin:8px 0; font-size:13.5px}
+  table.t th,table.t td{border:1px solid var(--line); padding:10px 12px; text-align:left}
+  table.t th{background:var(--panel2); color:var(--accent2); font-weight:700}
+  table.t td{color:#d2d8f6}
+  .quiz{border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-top:14px; background:var(--panel2)}
+  .quiz .q{font-weight:700; color:#fff; margin-bottom:6px}
+  .quiz .qnum{display:inline-block; font-size:12px; color:#0c0f1e; background:var(--warn);
+    padding:2px 10px; border-radius:999px; margin-right:8px; font-weight:800}
+  .quiz details{margin-top:10px}
+  .quiz summary{cursor:pointer; font-size:13px; color:var(--accent2)}
+  .quiz .ans{font-size:13.5px; color:#d2d8f6; padding:10px 0 2px}
+  .quiz .point{font-size:13px; color:var(--sub); padding-left:18px}
+  .foot{margin-top:50px; text-align:center; color:#6b7394; font-size:12.5px}
+  .up{color:var(--good); font-weight:700} .down{color:var(--bad); font-weight:700}
+  .guide{margin-top:22px; border:1px solid #5ee7a055; border-radius:18px; padding:22px 24px;
+    background:linear-gradient(135deg,#16322a 0%, #14251f 100%); box-shadow:var(--shadow)}
+  .guide h2{margin:0 0 14px; font-size:18px; color:#8af0bf; display:flex; gap:10px; align-items:center}
+  .guide .rows{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:680px){.guide .rows{grid-template-columns:1fr}}
+  .guide .row{display:flex; gap:12px; align-items:flex-start; background:#0f1f1a; border:1px solid #2c4a3f;
+    border-radius:12px; padding:13px 15px}
+  .guide .row .gi{font-size:22px; flex:0 0 auto; line-height:1.3}
+  .guide .row b{color:#fff; font-size:14px} .guide .row p{margin:4px 0 0; font-size:13px; color:#b8d8cb}
+  .glossary{margin-top:18px; border:1px solid var(--line); border-radius:18px; padding:22px 24px; background:var(--panel)}
+  .glossary h2{margin:0 0 6px; font-size:18px; color:var(--accent2); display:flex; gap:10px; align-items:center}
+  .glossary .note{font-size:13px; color:var(--sub); margin:0 0 16px}
+  .glossary .gl{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+  @media(max-width:680px){.glossary .gl{grid-template-columns:1fr}}
+  .glossary .item{border:1px solid var(--line); border-radius:12px; padding:12px 15px; background:var(--panel2)}
+  .glossary .item .w{font-weight:800; color:#fff; font-size:14px}
+  .glossary .item .w span{font-size:11.5px; color:#8b93bf; font-weight:400; margin-left:6px}
+  .glossary .item p{margin:6px 0 0; font-size:13px; color:var(--sub)}
+  .term{border-bottom:1px dotted #7fd4ff; cursor:help; position:relative; color:#bfe6ff}
+  .term:hover::after{content:attr(data-tip); position:absolute; left:0; bottom:150%;
+    width:max-content; max-width:280px; background:#0a0d1c; color:#e9ecff; border:1px solid var(--accent);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; line-height:1.55; font-weight:400; z-index:30;
+    box-shadow:var(--shadow); white-space:normal}
+  .analogy{border:1px solid #ffd28a55; background:#ffb45412; border-radius:14px; padding:15px 18px; margin:16px 0}
+  .analogy h4{margin:0 0 7px; color:#ffd28a; font-size:14px; display:flex; gap:8px; align-items:center}
+  .analogy p{margin:0; font-size:14px; color:#f3e7d4; line-height:1.75}
+  .analogy p + p{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="chip">詳解 Terraform 第3版 ／ 第6章</span>
+  <h1>シークレットを管理する<br><span style="font-size:18px;color:#aab2dd;font-weight:400">— 建物の「鍵」と「金庫」をどう扱うか</span></h1>
+  <p>大切な鍵（パスワードやアクセスキー）を設計図に書き込んではいけない。鍵には専用の金庫があり、目的に合った金庫を選び、鍵を渡す相手や置き場所をきちんと管理する、という話です。</p>
+  <p style="margin-top:14px;color:#8af0bf"><b>プログラミング未経験でも大丈夫。</b> 専門用語はすべて「鍵」と「金庫」のたとえに置きかえて説明します。コードは折りたたんであるので、読み飛ばしてもストーリーは追えます。</p>
+  <div class="badge-row">
+    <span class="badge">🔑 鍵 = パスワード・アクセスキー</span>
+    <span class="badge">🔐 金庫 = シークレット管理ツール</span>
+    <span class="badge">🏛 棟梁 × ハル の対話形式</span>
+    <span class="badge">⏱ コードは読み飛ばしOK</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>📑 もくじ（この章の全項目）</h2>
+  <a href="#intro">はじめに — マスターキーを設計図に書いてしまったハル</a>
+  <a href="#s61">6.1 シークレット管理の基本（鍵の大原則）</a>
+  <a href="#s62">6.2 シークレット管理ツール（金庫の種類）</a>
+  <a href="#s621" class="sub">6.2.1 保存する鍵の種類</a>
+  <a href="#s622" class="sub">6.2.2 鍵の保存方法</a>
+  <a href="#s623" class="sub">6.2.3 鍵にアクセスする窓口</a>
+  <a href="#s624" class="sub">6.2.4 ツールの比較（表6-1）</a>
+  <a href="#s63">6.3 シークレット管理ツールとTerraform</a>
+  <a href="#s631" class="sub">6.3.1 プロバイダ（入場ゲートの鍵）</a>
+  <a href="#s6311" class="sub">6.3.1.1 人のユーザ</a>
+  <a href="#s6312" class="sub">6.3.1.2 マシンユーザ</a>
+  <a href="#circleci" class="sub">└ CircleCI（鍵を保存）</a>
+  <a href="#iamrole" class="sub">└ EC2上のJenkins（IAMロール）</a>
+  <a href="#oidc" class="sub">└ GitHub Actions（OIDC）</a>
+  <a href="#s632" class="sub">6.3.2 リソースとデータソース</a>
+  <a href="#s6321" class="sub">6.3.2.1 環境変数</a>
+  <a href="#s6322" class="sub">6.3.2.2 暗号化されたファイル</a>
+  <a href="#s6323" class="sub">6.3.2.3 シークレットストア</a>
+  <a href="#s633" class="sub">6.3.3 ステートファイルとプランファイル</a>
+  <a href="#s6331" class="sub">6.3.3.1 ステートファイル</a>
+  <a href="#s6332" class="sub">6.3.3.2 プランファイル</a>
+  <a href="#wrapup">🔁 章のまとめ（弟子の振り返り・表6-2/6-3）</a>
+  <a href="#quiz">✏️ 理解度チェック（全5問）</a>
+  <a href="#next">🌱 次のステップ</a>
+</nav>
+
+<div class="guide">
+  <h2>📖 このページの読み方</h2>
+  <div class="rows">
+    <div class="row"><div class="gi">🟢</div><div><b>上から順に読むだけでOK</b><p>師匠（棟梁）と弟子（ハル）の会話を追えば、自然と理解が進みます。</p></div></div>
+    <div class="row"><div class="gi">🟡</div><div><b>たとえ話はぜんぶ「建物の鍵と金庫」で統一</b><p>パスワード＝鍵、シークレット管理ツール＝金庫、設計図＝Terraformコード。別世界の比喩は混ぜません。</p></div></div>
+    <div class="row"><div class="gi">🟠</div><div><b>オレンジの「読まなくてOK」はコード</b><p>折りたたまれたコードは飛ばして大丈夫。直前にやさしい日本語の説明があります。</p></div></div>
+    <div class="row"><div class="gi">🔵</div><div><b>点線の用語にカーソルを当てると意味が出ます</b><p>むずかしい言葉には、ふんわり意味が表示されるツールチップが付いています。</p></div></div>
+  </div>
+</div>
+
+<div class="glossary">
+  <h2>📚 かんたん用語集</h2>
+  <p class="note">この章で出てくる専門用語を、まとめてやさしく言いかえました。本文を読んでいて迷ったらここに戻ってきてください。</p>
+  <div class="gl">
+    <div class="item"><div class="w">シークレット <span>secret</span></div><p>外に漏れたら困る機密データ全般。パスワード、アクセスキー、証明書など。この章では「鍵」と呼びます。</p></div>
+    <div class="item"><div class="w">シークレット管理ツール <span>金庫</span></div><p>鍵を安全にしまっておく専用の入れ物。Vault や AWS Secrets Manager など。</p></div>
+    <div class="item"><div class="w">プレーンテキスト <span>plain text</span></div><p>暗号化していない、読めばそのまま分かる文字。鍵をこの形で置いてはいけません。</p></div>
+    <div class="item"><div class="w">バージョン管理 <span>version control</span></div><p>設計図の変更履歴を保存する仕組み（Gitなど）。</p></div>
+    <div class="item"><div class="w">プロバイダ <span>provider</span></div><p>クラウド業者とやりとりするための窓口プラグイン。街の「入場ゲート」。</p></div>
+    <div class="item"><div class="w">アクセスキー / シークレットキー</div><p>クラウドの入場ゲートで「あなたは誰?」に答えるための鍵（IDと本体）。</p></div>
+    <div class="item"><div class="w">環境変数 <span>environment variable</span></div><p>パソコンに一時的にセットしておける名前付きの値。電源を切れば消えます。</p></div>
+    <div class="item"><div class="w">IAMロール <span>IAM role</span></div><p>人に紐づかず永続鍵も持たない「権限の役割」。当番が借りる夜間警備員の制服と一時鍵。</p></div>
+    <div class="item"><div class="w">OIDC <span>OpenID Connect</span></div><p>身元を証明し合う標準の仕組み。CIと業者の間に信頼関係を結びます。</p></div>
+    <div class="item"><div class="w">一時鍵 / STS</div><p>その場限りの使い捨て合鍵。漏れても被害が小さい。STSが発行します。</p></div>
+    <div class="item"><div class="w">KMS / CMK</div><p>暗号化キー専用の預かり所と、その中の暗号化キー。中身は取り出せません。</p></div>
+    <div class="item"><div class="w">sensitive</div><p>変数に付ける「秘密扱い」の印。画面やログに値を表示しなくなります。</p></div>
+    <div class="item"><div class="w">ステートファイル <span>terraform.tfstate</span></div><p>工房が建物の現状を記録した台帳。ここに鍵が丸書きされる落とし穴があります。</p></div>
+    <div class="item"><div class="w">バックエンド <span>backend</span></div><p>ステート（台帳）の保管先。S3やGCSなど暗号化できる場所を選びます。</p></div>
+    <div class="item"><div class="w">CI/CD</div><p>コードを自動で検証・配信する仕組み。CircleCIやGitHub Actionsなど。</p></div>
+    <div class="item"><div class="w">ローテーション <span>rotate</span></div><p>鍵を定期的に新しいものに入れ替えること。</p></div>
+  </div>
+</div>
+
+<!-- はじめに -->
+<section id="intro">
+  <div class="sec-head"><div class="sec-num">序</div><div><h2>はじめに — マスターキーを設計図に書いてしまったハル</h2><span class="tag">この章のあらすじ・要するに・なぜ必要か</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> 大切な鍵（パスワードやアクセスキー）を、設計図にそのまま書き込んではいけない。鍵には専用の金庫があって、目的に合った金庫を選び、鍵を渡す相手や置き場所をきちんと管理しよう、という話です。</p>
+    <p>グラウンドワークス工房に、新しい建物の<span class="term" data-tip="建物全体を開けられる親鍵。漏れたら全部に入られてしまう">マスターキー</span>をどう扱うかという相談が舞い込んだ。ハルは「鍵なんて設計図に書いておけばいいのでは？」と言ってしまい、棟梁に止められる。今回は、建物の大切な鍵をどこにしまい、誰に渡し、どんな金庫で守るのかを巡って、二人がじっくり語り合う。</p>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>棟梁、新しい建物の設計図を書いてたんです。データベースっていう「大事な書類を保管する部屋」を建てるとき、その部屋に入る名前とパスワードを設定しろって言われて。とりあえず設計図に <code>username = "admin"</code>、<code>password = "password"</code> って書いておきました！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ハル、その設計図、すぐ消しなさい。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>えっ、なんでですか！？ ちゃんと動きますけど。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>動くことと安全なことは別なんだよ。それはな、建物のマスターキーを、誰でも見られる設計図の表紙に油性ペンで書いたのと同じことだ。今日はその「鍵」と「金庫」の話をじっくりやろう。</div></div>
+    </div>
+
+    <p>この章で扱う設計図の例は、データベースという「大事な書類を保管する部屋」を建てるものだ。<code>username</code> と <code>password</code> は、この部屋と中の書類すべてを自由にできる「管理人の鍵」。これが悪い人の手に渡ったら書類は全部抜かれる。</p>
+
+    <p style="margin-top:14px">このコードは MySQL という種類のデータベース（書類保管室）を1部屋建てる設計図です。最後の名前とパスワードを安全に入れたいのがテーマです。</p>
+    <details class="code"><summary>設計図の例（aws_db_instance）</summary>
+<pre><span class="cmt"># MySQLという種類のデータベース（書類保管室）を1部屋建てる設計図</span>
+<span class="kw">resource</span> <span class="str">"aws_db_instance"</span> <span class="str">"example"</span> {
+  identifier_prefix   = <span class="str">"terraform-up-and-running"</span>  <span class="cmt"># 部屋の名前の頭につける文字</span>
+  engine              = <span class="str">"mysql"</span>       <span class="cmt"># 書類保管室の種類（MySQL製）</span>
+  allocated_storage   = <span class="num">10</span>            <span class="cmt"># 棚の広さ（10ギガ分）</span>
+  instance_class      = <span class="str">"db.t2.micro"</span> <span class="cmt"># 部屋のグレード（一番小さい安いやつ）</span>
+  skip_final_snapshot = <span class="kw">true</span>          <span class="cmt"># 取り壊すとき最後の写真を撮らない</span>
+  db_name             = var.db_name        <span class="cmt"># 中に作る書類フォルダの名前</span>
+
+  <span class="cmt"># ここに「部屋の管理人の名前とパスワード」を安全に入れたいが、どうする？</span>
+  username = <span class="str">"???"</span>
+  password = <span class="str">"???"</span>
+}</pre></details>
+
+    <p>なお「シークレット」とは、データベースのパスワード、<span class="term" data-tip="あるツールを呼ぶための合言葉">APIキー</span>、TLS証明書、SSHキー、GPGキーなど、外に漏れたら困る機密データ全般のこと。この章ではこれを工房の言葉で「鍵」と呼んでいく。この章では3つを順に見ていく。</p>
+    <div class="grid3">
+      <div class="mini"><div class="ic">📏</div><h4>鍵の大原則</h4><p>鍵の扱いの基本ルール（6.1）</p></div>
+      <div class="mini"><div class="ic">🔐</div><h4>金庫の種類</h4><p>鍵をしまう金庫の選び方（6.2）</p></div>
+      <div class="mini"><div class="ic">🔗</div><h4>Terraformとの組合せ</h4><p>金庫とTerraformのつなぎ方（6.3）</p></div>
+    </div>
+
+    <div class="why"><h4>📌 なぜこれが必要か / これを知ったらできること</h4>
+      <ul>
+        <li>鍵を設計図に書くと、設計図を見られる人全員が建物に入り放題になり、取り返しがつかない事故につながる。</li>
+        <li>一度ばらまかれた鍵は誰が持っているか分からず回収もできないので、最初の置き方が決定的に重要。</li>
+        <li>クラウドでは「鍵が漏れた＝最も大事なデータが盗まれる」を意味し、守るのは作り手の責任だから。</li>
+        <li>自分のパソコンでもCIサーバ（自動で工事するロボット）でも、鍵を安全に渡してインフラを建てられるようになる。</li>
+        <li>どの金庫（Vault、AWS Secrets Managerなど）をどんな場面で選ぶべきか、自分で判断できるようになる。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 6.1 -->
+<section id="s61">
+  <div class="sec-head"><div class="sec-num">6.1</div><div><h2>シークレット管理の基本</h2><span class="tag">鍵の扱いの大原則</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> 鍵を設計図にそのまま書いてはいけない。一度漏れると回収も監査もできず、被害が無限に広がる。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>鍵を扱う基本ルールって、何個くらいあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>まず第1ルール。「鍵を<span class="term" data-tip="暗号化していない、読めばそのまま分かる文字">プレーンテキスト</span>で保存するな」。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>で、第2ルールは？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>「鍵をプレーンテキストで保存するな」。……同じだ。冗談抜きで、それくらい大事だから2回言ったんだよ。設計図に直接パスワードを書いて<span class="term" data-tip="設計図の変更履歴を保存する仕組み。Gitなど">バージョン管理</span>に保存する、あれは絶対ダメだ。</div></div>
+    </div>
+
+    <p>絶対にやってはいけないのがこれ。鍵を設計図に丸書きしている見本です。</p>
+    <details class="code"><summary>絶対NG例：鍵の丸書き</summary>
+<pre><span class="cmt"># これは「絶対にやってはいけない」見本</span>
+<span class="kw">resource</span> <span class="str">"aws_db_instance"</span> <span class="str">"example"</span> {
+  <span class="cmt"># ...（中略）...</span>
+
+  <span class="cmt"># 絶対ダメ！</span>
+  username = <span class="str">"admin"</span>      <span class="cmt"># 管理人の名前を丸書き</span>
+  password = <span class="str">"password"</span>   <span class="cmt"># パスワードを丸書き</span>
+  <span class="cmt"># 絶対ダメ！</span>
+}</pre></details>
+
+    <h3 class="blk">なぜダメか — 4つの理由</h3>
+    <div class="grid2">
+      <div class="mini"><div class="ic">👥</div><h4>理由1：全員が鍵を入手</h4><p>設計図を見られる工房の職人全員が、建物の管理人鍵を手に入れられる。社内の全開発者がDBの認証情報を見られてしまう。</p></div>
+      <div class="mini"><div class="ic">💾</div><h4>理由2：全パソコンにコピー</h4><p>設計図を<span class="term" data-tip="設計図を手元にコピーすること">チェックアウト</span>したあらゆるパソコンに鍵が残る。職人のPC、CIサーバ、Gitサーバ、デプロイ先、バックアップ装置…全部に散らばる。</p></div>
+      <div class="mini"><div class="ic">🐛</div><h4>理由3：全ソフトが読める</h4><p>鍵がそのままディスクに転がっているから、そのパソコン上で動くどんなソフトも鍵を盗み見できる。</p></div>
+      <div class="mini"><div class="ic">🚫</div><h4>理由4：監査も無効化も不可</h4><p>あちこちにコピーされていると、誰がいつ触ったかの記録もないし、「この鍵はもう使えなくする」と取り消す手段もない。</p></div>
+    </div>
+
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>うわあ……つまり一度ばらまいたら、回収不能なんですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。悪い人（ハッカー、競合他社、不満を持って辞めた元社員）に無数の侵入経路をプレゼントすることになる。しかも侵入されたことにすら気づけない。だから鍵は専用の金庫＝シークレット管理ツールに入れるのが必須なんだよ。</div></div>
+    </div>
+
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>設計図の表紙に油性ペンでマスターキーの番号を書くようなものだ。設計図は工房中でコピーされ、職人のカバン、コピー機、倉庫、町の印刷屋にまで散らばる。番号を書いた紙は回収できないし、誰がそれを写したかも分からない。一度書いたら、その建物はもう「誰でも入れる建物」になってしまう。</p>
+    </div>
+
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>設計図への丸書きが、なぜ「最悪の選択」なのかを4つの理由で説明できるようになる。</li>
+      <li>鍵を専用の金庫に入れる、という次の話への動機がはっきりする。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>第1も第2のルールも「鍵をプレーンテキストで保存するな」。</li>
+      <li>理由は「全員が見られる」「全パソコンにコピーが残る」「全ソフトが読める」「監査も無効化もできない」の4つ。</li>
+      <li>鍵は専用のシークレット管理ツールに入れる。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 6.2 -->
+<section id="s62">
+  <div class="sec-head"><div class="sec-num">6.2</div><div><h2>シークレット管理ツール</h2><span class="tag">鍵をしまう金庫の種類</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> 金庫を選ぶ観点は3つ。①どんな鍵をしまうか、②どうしまうか、③どうやって鍵を出し入れするか。最後に有名な金庫を比較します。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>金庫にもいろいろ種類があるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>あるよ。金庫を選ぶときに見る観点が大きく3つある。種類・保存方法・窓口だ。順に見よう。</div></div>
+    </div>
+    <div class="cycle">
+      <div class="node"><h4>① 鍵の種類</h4><p>誰のための鍵か（個人・顧客・インフラ）</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② 保存方法</h4><p>ファイル型か、集中管理型か</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ 出し入れ窓口</h4><p>API・CLI・UIのどれを使うか</p></div>
+    </div>
+  </div>
+
+  <div class="card" id="s621">
+    <h3 class="blk">6.2.1 保存する鍵（シークレット）の種類</h3>
+    <p class="lead"><b>要するに：</b> 鍵には「個人・顧客・インフラ」の3種類があり、それぞれ専用の金庫がある。元に戻せる暗号化か、戻せないハッシュか、で扱いが違う。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>鍵に種類なんてあるんですか？ 鍵は鍵では？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>大きく3種類あるんだ。誰のための鍵か、で分かれる。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🧍</div><h4>個人シークレット</h4><p>個人に紐づく鍵。WebサイトのIDとパスワード、自分のSSHキー、PGPキーなど。</p><span class="pill">個人の鍵</span></div>
+      <div class="mini"><div class="ic">🧑‍🤝‍🧑</div><h4>顧客シークレット</h4><p>お客さんに紐づく鍵。ログインID/パスワード、<span class="term" data-tip="個人を特定できる情報">PII</span>、<span class="term" data-tip="個人の健康に関する情報">PHI</span>など。社員もお客さん。</p><span class="pill">お客さんの鍵</span></div>
+      <div class="mini"><div class="ic">🏛</div><h4>インフラシークレット</h4><p>建物・設備に紐づく鍵。DBのパスワード、APIキー、TLS証明書など。<b>今日のメイン。</b></p><span class="pill">設備の鍵</span></div>
+    </div>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どの鍵も同じ金庫に入れちゃダメなんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ダメだ。ほとんどの金庫はこの3種のどれか1つ専用に作られている。「設備の鍵としてのパスワード」と「お客さんのログイン用パスワード」では、しまい方が根本的に違うんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>どう違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>設備のパスワードは後でまた取り出して使うから、<span class="term" data-tip="標準的な暗号化方式。鍵で元に戻せる">AES</span>のような「鍵で元に戻せる暗号化」を使う。一方、お客さんのログインパスワードは元に戻す必要がないから、<span class="term" data-tip="混ぜ込む追加の文字">ソルト</span>を加えた<span class="term" data-tip="bcryptなど。元に戻せない一方向の変換">ハッシュ</span>でしまうんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど、「後で元に戻したいか」で金庫の仕組みが変わるんですね。</div></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>設備の鍵は、また使うために「合鍵を作り直せる原型」として金庫にしまう。お客さんのログインパスワードは、本人確認さえできればよく原型を残す必要がないので、「形だけ照合できる溶かした型」にしてしまう。同じ金庫に両方しまうと、片方には不便で片方には危険だ。だから目的に合った金庫を使う。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>金庫を選ぶ前に「自分が扱う鍵はどの種類か」を見分けられるようになる。</li>
+      <li>暗号化（元に戻せる）とハッシュ（戻せない）の違いを使い分けられるようになる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>鍵は個人・顧客・インフラの3種類。</li>
+      <li>設備の鍵は元に戻せる暗号化（AES等）、顧客のパスワードは戻せないハッシュ（bcrypt等）。</li>
+      <li>種類に合った金庫を使う。この章はインフラの鍵が中心。</li>
+    </ul></div>
+  </div>
+
+  <div class="card" id="s622">
+    <h3 class="blk">6.2.2 鍵（シークレット）の保存方法</h3>
+    <p class="lead"><b>要するに：</b> しまい方は「暗号化ファイルをバージョン管理に置く方式」と「金庫番の窓口に預ける方式」の2つ。どちらも暗号化キーの守り方が肝です。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>鍵のしまい方って、何パターンあるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>よく使うのは2つ。「ファイル型の金庫」と「集中管理型の金庫」だ。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🗄</div><h4>ファイルベースの金庫</h4><p>鍵を暗号化してファイルに入れ、そのファイルをバージョン管理に置く方式。</p><span class="pill">ファイル型</span></div>
+      <div class="mini"><div class="ic">🏦</div><h4>集中型の金庫</h4><p>ネットワーク越しに使う「金庫番のいる窓口（Webサービス）」。鍵を暗号化してMySQL等のデータ置き場に保存。</p><span class="pill">集中型</span></div>
+    </div>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でもファイルを暗号化するには暗号化キーが要りますよね。それ自体が鍵じゃないですか。どこにしまうんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いいところに気づいた。それがこの方式の難しさで、暗号化キーをどう守るかが残る。設計図に置いたら意味がないし、別のキーで暗号化しても問題が先送りになるだけだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあどうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>解決策は2つ。1つは<span class="term" data-tip="暗号化キー専用の預かり所。AWS KMS、GCP KMS、Azure Key Vaultなど">KMS（キーマネジメントサービス）</span>に暗号化キーを預けて、業者に鍵守りを任せる。もう1つは各職人がPGPキー（公開鍵と秘密鍵のペア）を持ち、公開鍵で暗号化して、対応する秘密鍵を持つ職人だけが開けられるようにする。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>集中型でも暗号化キーは要るが、それはサービス自身が管理するか、クラウドのKMSに任せる。</div></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>鍵を金庫に入れても、その金庫を開ける「金庫の鍵」が要る。それを設計図に書いたら金庫の意味がない。そこで、金庫の鍵を「街の信頼できる鍵預かり所（KMS）」に丸ごと預けるか、職人それぞれが自分だけ開けられる個人ロッカー（PGP）に金庫の鍵をしまう、というわけだ。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>「ファイル型」と「集中型」の違いを理解し、後の節の選択につなげられる。</li>
+      <li>暗号化キー自体をどう守るか（KMSやPGP）という核心の問題を理解できる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>ファイル型：暗号化ファイルをバージョン管理に置く。暗号化キーはKMSやPGPで守る。</li>
+      <li>集中型：金庫番の窓口に預ける。暗号化キーはサービス自身かKMSが守る。</li>
+      <li>どちらも「暗号化キーの守り方」が課題。</li>
+    </ul></div>
+  </div>
+
+  <div class="card" id="s623">
+    <h3 class="blk">6.2.3 鍵（シークレット）にアクセスするインタフェイス</h3>
+    <p class="lead"><b>要するに：</b> 金庫の窓口にはAPI（プログラム向け）、CLI（コマンド向け）、UI（画面向け）の3つがあります。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>金庫から鍵を出し入れする方法も決まってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>たいていの金庫は3つの窓口を持っている。API、CLI、UIだ。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🔌</div><h4>API</h4><p>HTTP経由のネットワーク越し呼び出し窓口。プログラムから取り出すのに便利。アプリ起動時にDBパスワードを取りに行く、など。</p></div>
+      <div class="mini"><div class="ic">⌨️</div><h4>CLI</h4><p><span class="term" data-tip="コマンドで操作する窓口">コマンドで操作する窓口</span>。ファイル型の金庫はだいたいこれ。職人が手で扱ったりスクリプトを書いたりするのに便利。</p></div>
+      <div class="mini"><div class="ic">🖥</div><h4>UI</h4><p><span class="term" data-tip="画面で操作する窓口">画面で操作する窓口</span>。Web・デスクトップ・スマホから使える。チームの誰でも鍵を扱える。</p></div>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>自動化したいならAPI/CLI、人が手で扱うならUI、と用途で窓口を選べるようになる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>API：プログラムから取りに行く窓口。</li>
+      <li>CLI：コマンドやスクリプトで使う窓口。</li>
+      <li>UI：画面で操作する窓口。</li>
+    </ul></div>
+  </div>
+
+  <div class="card" id="s624">
+    <h3 class="blk">6.2.4 シークレット管理ツールの比較</h3>
+    <p class="lead"><b>要するに：</b> 金庫は「種類・保存方法・窓口」で整理できる。Terraform向けには「API/CLIで使えるインフラ用の金庫」が中心になります。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>結局どの金庫を使えばいいんですか？ 選択肢が多すぎて……。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>3つの観点（種類・保存方法・窓口）で有名な金庫を並べた表があるよ。</div></div>
+    </div>
+    <p style="font-size:13px;color:var(--sub)">表6-1 シークレット管理ツールの比較</p>
+    <div style="overflow-x:auto">
+    <table class="t">
+      <tr><th>ツール</th><th>種類</th><th>保存方法</th><th>窓口</th></tr>
+      <tr><td>HashiCorp Vault（注1）</td><td>インフラ</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>AWS Secrets Manager</td><td>インフラ</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Google Secrets Manager</td><td>インフラ</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Azure Key Vault</td><td>インフラ</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Confidant</td><td>インフラ</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Keywhiz</td><td>インフラ</td><td>集中型サービス</td><td>API・CLI</td></tr>
+      <tr><td>sops</td><td>インフラ</td><td>ファイル</td><td>CLI</td></tr>
+      <tr><td>git-secret</td><td>インフラ</td><td>ファイル</td><td>CLI</td></tr>
+      <tr><td>1Password</td><td>個人</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>LastPass</td><td>個人</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Bitwarden</td><td>個人</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>KeePass</td><td>個人</td><td>ファイル</td><td>UI・CLI</td></tr>
+      <tr><td>キーチェーン（macOS）</td><td>個人</td><td>ファイル</td><td>UI・CLI</td></tr>
+      <tr><td>資格情報マネージャ（Windows）</td><td>個人</td><td>ファイル</td><td>UI・CLI</td></tr>
+      <tr><td>pass</td><td>個人</td><td>ファイル</td><td>CLI</td></tr>
+      <tr><td>Active Directory</td><td>顧客</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Auth0</td><td>顧客</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Okta</td><td>顧客</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>OneLogin</td><td>顧客</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>Ping</td><td>顧客</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+      <tr><td>AWS Cognito</td><td>顧客</td><td>集中型サービス</td><td>UI・API・CLI</td></tr>
+    </table>
+    </div>
+    <p style="font-size:12.5px;color:#8b93bf">（注1）Vaultは複数の secret engine（鍵の種類ごとの仕組み）を持ち、主にインフラの鍵向けだが、顧客の鍵も一部扱える。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>この本はTerraformの本だから、これ以降は「API・CLIから使える、インフラの鍵向けの金庫」を中心に扱う。ただし金庫に入るための認証情報を扱う関係で、個人向けの金庫にもときどき触れるよ。</div></div>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>自分の状況に合う金庫を表から選べるようになる。</li>
+      <li>Terraformと組み合わせやすい金庫の条件（API/CLI・インフラ用）が分かる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>Vault・AWS Secrets Manager・Google Secret Manager・Azure Key Vault はインフラ用の集中型。</li>
+      <li>sops・git-secret はインフラ用のファイル型。</li>
+      <li>1Password・LastPass等は個人用、Active Directory・Okta等は顧客用。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 6.3 -->
+<section id="s63">
+  <div class="sec-head"><div class="sec-num">6.3</div><div><h2>シークレット管理ツールとTerraform</h2><span class="tag">金庫とTerraformの組み合わせ方</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> Terraformで鍵が出てくる場面は3つ。①プロバイダ（入場ゲート）への認証、②リソース／データソースへの鍵渡し、③ステートファイルとプランファイル。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ようやく金庫とTerraformの組み合わせですね。Terraformで鍵が出てくる場面って、どこですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>3つある。①プロバイダに認証するとき、②リソースやデータソースに鍵を渡すとき、③ステートファイルとプランファイルだ。順に見ていこう。</div></div>
+    </div>
+    <div class="cycle">
+      <div class="node"><h4>① プロバイダ</h4><p>クラウドの入場ゲートで「あなたは誰?」に答える鍵</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>② リソース／データソース</h4><p>DBの管理人鍵などを設計図に渡す場面</p></div>
+      <div class="cycle-arrow">→</div>
+      <div class="node"><h4>③ ステート／プラン</h4><p>渡した鍵が台帳に丸書きされる落とし穴</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6.3.1 -->
+<section id="s631">
+  <div class="sec-head"><div class="sec-num">6.3.1</div><div><h2>プロバイダ</h2><span class="tag">入場ゲートの鍵をどう渡すか</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> <code>terraform apply</code> ではまずクラウドの入場ゲートで身元確認される。その鍵を「人のユーザ」と「マシンユーザ」で分けて考えます。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><span class="term" data-tip="クラウド業者とやりとりするための窓口プラグイン">プロバイダ</span>って何でしたっけ？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>terraform apply</code> を実行するとき、まずAWSという街の入場ゲートで「あなたは誰ですか」と聞かれる。それに答えるのがアクセスキー、つまり鍵だ。これをどこにしまい、どう渡すかが最初の問題だな。</div></div>
+    </div>
+    <p>絶対にやってはいけないのが、入場ゲートの鍵を設計図に丸書きすることです。</p>
+    <details class="code"><summary>絶対NG例：ゲートの鍵を丸書き</summary>
+<pre><span class="cmt"># これは「絶対にやってはいけない」見本</span>
+<span class="kw">provider</span> <span class="str">"aws"</span> {
+  region = <span class="str">"us-east-2"</span>   <span class="cmt"># 使う地域（オハイオ）</span>
+
+  <span class="cmt"># 絶対ダメ！</span>
+  access_key = <span class="str">"(ACCESS_KEY)"</span>   <span class="cmt"># アクセスキー（鍵のID）を丸書き</span>
+  secret_key = <span class="str">"(SECRET_KEY)"</span>   <span class="cmt"># シークレットキー（鍵の本体）を丸書き</span>
+  <span class="cmt"># 絶対ダメ！</span>
+}</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ダメな理由はもう分かるな。安全じゃないし、そもそも人や環境ごとに違う鍵を使うのが普通だから、1つの鍵を全員に使わせるのは実用的でもない。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>じゃあ、誰がTerraformを動かすかで分けるんですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。「人のユーザ」＝自分のパソコンで動かす職人と、「マシンユーザ」＝人が介さず自動で動かす仕組み（CIサーバなど）、この2つに分けて考える。</div></div>
+    </div>
+  </div>
+
+  <!-- 6.3.1.1 -->
+  <div class="card" id="s6311">
+    <h3 class="blk">6.3.1.1 人のユーザ</h3>
+    <p class="lead"><b>要するに：</b> 自分のパソコンで動かすなら、鍵は個人用金庫にしまい、環境変数でTerraformに渡す。aws-vaultなら使い捨ての一時鍵を渡せて安全。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>まず自分のパソコンで動かす場合ですね。鍵を設計図に書かないとなると、どこに渡すんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>よくあるのは<span class="term" data-tip="パソコンに一時的にセットしておける名前付きの値">環境変数</span>を使う方法だ。AWSならこうする。</div></div>
+    </div>
+    <p>AWSの鍵を環境変数にセットします。行頭にスペースを入れているのは履歴に残さないためです。</p>
+    <details class="code"><summary>環境変数に鍵をセット</summary>
+<pre><span class="cmt"># 行頭スペースで履歴に残さない</span>
+ <span class="fn">export</span> AWS_ACCESS_KEY_ID=(YOUR_ACCESS_KEY_ID)
+ <span class="fn">export</span> AWS_SECRET_ACCESS_KEY=(YOUR_SECRET_ACCESS_KEY)</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なんでコマンドの先頭にスペースが入ってるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いい目のつけどころだ。多くのシェルは打ったコマンドを履歴ファイル（<code>~/.bash_history</code>など）に残す。だが行頭をスペースで始めると履歴に書かれない。鍵をうっかり履歴に残さない工夫だ。効かないシェルなら <code>HISTCONTROL</code> を <code>ignoreboth</code> にするといい。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>環境変数の利点は3つ。(1)設計図に鍵を書かずに済む、(2)動かす人が自分の鍵を使える、(3)鍵がディスクではなくメモリ（電源を切れば消える一時記憶）だけに乗る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも、そのアクセスキー自体はどこに保管するんですか？ 覚えるには長すぎますよね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そこだ。人のユーザは個人向けの金庫（1Password、LastPassなど）に鍵をしまう。そこからコピーして <code>export</code> に貼ればいい。よく使うならCLI付きの金庫が便利だ。1Passwordには <code>op</code> というCLIがある。</div></div>
+    </div>
+    <p>1Passwordにコマンドでログインします。</p>
+    <details class="code"><summary>opでログイン</summary>
+<pre><span class="cmt"># 1Passwordにコマンドでログイン</span>
+<span class="fn">eval</span> $(op signin my)</pre></details>
+    <p>「aws-dev」という項目に保存したIDとシークレットを取り出して環境変数にセットします。</p>
+    <details class="code"><summary>1Passwordから鍵を取り出す</summary>
+<pre><span class="fn">export</span> AWS_ACCESS_KEY_ID=$(op get item <span class="str">'aws-dev'</span> --fields <span class="str">'id'</span>)
+<span class="fn">export</span> AWS_SECRET_ACCESS_KEY=$(op get item <span class="str">'aws-dev'</span> --fields <span class="str">'secret'</span>)</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>AWS専用のもっと簡単なやつとかないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>あるよ。<code>aws-vault</code> というツールだ。<code>dev</code> という<span class="term" data-tip="設定の組に付ける名札">プロファイル</span>に鍵を保存するにはこうする。</div></div>
+    </div>
+    <p>aws-vaultに「dev」という名札で鍵を登録します（入力を求められます）。</p>
+    <details class="code"><summary>aws-vault add</summary>
+<pre>aws-vault add dev
+Enter Access Key Id: (YOUR_ACCESS_KEY_ID)
+Enter Secret Key: (YOUR_SECRET_ACCESS_KEY)</pre></details>
+    <p>中ではOS標準の金庫（macOSキーチェーン、Windows資格情報マネージャ）に安全にしまわれます。一度しまえば、こうしてAWSに認証してコマンドを実行できます。</p>
+    <details class="code"><summary>aws-vault exec で一時鍵を使う</summary>
+<pre><span class="cmt"># 一時的な鍵を使ってterraform applyを実行</span>
+aws-vault exec dev -- terraform apply</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>exec</code> は内部で<span class="term" data-tip="一時的な使い捨ての鍵を発行する仕組み">AWS STS</span>を使って、その場限りの一時鍵を取り出し、環境変数として渡す。だから永続的な鍵は金庫にしまったまま、実行プロセスには使い捨ての鍵しか渡さない。漏れたときの被害が最小になるんだ。IAMロールの引き受け、<span class="term" data-tip="パスワードに加えてもう1つの確認をする仕組み">多要素認証（MFA）</span>、Webコンソールログインにも対応している。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>なるほど。金庫から本物の鍵を出さずに、使い捨ての合鍵だけ渡すんですね！</div></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>本物のマスターキーは個人の頑丈な金庫にしまったまま渡さない。代わりに、その日だけ使えて夜になると自動で使えなくなる「使い捨ての合鍵」を作ってもらい、職人にはそれを渡す。たとえ合鍵を落としても、翌日にはただの鉄くずだ。aws-vaultはこの「使い捨て合鍵屋」の役目をしてくれる。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>設計図に鍵を書かずに、自分の鍵で安全にapplyできるようになる。</li>
+      <li>一時鍵（使い捨て合鍵）の考え方が分かり、漏洩リスクを減らせる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>環境変数で鍵を渡せば、設計図に書かずメモリだけに乗せられる。</li>
+      <li>行頭スペースで履歴に鍵を残さない工夫がある。</li>
+      <li>鍵は個人用金庫（1Password等）に保管。<code>op</code> や <code>aws-vault</code> のCLIが便利。</li>
+      <li><code>aws-vault</code> はSTSで一時鍵を渡すので最も安全。</li>
+    </ul></div>
+  </div>
+
+  <!-- 6.3.1.2 -->
+  <div class="card" id="s6312">
+    <h3 class="blk">6.3.1.2 マシンユーザ</h3>
+    <p class="lead"><b>要するに：</b> 自動で動くCIサーバは金庫のパスワードを覚えられない。「どのマシンから、どのマシンへ」認証するかで答えが変わります。CircleCI・EC2上のJenkins・GitHub Actionsの3例を見ます。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>人なら金庫のパスワードを覚えられますけど、自動で動くCIサーバは覚えられませんよね。どうするんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そこが<span class="term" data-tip="人が介さず自動で動く利用者">マシンユーザ</span>の問題だ。「どのマシンから、どのマシンへ」認証するかで答えが大きく変わる。3つの例を見よう。CircleCI、EC2上のJenkins、GitHub Actionsだ。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>先に言っておく。これから出すCI/CDの例は「どう認証するか」だけを示した単純化したものだ。本番で使える完全なCI/CDの作り方は9章で扱う。</div></div>
+    </div>
+  </div>
+
+  <!-- CircleCI -->
+  <div class="card" id="circleci">
+    <h4 class="blk">例1：CIサーバとしてのCircleCI（鍵を保存する方式）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>CircleCIはどうやるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>CircleCIは<span class="term" data-tip="業者が運用してくれる">マネージド</span>なCI/CDだ。<code>terraform apply</code> を動かすジョブを設定ファイルに書く。</div></div>
+    </div>
+    <p>このファイル(.circleci/config.yml)はCircleCIにterraform applyの手順を教える設定です。</p>
+    <details class="code"><summary>.circleci/config.yml</summary>
+<pre>version: <span class="str">'2.1'</span>
+orbs:
+  <span class="cmt"># 再利用できる設定部品(Orb)でTerraformをインストール</span>
+  terraform: circleci/terraform@1.1.0
+jobs:
+  <span class="cmt"># terraform applyを実行するジョブ</span>
+  terraform_apply:
+    executor: terraform/default
+    steps:
+      - checkout         <span class="cmt"># コードをgit cloneで取得</span>
+      - terraform/init   <span class="cmt"># 'terraform init'を実行</span>
+      - terraform/apply  <span class="cmt"># 'terraform apply'を実行</span>
+workflows:
+  deploy:
+    jobs:
+      - terraform_apply
+    <span class="cmt"># mainブランチにコミットされた時だけ実行</span>
+    filters:
+      branches:
+        only:
+          - main</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>CircleCIでは専用のマシンユーザ（人ではなく自動化用のIAMユーザ）を作り、その鍵を<span class="term" data-tip="鍵を入れておく保管枠">CircleCIコンテキスト</span>に手でコピーして保存する。ビルドが走ると、CircleCIがその鍵を環境変数としてワークフローに渡してくれる。</div></div>
+    </div>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>AWSでIAMユーザ作成</h4><p>自動化専用のユーザを作る</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>必要な権限を付与</h4><p>そのユーザにできることを設定</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>鍵を手でコピー</h4><p>アクセスキーを取り出す</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div><div class="line"></div></div><div class="body"><h4>CircleCIコンテキストに保存</h4><p>保管枠に貼り付ける</p></div></div>
+      <div class="step"><div class="bullet"><div class="dot">5</div></div><div class="body"><h4>ビルド時に環境変数として渡る</h4><p><code>AWS_ACCESS_KEY_ID</code> 等として渡される</p></div></div>
+    </div>
+    <p>最後に、ワークフローで <code>context</code> を使うよう設定します。</p>
+    <details class="code"><summary>contextの指定</summary>
+<pre>workflows:
+  deploy:
+    jobs:
+      - terraform_apply
+    filters:
+      branches:
+        only:
+          - main
+    <span class="cmt"># コンテキストのシークレットを環境変数として渡す</span>
+    context:
+      - example-context</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>便利そうですけど、欠点はありますか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>2つある。(a)鍵を手で管理しないといけない、(b)そのせいで一度保存したらほぼ変えない「ずっと使える永続鍵」を使わざるを得ない。実際、CircleCIに保存していた鍵が漏れた事故もある。次の2例でもっと良いやり方を見よう。</div></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>CircleCIという外部の業者の受付に、本物の合鍵を1本あずけっぱなしにする方式だ。受付は鍵を職人ロボットに渡してくれるが、合鍵は人が手で持ち込み、めったに作り直さない。受付が泥棒に入られたら、その合鍵がそのまま盗まれてしまう。</p>
+    </div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>CircleCIコンテキストに鍵を手でコピーして保存。</li>
+      <li>ビルド時に環境変数として自動で渡る。</li>
+      <li>欠点は「手動管理が必要」「永続鍵になりがち」の2つ。</li>
+    </ul></div>
+  </div>
+
+  <!-- IAM Role -->
+  <div class="card" id="iamrole">
+    <h4 class="blk">例2：JenkinsをCIサーバとして動かすEC2インスタンス（IAMロールを使用）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>AWSの中で動いてるCIサーバなら、もっと楽になるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ぐっと楽になる。<span class="term" data-tip="AWS上の仮想サーバ。クラウドに建てた1棟の建物">EC2インスタンス</span>の上でJenkinsを動かしているなら、そのEC2に<span class="term" data-tip="人に紐づかず永続鍵も持たない権限の役割">IAMロール</span>を付けるのがおすすめだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>IAMロールって、IAMユーザと何が違うんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>IAMロールは権限を付けられる点はIAMユーザと似ているが、人に紐づかず、パスワードもアクセスキーも持たない。代わりに他のもの（EC2など）がそのロールを「引き受ける」ことで、その場限りの権限を得る。建物で言えば「夜間警備員という役割の制服と一時鍵」で、当番になった人がその場で借りるんだ。</div></div>
+    </div>
+    <p>まず、いつものEC2インスタンス（クラウド上の仮想サーバ）を1台建てる設計図があるとします。</p>
+    <details class="code"><summary>EC2インスタンス</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami           = <span class="str">"ami-0fb653ca2d3203ac1"</span>  <span class="cmt"># 使うOSイメージのID</span>
+  instance_type = <span class="str">"t2.micro"</span>               <span class="cmt"># サーバのグレード</span>
+}</pre></details>
+    <p>まず「誰がこの役割を引き受けられるか」を決める許可書を作ります。EC2サービスに引き受けを許す例です。</p>
+    <details class="code"><summary>引き受け許可書（assume_role）</summary>
+<pre><span class="cmt"># 「EC2サービスがこのロールを引き受けてよい」という許可書</span>
+<span class="kw">data</span> <span class="str">"aws_iam_policy_document"</span> <span class="str">"assume_role"</span> {
+  statement {
+    effect  = <span class="str">"Allow"</span>                  <span class="cmt"># 許可する</span>
+    actions = [<span class="str">"sts:AssumeRole"</span>]       <span class="cmt"># ロールの引き受けという行為を</span>
+
+    principals {
+      type        = <span class="str">"Service"</span>          <span class="cmt"># 相手はAWSのサービス</span>
+      identifiers = [<span class="str">"ec2.amazonaws.com"</span>]  <span class="cmt"># そのうちEC2サービスに</span>
+    }
+  }
+}</pre></details>
+    <p>その許可書を使ってIAMロール本体（権限の役割）を作ります。</p>
+    <details class="code"><summary>IAMロール本体</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_iam_role"</span> <span class="str">"instance"</span> {
+  name_prefix        = var.name                              <span class="cmt"># ロール名の頭につける文字</span>
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json  <span class="cmt"># 上の許可書</span>
+}</pre></details>
+    <p>このままでは何の権限もないので、「このロールで何ができるか」を決める権限の許可書（EC2の管理者権限）を作ります。</p>
+    <details class="code"><summary>権限の許可書（ec2_admin）</summary>
+<pre><span class="cmt"># 「EC2に対して何でもしてよい」という権限の許可書</span>
+<span class="kw">data</span> <span class="str">"aws_iam_policy_document"</span> <span class="str">"ec2_admin_permissions"</span> {
+  statement {
+    effect    = <span class="str">"Allow"</span>        <span class="cmt"># 許可する</span>
+    actions   = [<span class="str">"ec2:*"</span>]      <span class="cmt"># EC2に対するすべての操作を</span>
+    resources = [<span class="str">"*"</span>]          <span class="cmt"># すべての対象に</span>
+  }
+}</pre></details>
+    <p>その権限の許可書をロールに貼り付けます。</p>
+    <details class="code"><summary>権限をロールに貼り付け</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_iam_role_policy"</span> <span class="str">"example"</span> {
+  role   = aws_iam_role.instance.id                              <span class="cmt"># 貼り付け先のロール</span>
+  policy = data.aws_iam_policy_document.ec2_admin_permissions.json  <span class="cmt"># 貼り付ける権限</span>
+}</pre></details>
+    <p>EC2が自動でロールを引き受けられるよう、EC2とロールを結びつける入れ物（インスタンスプロファイル）を作ります。</p>
+    <details class="code"><summary>インスタンスプロファイル</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_iam_instance_profile"</span> <span class="str">"instance"</span> {
+  role = aws_iam_role.instance.name   <span class="cmt"># 結びつけるロールの名前</span>
+}</pre></details>
+    <p>そしてEC2にそのプロファイルを取り付けます。</p>
+    <details class="code"><summary>EC2にプロファイルをアタッチ</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"example"</span> {
+  ami           = <span class="str">"ami-0fb653ca2d3203ac1"</span>
+  instance_type = <span class="str">"t2.micro"</span>
+
+  <span class="cmt"># インスタンスプロファイルをアタッチ（取り付ける）</span>
+  iam_instance_profile = aws_iam_instance_profile.instance.name
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これでEC2が勝手に鍵を手に入れるんですか？ 魔法みたいです。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>仕組みがあるんだ。AWSは各EC2の中に<span class="term" data-tip="インスタンス自身の情報を返す特別な窓口">インスタンスメタデータのエンドポイント</span>として <code>http://169.254.169.254</code> という入口を用意している。これはそのインスタンスの中からしか触れない。SSHでログインして <code>curl</code> で覗くとこうなる。</div></div>
+    </div>
+    <p>EC2にSSHでログインして、メタデータの窓口を覗いてみた例です。</p>
+    <details class="code"><summary>メタデータ窓口を覗く</summary>
+<pre>ssh ubuntu@&lt;IP_OF_INSTANCE&gt;
+Welcome to Ubuntu 20.04.3 LTS (GNU/Linux 5.11.0-1022-aws x86_64)
+(...)
+
+curl http://169.254.169.254/latest/meta-data/
+ami-id
+ami-launch-index
+ami-manifest-path
+block-device-mapping/
+events/
+hibernation/
+hostname
+identity-credentials/
+(...)</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ロールが（インスタンスプロファイル経由で）付いていると、このメタデータの中にAWS認証用の一時鍵が入る。Terraformのように<span class="term" data-tip="AWS用の開発キット">AWS SDK</span>を使うツールは、この窓口から自動で鍵を取りに行くことを知っている。だからこのEC2上で <code>terraform apply</code> を実行すると、勝手にロールを引き受けて認証し、EC2管理者権限で動けるんだ。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>注意点が2つ。1つ目。この窓口は標準ではEC2上の全OSユーザが触れてしまう。だから <code>iptables</code> や <code>nftables</code> で、アプリを動かすユーザ（例：<code>app</code>）だけが触れるよう閉じる。起動時にしか鍵が要らないなら、起動後に窓口を完全に無効化してしまう手もある。2つ目。2019年に、先にトークン（一時的な合言葉）を取らないと情報を取れないIMDSv2が出た。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>IAMロールの利点は、(a)鍵を手で管理しなくていい、(b)窓口から渡される鍵は常に一時的で自動で<span class="term" data-tip="定期的に新しいものに入れ替えること">ローテート</span>される、ことだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>AWSの中で動いてるからこそ、AWSが自動で合鍵を配ってくれるんですね。</div></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>EC2はAWSという街の中に建てた建物だ。街の管理人は、その建物の壁に「ロール（夜間警備員）の制服と一時鍵を渡す小窓」を埋め込んでくれる。建物の中の人が小窓から手を出せば、その日の一時鍵が自動で配られ、夜が明けると鍵は無効になる。手で合鍵を持ち込む必要がない。ただし小窓に誰でも手を伸ばせると危ないので、信頼した職人だけが届くように囲っておく。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>永続鍵を手で管理する手間と漏洩リスクをなくせる。</li>
+      <li>IAMロール・インスタンスプロファイル・メタデータ窓口の関係を理解できる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>IAMロールは人に紐づかず永続鍵も持たない「役割」。</li>
+      <li>EC2はインスタンスプロファイル経由でロールを引き受ける。</li>
+      <li>メタデータ窓口（169.254.169.254）から一時鍵が自動配布される。</li>
+      <li>利点は手動管理不要・一時鍵の自動ローテート。窓口はアクセス制限すべき。</li>
+    </ul></div>
+  </div>
+
+  <!-- OIDC -->
+  <div class="card" id="oidc">
+    <h4 class="blk">例3：CIサーバとしてのGitHub Actions（OIDC使用）</h4>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>GitHub Actionsは、AWSの外で動きますよね。CircleCIみたいに手動コピーするしかないんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>昔はそうだった。でも2021年からGitHub Actionsは<span class="term" data-tip="身元を証明し合う標準の仕組み">OIDC</span>という良いやり方に対応した。CIシステムとクラウド業者の間に「信頼関係」を結んでおくと、手で鍵を管理しなくてもCIが業者に認証できる。AWS・Azure・Google Cloudに対応。CircleCIも2022年3月にOIDC対応したよ。</div></div>
+    </div>
+    <p>GitHub Actionsのワークフロー(.github/workflows/terraform.yml)はこう書きます。mainブランチのコミットにだけ実行します。</p>
+    <details class="code"><summary>terraform.yml（ワークフロー）</summary>
+<pre>name: Terraform Apply
+<span class="cmt"># mainブランチのコミットに対してだけ実行</span>
+on:
+  push:
+    branches:
+      - <span class="str">'main'</span>
+jobs:
+  TerraformApply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      <span class="cmt"># Hashicorpのsetup-terraformアクションでTerraformを実行</span>
+      - uses: hashicorp/setup-terraform@v1
+          with:
+            terraform_version: 1.1.0
+            terraform_wrapper: false
+        run: |
+          terraform init
+          terraform apply -auto-approve</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>最初のステップは、AWSアカウントの中に<span class="term" data-tip="GitHubを信頼するための身元確認の窓口">IAM OIDC IDプロバイダ</span>を作り、GitHub Actionsの<span class="term" data-tip="証明書の指紋。本物だと確認するための値">サムプリント</span>を信頼するよう設定することだ。サムプリントは <code>tls_certificate</code> データソースで取る。</div></div>
+    </div>
+    <p>「GitHubを信頼する」という身元確認の窓口をAWSアカウント内に作り、GitHubの証明書の指紋を取得します。</p>
+    <details class="code"><summary>OIDC IDプロバイダ + 指紋取得</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_iam_openid_connect_provider"</span> <span class="str">"github_actions"</span> {
+  url             = <span class="str">"https://token.actions.githubusercontent.com"</span>  <span class="cmt"># GitHubの身元証明の発行元</span>
+  client_id_list  = [<span class="str">"sts.amazonaws.com"</span>]                          <span class="cmt"># 受け取る相手</span>
+  thumbprint_list = [
+    data.tls_certificate.github.certificates[<span class="num">0</span>].sha1_fingerprint   <span class="cmt"># GitHubの証明書の指紋</span>
+  ]
+}
+
+<span class="cmt"># GitHubのOIDCサムプリント（指紋）を取得</span>
+<span class="kw">data</span> <span class="str">"tls_certificate"</span> <span class="str">"github"</span> {
+  url = <span class="str">"https://token.actions.githubusercontent.com"</span>
+}</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>補足だが、2023年7月からはAWSにサムプリントを渡す必要がなくなった。ただしAPI側がまだ追いついておらず、文字列自体は渡す必要がある。仕様が変わるので、動かないときは使うActionのドキュメントを確認してくれ。次に、前と同じくEC2管理者権限のIAMロールを作るが、「引き受けるためのポリシー」はこう変わる。</div></div>
+    </div>
+    <p>「GitHubのOIDC窓口経由でこのロールを引き受けてよい」という許可書を作ります。条件で許可するリポジトリ・ブランチを絞ります。</p>
+    <details class="code"><summary>OIDC用 引き受け許可書</summary>
+<pre><span class="kw">data</span> <span class="str">"aws_iam_policy_document"</span> <span class="str">"assume_role_policy"</span> {
+  statement {
+    actions = [<span class="str">"sts:AssumeRoleWithWebIdentity"</span>]  <span class="cmt"># Web身元証明での引き受けを許す</span>
+    effect  = <span class="str">"Allow"</span>
+
+    principals {
+      identifiers = [aws_iam_openid_connect_provider.github_actions.arn]  <span class="cmt"># 上のOIDC窓口</span>
+      type        = <span class="str">"Federated"</span>                                       <span class="cmt"># 外部の身元連携</span>
+    }
+
+    condition {
+      test     = <span class="str">"StringEquals"</span>
+      variable = <span class="str">"token.actions.githubusercontent.com:sub"</span>
+      <span class="cmt"># 指定したリポジトリとブランチだけが引き受けられる</span>
+      values = [
+        <span class="kw">for</span> a <span class="kw">in</span> var.allowed_repos_branches :
+        <span class="str">"repo:${a["org"]}/${a["repo"]}:ref:refs/heads/${a["branch"]}"</span>
+      ]
+    }
+  }
+}</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>この <code>condition</code>（条件）ブロックが超大事だ。これがないと、世界中のあらゆるGitHubリポジトリがお前のAWSに認証できてしまう。だから許可するリポジトリとブランチを変数で絞る。</div></div>
+    </div>
+    <p>「このIAMロールを引き受けてよいGitHubのリポジトリとブランチ」の一覧を受け取る変数です。</p>
+    <details class="code"><summary>allowed_repos_branches 変数</summary>
+<pre><span class="kw">variable</span> <span class="str">"allowed_repos_branches"</span> {
+  description = <span class="str">"GitHub repos/branches allowed to assume the IAM role."</span>
+  type = list(object({
+    org    = string   <span class="cmt"># 組織名</span>
+    repo   = string   <span class="cmt"># リポジトリ名</span>
+    branch = string   <span class="cmt"># ブランチ名</span>
+  }))
+  <span class="cmt"># 使用例:</span>
+  <span class="cmt"># allowed_repos_branches = [</span>
+  <span class="cmt">#   { org = "brikis98", repo = "terraform-up-and-running-code", branch = "main" }</span>
+  <span class="cmt"># ]</span>
+}</pre></details>
+    <p>ワークフローの先頭で、ビルドに身元証明トークンを発行する権限を与えます。</p>
+    <details class="code"><summary>id-token: write 権限</summary>
+<pre><span class="cmt"># このビルドが身元証明トークンを発行する権限</span>
+permissions:
+  id-token: write</pre></details>
+    <p>Terraformを動かす直前に、configure-aws-credentialsアクションでAWSに認証します。</p>
+    <details class="code"><summary>OIDCでAWSに認証</summary>
+<pre>      <span class="cmt"># OIDCを使ってAWSに認証する</span>
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          <span class="cmt"># 引き受けるIAMロールを指定</span>
+          role-to-assume: arn:aws:iam::123456789012:role/example-role
+          aws-region: us-east-2
+
+      - uses: hashicorp/setup-terraform@v1
+          with:
+            terraform_version: 1.1.0
+            terraform_wrapper: false
+        run: |
+          terraform init
+          terraform apply -auto-approve</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>補足だが、<code>configure-aws-credentials</code> も <code>setup-terraform</code> も、原著ではv1指定だが2023年7月時点ではv2が最新だ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>つまり、許可したリポジトリ・ブランチでビルドが走ったときだけ、GitHubが一時鍵で勝手にロールを引き受けてくれるんですね。鍵の手動管理ゼロ！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>その通り。AWSの外で動くのに、永続鍵も手動管理も要らない。これがOIDCの強みだ。</div></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>GitHubは別の街で働くロボット職人だ。AWSの街の門番に「token.actions… という工房の、しかも『この組織・このリポジトリ・このブランチ』の職人だけは身分証を見せれば一時鍵を渡してよい」と事前に約束（信頼関係）を結んでおく。すると合鍵を郵送しなくても、本人が身分証を見せるだけで門番がその場限りの鍵を発行してくれる。約束に「この職人だけ」という条件を必ず付けないと、世界中の誰でも入れてしまうので注意だ。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>AWS外のCIでも、永続鍵を持たずに安全に認証できるようになる。</li>
+      <li>OIDC IDプロバイダ・引き受けポリシー・条件の絞り込みの役割を理解できる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>OIDCはCIと業者の間に信頼関係を結ぶ仕組み。</li>
+      <li>AWS内にIAM OIDC IDプロバイダを作り、GitHubを信頼させる。</li>
+      <li>引き受けポリシーの <code>condition</code> で許可リポジトリ・ブランチを必ず限定。</li>
+      <li>手動管理不要・永続鍵不要・AWS外でも動く。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 6.3.2 -->
+<section id="s632">
+  <div class="sec-head"><div class="sec-num">6.3.2</div><div><h2>リソースとデータソース</h2><span class="tag">DBの管理人鍵の渡し方（3テクニック）</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> <code>aws_db_instance</code> に <code>username</code> と <code>password</code> を渡す場面。設計図に丸書きはダメ。テクニックは3つ：環境変数・暗号化されたファイル・シークレットストア。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>入場ゲートは分かりました。次は最初のデータベースの管理人鍵ですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。設計図に丸書きはダメ、というのは何度も言った。じゃあどうするか。テクニックは3つだ。環境変数、暗号化されたファイル、シークレットストア。</div></div>
+    </div>
+    <div class="grid3">
+      <div class="mini"><div class="ic">🌬</div><h4>① 環境変数</h4><p>安価・柔軟。どんな金庫とも組める。</p></div>
+      <div class="mini"><div class="ic">🗄</div><h4>② 暗号化ファイル</h4><p>コードと一緒に管理できる。設定漏れに強い。</p></div>
+      <div class="mini"><div class="ic">🏦</div><h4>③ シークレットストア</h4><p>ローテーション・監査・標準化に強い。</p></div>
+    </div>
+  </div>
+
+  <!-- 6.3.2.1 環境変数 -->
+  <div class="card" id="s6321">
+    <h3 class="blk">6.3.2.1 環境変数</h3>
+    <p class="lead"><b>要するに：</b> 鍵を設計図から切り離せて安価・柔軟。ただしTerraformの外で管理するため標準化しづらく、設定漏れも起きやすい。</p>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>1つ目は環境変数。Terraformは環境変数を読む機能を持っているから、設計図に鍵を書かずに済む。まず変数を宣言する。</div></div>
+    </div>
+    <p>データベースの管理人の名前とパスワードを受け取る箱（変数）を宣言します。<code>sensitive = true</code> で画面に値を出さなくします。</p>
+    <details class="code"><summary>変数の宣言</summary>
+<pre><span class="kw">variable</span> <span class="str">"db_username"</span> {
+  description = <span class="str">"The username for the database"</span>
+  type        = string
+  sensitive   = <span class="kw">true</span>   <span class="cmt"># 秘密扱い。plan/applyの画面に値を表示しない</span>
+}
+
+<span class="kw">variable</span> <span class="str">"db_password"</span> {
+  description = <span class="str">"The password for the database"</span>
+  type        = string
+  sensitive   = <span class="kw">true</span>   <span class="cmt"># 秘密扱い</span>
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span><code>sensitive = true</code> って何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><span class="term" data-tip="秘密の・機微な">sensitive</span>パラメータだ。これを付けると <code>plan</code> や <code>apply</code> の表示でこの値を伏せ字にしてくれる。鍵がうっかり画面やログに出るのを防ぐ。あと、鍵を設計図に置かないから <code>default</code>（初期値）は付けない。</div></div>
+    </div>
+    <p>宣言した変数をリソースに渡します。</p>
+    <details class="code"><summary>変数をリソースに渡す</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_db_instance"</span> <span class="str">"example"</span> {
+  <span class="cmt"># ...（中略）...</span>
+
+  <span class="cmt"># シークレットをリソースに渡す</span>
+  username = var.db_username   <span class="cmt"># 変数から管理人名</span>
+  password = var.db_password   <span class="cmt"># 変数からパスワード</span>
+}</pre></details>
+    <p>値は <code>TF_VAR_</code> で始まる環境変数で渡します（行頭スペースで履歴に残しません）。</p>
+    <details class="code"><summary>TF_VAR_ 環境変数で渡す</summary>
+<pre> <span class="fn">export</span> TF_VAR_db_username=(DB_USERNAME)
+ <span class="fn">export</span> TF_VAR_db_password=(DB_PASSWORD)</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ただし、これは「鍵をTerraformに渡す方法」であって「鍵をどこに安全にしまうか」には答えていない。環境変数の良さは、どんな金庫とも組み合わせられることだ。個人金庫（1Password）から手で入れてもいいし、集中金庫（HashiCorp Vault）からAPI/CLIで取って入れてもいい。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a044"><div class="ic">✅</div><h4>利点</h4><p>・設計図やバージョン管理にプレーンテキストの鍵を置かずに済む<br>・どんな金庫とも組める（保存が簡単・既存の仕組みと合わせやすい）<br>・どの言語でも簡単に読める（取得が簡単）<br>・値を差し替えられるので自動テストとの統合が簡単<br>・後で出る方法と比べてお金がかからない</p></div>
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">⚠️</div><h4>欠点</h4><p>・すべてが設計図に書かれないので理解・保守が難しい（毎回手で設定かラッパスクリプトが要る）<br>・管理がTerraformの外で起きるので標準化が難しい（安全でない保存をされ得る）<br>・バージョン管理・パッケージ化・テストができず、設定漏れ（本番に足し忘れ等）が起きやすい</p></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>鍵を建物の壁（設計図）に埋め込む代わりに、職人が現場に来るたびに自分のポケットから出して手渡しする方式だ。どの金庫から持ってきてもよく身軽だが、「現場ごとに誰が何の鍵を持ってきたか」が記録に残らず、ある現場で渡し忘れる事故も起きやすい。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li><code>sensitive = true</code> で鍵を画面・ログから隠せるようになる。</li>
+      <li>既存のどんな金庫とも組み合わせて鍵を渡せるようになる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>変数を宣言し <code>sensitive = true</code> を付け、<code>default</code> は付けない。</li>
+      <li><code>TF_VAR_</code> 環境変数で値を渡す。</li>
+      <li>どんな金庫とも組み合わせ可・安価・テストしやすい。</li>
+      <li>標準化しづらく設定漏れが起きやすいのが欠点。</li>
+    </ul></div>
+  </div>
+
+  <!-- 6.3.2.2 暗号化ファイル -->
+  <div class="card" id="s6322">
+    <h3 class="blk">6.3.2.2 暗号化されたファイル</h3>
+    <p class="lead"><b>要するに：</b> 鍵を暗号化ファイルにしてバージョン管理に置く方式。コードで管理でき設定漏れを減らせるが、扱いが面倒でローテーションが難しく、費用もかかる。sopsで手間を軽減できます。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目は暗号化ファイルですね。鍵を暗号化してファイルに入れて、バージョン管理に置く、と。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。ただ暗号化には暗号化キーが要る。これ自体が鍵だから、KMSかPGPで守る。ここではAWS KMSを使う例を見よう。まずAWSが管理する暗号化キー、<span class="term" data-tip="Customer Master Key。中身は取り出せない暗号化キー">KMSキー（CMK）</span>を作る。誰がこのキーを使えるかを決めるキーポリシーが要る。</div></div>
+    </div>
+    <p>AWSへの入場ゲートを開き、今ログインしている自分自身の情報を取得します。</p>
+    <details class="code"><summary>自分の情報を取得</summary>
+<pre><span class="kw">provider</span> <span class="str">"aws"</span> {
+  region = <span class="str">"us-east-2"</span>
+}
+
+<span class="kw">data</span> <span class="str">"aws_caller_identity"</span> <span class="str">"self"</span> {}</pre></details>
+    <p>「今の自分にこの暗号化キーの全権限を与える」というキーポリシーを作ります。</p>
+    <details class="code"><summary>キーポリシー</summary>
+<pre><span class="kw">data</span> <span class="str">"aws_iam_policy_document"</span> <span class="str">"cmk_admin_policy"</span> {
+  statement {
+    effect    = <span class="str">"Allow"</span>        <span class="cmt"># 許可する</span>
+    resources = [<span class="str">"*"</span>]          <span class="cmt"># すべての対象に</span>
+    actions   = [<span class="str">"kms:*"</span>]      <span class="cmt"># KMSのすべての操作を</span>
+    principals {
+      type        = <span class="str">"AWS"</span>
+      identifiers = [data.aws_caller_identity.self.arn]  <span class="cmt"># 相手は「今の自分」</span>
+    }
+  }
+}</pre></details>
+    <p>そのポリシーを使ってCMK（暗号化キー）を作ります。</p>
+    <details class="code"><summary>CMKを作成</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_kms_key"</span> <span class="str">"cmk"</span> {
+  policy = data.aws_iam_policy_document.cmk_admin_policy.json   <span class="cmt"># 上のキーポリシー</span>
+}</pre></details>
+    <p>CMKは長い数字でしか呼べないので、人間が読みやすい別名（エイリアス）を付けます。</p>
+    <details class="code"><summary>エイリアス（別名）を付ける</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_kms_alias"</span> <span class="str">"cmk"</span> {
+  name          = <span class="str">"alias/kms-cmk-example"</span>   <span class="cmt"># 付ける別名</span>
+  target_key_id = aws_kms_key.cmk.id        <span class="cmt"># 別名を付ける対象のキー</span>
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>この暗号化キーの中身（本物の鍵）は見られるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>見られない。設計上、中の暗号化キーは取り出せないから、うっかり漏らすこともない。キーに触れるのはAWSだけ。我々はAWSのAPI/CLI越しに「暗号化して」「復号して」と頼むだけだ。</div></div>
+    </div>
+    <p>まず、鍵を入れたファイルを作ります。まだ暗号化していないので、これはバージョン管理に入れてはいけません。</p>
+    <details class="code"><summary>db-creds.yml（暗号化前）</summary>
+<pre><span class="cmt"># まだ暗号化していない。バージョン管理に入れるな</span>
+username: admin
+password: password</pre></details>
+    <p>ファイルの中身をKMSで暗号化し、結果を別ファイルに書き出す小さなスクリプト(encrypt.sh)です。</p>
+    <details class="code"><summary>encrypt.sh</summary>
+<pre><span class="cmt">#!/bin/bash</span>
+<span class="cmt"># ファイルの中身をKMSで暗号化し、結果を別ファイルに書き出す</span>
+
+CMK_ID=<span class="str">"$1"</span>
+AWS_REGION=<span class="str">"$2"</span>
+INPUT_FILE=<span class="str">"$3"</span>
+OUTPUT_FILE=<span class="str">"$4"</span>
+
+<span class="fn">echo</span> <span class="str">"CMK $CMK_ID を使って $INPUT_FILE の中身を暗号化します..."</span>
+ciphertext=$(aws kms encrypt \
+  --key-id <span class="str">"$CMK_ID"</span> \
+  --region <span class="str">"$AWS_REGION"</span> \
+  --plaintext <span class="str">"fileb://$INPUT_FILE"</span> \
+  --output text \
+  --query CiphertextBlob)
+
+<span class="fn">echo</span> <span class="str">"結果を $OUTPUT_FILE に書き出します..."</span>
+<span class="fn">echo</span> <span class="str">"$ciphertext"</span> &gt; <span class="str">"$OUTPUT_FILE"</span>
+
+<span class="fn">echo</span> <span class="str">"完了！"</span></pre></details>
+    <p>encrypt.shを使ってdb-creds.ymlを暗号化し、db-creds.yml.encryptedに保存します。</p>
+    <details class="code"><summary>実行例</summary>
+<pre>./encrypt.sh \
+  alias/kms-cmk-example \
+  us-east-2 \
+  db-creds.yml \
+  db-creds.yml.encrypted
+
+CMK alias/kms-cmk-example を使って db-creds.yml の中身を暗号化します...
+結果を db-creds.yml.encrypted に書き出します...
+完了！</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>これで元のプレーンテキスト <code>db-creds.yml</code> は消し、暗号化済みの <code>db-creds.yml.encrypted</code> だけをバージョン管理に安全に入れられる。Terraformで使うには、まず <code>aws_kms_secrets</code> データソースで復号する。</div></div>
+    </div>
+    <p>暗号化ファイルを読み込み、KMSのキーで中身を復号します。</p>
+    <details class="code"><summary>復号（aws_kms_secrets）</summary>
+<pre><span class="kw">data</span> <span class="str">"aws_kms_secrets"</span> <span class="str">"creds"</span> {
+  secret {
+    name    = <span class="str">"db"</span>
+    payload = file(<span class="str">"${path.module}/db-creds.yml.encrypted"</span>)  <span class="cmt"># 暗号化ファイルを読む</span>
+  }
+}</pre></details>
+    <p>復号した中身（YAML）を読み解いて、db_credsという入れ物に保存します。</p>
+    <details class="code"><summary>YAMLを読み解く</summary>
+<pre><span class="kw">locals</span> {
+  db_creds = yamldecode(data.aws_kms_secrets.creds.plaintext[<span class="str">"db"</span>])
+}</pre></details>
+    <p>復号した鍵をデータベースに渡します。</p>
+    <details class="code"><summary>リソースに渡す</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_db_instance"</span> <span class="str">"example"</span> {
+  <span class="cmt"># ...（中略）...</span>
+  username = local.db_creds.username   <span class="cmt"># 復号した管理人名</span>
+  password = local.db_creds.password   <span class="cmt"># 復号したパスワード</span>
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>でも編集するたびに毎回あの長いコマンドで復号して、直して、また暗号化するんですか？ 面倒すぎませんか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>その通り、扱いにくい。しかも編集中はプレーンテキストがパソコンに残るから、うっかりバージョン管理に入れない注意も要る。そこで<span class="term" data-tip="暗号化ファイルを透過的に編集できるオープンソースツール">sops</span>が便利だ。<code>sops &lt;FILE&gt;</code> と打つと、自動で復号してエディタで開き、保存して閉じると自動で再暗号化してくれる。2022年時点でAWS KMS・GCP KMS・Azure Key Vault・PGPに対応。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>Terraformはsopsのファイルをそのまま読めるんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そこは注意だ。Terraformはsopsの暗号化ファイルのネイティブ復号にまだ対応していない。だからcarlpett/sopsのようなサードパーティプロバイダを使うか、Terragruntユーザなら組み込みの <code>sops_decrypt_file</code> 関数を使う。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a044"><div class="ic">✅</div><h4>利点</h4><p>・プレーンテキストの鍵を設計図に置かずに済む<br>・暗号化された形でバージョン管理に入り、パッケージ化・テストができ設定漏れを減らせる<br>・対応形式なら取り出しが簡単<br>・AWS KMS・GCP KMS・PGPなど色々な暗号化に対応<br>・すべてコードに書ける（sops統合にはサードパーティが要る）</p></div>
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">⚠️</div><h4>欠点</h4><p>・保存が難しい（多くのコマンドかsops等の外部ツールと学習が要る）<br>・暗号化キーとテストデータ準備が要り自動テスト統合が難しい<br>・暗号化されてもバージョン管理に残るのでローテーション・無効化が難しい。暗号化キーを盗まれると全部復号される<br>・マネージドキーは費用（AWS KMSはキー1つ月1ドル、暗号/復号API1万回0.03ドル、一般に月1〜10ドル、大規模で月10〜50ドル）<br>・標準化が難しく、誤ってプレーンテキストをチェックインするミスも比較的多い</p></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>鍵を頑丈な箱（暗号化ファイル）に入れて、その箱ごと設計図と一緒に倉庫（バージョン管理）にしまう方式だ。箱を開ける鍵は街の鍵預かり所（KMS）にあずける。箱は設計図と一緒に運べて履歴も残るので便利だが、開け閉めの作業がいちいち面倒で、預かり所の鍵を盗まれると過去にしまった箱が全部開けられてしまう。sopsは「箱を自動で開け閉めしてくれる職人」だ。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>鍵をコードと一緒にバージョン管理・テストできるようになる。</li>
+      <li>KMSで暗号化キーを安全に預け、Terraformから復号して使えるようになる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>KMSでCMK（暗号化キー）を作り、エイリアスで呼びやすくする。</li>
+      <li><code>aws kms encrypt</code> で暗号化、<code>aws_kms_secrets</code> ＋ <code>yamldecode</code> で復号して使う。</li>
+      <li>sopsで暗号化・復号を透過的にできる（Terraformはサードパーティ経由）。</li>
+      <li>設定漏れは減るが、面倒・ローテーション困難・有料が欠点。</li>
+    </ul></div>
+  </div>
+
+  <!-- 6.3.2.3 シークレットストア -->
+  <div class="card" id="s6323">
+    <h3 class="blk">6.3.2.3 シークレットストア</h3>
+    <p class="lead"><b>要するに：</b> 集中型の金庫に鍵を預け、コードで読み出す方式。保存が楽でローテーション・監査・標準化に強いが、費用が高めで取り出しやテストが難しい。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目は集中型の金庫ですね。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。人気なのはAWS Secrets Manager、Google Secret Manager、Azure Key Vault、HashiCorp Vault。ここではAWS Secrets Managerでいこう。まず鍵をAWS Secrets Managerに保存する。これはWebコンソールから行う。推奨フォーマットはJSON形式だ。</div></div>
+    </div>
+    <div class="flow">
+      <div class="step"><div class="bullet"><div class="dot">1</div><div class="line"></div></div><div class="body"><h4>Webコンソールを開く</h4></div></div>
+      <div class="step"><div class="bullet"><div class="dot">2</div><div class="line"></div></div><div class="body"><h4>鍵をJSON形式で入力</h4></div></div>
+      <div class="step"><div class="bullet"><div class="dot">3</div><div class="line"></div></div><div class="body"><h4>db-credsという一意な名前を付ける</h4></div></div>
+      <div class="step"><div class="bullet"><div class="dot">4</div></div><div class="body"><h4>保存をクリック</h4></div></div>
+    </div>
+    <p>保存したら、Terraformから db-creds という鍵を読み出します。</p>
+    <details class="code"><summary>Secrets Managerから読み出す</summary>
+<pre><span class="kw">data</span> <span class="str">"aws_secretsmanager_secret_version"</span> <span class="str">"creds"</span> {
+  secret_id = <span class="str">"db-creds"</span>   <span class="cmt"># 読み出す鍵の名前</span>
+}</pre></details>
+    <p>JSONで保存しているので、jsondecode関数で読み解いてローカル変数db_credsに入れます。</p>
+    <details class="code"><summary>JSONを読み解く</summary>
+<pre><span class="kw">locals</span> {
+  db_creds = jsondecode(
+    data.aws_secretsmanager_secret_version.creds.secret_string
+  )
+}</pre></details>
+    <p>あとは db_creds から名前とパスワードを取り出してリソースに渡すだけです。</p>
+    <details class="code"><summary>リソースに渡す</summary>
+<pre><span class="kw">resource</span> <span class="str">"aws_db_instance"</span> <span class="str">"example"</span> {
+  <span class="cmt"># ...（中略）...</span>
+  username = local.db_creds.username   <span class="cmt"># 取り出した管理人名</span>
+  password = local.db_creds.password   <span class="cmt"># 取り出したパスワード</span>
+}</pre></details>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これは楽そうですね。Web画面で入れて、コードで読むだけ。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>楽だし、強力な機能もある。利点を見よう。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini" style="border-color:#5ee7a044"><div class="ic">✅</div><h4>利点</h4><p>・プレーンテキストの鍵を設計図に置かずに済む<br>・すべてコードに書ける（手動ステップやラッパスクリプト不要）<br>・たいていWeb UIがあり保存が簡単<br>・ローテーションや無効化に対応（漏れたとき便利、定期ローテーションも可）<br>・詳細な監査ログ（誰がどのデータに触れたか）に対応していることが多い<br>・暗号化・保存・アクセス方法が強制され標準化が簡単</p></div>
+      <div class="mini" style="border-color:#ff6b8b44"><div class="ic">⚠️</div><h4>欠点</h4><p>・バージョン管理・パッケージ化・テストができず環境間の設定漏れが起きやすい<br>・マネージドな金庫は費用（AWS KMSキー1つ月1ドル、API1万回0.03ドル、一般に月10〜25ドル、大規模で月数百ドルも）<br>・HashiCorp Vault等のセルフマネージドは運用費＋開発者の時間がかかり月数千ドルになることも<br>・取り出しが難しい（複数マシン間の安全な認証が必要）<br>・外部システムに依存し自動テスト統合が難しい（モックかテストデータが要る）</p></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>街の中心に建つ大きな金庫ビル（集中型サービス）に鍵をあずける方式だ。受付（Web UI）から鍵を入れるのは簡単で、金庫番が「誰がいつどの鍵を借りたか」を帳簿（監査ログ）に必ず記録し、古い鍵は定期的に新品に交換（ローテーション）してくれる。ただし金庫ビルの利用料は高めで、遠くの建物から鍵を借りに来るたびに「あなたは誰か」を確認する手間がかかる。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>Web UIで鍵を管理し、コードで安全に読み出せるようになる。</li>
+      <li>ローテーション・監査ログという「漏れたときに効く」機能を使えるようになる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li><code>aws_secretsmanager_secret_version</code> で読み出し、<code>jsondecode</code> で読み解く。</li>
+      <li>保存が楽、ローテーション・監査・標準化に強い。</li>
+      <li>費用が高め、取り出し・テストが難しいのが欠点。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 6.3.3 -->
+<section id="s633">
+  <div class="sec-head"><div class="sec-num">6.3.3</div><div><h2>ステートファイルとプランファイル</h2><span class="tag">渡した鍵が台帳に残る落とし穴</span></div></div>
+  <div class="card">
+    <p class="lead"><b>要するに：</b> どのテクニックで渡しても、鍵はステートファイルにもプランファイルにもプレーンテキストで残る。だから両ファイルを暗号化バックエンドに置き、アクセスを鍵と同等に厳しく管理します。</p>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>これで鍵の渡し方はバッチリですね！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>まだ落とし穴がある。あと2箇所、鍵が漏れる場所があるんだ。ステートファイルとプランファイルだ。</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="s6331">
+    <h3 class="blk">6.3.3.1 ステートファイル</h3>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>不意打ちなんだが、<b>どのテクニックを使おうと、リソースやデータソースに渡した鍵は、Terraformの<span class="term" data-tip="工房が建物の現状を記録した台帳">ステートファイル（terraform.tfstate）</span>にプレーンテキストで保存されてしまう</b>んだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ええっ！？ せっかく暗号化したのに、台帳に丸書きされちゃうんですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうなんだ。環境変数でも暗号化ファイルでも集中金庫でも、<code>aws_db_instance</code> に渡した時点でステートに丸書きされる。2014年から指摘されている問題で、きれいな解決の予定はまだない。ステートから鍵を消す回避策もあるが、不安定でリリースごとに壊れやすいから、おすすめしない。台帳そのものを金庫にしまうんだ。2つやることがある。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔒</div><h4>やること1：暗号化対応バックエンドに保存</h4><p>ローカルの <code>terraform.tfstate</code> をバージョン管理に置くのではなく、S3・GCS・Azure Blob Storage のような<span class="term" data-tip="ステートの保管先">暗号化できるバックエンド</span>を使う。通信時（TLS）もディスク上（AES-256）も暗号化される。</p></div>
+      <div class="mini"><div class="ic">🚧</div><h4>やること2：触れる人を厳しく絞る</h4><p>ステートには鍵が入りうるから、<b>最低でも鍵そのものと同じくらい厳しく</b>アクセスを管理する。S3なら本番バケットへのアクセスは信頼できる少数の職人か本番デプロイ用CIだけに絞る。</p></div>
+    </div>
+  </div>
+
+  <div class="card" id="s6332">
+    <h3 class="blk">6.3.3.2 プランファイル</h3>
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>プランファイルって何ですか？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span><code>terraform plan</code> の結果はファイルに保存できる。</div></div>
+    </div>
+    <p>planの結果をexample.planというファイルに保存します。</p>
+    <details class="code"><summary>plan -out で保存</summary>
+<pre>terraform plan -out=example.plan</pre></details>
+    <p>保存したプランに対してapplyすると、planで確認したのと寸分違わぬ変更が適用されます。</p>
+    <details class="code"><summary>保存したプランをapply</summary>
+<pre>terraform apply example.plan</pre></details>
+    <div class="talk">
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>便利な機能だが、重要な注意がある。ステートと同じで、<b>リソースやデータソースに渡した鍵は、プランファイルにもプレーンテキストで保存されてしまう</b>。<code>aws_db_instance</code> にplanすれば、プランファイルにDBの名前とパスワードが丸書きで入る。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>ステートと同じ落とし穴ですね。じゃあ対策も同じ？</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>ほぼ同じだ。2つある。</div></div>
+    </div>
+    <div class="grid2">
+      <div class="mini"><div class="ic">🔒</div><h4>やること1：プランファイルを暗号化する</h4><p>保存するなら通信時（TLS）も保存時（AES-256）も暗号化する。両方を暗号化できるS3バケットに置く、など。</p></div>
+      <div class="mini"><div class="ic">🚧</div><h4>やること2：触れる人を厳しく絞る</h4><p>プランファイルにも鍵が入りうるから、<b>最低でも鍵そのものと同じくらい厳しく</b>アクセスを管理する。S3なら本番バケットは信頼できる少数の職人か本番デプロイ用CIだけ。</p></div>
+    </div>
+    <div class="analogy"><h4>🔑 たとえ話</h4>
+      <p>鍵をどんなに上手に手渡ししても、工房は作業のたびに「この建物の現状」を台帳（ステート）と作業予定書（プラン）に書き写す。そこに鍵の番号がそのまま転記されてしまうのだ。だから台帳と予定書そのものを、頑丈な金庫（暗号化バックエンド）にしまい、その金庫を開けられる職人を本物の鍵と同じくらい厳しく絞る必要がある。</p>
+    </div>
+    <div class="why"><h4>📌 なぜこれが必要か / できること</h4><ul>
+      <li>「鍵を暗号化しても台帳経由で漏れる」という盲点を防げるようになる。</li>
+      <li>ステート・プランの暗号化とアクセス制御という仕上げの守りができるようになる。</li>
+    </ul></div>
+    <div class="summary"><h4>📝 この項のまとめ</h4><ul>
+      <li>渡した鍵はステートファイル・プランファイルにプレーンテキストで残る。</li>
+      <li>解決のきれいな予定はなく、消す回避策は不安定で非推奨。</li>
+      <li>ステートは暗号化対応バックエンド（S3等）に保存し、アクセスを厳しく絞る。</li>
+      <li>プランファイルも暗号化し、アクセスを鍵と同等に厳しく絞る。</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- まとめ -->
+<section id="wrapup">
+  <div class="sec-head"><div class="sec-num">🔁</div><div><h2>章のまとめ（弟子の振り返り）</h2><span class="tag">ハルが自分の言葉で4つを振り返る</span></div></div>
+  <div class="card">
+    <div class="talk">
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>棟梁、今日学んだことを言ってみます。1つ目、「鍵をプレーンテキストで保存しない」。設計図に丸書きは絶対ダメ！</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>そうだ。これだけは何があっても忘れるな。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>2つ目、「プロバイダに鍵を渡すとき、人のユーザは個人金庫＋環境変数、マシンユーザは保存した鍵・IAMロール・OIDCを使う」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>その通り。AWS内ならIAMロール、AWS外でもOIDCなら手動管理ゼロで一時鍵を使える。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>3つ目、「リソースやデータソースに渡すときは、環境変数・暗号化ファイル・シークレットストアの3択」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>いい。環境変数は安価で柔軟、暗号化ファイルはコード管理できる、シークレットストアはローテーションと監査に強い。目的で選ぶんだ。</div></div>
+      <div class="bubble sora"><div class="av">ハル</div><div class="txt"><span class="who">ハル</span>4つ目、「どう渡しても、鍵はステートファイルとプランファイルにプレーンテキストで残る。だから両方を暗号化して、アクセスを厳しく絞る」。</div></div>
+      <div class="bubble riku"><div class="av">棟梁</div><div class="txt"><span class="who">棟梁</span>完璧だ。鍵の渡し方をいくら工夫しても、台帳の守りを忘れたら台無しだからな。</div></div>
+    </div>
+
+    <h3 class="blk">表6-2 マシンユーザがTerraformプロバイダに鍵を渡す方法の比較</h3>
+    <div style="overflow-x:auto">
+    <table class="t">
+      <tr><th>観点</th><th>保存された認証情報<br>(CircleCI)</th><th>IAMロール<br>(EC2上のJenkins)</th><th>OIDC<br>(GitHub Actions)</th></tr>
+      <tr><td>手動による認証情報の管理が不要</td><td class="down">いいえ</td><td class="up">はい</td><td class="up">はい</td></tr>
+      <tr><td>永続的な認証情報が不要</td><td class="down">いいえ</td><td class="up">はい</td><td class="up">はい</td></tr>
+      <tr><td>クラウドプロバイダ内で動作</td><td>しない</td><td>する</td><td>しない</td></tr>
+      <tr><td>クラウドプロバイダ外で動作</td><td>する</td><td>しない</td><td>する</td></tr>
+      <tr><td>2022年時点で広くサポートされている</td><td class="up">はい</td><td class="up">はい</td><td class="down">いいえ</td></tr>
+    </table>
+    </div>
+
+    <h3 class="blk">表6-3 Terraformリソースやデータソースに鍵を渡す方法の比較</h3>
+    <div style="overflow-x:auto">
+    <table class="t">
+      <tr><th>観点</th><th>環境変数</th><th>暗号化されたファイル</th><th>集中型のシークレットストア</th></tr>
+      <tr><td>プレーンテキストの鍵をコードと分離</td><td>する</td><td>する</td><td>する</td></tr>
+      <tr><td>すべての鍵管理がコードとして定義される</td><td class="down">いいえ</td><td class="up">はい</td><td class="up">はい</td></tr>
+      <tr><td>暗号化キーへのアクセスの監査ログ</td><td class="down">なし</td><td class="up">あり</td><td class="up">あり</td></tr>
+      <tr><td>各シークレットへのアクセスの監査ログ</td><td class="down">なし</td><td class="down">なし</td><td class="up">あり</td></tr>
+      <tr><td>鍵のローテーションや無効化が容易</td><td class="down">いいえ</td><td class="down">いいえ</td><td class="up">はい</td></tr>
+      <tr><td>鍵管理の標準化が容易</td><td class="down">いいえ</td><td class="down">いいえ</td><td class="up">はい</td></tr>
+      <tr><td>鍵がコードでバージョン管理される</td><td class="down">いいえ</td><td class="up">はい</td><td class="down">いいえ</td></tr>
+      <tr><td>鍵の保存が容易</td><td class="up">はい</td><td class="down">いいえ</td><td class="up">はい</td></tr>
+      <tr><td>鍵の取得が容易</td><td class="up">はい</td><td class="up">はい</td><td class="down">いいえ</td></tr>
+      <tr><td>自動テストとの統合が容易</td><td class="up">はい</td><td class="down">いいえ</td><td class="down">いいえ</td></tr>
+      <tr><td>コスト</td><td>なし</td><td>あり</td><td>比較的高額</td></tr>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- クイズ -->
+<section id="quiz">
+  <div class="sec-head"><div class="sec-num">✏️</div><div><h2>章末の理解度チェック（全5問）</h2><span class="tag">自分の言葉で答えてみよう</span></div></div>
+  <div class="card">
+    <p style="color:var(--sub);font-size:14px">この章を読み終わったあと、自分の言葉で答えてみてください。答えは折りたたみの中にあります。</p>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第1問</span>鍵を丸書きしてはいけない理由</div>
+      <p>パスワードを設計図（Terraformコード）に直接書いてバージョン管理に入れると、なぜ危険でしょうか。理由を2つ以上、自分の言葉で説明してください。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">設計図を見られる人全員がパスワードを手に入れてしまううえ、設計図をコピーしたあらゆるパソコン（職人のPC、CIサーバ、バックアップ装置など）に鍵のコピーが残ってしまうから。さらに、誰が見たかの記録が取れず、後から鍵を無効化することもできず、一度漏れると被害を止められない。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">・アクセス権がある全員に鍵が渡ってしまう点<br>・多数のパソコンにコピーが残る点<br>・監査や無効化ができない点</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第2問</span>IAMロールとOIDCの使いどころ</div>
+      <p>CIサーバがAWSに認証するとき、「AWSの中で動いている場合」と「AWSの外で動いている場合」で、それぞれおすすめの方法を1つずつ挙げ、共通する利点を説明してください。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">AWSの中（EC2上のJenkinsなど）で動くならIAMロール、AWSの外（GitHub Actionsなど）で動くならOIDCがおすすめ。どちらも鍵を手で管理する必要がなく、ずっと使える永続鍵ではなく、その場限りの一時鍵を使うので、漏れたときの被害が小さくて済む。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">・AWS内＝IAMロールを挙げている<br>・AWS外＝OIDCを挙げている<br>・手動管理不要・一時鍵という共通利点に触れている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第3問</span>リソースに鍵を渡す3方式の違い</div>
+      <p>リソースやデータソースに鍵を渡す3つの方法（環境変数・暗号化ファイル・シークレットストア）のうち、「ローテーションや無効化、監査ログに最も強いのはどれか」を答え、その代わりの欠点も1つ挙げてください。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">最も強いのは集中型のシークレットストア（AWS Secrets ManagerやHashiCorp Vaultなど）。鍵の入れ替えや取り消し、誰が触れたかの記録に対応している。ただし費用が高めで、複数マシン間の認証や自動テストとの組み合わせが難しいのが欠点。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">・シークレットストアを選んでいる<br>・ローテーション・無効化・監査の強みに触れている<br>・費用やテスト・取り出しの難しさなど欠点を1つ挙げている</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第4問</span>ステートファイルの落とし穴</div>
+      <p>鍵を暗号化ファイルやシークレットストアから安全に読み込んだのに、それでも鍵が漏れる可能性が残るのはなぜですか。どう対策すればよいかも答えてください。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans">リソースやデータソースに渡した鍵は、どんな方法で読み込んでもTerraformのステートファイル（とプランファイル）にプレーンテキストで保存されてしまうから。対策として、S3など暗号化に対応したバックエンドにステートを保存し、通信時も保存時も暗号化したうえで、バックエンドに触れる人を鍵そのものと同じくらい厳しく絞る。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">・ステート（とプラン）に鍵がプレーンテキストで残る点<br>・暗号化対応バックエンド（S3等）の利用<br>・アクセス制御を厳しくする点</div></details>
+    </div>
+
+    <div class="quiz">
+      <div class="q"><span class="qnum">第5問</span>sensitive パラメータの役割</div>
+      <p>変数に <code>sensitive = true</code> を付けると何が起きますか。なぜそれが鍵の管理で役立つのか説明してください。</p>
+      <details><summary>✅ 解答例を見る</summary><div class="ans"><code>sensitive = true</code> を付けると、Terraformが <code>plan</code> や <code>apply</code> の画面でその値を伏せ字にして表示しなくなる。鍵がうっかり画面やログに出力されて、見られたり記録に残ったりするのを防げるので、鍵の漏洩リスクを下げられる。</div></details>
+      <details><summary>📝 採点ポイント</summary><div class="point">・planやapplyで値が表示されなくなる点<br>・画面やログへの漏洩を防ぐ目的<br>・鍵（機密情報）に使うものだと理解している</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- 次のステップ -->
+<section id="next">
+  <div class="sec-head"><div class="sec-num">🌱</div><div><h2>次のステップ</h2><span class="tag">手を動かして理解を深める</span></div></div>
+  <div class="card">
+    <ul style="margin:0;padding-left:20px;color:#d6dcf7;font-size:14px;line-height:1.9">
+      <li>公式ドキュメント「Terraform Sensitive Input Variables」を読み、<code>sensitive = true</code> の挙動を確認してみる。</li>
+      <li>AWSの無料枠で実際にKMSキー（CMK）を1つ作り、この章の <code>encrypt.sh</code> で小さなテキストファイルを暗号化・復号してみる。料金（キー1つ月1ドル）に注意。</li>
+      <li><code>aws-vault</code> をローカルにインストールし、<code>aws-vault add</code> で鍵を登録してから <code>aws-vault exec</code> で一時鍵を使ってAWS CLIコマンドを動かしてみる。</li>
+      <li>GitHub Actions公式ドキュメント「Configuring OpenID Connect in Amazon Web Services」を読み、OIDCの信頼関係の作り方をたどってみる。</li>
+      <li>オープンソースツール sops を試し、<code>sops</code> コマンドで暗号化ファイルを透過的に編集する体験をしてみる。</li>
+    </ul>
+  </div>
+</section>
+
+<p class="foot">詳解 Terraform 第3版 ／ 第6章「シークレットを管理する」 — 鍵と金庫の図解版。<br>たとえ話はすべて「建物の鍵と金庫の管理」で統一しています。コードは折りたたみで読み飛ばせます。</p>
+
+</div>
+</body>
+</html>
